@@ -1,0 +1,6 @@
+numpy
+pvcheetah==2.0.1
+pvorca==0.2.1
+pvporcupine==3.0.2
+pvrecorder==1.2.2
+sounddevice
