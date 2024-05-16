@@ -39,7 +39,7 @@ To see all available options, type the following:
 python main.py --help
 ```
 
-## Custom Wake Word (Optional)
+## Custom Wake Word
 
 The demo's default wake phrase is `Picovoice`. You can generate your custom (branded) wake word using Picovoice  Console by following [Porcupine Wake Word documentation (https://picovoice.ai/docs/porcupine/). Once you have the model trained, simply pass it to the demo
 application using `--keyword_model_path` argument.
