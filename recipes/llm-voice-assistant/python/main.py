@@ -179,10 +179,10 @@ def main() -> None:
     parser.add_argument(
         '--picollm_model_path',
         required=True,
-        help='Absolute path to the file containing LLM parameters.')
+        help='Absolute path to the file containing LLM parameters (`.pllm`).')
     parser.add_argument(
         '--keyword-model_path',
-        help='Absolute path to the keyword model file. If not set, `Picovoice` will be used as the wake phrase')
+        help='Absolute path to the keyword model file (`.ppn`). If not set, `Picovoice` will be the wake phrase')
     parser.add_argument(
         '--cheetah_endpoint_duration_sec',
         type=float,
@@ -267,7 +267,7 @@ def main() -> None:
 
     pllm = picollm.create(access_key=access_key, model_path=picollm_model_path, device=picollm_device)
     dialog = pllm.get_dialog()
-    log.info(f"→ picoLLM V{pllm.version} {pllm.model}")
+    log.info(f"→ picoLLM V{pllm.version} <{pllm.model}>")
 
     main_connection, orca_process_connection = Pipe()
     orca_process = Process(target=orca_worker, args=(access_key, orca_process_connection, orca_warmup_sec))
@@ -289,7 +289,7 @@ def main() -> None:
     signal.signal(signal.SIGINT, handler)
 
     wake_word_detected = False
-    human_request = ''
+    user_request = ''
     endpoint_reached = False
     utterance_end_sec = 0
 
@@ -308,24 +308,24 @@ def main() -> None:
                 if wake_word_detected:
                     log.debug(f"[Porcupine RTF: {porcupine_profiler.rtf():.3f}]")
                     log.info("$ Wake word detected, utter your request or question ...\n")
-                    log.info("human > ", end='')
+                    log.info("User > ", end='')
             elif not endpoint_reached:
                 pcm = mic.read()
                 cheetah_profiler.tick()
                 partial_transcript, endpoint_reached = cheetah.process(pcm)
                 cheetah_profiler.tock(pcm)
                 log.info(partial_transcript, end='')
-                human_request += partial_transcript
+                user_request += partial_transcript
                 if endpoint_reached:
                     utterance_end_sec = time.time()
                     cheetah_profiler.tick()
                     remaining_transcript = cheetah.flush()
                     cheetah_profiler.tock()
-                    human_request += remaining_transcript
+                    user_request += remaining_transcript
                     log.info(remaining_transcript, end='\n\n')
                     log.debug(f"[Cheetah RTF: {cheetah_profiler.rtf():.3f}]")
             else:
-                dialog.add_human_request(human_request)
+                dialog.add_human_request(user_request)
 
                 picollm_profiler = TPSProfiler()
 
@@ -335,7 +335,7 @@ def main() -> None:
                         {'command': 'synthesize', 'text': text, 'utterance_end_sec': utterance_end_sec})
                     log.info(text, end='')
 
-                log.info("\nllm > ", end='')
+                log.info("\nLLM > ", end='')
                 res = pllm.generate(
                     prompt=dialog.prompt(),
                     completion_token_limit=picollm_completion_token_limit,
@@ -359,7 +359,7 @@ def main() -> None:
                 assert main_connection.recv()['done']
 
                 wake_word_detected = False
-                human_request = ''
+                user_request = ''
                 endpoint_reached = False
                 log.info("\n$ Say `Picovoice` ...")
     finally:
