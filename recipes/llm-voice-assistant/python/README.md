@@ -25,6 +25,12 @@ python main.py --help
 
 ## Profiling
 
+### Realtime Factor
+
+### Token per Second
+
+### Latency
+
 ```console
 python3 main.py --access_key ${ACCESS_KEY} --picollm_model_path ${PICOLLM_MODEL_PATH} --profile 
 ```
