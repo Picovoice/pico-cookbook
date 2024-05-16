@@ -255,7 +255,7 @@ def main() -> None:
     mic = PvRecorder(frame_length=porcupine.frame_length)
     mic.start()
 
-    print(f"\n$ Say {'Picovoice' if keyword_model_path is None else 'the wake word'} ...")
+    print(f"\n$ Say {'`Picovoice`' if keyword_model_path is None else 'the wake word'} ...")
 
     stop = [False]
 
@@ -341,7 +341,7 @@ def main() -> None:
                 wake_word_detected = False
                 user_request = ''
                 endpoint_reached = False
-                print(f"\n$ Say {'Picovoice' if keyword_model_path is None else 'the wake word'} ...")
+                print(f"\n$ Say {'`Picovoice`' if keyword_model_path is None else 'the wake word'} ...")
     finally:
         main_connection.send({'command': 'close'})
         mic.delete()
