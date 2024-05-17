@@ -1,4 +1,5 @@
 numpy
+picollm==1.0.0
 pvcheetah==2.0.1
 pvorca==0.2.1
 pvporcupine==3.0.2
