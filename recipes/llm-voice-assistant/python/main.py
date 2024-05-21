@@ -307,11 +307,23 @@ def main() -> None:
 
                 picollm_profiler = TPSProfiler()
 
+                eos_tokens = {
+                    '<end_of_turn>',  # Gemma
+                    '</s>',  # Llama-2, Mistral, and Mixtral
+                    '<|eot_id|>',  # Llama-3
+                    'Human: ',  # Phi-2
+                    'Instruct: ',  # Phi-2
+                }
+
+                completion = ['']
+
                 def llm_callback(text: str) -> None:
                     picollm_profiler.tock()
-                    main_connection.send(
-                        {'command': 'synthesize', 'text': text, 'utterance_end_sec': utterance_end_sec})
-                    print(text, end='', flush=True)
+                    completion[0] += text
+                    if not any(x in completion[0] for x in eos_tokens):
+                        main_connection.send(
+                            {'command': 'synthesize', 'text': text, 'utterance_end_sec': utterance_end_sec})
+                        print(text, end='', flush=True)
 
                 print("\nLLM > ", end='', flush=True)
                 res = pllm.generate(
