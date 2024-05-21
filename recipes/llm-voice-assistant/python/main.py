@@ -25,10 +25,10 @@ class RTFProfiler:
         self._tick_sec = 0.
 
     def tick(self) -> None:
-        self._tick_sec = time.time()
+        self._tick_sec = time.perf_counter()
 
     def tock(self, audio: Optional[Sequence[int]] = None) -> None:
-        self._compute_sec += time.time() - self._tick_sec
+        self._compute_sec += time.perf_counter() - self._tick_sec
         self._audio_sec += (len(audio) / self._sample_rate) if audio is not None else 0.
 
     def rtf(self) -> float:
@@ -45,12 +45,12 @@ class TPSProfiler(object):
 
     def tock(self) -> None:
         if self._start_sec == 0.:
-            self._start_sec = time.time()
+            self._start_sec = time.perf_counter()
         else:
             self._num_tokens += 1
 
     def tps(self) -> float:
-        tps = self._num_tokens / (time.time() - self._start_sec)
+        tps = self._num_tokens / (time.perf_counter() - self._start_sec)
         self._num_tokens = 0
         self._start_sec = 0.
         return tps
@@ -102,7 +102,7 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
         if x is not None:
             pcm_buffer.extend(x)
             if delay_sec[0] == -1:
-                delay_sec[0] = time.time() - utterance_end_sec
+                delay_sec[0] = time.perf_counter() - utterance_end_sec
 
     while True:
         if synthesize and len(texts) > 0:
@@ -294,7 +294,7 @@ def main() -> None:
                 print(partial_transcript, end='', flush=True)
                 user_request += partial_transcript
                 if endpoint_reached:
-                    utterance_end_sec = time.time()
+                    utterance_end_sec = time.perf_counter()
                     cheetah_profiler.tick()
                     remaining_transcript = cheetah.flush()
                     cheetah_profiler.tock()
