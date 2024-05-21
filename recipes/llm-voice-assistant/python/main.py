@@ -240,7 +240,10 @@ def main() -> None:
         porcupine = pvporcupine.create(access_key=access_key, keyword_paths=[keyword_model_path])
     print(f"→ Porcupine V{porcupine.version}")
 
-    cheetah = pvcheetah.create(access_key=access_key, endpoint_duration_sec=cheetah_endpoint_duration_sec)
+    cheetah = pvcheetah.create(
+        access_key=access_key,
+        endpoint_duration_sec=cheetah_endpoint_duration_sec,
+        enable_automatic_punctuation=True)
     print(f"→ Cheetah V{cheetah.version}")
 
     pllm = picollm.create(access_key=access_key, model_path=picollm_model_path, device=picollm_device)
@@ -312,11 +315,10 @@ def main() -> None:
                 picollm_profiler = TPSProfiler()
 
                 eos_tokens = {
-                    '<end_of_turn>',  # Gemma
                     '</s>',  # Llama-2, Mistral, and Mixtral
+                    '<end_of_turn>',  # Gemma
+                    '<|endoftext|>',  # Phi-2
                     '<|eot_id|>',  # Llama-3
-                    'Human: ',  # Phi-2
-                    'Instruct: ',  # Phi-2
                 }
 
                 completion = ['']
