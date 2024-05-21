@@ -217,6 +217,7 @@ def main() -> None:
         help="Duration of the synthesized audio to buffer before streaming it out. A higher value helps slower "
              "(e.g., Raspberry Pi) to keep up with real-time at the cost of increasing the initial delay.")
     parser.add_argument('--profile', action='store_true', help='Show runtime profiling information.')
+    parser.add_argument('--short_answers', action='store_true')
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -231,6 +232,7 @@ def main() -> None:
     picollm_top_p = args.picollm_top_p
     orca_warmup_sec = args.orca_warmup_sec
     profile = args.profile
+    short_answers = args.short_answers
 
     if keyword_model_path is None:
         porcupine = pvporcupine.create(access_key=access_key, keywords=['picovoice'])
@@ -303,7 +305,9 @@ def main() -> None:
                     if profile:
                         print(f"[Cheetah RTF: {cheetah_profiler.rtf():.3f}]")
             else:
-                dialog.add_human_request(user_request)
+                dialog.add_human_request(
+                    f"Provide a short answer to the following question. {user_request}" if short_answers
+                    else user_request)
 
                 picollm_profiler = TPSProfiler()
 

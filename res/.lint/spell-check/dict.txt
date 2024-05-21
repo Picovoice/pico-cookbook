@@ -1,5 +1,6 @@
 dtype
 logit
+mixtral
 numpy
 pico
 picollm
