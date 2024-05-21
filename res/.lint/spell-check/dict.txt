@@ -1,4 +1,5 @@
 dtype
+endoftext
 logit
 mixtral
 numpy

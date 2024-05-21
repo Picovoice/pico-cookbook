@@ -181,6 +181,7 @@ def main() -> None:
     parser.add_argument(
         '--picollm_completion_token_limit',
         type=int,
+        default=256,
         help="Maximum number of tokens in the completion. Set to `None` to impose no limit.")
     parser.add_argument(
         '--picollm_presence_penalty',
