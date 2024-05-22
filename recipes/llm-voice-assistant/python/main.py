@@ -309,13 +309,14 @@ def main() -> None:
                     if profile:
                         print(f"[Cheetah RTF: {cheetah_profiler.rtf():.3f}]")
             else:
+                short_answers_instruction = \
+                    "You are a voice assistant and your answers are very short but informative"
                 dialog.add_human_request(
-                    f"Provide a short answer to the following question. {user_request}" if short_answers
-                    else user_request)
+                    f"{short_answers_instruction}. {user_request}" if short_answers else user_request)
 
                 picollm_profiler = TPSProfiler()
 
-                eos_tokens = {
+                stop_phrases = {
                     '</s>',  # Llama-2, Mistral, and Mixtral
                     '<end_of_turn>',  # Gemma
                     '<|endoftext|>',  # Phi-2
@@ -327,15 +328,18 @@ def main() -> None:
                 def llm_callback(text: str) -> None:
                     picollm_profiler.tock()
                     completion[0] += text
-                    if not any(x in completion[0] for x in eos_tokens):
-                        main_connection.send(
-                            {'command': 'synthesize', 'text': text, 'utterance_end_sec': utterance_end_sec})
+                    if not any(x in completion[0] for x in stop_phrases):
+                        main_connection.send({
+                            'command': 'synthesize',
+                            'text': text.replace('\n', ' . '),
+                            'utterance_end_sec': utterance_end_sec})
                         print(text, end='', flush=True)
 
                 print("\nLLM > ", end='', flush=True)
                 res = pllm.generate(
                     prompt=dialog.prompt(),
                     completion_token_limit=picollm_completion_token_limit,
+                    stop_phrases=stop_phrases,
                     presence_penalty=picollm_presence_penalty,
                     frequency_penalty=picollm_frequency_penalty,
                     temperature=picollm_temperature,
