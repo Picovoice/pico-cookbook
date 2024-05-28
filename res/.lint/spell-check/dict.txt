@@ -1,2 +1,16 @@
+dtype
+endoftext
+logit
+mixtral
+numpy
 pico
+picollm
 picovoice
+pllm
+pvcheetah
+pvorca
+pvporcupine
+pvrecorder
+samplerate
+sounddevice
+tock
