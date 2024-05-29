@@ -10,7 +10,7 @@
 import SwiftUI
 
 @main
-struct PicoLLMChatDemoApp: App {
+struct PicoLLMVoiceAssistantDemoApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

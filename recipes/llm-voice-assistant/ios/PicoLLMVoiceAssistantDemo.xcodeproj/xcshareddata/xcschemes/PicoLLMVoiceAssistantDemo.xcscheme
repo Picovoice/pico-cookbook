@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "02A11944268D39A700A2AC99"
-               BuildableName = "PicoLLMChatDemo.app"
-               BlueprintName = "PicoLLMChatDemo"
-               ReferencedContainer = "container:PicoLLMChatDemo.xcodeproj">
+               BuildableName = "PicoLLMVoiceAssistantDemo.app"
+               BlueprintName = "PicoLLMVoiceAssistantDemo"
+               ReferencedContainer = "container:PicoLLMVoiceAssistantDemo.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "C7969FC426F53FBB0013DD41"
-               BuildableName = "PicoLLMChatDemoUITests.xctest"
-               BlueprintName = "PicoLLMChatDemoUITests"
-               ReferencedContainer = "container:PicoLLMChatDemo.xcodeproj">
+               BuildableName = "PicoLLMVoiceAssistantDemoUITests.xctest"
+               BlueprintName = "PicoLLMVoiceAssistantDemoUITests"
+               ReferencedContainer = "container:PicoLLMVoiceAssistantDemo.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "02A11944268D39A700A2AC99"
-            BuildableName = "PicoLLMChatDemo.app"
-            BlueprintName = "PicoLLMChatDemo"
-            ReferencedContainer = "container:PicoLLMChatDemo.xcodeproj">
+            BuildableName = "PicoLLMVoiceAssistantDemo.app"
+            BlueprintName = "PicoLLMVoiceAssistantDemo"
+            ReferencedContainer = "container:PicoLLMVoiceAssistantDemo.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <EnvironmentVariables>
@@ -79,9 +79,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "02A11944268D39A700A2AC99"
-            BuildableName = "PicoLLMChatDemo.app"
-            BlueprintName = "PicoLLMChatDemo"
-            ReferencedContainer = "container:PicoLLMChatDemo.xcodeproj">
+            BuildableName = "PicoLLMVoiceAssistantDemo.app"
+            BlueprintName = "PicoLLMVoiceAssistantDemo"
+            ReferencedContainer = "container:PicoLLMVoiceAssistantDemo.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

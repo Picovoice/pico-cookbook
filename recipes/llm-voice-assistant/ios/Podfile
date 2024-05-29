@@ -1,6 +1,9 @@
 source 'https://cdn.cocoapods.org/'
 platform :ios, '16.0'
 
-target 'PicoLLMChatDemo' do
+target 'PicoLLMVoiceAssistantDemo' do
+  pod 'Porcupine-iOS', '~> 3.0.1'
+  pod 'Cheetah-iOS', '~> 2.0.0'
   pod 'picoLLM-iOS', '~> 1.0.0'
+  pod 'Orca-iOS', '~> 0.2.0'
 end

@@ -7,26 +7,26 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		02A11949268D39A700A2AC99 /* PicoLLMChatDemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02A11948268D39A700A2AC99 /* PicoLLMChatDemoApp.swift */; };
+		02A11949268D39A700A2AC99 /* PicoLLMVoiceAssistantDemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02A11948268D39A700A2AC99 /* PicoLLMVoiceAssistantDemoApp.swift */; };
 		02A1194B268D39A700A2AC99 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02A1194A268D39A700A2AC99 /* ContentView.swift */; };
 		02A1194D268D39AB00A2AC99 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 02A1194C268D39AB00A2AC99 /* Assets.xcassets */; };
 		02A1195F268D3FD600A2AC99 /* ViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02A1195E268D3FD600A2AC99 /* ViewModel.swift */; };
-		3D2B8D90C4122A3A0C8C682D /* libPods-PicoLLMChatDemo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7231C033B41A0972F723C1A6 /* libPods-PicoLLMChatDemo.a */; };
+		3D2B8D90C4122A3A0C8C682D /* libPods-PicoLLMVoiceAssistantDemo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7231C033B41A0972F723C1A6 /* libPods-PicoLLMVoiceAssistantDemo.a */; };
 		C789D24B2BEA8E5D005FDB10 /* LoadModelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C789D24A2BEA8E5D005FDB10 /* LoadModelView.swift */; };
 		C789D24D2BEA8EAE005FDB10 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C789D24C2BEA8EAE005FDB10 /* ChatView.swift */; };
 		C789D2512BEAD752005FDB10 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = C789D2502BEAD752005FDB10 /* Constants.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		02A11945268D39A700A2AC99 /* PicoLLMChatDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PicoLLMChatDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		02A11948268D39A700A2AC99 /* PicoLLMChatDemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PicoLLMChatDemoApp.swift; sourceTree = "<group>"; };
+		02A11945268D39A700A2AC99 /* PicoLLMVoiceAssistantDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PicoLLMVoiceAssistantDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		02A11948268D39A700A2AC99 /* PicoLLMVoiceAssistantDemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PicoLLMVoiceAssistantDemoApp.swift; sourceTree = "<group>"; };
 		02A1194A268D39A700A2AC99 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		02A1194C268D39AB00A2AC99 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		02A11951268D39AB00A2AC99 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		02A1195E268D3FD600A2AC99 /* ViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModel.swift; sourceTree = "<group>"; };
-		195F7C81D2A651BE1E18D367 /* Pods-PicoLLMChatDemo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PicoLLMChatDemo.debug.xcconfig"; path = "Target Support Files/Pods-PicoLLMChatDemo/Pods-PicoLLMChatDemo.debug.xcconfig"; sourceTree = "<group>"; };
-		7231C033B41A0972F723C1A6 /* libPods-PicoLLMChatDemo.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PicoLLMChatDemo.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		B4721F6A98EC8D37F91281AB /* Pods-PicoLLMChatDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PicoLLMChatDemo.release.xcconfig"; path = "Target Support Files/Pods-PicoLLMChatDemo/Pods-PicoLLMChatDemo.release.xcconfig"; sourceTree = "<group>"; };
+		195F7C81D2A651BE1E18D367 /* Pods-PicoLLMVoiceAssistantDemo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PicoLLMVoiceAssistantDemo.debug.xcconfig"; path = "Target Support Files/Pods-PicoLLMVoiceAssistantDemo/Pods-PicoLLMVoiceAssistantDemo.debug.xcconfig"; sourceTree = "<group>"; };
+		7231C033B41A0972F723C1A6 /* libPods-PicoLLMVoiceAssistantDemo.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PicoLLMVoiceAssistantDemo.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B4721F6A98EC8D37F91281AB /* Pods-PicoLLMVoiceAssistantDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PicoLLMVoiceAssistantDemo.release.xcconfig"; path = "Target Support Files/Pods-PicoLLMVoiceAssistantDemo/Pods-PicoLLMVoiceAssistantDemo.release.xcconfig"; sourceTree = "<group>"; };
 		C789D24A2BEA8E5D005FDB10 /* LoadModelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadModelView.swift; sourceTree = "<group>"; };
 		C789D24C2BEA8EAE005FDB10 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		C789D2502BEAD752005FDB10 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
@@ -37,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3D2B8D90C4122A3A0C8C682D /* libPods-PicoLLMChatDemo.a in Frameworks */,
+				3D2B8D90C4122A3A0C8C682D /* libPods-PicoLLMVoiceAssistantDemo.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -47,7 +47,7 @@
 		02A1193C268D39A700A2AC99 = {
 			isa = PBXGroup;
 			children = (
-				02A11947268D39A700A2AC99 /* PicoLLMChatDemo */,
+				02A11947268D39A700A2AC99 /* PicoLLMVoiceAssistantDemo */,
 				02A11946268D39A700A2AC99 /* Products */,
 				8DB92FF3DC81AB04D3FF7242 /* Pods */,
 				F770462E5CFAB5B7D2E94AD8 /* Frameworks */,
@@ -57,15 +57,15 @@
 		02A11946268D39A700A2AC99 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				02A11945268D39A700A2AC99 /* PicoLLMChatDemo.app */,
+				02A11945268D39A700A2AC99 /* PicoLLMVoiceAssistantDemo.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		02A11947268D39A700A2AC99 /* PicoLLMChatDemo */ = {
+		02A11947268D39A700A2AC99 /* PicoLLMVoiceAssistantDemo */ = {
 			isa = PBXGroup;
 			children = (
-				02A11948268D39A700A2AC99 /* PicoLLMChatDemoApp.swift */,
+				02A11948268D39A700A2AC99 /* PicoLLMVoiceAssistantDemoApp.swift */,
 				02A1194A268D39A700A2AC99 /* ContentView.swift */,
 				02A1194C268D39AB00A2AC99 /* Assets.xcassets */,
 				02A11951268D39AB00A2AC99 /* Info.plist */,
@@ -74,14 +74,14 @@
 				C789D24C2BEA8EAE005FDB10 /* ChatView.swift */,
 				C789D2502BEAD752005FDB10 /* Constants.swift */,
 			);
-			path = PicoLLMChatDemo;
+			path = PicoLLMVoiceAssistantDemo;
 			sourceTree = "<group>";
 		};
 		8DB92FF3DC81AB04D3FF7242 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				195F7C81D2A651BE1E18D367 /* Pods-PicoLLMChatDemo.debug.xcconfig */,
-				B4721F6A98EC8D37F91281AB /* Pods-PicoLLMChatDemo.release.xcconfig */,
+				195F7C81D2A651BE1E18D367 /* Pods-PicoLLMVoiceAssistantDemo.debug.xcconfig */,
+				B4721F6A98EC8D37F91281AB /* Pods-PicoLLMVoiceAssistantDemo.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -89,7 +89,7 @@
 		F770462E5CFAB5B7D2E94AD8 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				7231C033B41A0972F723C1A6 /* libPods-PicoLLMChatDemo.a */,
+				7231C033B41A0972F723C1A6 /* libPods-PicoLLMVoiceAssistantDemo.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -97,9 +97,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		02A11944268D39A700A2AC99 /* PicoLLMChatDemo */ = {
+		02A11944268D39A700A2AC99 /* PicoLLMVoiceAssistantDemo */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 02A11954268D39AB00A2AC99 /* Build configuration list for PBXNativeTarget "PicoLLMChatDemo" */;
+			buildConfigurationList = 02A11954268D39AB00A2AC99 /* Build configuration list for PBXNativeTarget "PicoLLMVoiceAssistantDemo" */;
 			buildPhases = (
 				1F448DADB90CE82863E78546 /* [CP] Check Pods Manifest.lock */,
 				02A11941268D39A700A2AC99 /* Sources */,
@@ -111,9 +111,9 @@
 			);
 			dependencies = (
 			);
-			name = PicoLLMChatDemo;
-			productName = PicoLLMChatDemo;
-			productReference = 02A11945268D39A700A2AC99 /* PicoLLMChatDemo.app */;
+			name = PicoLLMVoiceAssistantDemo;
+			productName = PicoLLMVoiceAssistantDemo;
+			productReference = 02A11945268D39A700A2AC99 /* PicoLLMVoiceAssistantDemo.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -131,7 +131,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 02A11940268D39A700A2AC99 /* Build configuration list for PBXProject "PicoLLMChatDemo" */;
+			buildConfigurationList = 02A11940268D39A700A2AC99 /* Build configuration list for PBXProject "PicoLLMVoiceAssistantDemo" */;
 			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -144,7 +144,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				02A11944268D39A700A2AC99 /* PicoLLMChatDemo */,
+				02A11944268D39A700A2AC99 /* PicoLLMVoiceAssistantDemo */,
 			);
 		};
 /* End PBXProject section */
@@ -176,7 +176,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-PicoLLMChatDemo-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-PicoLLMVoiceAssistantDemo-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -189,15 +189,15 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-PicoLLMChatDemo/Pods-PicoLLMChatDemo-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-PicoLLMVoiceAssistantDemo/Pods-PicoLLMVoiceAssistantDemo-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-PicoLLMChatDemo/Pods-PicoLLMChatDemo-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-PicoLLMVoiceAssistantDemo/Pods-PicoLLMVoiceAssistantDemo-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PicoLLMChatDemo/Pods-PicoLLMChatDemo-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PicoLLMVoiceAssistantDemo/Pods-PicoLLMVoiceAssistantDemo-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -212,7 +212,7 @@
 				02A1194B268D39A700A2AC99 /* ContentView.swift in Sources */,
 				C789D2512BEAD752005FDB10 /* Constants.swift in Sources */,
 				02A1195F268D3FD600A2AC99 /* ViewModel.swift in Sources */,
-				02A11949268D39A700A2AC99 /* PicoLLMChatDemoApp.swift in Sources */,
+				02A11949268D39A700A2AC99 /* PicoLLMVoiceAssistantDemoApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -339,7 +339,7 @@
 		};
 		02A11955268D39AB00A2AC99 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 195F7C81D2A651BE1E18D367 /* Pods-PicoLLMChatDemo.debug.xcconfig */;
+			baseConfigurationReference = 195F7C81D2A651BE1E18D367 /* Pods-PicoLLMVoiceAssistantDemo.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -348,13 +348,13 @@
 				DEVELOPMENT_TEAM = EU9HUJJU2X;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-				INFOPLIST_FILE = PicoLLMChatDemo/Info.plist;
+				INFOPLIST_FILE = PicoLLMVoiceAssistantDemo/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = ai.picovoice.PicoLLMChatDemo;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.picovoice.PicoLLMVoiceAssistantDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -363,7 +363,7 @@
 		};
 		02A11956268D39AB00A2AC99 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = B4721F6A98EC8D37F91281AB /* Pods-PicoLLMChatDemo.release.xcconfig */;
+			baseConfigurationReference = B4721F6A98EC8D37F91281AB /* Pods-PicoLLMVoiceAssistantDemo.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -372,13 +372,13 @@
 				DEVELOPMENT_TEAM = EU9HUJJU2X;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-				INFOPLIST_FILE = PicoLLMChatDemo/Info.plist;
+				INFOPLIST_FILE = PicoLLMVoiceAssistantDemo/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = ai.picovoice.PicoLLMChatDemo;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.picovoice.PicoLLMVoiceAssistantDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -388,7 +388,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		02A11940268D39A700A2AC99 /* Build configuration list for PBXProject "PicoLLMChatDemo" */ = {
+		02A11940268D39A700A2AC99 /* Build configuration list for PBXProject "PicoLLMVoiceAssistantDemo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				02A11952268D39AB00A2AC99 /* Debug */,
@@ -397,7 +397,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		02A11954268D39AB00A2AC99 /* Build configuration list for PBXNativeTarget "PicoLLMChatDemo" */ = {
+		02A11954268D39AB00A2AC99 /* Build configuration list for PBXNativeTarget "PicoLLMVoiceAssistantDemo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				02A11955268D39AB00A2AC99 /* Debug */,
