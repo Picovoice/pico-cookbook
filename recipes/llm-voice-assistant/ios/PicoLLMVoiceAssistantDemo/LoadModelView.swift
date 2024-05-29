@@ -66,7 +66,7 @@ struct LoadModelView: View {
                 switch result {
                 case .success(let files):
                     viewModel.selectedModelUrl = files[0]
-                    viewModel.loadPicollm()
+                    viewModel.loadEngines()
                 case .failure:
                     break
                 }

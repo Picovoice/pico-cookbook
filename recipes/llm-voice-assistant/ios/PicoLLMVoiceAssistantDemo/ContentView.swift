@@ -15,7 +15,7 @@ struct ContentView: View {
     @State var showSidebar = false
 
     var body: some View {
-        if !viewModel.picoLLMLoaded {
+        if !viewModel.enginesLoaded {
             LoadModelView(viewModel: viewModel)
         } else {
             ChatView(viewModel: viewModel)

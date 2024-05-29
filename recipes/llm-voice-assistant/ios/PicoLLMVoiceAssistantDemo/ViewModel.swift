@@ -7,12 +7,21 @@
 //  specific language governing permissions and limitations under the License.
 //
 
+import Porcupine
+import Cheetah
 import PicoLLM
+import Orca
+import ios_voice_processor
+
 import Combine
 
 class ViewModel: ObservableObject {
 
     private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
+
+    private var porcupine: Porcupine?
+    private var cheetah: Cheetah?
+    private var orca: Orca?
 
     private var picollm: PicoLLM?
     private var dialog: PicoLLMDialog?
@@ -31,7 +40,7 @@ You can download directly to your device or airdrop from a Mac.
     @Published var showFileImporter = false
     @Published var selectedModelUrl: URL?
 
-    @Published var picoLLMLoaded = false
+    @Published var enginesLoaded = false
 
     @Published var promptText = ""
     @Published var enableGenerateButton = true
@@ -50,9 +59,9 @@ You can download directly to your device or airdrop from a Mac.
         showFileImporter = true
     }
 
-    public func loadPicollm() {
+    public func loadEngines() {
         errorMessage = ""
-        modelLoadStatusText = "Loading picoLLM..."
+        modelLoadStatusText = ""
         enableLoadModelButton = false
 
         let modelAccess = selectedModelUrl!.startAccessingSecurityScopedResource()
@@ -63,14 +72,34 @@ You can download directly to your device or airdrop from a Mac.
         }
 
         DispatchQueue.global(qos: .userInitiated).async { [self] in
+            let setStatusText = {(_ msg: String) in
+                DispatchQueue.main.async { [self] in
+                    modelLoadStatusText = msg
+                }
+            }
             do {
+                setStatusText("Loading Porcupine...")
+                porcupine = try Porcupine(accessKey: ACCESS_KEY, keyword: .picovoice)
+
+                setStatusText("Loading Cheetah...")
+                let cheetahModelPath = Bundle(for: type(of: self)).path(forResource: "cheetah_params", ofType: "pv")!
+                cheetah = try Cheetah(accessKey: ACCESS_KEY, modelPath: cheetahModelPath)
+
+                setStatusText("Loading picoLLM...")
                 picollm = try PicoLLM(accessKey: ACCESS_KEY, modelPath: selectedModelUrl!.path)
                 dialog = try picollm!.getDialog()
+
+                setStatusText("Loading Orca...")
+                let orcaModelPath = Bundle(for: type(of: self)).path(forResource: "orca_params_female", ofType: "pv")!
+                orca = try Orca(accessKey: ACCESS_KEY, modelPath: orcaModelPath)
+
+
                 DispatchQueue.main.async { [self] in
-                    picoLLMLoaded = true
+                    enginesLoaded = true
                 }
             } catch {
                 DispatchQueue.main.async { [self] in
+                    unloadEngines()
                     errorMessage = "\(error.localizedDescription)"
                 }
             }
@@ -84,16 +113,32 @@ You can download directly to your device or airdrop from a Mac.
         }
     }
 
-    public func unloadPicollm() {
+    public func unloadEngines() {
+        if porcupine != nil {
+            porcupine!.delete()
+        }
+        if cheetah != nil {
+            cheetah!.delete()
+        }
         if picollm != nil {
             picollm!.delete()
         }
+        if orca != nil {
+            orca!.delete()
+        }
+        porcupine = nil
+        cheetah = nil
         picollm = nil
+        orca = nil
 
         errorMessage = ""
         promptText = ""
         chatText.removeAll()
-        picoLLMLoaded = false
+        enginesLoaded = false
+    }
+
+    public func startListening() {
+
     }
 
     private func streamCallback(completion: String) {

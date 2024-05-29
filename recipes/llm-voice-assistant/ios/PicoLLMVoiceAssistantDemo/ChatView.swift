@@ -17,7 +17,7 @@ struct ChatView: View {
 
         ZStack {
             VStack(alignment: .center) {
-                Text("PicoLLM Chat Demo")
+                Text("PicoLLM Voice Assistant Demo")
 
                 Spacer()
 
@@ -85,7 +85,7 @@ struct ChatView: View {
                         ForEach(0..<viewModel.chatText.count, id: \.self) { i in
                             let speaker = viewModel.chatText[i].speaker
                             let msg = viewModel.chatText[i].msg
-                            return (
+                            (
                                 Text("\(speaker)\n\n").foregroundColor(Constants.activeBlue)
                                 +
                                 Text("\(msg)\n\n")
@@ -106,7 +106,7 @@ struct ChatView: View {
             .font(.body)
 
             HStack {
-                Button(action: viewModel.unloadPicollm) {
+                Button(action: viewModel.unloadEngines) {
                     Image(systemName: "arrow.left")
                         .imageScale(.large)
                 }

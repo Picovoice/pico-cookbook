@@ -6,4 +6,5 @@ target 'PicoLLMVoiceAssistantDemo' do
   pod 'Cheetah-iOS', '~> 2.0.0'
   pod 'picoLLM-iOS', '~> 1.0.0'
   pod 'Orca-iOS', '~> 0.2.0'
+  pod 'ios-voice-processor', '~> 1.1.0'
 end
