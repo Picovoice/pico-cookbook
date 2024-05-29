@@ -35,6 +35,8 @@ class ViewModel: ObservableObject {
 
     private var chatState: ChatState = .WAKEWORD
 
+    private var audioStream: AudioPlayerStream?
+
     static let modelLoadStatusTextDefault = """
 Start by loading a `.pllm` model file.
 
@@ -46,6 +48,9 @@ You can download directly to your device or airdrop from a Mac.
     @Published var selectedModelUrl: URL?
 
     @Published var enginesLoaded = false
+
+    static let statusTextDefault = "Say `picovoice` to start!"
+    @Published var statusText = statusTextDefault
 
     @Published var promptText = ""
     @Published var enableGenerateButton = true
@@ -98,7 +103,10 @@ You can download directly to your device or airdrop from a Mac.
                 let orcaModelPath = Bundle(for: type(of: self)).path(forResource: "orca_params_female", ofType: "pv")!
                 orca = try Orca(accessKey: ACCESS_KEY, modelPath: orcaModelPath)
 
-                setStatusText("Loading VoiceProcessor...")
+                setStatusText("Loading Audio Player...")
+                audioStream = try AudioPlayerStream(sampleRate: Double(self.orca!.sampleRate!))
+
+                setStatusText("Loading Voice Processor...")
                 VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
                 VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
                 try VoiceProcessor.instance.start(
@@ -158,8 +166,14 @@ You can download directly to your device or airdrop from a Mac.
         enginesLoaded = false
     }
 
+    private var completionQueue = DispatchQueue(label: "text-stream-queue")
+    private var completionArray: [String] = []
+
     private func streamCallback(completion: String) {
         DispatchQueue.main.async { [self] in
+            completionQueue.async {
+                self.completionArray.append(completion)
+            }
             chatText[chatText.count - 1].append(text: completion)
         }
     }
@@ -186,15 +200,53 @@ You can download directly to your device or airdrop from a Mac.
             } catch {
                 DispatchQueue.main.async { [self] in
                     errorMessage = "\(error.localizedDescription)"
-                    enableLoadModelButton = true
                 }
             }
 
             DispatchQueue.main.async { [self] in
+                statusText = ViewModel.statusTextDefault
                 chatState = .WAKEWORD
 
                 promptText = ""
                 enableGenerateButton = true
+            }
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            do {
+                let orcaStream = try self.orca!.streamOpen()
+
+
+                var itemsRemaining = true
+                while chatState == .GENERATE || itemsRemaining {
+                    completionQueue.sync {
+                        itemsRemaining = !self.completionArray.isEmpty
+                    }
+
+                    if itemsRemaining {
+                        var token = ""
+                        completionQueue.sync {
+                            token = completionArray[0]
+                            completionArray.removeFirst()
+                        }
+
+                        let pcm = try orcaStream.synthesize(text: token)
+                        if pcm != nil {
+                            audioStream!.playStreamPCM(pcm!, completion: {isPlaying in })
+                        }
+                    }
+                }
+
+                let pcm = try orcaStream.flush()
+                if pcm != nil {
+                    audioStream!.playStreamPCM(pcm!, completion: {isPlaying in })
+                }
+
+                orcaStream.close()
+            } catch {
+                DispatchQueue.main.async { [self] in
+                    errorMessage = "\(error.localizedDescription)"
+                }
             }
         }
     }
@@ -210,6 +262,7 @@ You can download directly to your device or airdrop from a Mac.
                 let keyword = try self.porcupine!.process(pcm: frame)
                 if keyword != -1 {
                     DispatchQueue.main.async { [self] in
+                        statusText = "Listening..."
                         chatText.append(Message(speaker: "You", msg: ""))
                         chatState = .STT
                     }
@@ -227,6 +280,7 @@ You can download directly to your device or airdrop from a Mac.
                 }
                 if endpoint {
                     DispatchQueue.main.async { [self] in
+                        statusText = "Generating..."
                         chatState = .GENERATE
                         self.generate()
                     }

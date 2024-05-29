@@ -28,9 +28,8 @@ struct ChatView: View {
                 HStack(alignment: .center) {
                     if !viewModel.enableGenerateButton {
                         ProgressView(value: 0).progressViewStyle(CircularProgressViewStyle())
-                        Text("Generating...")
-                            .padding(.horizontal, 12)
                     }
+                    Text(viewModel.statusText).padding(.horizontal, 12)
                     Spacer()
                 }
                 .padding(.horizontal, 24)
@@ -45,32 +44,6 @@ struct ChatView: View {
                        .opacity(viewModel.errorMessage.isEmpty ? 0 : 1)
                        .cornerRadius(10)
                 }
-
-                ZStack {
-                    TextField("Message picoLLM", text: $viewModel.promptText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .submitLabel(.go)
-                        .onSubmit {
-                            viewModel.generate()
-                        }
-                        .disabled(isError || !viewModel.enableGenerateButton)
-                    HStack(alignment: .center) {
-                        Spacer()
-                        Button(action: viewModel.generate) {
-                            Image(systemName: "arrow.up")
-                                .imageScale(.medium)
-                                .background(Constants.btnColor(viewModel.enableGenerateButton && !isError))
-                                .foregroundColor(.white)
-                                .padding(6)
-                        }.background(
-                            Capsule().fill(Constants.btnColor(viewModel.enableGenerateButton && !isError))
-                        )
-                        .padding(.horizontal, 4)
-                        .disabled(isError || !viewModel.enableGenerateButton)
-                    }
-                }
-                .padding(.vertical, 12)
-                .padding(.horizontal, 24)
             }
             .padding(.bottom, 32)
             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity).background(Color.white)

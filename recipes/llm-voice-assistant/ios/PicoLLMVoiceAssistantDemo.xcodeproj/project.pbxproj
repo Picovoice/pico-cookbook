@@ -17,6 +17,7 @@
 		C789D2512BEAD752005FDB10 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = C789D2502BEAD752005FDB10 /* Constants.swift */; };
 		C7E87DC22C07C70A00C32367 /* orca_params_female.pv in Resources */ = {isa = PBXBuildFile; fileRef = C7E87DC12C07C70A00C32367 /* orca_params_female.pv */; };
 		C7E87DC42C07C71B00C32367 /* cheetah_params.pv in Resources */ = {isa = PBXBuildFile; fileRef = C7E87DC32C07C71B00C32367 /* cheetah_params.pv */; };
+		C7E87DC82C07E83800C32367 /* AudioPlayerStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7E87DC72C07E83800C32367 /* AudioPlayerStream.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +35,7 @@
 		C789D2502BEAD752005FDB10 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		C7E87DC12C07C70A00C32367 /* orca_params_female.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_female.pv; sourceTree = "<group>"; };
 		C7E87DC32C07C71B00C32367 /* cheetah_params.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = cheetah_params.pv; sourceTree = "<group>"; };
+		C7E87DC72C07E83800C32367 /* AudioPlayerStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerStream.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,6 +80,7 @@
 				C789D24A2BEA8E5D005FDB10 /* LoadModelView.swift */,
 				C789D24C2BEA8EAE005FDB10 /* ChatView.swift */,
 				C789D2502BEAD752005FDB10 /* Constants.swift */,
+				C7E87DC72C07E83800C32367 /* AudioPlayerStream.swift */,
 			);
 			path = PicoLLMVoiceAssistantDemo;
 			sourceTree = "<group>";
@@ -246,6 +249,7 @@
 				02A1194B268D39A700A2AC99 /* ContentView.swift in Sources */,
 				C789D2512BEAD752005FDB10 /* Constants.swift in Sources */,
 				02A1195F268D3FD600A2AC99 /* ViewModel.swift in Sources */,
+				C7E87DC82C07E83800C32367 /* AudioPlayerStream.swift in Sources */,
 				02A11949268D39A700A2AC99 /* PicoLLMVoiceAssistantDemoApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
