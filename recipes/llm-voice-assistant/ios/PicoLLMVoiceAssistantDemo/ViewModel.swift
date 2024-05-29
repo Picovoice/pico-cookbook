@@ -15,6 +15,13 @@ import ios_voice_processor
 
 import Combine
 
+enum ChatState {
+    case WAKEWORD
+    case STT
+    case GENERATE
+    case ERROR
+}
+
 class ViewModel: ObservableObject {
 
     private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
@@ -26,9 +33,7 @@ class ViewModel: ObservableObject {
     private var picollm: PicoLLM?
     private var dialog: PicoLLMDialog?
 
-    private var timerTick = CFAbsoluteTimeGetCurrent()
-    private var timerTock = CFAbsoluteTimeGetCurrent()
-    private var numTokens = 0
+    private var chatState: ChatState = .WAKEWORD
 
     static let modelLoadStatusTextDefault = """
 Start by loading a `.pllm` model file.
@@ -93,6 +98,12 @@ You can download directly to your device or airdrop from a Mac.
                 let orcaModelPath = Bundle(for: type(of: self)).path(forResource: "orca_params_female", ofType: "pv")!
                 orca = try Orca(accessKey: ACCESS_KEY, modelPath: orcaModelPath)
 
+                setStatusText("Loading VoiceProcessor...")
+                VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
+                VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
+                try VoiceProcessor.instance.start(
+                    frameLength: Porcupine.frameLength,
+                    sampleRate: Porcupine.sampleRate)
 
                 DispatchQueue.main.async { [self] in
                     enginesLoaded = true
@@ -114,6 +125,16 @@ You can download directly to your device or airdrop from a Mac.
     }
 
     public func unloadEngines() {
+        do {
+            try VoiceProcessor.instance.stop()
+            VoiceProcessor.instance.clearFrameListeners()
+            VoiceProcessor.instance.clearErrorListeners()
+        } catch {
+            DispatchQueue.main.async { [self] in
+                errorMessage = "\(error.localizedDescription)"
+            }
+        }
+
         if porcupine != nil {
             porcupine!.delete()
         }
@@ -137,39 +158,22 @@ You can download directly to your device or airdrop from a Mac.
         enginesLoaded = false
     }
 
-    public func startListening() {
-
-    }
-
     private func streamCallback(completion: String) {
         DispatchQueue.main.async { [self] in
             chatText[chatText.count - 1].append(text: completion)
-
-            if numTokens == 0 {
-                timerTick = CFAbsoluteTimeGetCurrent()
-            }
-
-            timerTock = CFAbsoluteTimeGetCurrent()
-            numTokens += 1
         }
     }
 
     public func generate() {
-        if promptText.isEmpty {
-            return
-        }
-
         errorMessage = ""
 
         enableGenerateButton = false
-        numTokens = 0
 
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             do {
-                try dialog!.addHumanRequest(content: promptText)
+                try dialog!.addHumanRequest(content: chatText[chatText.count - 1].msg)
 
                 DispatchQueue.main.async { [self] in
-                    chatText.append(Message(speaker: "You", msg: promptText))
                     chatText.append(Message(speaker: "picoLLM", msg: ""))
                 }
 
@@ -187,6 +191,8 @@ You can download directly to your device or airdrop from a Mac.
             }
 
             DispatchQueue.main.async { [self] in
+                chatState = .WAKEWORD
+
                 promptText = ""
                 enableGenerateButton = true
             }
@@ -196,6 +202,47 @@ You can download directly to your device or airdrop from a Mac.
     public func clearText() {
         promptText = ""
         chatText.removeAll()
+    }
+
+    private func audioCallback(frame: [Int16]) {
+        do {
+            if chatState == .WAKEWORD {
+                let keyword = try self.porcupine!.process(pcm: frame)
+                if keyword != -1 {
+                    DispatchQueue.main.async { [self] in
+                        chatText.append(Message(speaker: "You", msg: ""))
+                        chatState = .STT
+                    }
+                }
+            }
+            if chatState == .STT {
+                var (transcription, endpoint) = try self.cheetah!.process(frame)
+                if endpoint {
+                    transcription += "\(try self.cheetah!.flush())"
+                }
+                if !transcription.isEmpty {
+                    DispatchQueue.main.async { [self] in
+                        chatText[chatText.count - 1].append(text: transcription)
+                    }
+                }
+                if endpoint {
+                    DispatchQueue.main.async { [self] in
+                        chatState = .GENERATE
+                        self.generate()
+                    }
+                }
+            }
+        } catch {
+            DispatchQueue.main.async { [self] in
+                errorMessage = "\(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func errorCallback(error: VoiceProcessorError) {
+        DispatchQueue.main.async { [self] in
+            errorMessage = "\(error.localizedDescription)"
+        }
     }
 }
 
