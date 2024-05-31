@@ -62,7 +62,7 @@ The demo profiles three metrics: Real-time Factor (RTF), Token per Second (TPS),
 RTF is a standard metric for measuring the speed of speech processing (e.g., wake word, speech-to-text, and 
 text-to-speech). RTF is the CPU time divided by the processed (recognized or synthesized) audio length. Hence, a lower RTF means a more efficient engine.
 
-### Token per Second (PPS)
+### Token per Second (TPS)
 
 Token per second is the standard metric for measuring the speed of LLM inference engines. TPS is the number of 
 generated tokens divided by the compute time used to create them. A higher TPS is better.
