@@ -16,3 +16,4 @@ samplerate
 sounddevice
 tock
 WAKEWORD
+xcworkspace
