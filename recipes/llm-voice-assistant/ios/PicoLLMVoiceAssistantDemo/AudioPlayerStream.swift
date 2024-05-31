@@ -7,7 +7,7 @@ class AudioPlayerStream {
     private let mixerNode = AVAudioMixerNode()
 
     private var pcmBuffers = [[Int16]]()
-    private var isPlaying = false
+    public var isPlaying = false
 
     init(sampleRate: Double) throws {
         let audioSession = AVAudioSession.sharedInstance()

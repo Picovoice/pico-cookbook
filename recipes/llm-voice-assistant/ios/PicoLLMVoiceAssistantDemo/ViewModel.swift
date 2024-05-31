@@ -212,6 +212,13 @@ You can download directly to your device or airdrop from a Mac.
             }
         }
 
+        let stopPhrases = [
+            "</s>",  // Llama-2, Mistral, and Mixtral
+            "<end_of_turn>",  // Gemma
+            "<|endoftext|>",  // Phi-2
+            "<|eot_id|>",  // Llama-3
+        ]
+
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             do {
                 let orcaStream = try self.orca!.streamOpen()
@@ -230,6 +237,10 @@ You can download directly to your device or airdrop from a Mac.
                         completionQueue.sync {
                             token = completionArray[0]
                             completionArray.removeFirst()
+                        }
+
+                        if stopPhrases.contains(token) {
+                            continue
                         }
 
                         let pcm = try orcaStream.synthesize(text: token)
@@ -269,6 +280,9 @@ You can download directly to your device or airdrop from a Mac.
 
     private func audioCallback(frame: [Int16]) {
         do {
+            if audioStream?.isPlaying ?? false {
+                return
+            }
             if chatState == .WAKEWORD {
                 let keyword = try self.porcupine!.process(pcm: frame)
                 if keyword != -1 {
