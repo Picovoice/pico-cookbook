@@ -216,6 +216,8 @@ You can download directly to your device or airdrop from a Mac.
             do {
                 let orcaStream = try self.orca!.streamOpen()
 
+                var warmup = true
+                var pcmBuffer: [Int16] = []
 
                 var itemsRemaining = true
                 while chatState == .GENERATE || itemsRemaining {
@@ -232,7 +234,16 @@ You can download directly to your device or airdrop from a Mac.
 
                         let pcm = try orcaStream.synthesize(text: token)
                         if pcm != nil {
-                            audioStream!.playStreamPCM(pcm!, completion: {isPlaying in })
+                            if warmup {
+                                pcmBuffer.append(contentsOf: pcm!)
+                                if pcmBuffer.count >= (1 * orca!.sampleRate!) {
+                                    audioStream!.playStreamPCM(pcmBuffer, completion: {isPlaying in })
+                                    pcmBuffer.removeAll()
+                                    warmup = false
+                                }
+                            } else {
+                                audioStream!.playStreamPCM(pcm!, completion: {isPlaying in })
+                            }
                         }
                     }
                 }

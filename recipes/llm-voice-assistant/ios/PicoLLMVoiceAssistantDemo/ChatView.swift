@@ -26,6 +26,7 @@ struct ChatView: View {
                 Spacer()
 
                 HStack(alignment: .center) {
+                    Spacer()
                     if !viewModel.enableGenerateButton {
                         ProgressView(value: 0).progressViewStyle(CircularProgressViewStyle())
                     }
