@@ -1,0 +1,2 @@
+rootProject.name = "LLMVoiceAssistant"
+include ':llm-voice-assistant'
