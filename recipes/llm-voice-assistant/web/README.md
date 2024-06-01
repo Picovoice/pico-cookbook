@@ -61,7 +61,9 @@ or using `npm`:
 npm run start
 ```
 
+<!-- markdown-link-check-disable -->
 3. Open [localhost:5000](http://localhost:5000) in your web browser.
+<!-- markdown-link-check-enable -->
 
 4. Enter your AccessKey and upload your`picoLLM` model file which can be obtained from
 [Picovoice Console](https://console.picovoice.ai/). Then press `Init Voice Assistant`.

@@ -11,6 +11,15 @@
     }
   ],
   "ignorePaths": [
-    "**/__pycache__/**"
+    "**/__pycache__/**",
+
+    // javascript
+    "**/package.json",
+    "**/packages-lock.json",
+    "**/tsconfig.json",
+    "**/tslint.json",
+
+    // common
+    "**/*.pv"
   ]
 }

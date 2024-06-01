@@ -11,18 +11,18 @@ class AudioStream {
     this._sampleRate = sampleRate;
     this._audioContext = new (window.AudioContext ||
       // @ts-ignore
-      window.webKitAudioContext)({ sampleRate: sampleRate })
+      window.webKitAudioContext)({ sampleRate: sampleRate });
 
     this._audioGain = this._audioContext.createGain();
     this._audioGain.gain.value = 1;
     this._audioGain.connect(this._audioContext.destination);
   }
 
-  public stream(pcm: Int16Array) {
+  public stream(pcm: Int16Array): void {
     this._audioBuffers.push(this.createBuffer(pcm));
   }
 
-  public play() {
+  public play(): void {
     if (this._isPlaying) {
       return;
     }
@@ -30,23 +30,23 @@ class AudioStream {
       return;
     }
 
-    const streamSource =  this._audioContext.createBufferSource();
+    const streamSource = this._audioContext.createBufferSource();
 
     streamSource.buffer = this._audioBuffers.shift() ?? null;
     streamSource.connect(this._audioGain);
 
-    streamSource.onended = () => {
+    streamSource.onended = (): void => {
       this._isPlaying = false;
       if (this._audioBuffers.length > 0) {
         this.play();
       }
-    }
+    };
 
     streamSource.start();
     this._isPlaying = true;
   }
 
-  public async waitPlayback() {
+  public async waitPlayback(): Promise<void> {
     return new Promise<void>(resolve => {
       const interval = setInterval(() => {
         if (this._audioBuffers.length === 0 && !this._isPlaying) {

@@ -18,11 +18,11 @@ module.exports = {
       files: ['src/**/*.ts'],
       extends: ['plugin:@typescript-eslint/recommended'],
       rules: {
-        '@typescript-eslint/no-parameter-properties': 2,
+        '@typescript-eslint/no-parameter-properties': 0,
         '@typescript-eslint/no-explicit-any': 0,
         '@typescript-eslint/no-var-requires': 2,
         '@typescript-eslint/no-non-null-assertion': 0,
-        '@typescript-eslint/no-use-before-define': 2,
+        '@typescript-eslint/no-use-before-define': 0,
         '@typescript-eslint/camelcase': 0,
         '@typescript-eslint/no-empty-interface': 2,
         '@typescript-eslint/explicit-function-return-type': 2,
@@ -36,15 +36,6 @@ module.exports = {
           }
         ],
         '@typescript-eslint/no-shadow': 2
-      }
-    },
-    {
-      files: ['test/**/*.ts', 'cypress/**/*.ts'],
-      extends: ['plugin:cypress/recommended'],
-      rules: {
-        'no-unused-expressions': 0,
-        'no-unused-vars': 0,
-        'cypress/unsafe-to-chain-command': 0
       }
     }
   ],
@@ -269,7 +260,7 @@ module.exports = {
     // disallow declaration of variables that are not used in the code
     'no-unused-vars': [1, { vars: 'local', args: 'after-used' }],
     // disallow use of variables before they are defined
-    'no-use-before-define': 2,
+    'no-use-before-define': 0,
 
     //=========================================================================
     //==================== Node.js ============================================

@@ -33,12 +33,12 @@ const init = async (accessKey: string, {
   onText,
   onStream,
   onComplete,
-}: PvCallback) => {
+}: PvCallback): Promise<void> => {
   if (object !== null) {
     return;
   }
 
-  const detectionCallback = async (detection: PorcupineDetection) => {
+  const detectionCallback = async (detection: PorcupineDetection): Promise<void> => {
     if (detection.index === 0) {
       await WebVoiceProcessor.unsubscribe(porcupine);
       await WebVoiceProcessor.subscribe(cheetah);
@@ -54,7 +54,7 @@ const init = async (accessKey: string, {
       publicPath: "models/porcupine_params.pv"
     });
 
-  const transcriptCallback = async (transcript: CheetahTranscript) => {
+  const transcriptCallback = async (transcript: CheetahTranscript): Promise<void> => {
     if (transcript.isEndpoint) {
       await WebVoiceProcessor.unsubscribe(cheetah);
       cheetah.flush();
@@ -97,12 +97,12 @@ const init = async (accessKey: string, {
   let stopTokens = 0;
 
   const stopPhrases = [
-    '</s>',  // Llama-2, Mistral, and Mixtral
-    '<end_of_turn>',  // Gemma
-    '<|endoftext|>',  // Phi-2
+    '</s>', // Llama-2, Mistral, and Mixtral
+    '<end_of_turn>', // Gemma
+    '<|endoftext|>', // Phi-2
   ];
 
-  const onCheetahFlushed = async () => {
+  const onCheetahFlushed = async (): Promise<void> => {
     const prompt = transcripts.join('');
     transcripts = [];
     dialog.addHumanRequest(prompt);
@@ -111,7 +111,7 @@ const init = async (accessKey: string, {
       completionTokenLimit: 128,
       temperature: 0.7,
       topP: 0.6,
-      streamCallback: async (token) => {
+      streamCallback: async token => {
         if (!stopPhrases.includes(token)) {
           onText(token);
           await mutex.acquire();
@@ -128,7 +128,7 @@ const init = async (accessKey: string, {
     });
     dialog.addLLMResponse(completion);
 
-    const waitForSynthesize = () => new Promise<void>(resolve => {
+    const waitForSynthesize = (): Promise<void> => new Promise<void>(resolve => {
       const interval = setInterval(() => {
         if (synthesized === (completionTokens.length - stopTokens)) {
           clearInterval(interval);
@@ -157,23 +157,22 @@ const init = async (accessKey: string, {
   };
 };
 
-const start = async () => {
+const start = async (): Promise<void> => {
   if (object === null) {
     return;
   }
 
   await WebVoiceProcessor.subscribe(object.porcupine);
-}
+};
 
-const getStreamSampleRate = () => {
+const getStreamSampleRate = (): number => {
   if (object) {
     return object.orca.sampleRate;
-  } else {
-    return 0;
   }
-}
+  return 0;
+};
 
-const release = async () => {
+const release = async (): Promise<void> => {
   if (object === null) {
     return;
   }
