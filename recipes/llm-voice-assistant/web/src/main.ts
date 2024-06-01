@@ -1,0 +1,195 @@
+import { Mutex } from 'async-mutex';
+
+import { BuiltInKeyword, PorcupineDetection, PorcupineWorker } from '@picovoice/porcupine-web';
+import { CheetahTranscript, CheetahWorker } from '@picovoice/cheetah-web';
+import { OrcaStreamWorker, OrcaWorker } from '@picovoice/orca-web';
+import { Dialog, PicoLLMWorker } from '@picovoice/picollm-web';
+import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
+
+type PvObject = {
+  porcupine: PorcupineWorker;
+  cheetah: CheetahWorker;
+  pllm: PicoLLMWorker;
+  dialog: Dialog;
+  orca: OrcaWorker;
+  stream: OrcaStreamWorker;
+};
+
+type PvCallback = {
+  onDetection: (detection: PorcupineDetection) => void;
+  onTranscript: (transcript: string) => void;
+  onEndpoint: () => void;
+  onText: (text: string) => void;
+  onStream: (pcm: Int16Array) => void;
+  onComplete: () => void;
+}
+
+let object: PvObject | null = null;
+
+const init = async (accessKey: string, {
+  onDetection,
+  onEndpoint,
+  onTranscript,
+  onText,
+  onStream,
+  onComplete,
+}: PvCallback) => {
+  if (object !== null) {
+    return;
+  }
+
+  const detectionCallback = async (detection: PorcupineDetection) => {
+    if (detection.index === 0) {
+      await WebVoiceProcessor.unsubscribe(porcupine);
+      await WebVoiceProcessor.subscribe(cheetah);
+      onDetection(detection);
+    }
+  };
+
+  const porcupine = await PorcupineWorker.create(
+    accessKey,
+    BuiltInKeyword.Picovoice,
+    detectionCallback,
+    {
+      publicPath: "models/porcupine_params.pv"
+    });
+
+  const transcriptCallback = async (transcript: CheetahTranscript) => {
+    if (transcript.isEndpoint) {
+      await WebVoiceProcessor.unsubscribe(cheetah);
+      cheetah.flush();
+    }
+    if (transcript.transcript.length > 0) {
+      transcripts.push(transcript.transcript);
+      onTranscript(transcript.transcript);
+    }
+    if (transcript.isFlushed) {
+      onEndpoint();
+      await onCheetahFlushed();
+    }
+  };
+
+  const cheetah = await CheetahWorker.create(
+    accessKey,
+    transcriptCallback,
+    {
+      publicPath: "models/cheetah_params.pv"
+    });
+
+  const pllm = await PicoLLMWorker.create(
+    accessKey,
+    {
+      modelFile: "models/picollm_params.pllm"
+    });
+
+  const orca = await OrcaWorker.create(
+    accessKey,
+    {
+      publicPath: "models/orca_params.pv"
+    });
+
+  const dialog = pllm.getDialog();
+  const stream = await orca.streamOpen();
+
+  const mutex = new Mutex();
+  let transcripts: string[] = [];
+  let synthesized = 0;
+  let stopTokens = 0;
+
+  const stopPhrases = [
+    '</s>',  // Llama-2, Mistral, and Mixtral
+    '<end_of_turn>',  // Gemma
+    '<|endoftext|>',  // Phi-2
+  ];
+
+  const onCheetahFlushed = async () => {
+    const prompt = transcripts.join('');
+    transcripts = [];
+    dialog.addHumanRequest(prompt);
+
+    const { completion, completionTokens } = await pllm.generate(dialog.prompt(), {
+      completionTokenLimit: 128,
+      temperature: 0.7,
+      topP: 0.6,
+      streamCallback: async (token) => {
+        if (!stopPhrases.includes(token)) {
+          onText(token);
+          await mutex.acquire();
+          const pcm = await stream.synthesize(token);
+          mutex.release();
+          synthesized++;
+          if (pcm !== null) {
+            onStream(pcm);
+          }
+        } else {
+          stopTokens++;
+        }
+      }
+    });
+    dialog.addLLMResponse(completion);
+
+    const waitForSynthesize = () => new Promise<void>(resolve => {
+      const interval = setInterval(() => {
+        if (synthesized === (completionTokens.length - stopTokens)) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 100);
+    });
+
+    await waitForSynthesize();
+    const pcm = await stream.flush();
+    if (pcm !== null) {
+      onStream(pcm);
+    }
+    synthesized = 0;
+    stopTokens = 0;
+    onComplete();
+  };
+
+  object = {
+    porcupine,
+    cheetah,
+    pllm,
+    orca,
+    dialog,
+    stream,
+  };
+};
+
+const start = async () => {
+  if (object === null) {
+    return;
+  }
+
+  await WebVoiceProcessor.subscribe(object.porcupine);
+}
+
+const getStreamSampleRate = () => {
+  if (object) {
+    return object.orca.sampleRate;
+  } else {
+    return 0;
+  }
+}
+
+const release = async () => {
+  if (object === null) {
+    return;
+  }
+
+  const { porcupine, cheetah, pllm, orca } = object;
+  porcupine.terminate();
+  cheetah.terminate();
+  await pllm.release();
+  orca.terminate();
+
+  object = null;
+};
+
+export {
+  init,
+  start,
+  getStreamSampleRate,
+  release,
+};
