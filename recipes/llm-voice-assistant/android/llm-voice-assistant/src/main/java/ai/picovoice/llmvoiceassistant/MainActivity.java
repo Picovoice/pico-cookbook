@@ -12,7 +12,12 @@
 
 package ai.picovoice.llmvoiceassistant;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.pm.PackageManager;
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioTrack;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -20,10 +25,9 @@ import android.os.Looper;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.style.ForegroundColorSpan;
+import android.util.Log;
 import android.view.View;
-import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
@@ -32,8 +36,10 @@ import android.widget.TextView;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
 
@@ -42,14 +48,21 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import ai.picovoice.android.voiceprocessor.VoiceProcessor;
+import ai.picovoice.android.voiceprocessor.VoiceProcessorException;
 import ai.picovoice.cheetah.CheetahException;
+import ai.picovoice.cheetah.CheetahTranscript;
 import ai.picovoice.orca.OrcaException;
 import ai.picovoice.porcupine.Porcupine;
 import ai.picovoice.orca.Orca;
+import ai.picovoice.orca.OrcaSynthesizeParams;
 import ai.picovoice.cheetah.Cheetah;
 
 import ai.picovoice.picollm.PicoLLM;
@@ -64,8 +77,9 @@ public class MainActivity extends AppCompatActivity {
     private enum UIState {
         INIT,
         LOADING_MODEL,
-        PROMPT,
-        GENERATING_COMPLETION
+        WAKE_WORD,
+        STT,
+        LLM_TTS
     }
 
     private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
@@ -75,6 +89,10 @@ public class MainActivity extends AppCompatActivity {
     private static final String TTS_MODEL_FILE = "orca_params_female.pv";
 
     private static final int COMPLETION_TOKEN_LIMIT = 256;
+
+    private static final int TTS_WARMUP_SECONDS = 2;
+
+    private final VoiceProcessor voiceProcessor = VoiceProcessor.getInstance();
 
     private Porcupine porcupine;
     private Cheetah cheetah;
@@ -88,10 +106,13 @@ public class MainActivity extends AppCompatActivity {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private final ExecutorService loadExecutor = Executors.newSingleThreadExecutor();
-    private final ExecutorService wakeWordSttExecutor = Executors.newSingleThreadExecutor();
-    private Future<?> backgroundTask;
+    private final ExecutorService llmExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService ttsSynthesizeExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService ttsPlaybackExecutor = Executors.newSingleThreadExecutor();
 
-    private ActivityIndicatorView activityIndicatorView;
+    private UIState currentState = UIState.INIT;
+
+    private StringBuilder llmPromptText = new StringBuilder();
 
     private ConstraintLayout loadModelLayout;
     private ConstraintLayout chatLayout;
@@ -104,15 +125,17 @@ public class MainActivity extends AppCompatActivity {
 
     private ScrollView chatTextScrollView;
 
-    private TextView chatStatusText;
+    private TextView statusText;
 
-    private ProgressBar chatStatusProgress;
+    private ProgressBar statusProgress;
 
     private ImageButton loadNewModelButton;
 
     private ImageButton clearTextButton;
 
     private SpannableStringBuilder chatTextBuilder;
+
+    private int spanColour;
 
     @SuppressLint({"DefaultLocale", "SetTextI18n"})
     @Override
@@ -131,13 +154,14 @@ public class MainActivity extends AppCompatActivity {
             modelSelection.launch(new String[]{"application/octet-stream"});
         });
 
+        spanColour = ContextCompat.getColor(this, R.color.colorPrimary);
+
         updateUIState(UIState.INIT);
 
-        activityIndicatorView = findViewById(R.id.activityIndicatorView);
         chatText = findViewById(R.id.chatText);
         chatTextScrollView = findViewById(R.id.chatScrollView);
-        chatStatusText = findViewById(R.id.completionStatusText);
-        chatStatusProgress = findViewById(R.id.completionStatusProgress);
+        statusText = findViewById(R.id.statusText);
+        statusProgress = findViewById(R.id.statusProgress);
 
         loadNewModelButton = findViewById(R.id.loadNewModelButton);
         loadNewModelButton.setOnClickListener(view -> {
@@ -159,13 +183,13 @@ public class MainActivity extends AppCompatActivity {
                         ResourcesCompat.getDrawable(getResources(),
                                 R.drawable.clear_button_disabled,
                                 null));
-                chatStatusText.setText("");
+                statusText.setText("");
             });
 
             try {
                 dialog = picollm.getDialogBuilder().build();
             } catch (PicoLLMException e) {
-                updateUIState(UIState.PROMPT);
+                updateUIState(UIState.WAKE_WORD);
                 mainHandler.post(() -> chatText.setText(e.toString()));
             }
         });
@@ -185,7 +209,7 @@ public class MainActivity extends AppCompatActivity {
                         return;
                     }
 
-                    backgroundTask = loadExecutor.submit(() -> {
+                    loadExecutor.submit(() -> {
                         File llmModelFile = extractModelFile(selectedUri);
                         if (llmModelFile == null || !llmModelFile.exists()) {
                             updateUIState(UIState.INIT);
@@ -193,18 +217,15 @@ public class MainActivity extends AppCompatActivity {
                             return;
                         }
 
-                        try {
-                            initEngines(llmModelFile);
-                        } catch (Exception e) {
-
-                            }
+                        initEngines(llmModelFile);
                     });
                 }
             });
 
-    private void initEngines(File modelFile) throws InterruptedException {
+    private void initEngines(File modelFile) {
 
         // init wake word
+        mainHandler.post(() -> loadModelText.setText("Loading Porcupine..."));
         try {
             porcupine = new Porcupine.Builder()
                     .setAccessKey(ACCESS_KEY)
@@ -216,6 +237,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // init stt
+        mainHandler.post(() -> loadModelText.setText("Loading Cheetah..."));
         try {
             cheetah = new Cheetah.Builder()
                     .setAccessKey(ACCESS_KEY)
@@ -228,10 +250,12 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // init llm
+        mainHandler.post(() -> loadModelText.setText("Loading picoLLM..."));
         try {
             picollm = new PicoLLM.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(modelFile.getAbsolutePath())
+                    .setDevice("cpu:1")
                     .build();
             dialog = picollm.getDialogBuilder().build();
         } catch (PicoLLMException e) {
@@ -240,6 +264,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // init tts
+        mainHandler.post(() -> loadModelText.setText("Loading Orca..."));
         try {
             orca = new Orca.Builder()
                     .setAccessKey(ACCESS_KEY)
@@ -251,13 +276,98 @@ public class MainActivity extends AppCompatActivity {
         }
 
         chatTextBuilder = new SpannableStringBuilder();
-        updateUIState(UIState.PROMPT);
+        updateUIState(UIState.WAKE_WORD);
 
+        voiceProcessor.addFrameListener(frame -> {
+            if (currentState == UIState.WAKE_WORD) {
+                try {
+                    int keywordIndex = porcupine.process(frame);
+                    if (keywordIndex == 0) {
+                        llmPromptText = new StringBuilder();
+                        updateUIState(UIState.STT);
+                    }
+                } catch (PorcupineException e) {
+                    onEngineProcessError(e.getMessage());
+                }
+            } else if (currentState == UIState.STT) {
+                try {
+                    CheetahTranscript result = cheetah.process(frame);
+                    llmPromptText.append(result.getTranscript());
+                    mainHandler.post(() -> {
+                        chatTextBuilder.append(result.getTranscript());
+                        chatText.setText(chatTextBuilder);
+                        chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+                    });
+
+                    if (result.getIsEndpoint()) {
+                        CheetahTranscript finalResult = cheetah.flush();
+                        llmPromptText.append(finalResult.getTranscript());
+                        mainHandler.post(() -> {
+                            chatTextBuilder.append(
+                                    String.format("%s\n\n", finalResult.getTranscript())
+                            );
+                            chatText.setText(chatTextBuilder);
+                            chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+                        });
+
+                        voiceProcessor.stop();
+
+                        promptLLM(llmPromptText.toString());
+                    }
+                } catch (CheetahException | VoiceProcessorException e) {
+                    onEngineProcessError(e.getMessage());
+                }
+            }
+        });
+
+        voiceProcessor.addErrorListener(error -> {
+            onEngineProcessError(error.getMessage());
+        });
+
+        startWakeWordListening();
+    }
+
+    private void startWakeWordListening() {
+        if (voiceProcessor.hasRecordAudioPermission(this)) {
+            try {
+                voiceProcessor.start(cheetah.getFrameLength(), cheetah.getSampleRate());
+            } catch (VoiceProcessorException e) {
+                onEngineProcessError(e.getMessage());
+            }
+        } else {
+            requestRecordPermission();
+        }
+    }
+
+    private void requestRecordPermission() {
+        ActivityCompat.requestPermissions(
+                this,
+                new String[]{Manifest.permission.RECORD_AUDIO},
+                0);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            @NonNull String[] permissions,
+            @NonNull int[] grantResults
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (grantResults.length == 0 || grantResults[0] == PackageManager.PERMISSION_DENIED) {
+            onEngineProcessError("Recording permission not granted");
+        } else {
+            startWakeWordListening();
+        }
     }
 
     private void onEngineInitError(String message) {
         updateUIState(UIState.INIT);
         mainHandler.post(() -> loadModelText.setText(message));
+    }
+
+    private void onEngineProcessError(String message) {
+        updateUIState(UIState.WAKE_WORD);
+        mainHandler.post(() -> chatText.setText(message));
     }
 
     private File extractModelFile(Uri uri) {
@@ -277,29 +387,26 @@ public class MainActivity extends AppCompatActivity {
         return modelFile;
     }
 
-    private void generateCompletion() {
-        final String prompt = "get from cheetah";
+    private void promptLLM(String prompt) {
         if (prompt.length() == 0) {
             return;
         }
 
-        updateUIState(UIState.GENERATING_COMPLETION);
+        AtomicBoolean isQueueingTokens = new AtomicBoolean(false);
+        CountDownLatch tokensReadyLatch = new CountDownLatch(1);
+        ConcurrentLinkedQueue<String> tokenQueue = new ConcurrentLinkedQueue<>();
+
+        AtomicBoolean isQueueingPcm = new AtomicBoolean(false);
+        CountDownLatch pcmReadyLatch = new CountDownLatch(1);
+        ConcurrentLinkedQueue<short[]> pcmQueue = new ConcurrentLinkedQueue<>();
+
+
+        updateUIState(UIState.LLM_TTS);
 
         finalCompletion = null;
 
         mainHandler.post(() -> {
             int start = chatTextBuilder.length();
-            chatTextBuilder.append("You:\n\n");
-            int spanColour = ContextCompat.getColor(this, R.color.colorPrimary);
-            chatTextBuilder.setSpan(
-                    new ForegroundColorSpan(spanColour),
-                    start,
-                    start + 4,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-            chatTextBuilder.append(String.format("%s\n\n", prompt));
-
-            start = chatTextBuilder.length();
             chatTextBuilder.append("picoLLM:\n\n");
             chatTextBuilder.setSpan(
                     new ForegroundColorSpan(spanColour),
@@ -309,23 +416,34 @@ public class MainActivity extends AppCompatActivity {
             chatText.setText(chatTextBuilder);
         });
 
-        backgroundTask = loadExecutor.submit(() -> {
+        llmExecutor.submit(() -> {
             try {
+                isQueueingTokens.set(true);
+
                 dialog.addHumanRequest(prompt);
                 finalCompletion = picollm.generate(
                         dialog.getPrompt(),
                         new PicoLLMGenerateParams.Builder()
-                                .setStreamCallback(completion -> {
-                                    runOnUiThread(() -> {
-                                        chatTextBuilder.append(completion);
+                                .setStreamCallback(token -> {
+                                    mainHandler.post(() -> {
+                                        chatTextBuilder.append(token);
                                         chatText.setText(chatTextBuilder);
                                         chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
                                     });
+
+                                    if (token != null && token.length() > 0) {
+                                        tokenQueue.add(token);
+//                                        Log.i("PICOVOICE", "token produced");
+                                        tokensReadyLatch.countDown();
+                                    }
                                 })
                                 .setCompletionTokenLimit(COMPLETION_TOKEN_LIMIT)
                                 .build());
                 dialog.addLLMResponse(finalCompletion.getCompletion());
-                updateUIState(UIState.PROMPT);
+
+                isQueueingTokens.set(false);
+
+                updateUIState(UIState.WAKE_WORD);
                 mainHandler.post(() -> {
                     clearTextButton.setEnabled(true);
                     clearTextButton.setImageDrawable(
@@ -334,10 +452,122 @@ public class MainActivity extends AppCompatActivity {
                                     null));
                     chatTextBuilder.append("\n\n");
                 });
+
+                startWakeWordListening();
             } catch (PicoLLMException e) {
-                updateUIState(UIState.PROMPT);
-                mainHandler.post(() -> chatText.setText(e.toString()));
+                onEngineProcessError(e.getMessage());
             }
+        });
+
+        ttsSynthesizeExecutor.submit(() -> {
+            Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
+
+            Orca.OrcaStream orcaStream;
+            try {
+                orcaStream = orca.streamOpen(new OrcaSynthesizeParams.Builder().build());
+            } catch (OrcaException e) {
+                onEngineProcessError(e.getMessage());
+                return;
+            }
+
+            short[] warmupPcm;
+            if (TTS_WARMUP_SECONDS > 0) {
+                warmupPcm = new short[0];
+            }
+
+            try {
+                tokensReadyLatch.await();
+            } catch (InterruptedException e) {
+                onEngineProcessError(e.getMessage());
+                return;
+            }
+
+            isQueueingPcm.set(true);
+            while (isQueueingTokens.get() || !tokenQueue.isEmpty()) {
+                String token = tokenQueue.poll();
+                if (token != null && token.length() > 0) {
+                    try {
+                        short[] pcm = orcaStream.synthesize(token);
+                        if (pcm != null && pcm.length > 0) {
+                            if (warmupPcm != null) {
+//                                Log.i("PICOVOICE", "pcm added to warmup");
+                                int offset = warmupPcm.length;
+                                warmupPcm = Arrays.copyOf(warmupPcm, offset + pcm.length);
+                                System.arraycopy(pcm, 0, warmupPcm, offset, pcm.length);
+                                if (warmupPcm.length > TTS_WARMUP_SECONDS * orca.getSampleRate()) {
+                                    pcmQueue.add(warmupPcm);
+//                                    Log.i("PICOVOICE", "pcm warmup released");
+                                    pcmReadyLatch.countDown();
+                                    warmupPcm = null;
+                                }
+                            } else {
+//                                Log.i("PICOVOICE", "pcm added to regular queue");
+                                pcmQueue.add(pcm);
+                                pcmReadyLatch.countDown();
+                            }
+                        }
+                    } catch (OrcaException e) {
+                        onEngineProcessError(e.getMessage());
+                        return;
+                    }
+                }
+            }
+
+            try {
+                short[] flushedPcm = orcaStream.flush();
+                if (flushedPcm != null && flushedPcm.length > 0) {
+                    pcmQueue.add(flushedPcm);
+//                    Log.i("PICOVOICE", "pcm produced");
+                    pcmReadyLatch.countDown();
+                }
+            } catch (OrcaException e) {
+                onEngineProcessError(e.getMessage());
+            }
+
+            isQueueingPcm.set(false);
+
+            orcaStream.close();
+        });
+
+        ttsPlaybackExecutor.submit(() -> {
+            Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
+
+            AudioTrack ttsOutput;
+            try {
+                ttsOutput = new AudioTrack(
+                        AudioManager.STREAM_MUSIC,
+                        orca.getSampleRate(),
+                        AudioFormat.CHANNEL_OUT_MONO,
+                        AudioFormat.ENCODING_PCM_16BIT,
+                        AudioTrack.getMinBufferSize(
+                                orca.getSampleRate(),
+                                AudioFormat.CHANNEL_OUT_MONO,
+                                AudioFormat.ENCODING_PCM_16BIT),
+                        AudioTrack.MODE_STREAM);
+
+                ttsOutput.play();
+            } catch (Exception e) {
+                onEngineProcessError(e.getMessage());
+                return;
+            }
+
+            try {
+                pcmReadyLatch.await();
+            } catch (InterruptedException e) {
+                onEngineProcessError(e.getMessage());
+                return;
+            }
+
+            while(isQueueingPcm.get() || !pcmQueue.isEmpty()) {
+                short[] pcm = pcmQueue.poll();
+                if (pcm != null && pcm.length > 0) {
+                    Log.i("PICOVOICE", "playing pcm");
+                    ttsOutput.write(pcm, 0, pcm.length);
+                }
+            }
+
+            ttsOutput.stop();
+            ttsOutput.release();
         });
     }
 
@@ -368,7 +598,7 @@ public class MainActivity extends AppCompatActivity {
                     loadModelProgress.setVisibility(View.VISIBLE);
                     loadModelText.setText("Loading model...");
                     break;
-                case PROMPT:
+                case WAKE_WORD:
                     loadModelLayout.setVisibility(View.INVISIBLE);
                     chatLayout.setVisibility(View.VISIBLE);
 
@@ -378,9 +608,9 @@ public class MainActivity extends AppCompatActivity {
                                     R.drawable.arrow_back_button,
                                     null));
                     loadNewModelButton.setEnabled(true);
-                    chatStatusProgress.setVisibility(View.GONE);
-                    chatStatusText.setVisibility(View.VISIBLE);
-                    chatStatusText.setText("");
+                    statusProgress.setVisibility(View.GONE);
+                    statusText.setVisibility(View.VISIBLE);
+                    statusText.setText("Say 'Picovoice'!");
                     clearTextButton.setEnabled(false);
                     clearTextButton.setImageDrawable(
                             ResourcesCompat.getDrawable(
@@ -388,7 +618,37 @@ public class MainActivity extends AppCompatActivity {
                                     R.drawable.clear_button_disabled,
                                     null));
                     break;
-                case GENERATING_COMPLETION:
+                case STT:
+                    loadModelLayout.setVisibility(View.INVISIBLE);
+                    chatLayout.setVisibility(View.VISIBLE);
+
+                    loadNewModelButton.setImageDrawable(
+                            ResourcesCompat.getDrawable(
+                                    getResources(),
+                                    R.drawable.arrow_back_button_disabled,
+                                    null));
+                    loadNewModelButton.setEnabled(false);
+                    statusProgress.setVisibility(View.VISIBLE);
+                    statusText.setVisibility(View.VISIBLE);
+                    statusText.setText("Listening");
+
+                    int start = chatTextBuilder.length();
+                    chatTextBuilder.append("You:\n\n");
+                    chatTextBuilder.setSpan(
+                            new ForegroundColorSpan(spanColour),
+                            start,
+                            start + 4,
+                            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    chatText.setText(chatTextBuilder);
+
+                    clearTextButton.setEnabled(false);
+                    clearTextButton.setImageDrawable(
+                            ResourcesCompat.getDrawable(
+                                    getResources(),
+                                    R.drawable.clear_button_disabled,
+                                    null));
+                    break;
+                case LLM_TTS:
                     loadModelLayout.setVisibility(View.INVISIBLE);
                     chatLayout.setVisibility(View.VISIBLE);
 
@@ -399,9 +659,9 @@ public class MainActivity extends AppCompatActivity {
                                     null));
                     loadNewModelButton.setEnabled(false);
                     chatText.setText("");
-                    chatStatusProgress.setVisibility(View.VISIBLE);
-                    chatStatusText.setVisibility(View.VISIBLE);
-                    chatStatusText.setText("Generating...");
+                    statusProgress.setVisibility(View.VISIBLE);
+                    statusText.setVisibility(View.VISIBLE);
+                    statusText.setText("Generating...");
                     clearTextButton.setEnabled(false);
                     clearTextButton.setImageDrawable(
                             ResourcesCompat.getDrawable(
@@ -412,6 +672,8 @@ public class MainActivity extends AppCompatActivity {
                 default:
                     break;
             }
+
+            currentState = state;
         });
     }
 
@@ -419,14 +681,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
 
-        if (loadExecutor != null) {
-            loadExecutor.shutdownNow();
-        }
-
-        if (backgroundTask != null && !backgroundTask.isDone()) {
-            backgroundTask.cancel(true);
-        }
-
+        loadExecutor.shutdownNow();
+        llmExecutor.shutdownNow();
+        ttsSynthesizeExecutor.shutdownNow();
+        ttsPlaybackExecutor.shutdownNow();
 
         if (porcupine != null) {
             porcupine.delete();

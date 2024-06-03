@@ -1,5 +1,23 @@
 apply plugin: 'com.android.application'
 
+Properties properties = new Properties()
+if (rootProject.file("local.properties").exists()) {
+    properties.load(rootProject.file("local.properties").newDataInputStream())
+
+    if (project.hasProperty("storePassword")) {
+        properties.put("storePassword", project.getProperty("storePassword"))
+    }
+    if (project.hasProperty("storeFile")) {
+        properties.put("storeFile", project.getProperty("storeFile"))
+    }
+    if (project.hasProperty("keyAlias")) {
+        properties.put("keyAlias", project.getProperty("keyAlias"))
+    }
+    if (project.hasProperty("keyPassword")) {
+        properties.put("keyPassword", project.getProperty("keyPassword"))
+    }
+}
+
 android {
     compileSdk defaultTargetSdkVersion
     defaultConfig {
@@ -11,10 +29,22 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
+    signingConfigs {
+        release {
+            storePassword properties.getProperty("storePassword")
+            storeFile file(properties.getProperty("storeFile", ".dummy.jks"))
+            keyAlias properties.getProperty("keyAlias")
+            keyPassword properties.getProperty("keyPassword")
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.release
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
     compileOptions {
@@ -32,8 +62,9 @@ dependencies {
     implementation 'com.google.android.material:material:1.4.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.1'
 
-    implementation 'ai.picovoice:cheetah-android:2.0.0'
-    implementation 'ai.picovoice:orca-android:0.2.1'
-    implementation 'ai.picovoice:picollm-android:1.0.0'
+    implementation 'ai.picovoice:android-voice-processor:1.0.2'
     implementation 'ai.picovoice:porcupine-android:3.0.1'
+    implementation 'ai.picovoice:cheetah-android:2.0.0'
+    implementation 'ai.picovoice:picollm-android:1.0.0'
+    implementation 'ai.picovoice:orca-android:0.2.1'
 }

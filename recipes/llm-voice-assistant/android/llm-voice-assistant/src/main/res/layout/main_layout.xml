@@ -61,7 +61,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            app:layout_constraintGuide_percent="0.82" />
+            app:layout_constraintGuide_percent="0.95" />
 
         <androidx.constraintlayout.widget.Guideline
             android:id="@+id/guidelineVertical"
@@ -76,7 +76,6 @@
             android:layout_width="0dp"
             android:layout_marginStart="24dp"
             android:layout_marginTop="32dp"
-            android:layout_marginBottom="15dp"
             android:layout_marginEnd="24dp"
             android:paddingTop="8dp"
             android:paddingBottom="35dp"
@@ -85,7 +84,7 @@
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toTopOf="@+id/completionStatusText">
+            app:layout_constraintBottom_toTopOf="@+id/statusContainer">
         <TextView
             android:id="@+id/chatText"
             android:layout_height="wrap_content"
@@ -121,41 +120,30 @@
             app:layout_constraintEnd_toEndOf="@+id/chatScrollView"
             app:layout_constraintBottom_toBottomOf="@+id/chatScrollView"/>
 
-        <ProgressBar
-            android:id="@+id/completionStatusProgress"
-            android:indeterminateTint="@color/colorPrimary"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:text=""
-            app:layout_constraintBottom_toTopOf="@+id/guidelineHorizontal"
-            app:layout_constraintStart_toStartOf="@+id/chatScrollView"
-            android:layout_marginTop="10dp"
-            android:layout_marginStart="10dp"/>
-
-        <TextView
-            android:id="@+id/completionStatusText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Generating..."
-            app:layout_constraintStart_toEndOf="@+id/completionStatusProgress"
-            app:layout_constraintBottom_toTopOf="@+id/guidelineHorizontal"
-            android:layout_marginStart="10dp"
-            android:paddingBottom="6dp"/>
-
-        <RelativeLayout
-            android:id="@+id/promptTextContainer"
-            android:layout_height="55dp"
+        <LinearLayout
+            android:id="@+id/statusContainer"
             android:layout_width="match_parent"
-            android:layout_marginStart="20dp"
-            android:layout_marginEnd="20dp"
-            android:layout_marginBottom="20dp"
-            app:layout_constraintTop_toBottomOf="@+id/guidelineHorizontal"
-            app:layout_constraintBottom_toBottomOf="parent">
-            <ai.picovoice.llmvoiceassistant.ActivityIndicatorView
-                android:id="@+id/activityIndicatorView"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"/>
-        </RelativeLayout>
+            android:layout_height="150dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="@+id/chatScrollView"
+            app:layout_constraintEnd_toEndOf="@+id/chatScrollView"
+            android:orientation="horizontal"
+            android:gravity="center">
+            <ProgressBar
+                android:id="@+id/statusProgress"
+                android:indeterminateTint="@color/colorPrimary"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:layout_marginEnd="10dp"/>
 
+            <TextView
+                android:id="@+id/statusText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Say 'Picovoice'!"
+                android:textSize="20sp"
+                app:layout_constraintStart_toEndOf="@+id/statusProgress"
+                app:layout_constraintBottom_toTopOf="@+id/guidelineHorizontal" />
+        </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 </RelativeLayout>
