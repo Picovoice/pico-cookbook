@@ -49,7 +49,7 @@ You can download directly to your device or airdrop from a Mac.
 
     @Published var enginesLoaded = false
 
-    static let statusTextDefault = "Say `picovoice` to start!"
+    static let statusTextDefault = "Say `Picovoice` to start!"
     @Published var statusText = statusTextDefault
 
     @Published var promptText = ""

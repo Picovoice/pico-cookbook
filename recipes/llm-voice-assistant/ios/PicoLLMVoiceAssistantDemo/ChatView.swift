@@ -17,7 +17,7 @@ struct ChatView: View {
 
         ZStack {
             VStack(alignment: .center) {
-                Text("PicoLLM Voice Assistant Demo")
+                Text("picoLLM Voice Assistant Demo")
 
                 Spacer()
 

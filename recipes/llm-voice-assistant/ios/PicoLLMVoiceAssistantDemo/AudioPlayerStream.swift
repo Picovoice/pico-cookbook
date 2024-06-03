@@ -6,7 +6,7 @@ class AudioPlayerStream {
     private let playerNode = AVAudioPlayerNode()
     private let mixerNode = AVAudioMixerNode()
 
-    private var pcmBuffers = [[Int16]]()
+    private var pcmBuffers = [AVAudioPCMBuffer]()
     public var isPlaying = false
 
     init(sampleRate: Double) throws {
@@ -30,7 +30,23 @@ class AudioPlayerStream {
     }
 
     func playStreamPCM(_ pcmData: [Int16], completion: @escaping (Bool) -> Void) {
-        pcmBuffers.append(pcmData)
+        let audioBuffer = AVAudioPCMBuffer(
+            pcmFormat: playerNode.outputFormat(forBus: 0), frameCapacity: AVAudioFrameCount(pcmData.count))!
+
+        audioBuffer.frameLength = audioBuffer.frameCapacity
+        let buf = audioBuffer.floatChannelData![0]
+        for (index, sample) in pcmData.enumerated() {
+            var convertedSample = Float32(sample) / Float32(Int16.max)
+            if convertedSample > 1 {
+                convertedSample = 1
+            }
+            if convertedSample < -1 {
+                convertedSample = -1
+            }
+            buf[index] = convertedSample
+        }
+
+        pcmBuffers.append(audioBuffer)
         if !isPlaying {
             playNextPCMBuffer(completion: completion)
         } else {
@@ -39,23 +55,14 @@ class AudioPlayerStream {
     }
 
     private func playNextPCMBuffer(completion: @escaping (Bool) -> Void) {
-        guard let pcmData = pcmBuffers.first, !pcmData.isEmpty else {
+        guard let pcmData = pcmBuffers.first else {
             isPlaying = false
             completion(false)
             return
         }
         pcmBuffers.removeFirst()
 
-        let audioBuffer = AVAudioPCMBuffer(
-            pcmFormat: playerNode.outputFormat(forBus: 0), frameCapacity: AVAudioFrameCount(pcmData.count))!
-
-        audioBuffer.frameLength = audioBuffer.frameCapacity
-        let buf = audioBuffer.floatChannelData![0]
-        for (index, sample) in pcmData.enumerated() {
-            buf[index] = Float32(sample) / Float32(Int16.max)
-        }
-
-        playerNode.scheduleBuffer(audioBuffer) { [weak self] in
+        playerNode.scheduleBuffer(pcmData) { [weak self] in
             self?.playNextPCMBuffer(completion: completion)
         }
 
