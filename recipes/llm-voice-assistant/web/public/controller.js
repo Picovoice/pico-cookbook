@@ -118,7 +118,7 @@ window.onload = () => {
         onText: (text) => {
           addMessage(llmElem, text);
         },
-        onStream: (pcm) => {
+        onStream: async (pcm) => {
           audioStream.stream(pcm);
           if (streamCalls > 1) {
             audioStream.play();
@@ -137,16 +137,16 @@ window.onload = () => {
           streamCalls = 0;
         },
       });
-      if (!audioStream) {
-        audioStream = new Picovoice.AudioStream(Picovoice.getStreamSampleRate());
-      }
-
       initBlock.style.display = 'none';
       chatBlock.style.display = 'flex';
       status.innerText = "Loading complete."
 
       await Picovoice.start();
       message.innerText = "Say `Picovoice`"
+
+      if (!audioStream) {
+        audioStream = new Picovoice.AudioStream(Picovoice.getStreamSampleRate());
+      }
     } catch (e) {
       writeError(e.message);
     } finally {
