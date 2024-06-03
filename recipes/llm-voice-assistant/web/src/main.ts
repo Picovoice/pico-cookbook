@@ -30,13 +30,13 @@ const init = async (
   accessKey: string,
   picollmModel: PicoLLMModel,
   {
-  onDetection,
-  onEndpoint,
-  onTranscript,
-  onText,
-  onStream,
-  onComplete,
-}: PvCallback): Promise<void> => {
+    onDetection,
+    onEndpoint,
+    onTranscript,
+    onText,
+    onStream,
+    onComplete,
+  }: PvCallback): Promise<void> => {
   if (object !== null) {
     return;
   }
@@ -101,7 +101,7 @@ const init = async (
     '</s>', // Llama-2, Mistral
     '<end_of_turn>', // Gemma
     '<|endoftext|>', // Phi-2
-    '<|eot_id|>',  // Llama-3
+    '<|eot_id|>', // Llama-3
   ];
 
   const onCheetahFlushed = async (): Promise<void> => {
