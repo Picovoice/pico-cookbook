@@ -12,6 +12,7 @@ class AudioStream {
     this._audioContext = new (window.AudioContext ||
       // @ts-ignore
       window.webKitAudioContext)({ sampleRate: sampleRate });
+    this._audioContext.resume();
 
     this._audioGain = this._audioContext.createGain();
     this._audioGain.gain.value = 1;
@@ -35,15 +36,15 @@ class AudioStream {
     streamSource.buffer = this._audioBuffers.shift() ?? null;
     streamSource.connect(this._audioGain);
 
+    streamSource.start();
+    this._isPlaying = true;
+
     streamSource.onended = (): void => {
       this._isPlaying = false;
       if (this._audioBuffers.length > 0) {
         this.play();
       }
     };
-
-    streamSource.start();
-    this._isPlaying = true;
   }
 
   public async waitPlayback(): Promise<void> {

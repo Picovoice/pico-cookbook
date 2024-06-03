@@ -127,7 +127,7 @@ window.onload = () => {
           }
         },
         onComplete: async () => {
-          if (streamCalls <= 3) {
+          if (streamCalls <= 2) {
             audioStream.play();
           }
           await audioStream.waitPlayback();

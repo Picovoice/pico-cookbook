@@ -43,8 +43,8 @@ const init = async (
 
   const detectionCallback = async (detection: PorcupineDetection): Promise<void> => {
     if (detection.index === 0) {
-      await WebVoiceProcessor.unsubscribe(porcupine);
       await WebVoiceProcessor.subscribe(cheetah);
+      await WebVoiceProcessor.unsubscribe(porcupine);
       onDetection(detection);
     }
   };
@@ -114,9 +114,9 @@ const init = async (
       streamCallback: async token => {
         if (!stopPhrases.includes(token)) {
           onText(token);
-          await mutex.acquire();
+          const release = await mutex.acquire();
           const pcm = await stream.synthesize(token);
-          mutex.release();
+          release();
           synthesized++;
           if (pcm !== null) {
             onStream(pcm);
