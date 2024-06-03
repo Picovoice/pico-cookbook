@@ -97,7 +97,12 @@ window.onload = () => {
     let streamCalls = 0;
 
     try {
-      await Picovoice.init(accessKey.value, {
+      await Picovoice.init(accessKey.value,
+        {
+          modelFile: modelFile.files[0],
+          cacheFilePath: modelFile.files[0].name,
+        },
+        {
         onDetection: () => {
           message.innerText = "Wake word detected, utter your request or question...";
           humanElem = startHumanMessage();

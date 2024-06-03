@@ -3,7 +3,7 @@ import { Mutex } from 'async-mutex';
 import { BuiltInKeyword, PorcupineDetection, PorcupineWorker } from '@picovoice/porcupine-web';
 import { CheetahTranscript, CheetahWorker } from '@picovoice/cheetah-web';
 import { OrcaStreamWorker, OrcaWorker } from '@picovoice/orca-web';
-import { Dialog, PicoLLMWorker } from '@picovoice/picollm-web';
+import { Dialog, PicoLLMModel, PicoLLMWorker } from '@picovoice/picollm-web';
 import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 
 type PvObject = {
@@ -26,7 +26,10 @@ type PvCallback = {
 
 let object: PvObject | null = null;
 
-const init = async (accessKey: string, {
+const init = async (
+  accessKey: string,
+  picollmModel: PicoLLMModel,
+  {
   onDetection,
   onEndpoint,
   onTranscript,
@@ -78,9 +81,7 @@ const init = async (accessKey: string, {
 
   const pllm = await PicoLLMWorker.create(
     accessKey,
-    {
-      modelFile: "models/picollm_params.pllm"
-    });
+    picollmModel);
 
   const orca = await OrcaWorker.create(
     accessKey,
@@ -97,9 +98,10 @@ const init = async (accessKey: string, {
   let stopTokens = 0;
 
   const stopPhrases = [
-    '</s>', // Llama-2, Mistral, and Mixtral
+    '</s>', // Llama-2, Mistral
     '<end_of_turn>', // Gemma
     '<|endoftext|>', // Phi-2
+    '<|eot_id|>',  // Llama-3
   ];
 
   const onCheetahFlushed = async (): Promise<void> => {
@@ -109,8 +111,6 @@ const init = async (accessKey: string, {
 
     const { completion, completionTokens } = await pllm.generate(dialog.prompt(), {
       completionTokenLimit: 128,
-      temperature: 0.7,
-      topP: 0.6,
       streamCallback: async token => {
         if (!stopPhrases.includes(token)) {
           onText(token);

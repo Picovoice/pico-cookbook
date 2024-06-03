@@ -23,7 +23,7 @@ picoLLM Inference Engine supports many open-weight models. The models are on
 Install the required packages using `yarn`:
 
 ```console
-yarn isntall
+yarn install
 ```
 
 or using `npm`:
