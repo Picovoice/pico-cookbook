@@ -90,7 +90,14 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int COMPLETION_TOKEN_LIMIT = 256;
 
-    private static final int TTS_WARMUP_SECONDS = 2;
+    private static final int TTS_WARMUP_SECONDS = 1;
+
+    private static final String[] STOP_PHRASES = new String[] {
+            "</s>",             // Llama-2, Mistral, and Mixtral
+            "<end_of_turn>",    // Gemma
+            "<|endoftext|>",    // Phi-2
+            "<|eot_id|>",       // Llama-3
+    };
 
     private final VoiceProcessor voiceProcessor = VoiceProcessor.getInstance();
 
@@ -105,8 +112,7 @@ public class MainActivity extends AppCompatActivity {
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    private final ExecutorService loadExecutor = Executors.newSingleThreadExecutor();
-    private final ExecutorService llmExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService engineExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService ttsSynthesizeExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService ttsPlaybackExecutor = Executors.newSingleThreadExecutor();
 
@@ -209,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
                         return;
                     }
 
-                    loadExecutor.submit(() -> {
+                    engineExecutor.submit(() -> {
                         File llmModelFile = extractModelFile(selectedUri);
                         if (llmModelFile == null || !llmModelFile.exists()) {
                             updateUIState(UIState.INIT);
@@ -223,8 +229,6 @@ public class MainActivity extends AppCompatActivity {
             });
 
     private void initEngines(File modelFile) {
-
-        // init wake word
         mainHandler.post(() -> loadModelText.setText("Loading Porcupine..."));
         try {
             porcupine = new Porcupine.Builder()
@@ -236,7 +240,6 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // init stt
         mainHandler.post(() -> loadModelText.setText("Loading Cheetah..."));
         try {
             cheetah = new Cheetah.Builder()
@@ -249,13 +252,11 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // init llm
         mainHandler.post(() -> loadModelText.setText("Loading picoLLM..."));
         try {
             picollm = new PicoLLM.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(modelFile.getAbsolutePath())
-                    .setDevice("cpu:1")
                     .build();
             dialog = picollm.getDialogBuilder().build();
         } catch (PicoLLMException e) {
@@ -263,7 +264,6 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // init tts
         mainHandler.post(() -> loadModelText.setText("Loading Orca..."));
         try {
             orca = new Orca.Builder()
@@ -278,47 +278,7 @@ public class MainActivity extends AppCompatActivity {
         chatTextBuilder = new SpannableStringBuilder();
         updateUIState(UIState.WAKE_WORD);
 
-        voiceProcessor.addFrameListener(frame -> {
-            if (currentState == UIState.WAKE_WORD) {
-                try {
-                    int keywordIndex = porcupine.process(frame);
-                    if (keywordIndex == 0) {
-                        llmPromptText = new StringBuilder();
-                        updateUIState(UIState.STT);
-                    }
-                } catch (PorcupineException e) {
-                    onEngineProcessError(e.getMessage());
-                }
-            } else if (currentState == UIState.STT) {
-                try {
-                    CheetahTranscript result = cheetah.process(frame);
-                    llmPromptText.append(result.getTranscript());
-                    mainHandler.post(() -> {
-                        chatTextBuilder.append(result.getTranscript());
-                        chatText.setText(chatTextBuilder);
-                        chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
-                    });
-
-                    if (result.getIsEndpoint()) {
-                        CheetahTranscript finalResult = cheetah.flush();
-                        llmPromptText.append(finalResult.getTranscript());
-                        mainHandler.post(() -> {
-                            chatTextBuilder.append(
-                                    String.format("%s\n\n", finalResult.getTranscript())
-                            );
-                            chatText.setText(chatTextBuilder);
-                            chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
-                        });
-
-                        voiceProcessor.stop();
-
-                        promptLLM(llmPromptText.toString());
-                    }
-                } catch (CheetahException | VoiceProcessorException e) {
-                    onEngineProcessError(e.getMessage());
-                }
-            }
-        });
+        voiceProcessor.addFrameListener(this::runWakeWordSTT);
 
         voiceProcessor.addErrorListener(error -> {
             onEngineProcessError(error.getMessage());
@@ -326,6 +286,271 @@ public class MainActivity extends AppCompatActivity {
 
         startWakeWordListening();
     }
+
+    private void runWakeWordSTT(short[] frame) {
+        if (currentState == UIState.WAKE_WORD) {
+            try {
+                int keywordIndex = porcupine.process(frame);
+                if (keywordIndex == 0) {
+                    llmPromptText = new StringBuilder();
+                    updateUIState(UIState.STT);
+                }
+            } catch (PorcupineException e) {
+                onEngineProcessError(e.getMessage());
+            }
+        } else if (currentState == UIState.STT) {
+            try {
+                CheetahTranscript result = cheetah.process(frame);
+                llmPromptText.append(result.getTranscript());
+                mainHandler.post(() -> {
+                    chatTextBuilder.append(result.getTranscript());
+                    chatText.setText(chatTextBuilder);
+                    chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+                });
+
+                if (result.getIsEndpoint()) {
+                    CheetahTranscript finalResult = cheetah.flush();
+                    llmPromptText.append(finalResult.getTranscript());
+                    mainHandler.post(() -> {
+                        chatTextBuilder.append(
+                                String.format("%s\n\n", finalResult.getTranscript())
+                        );
+                        chatText.setText(chatTextBuilder);
+                        chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+                    });
+
+                    voiceProcessor.stop();
+
+                    runLLM(llmPromptText.toString());
+                }
+            } catch (CheetahException | VoiceProcessorException e) {
+                onEngineProcessError(e.getMessage());
+            }
+        }
+    }
+    private void runLLM(String prompt) {
+        if (prompt.length() == 0) {
+            return;
+        }
+
+        AtomicBoolean isQueueingTokens = new AtomicBoolean(false);
+        CountDownLatch tokensReadyLatch = new CountDownLatch(1);
+        ConcurrentLinkedQueue<String> tokenQueue = new ConcurrentLinkedQueue<>();
+
+        AtomicBoolean isQueueingPcm = new AtomicBoolean(false);
+        CountDownLatch pcmReadyLatch = new CountDownLatch(1);
+        ConcurrentLinkedQueue<short[]> pcmQueue = new ConcurrentLinkedQueue<>();
+
+        updateUIState(UIState.LLM_TTS);
+
+        finalCompletion = null;
+
+        mainHandler.post(() -> {
+            int start = chatTextBuilder.length();
+            chatTextBuilder.append("picoLLM:\n\n");
+            chatTextBuilder.setSpan(
+                    new ForegroundColorSpan(spanColour),
+                    start,
+                    start + 8,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            chatText.setText(chatTextBuilder);
+        });
+
+        engineExecutor.submit(() -> {
+            TPSProfiler picoLLMProfiler = new TPSProfiler();
+            try {
+                isQueueingTokens.set(true);
+
+                dialog.addHumanRequest(prompt);
+                finalCompletion = picollm.generate(
+                        dialog.getPrompt(),
+                        new PicoLLMGenerateParams.Builder()
+                                .setStreamCallback(token -> {
+                                    picoLLMProfiler.tock();
+                                    if (token != null && token.length() > 0) {
+                                        boolean containsStopPhrase = false;
+                                        for (String k: STOP_PHRASES) {
+                                            if (token.contains(k)) {
+                                                containsStopPhrase = true;
+                                                break;
+                                            }
+                                        }
+
+                                        if (!containsStopPhrase) {
+                                            tokenQueue.add(token);
+                                            tokensReadyLatch.countDown();
+
+                                            mainHandler.post(() -> {
+                                                chatTextBuilder.append(token);
+                                                chatText.setText(chatTextBuilder);
+                                                chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+                                            });
+                                        }
+                                    }
+                                })
+                                .setCompletionTokenLimit(COMPLETION_TOKEN_LIMIT)
+                                .setStopPhrases(STOP_PHRASES)
+                                .build());
+                dialog.addLLMResponse(finalCompletion.getCompletion());
+                Log.i("PICOVOICE", String.format("TPS: %.2f", picoLLMProfiler.tps()));
+
+                isQueueingTokens.set(false);
+
+                updateUIState(UIState.WAKE_WORD);
+                mainHandler.post(() -> {
+                    clearTextButton.setEnabled(true);
+                    clearTextButton.setImageDrawable(
+                            ResourcesCompat.getDrawable(getResources(),
+                                    R.drawable.clear_button,
+                                    null));
+                    chatTextBuilder.append("\n\n");
+                });
+
+                startWakeWordListening();
+            } catch (PicoLLMException e) {
+                onEngineProcessError(e.getMessage());
+            }
+        });
+
+        ttsSynthesizeExecutor.submit(() -> {
+            Orca.OrcaStream orcaStream;
+            try {
+                orcaStream = orca.streamOpen(new OrcaSynthesizeParams.Builder().build());
+            } catch (OrcaException e) {
+                onEngineProcessError(e.getMessage());
+                return;
+            }
+
+            RTFProfiler orcaProfiler = new RTFProfiler(orca.getSampleRate());
+
+            short[] warmupPcm;
+            if (TTS_WARMUP_SECONDS > 0) {
+                warmupPcm = new short[0];
+            }
+
+            try {
+                tokensReadyLatch.await();
+            } catch (InterruptedException e) {
+                onEngineProcessError(e.getMessage());
+                return;
+            }
+
+            isQueueingPcm.set(true);
+            while (isQueueingTokens.get() || !tokenQueue.isEmpty()) {
+                String token = tokenQueue.poll();
+                if (token != null && token.length() > 0) {
+                    try {
+                        orcaProfiler.tick();
+                        short[] pcm = orcaStream.synthesize(token);
+                        orcaProfiler.tock(pcm);
+
+                        if (pcm != null && pcm.length > 0) {
+                            if (warmupPcm != null) {
+                                int offset = warmupPcm.length;
+                                warmupPcm = Arrays.copyOf(warmupPcm, offset + pcm.length);
+                                System.arraycopy(pcm, 0, warmupPcm, offset, pcm.length);
+                                if (warmupPcm.length > TTS_WARMUP_SECONDS * orca.getSampleRate()) {
+                                    pcmQueue.add(warmupPcm);
+                                    pcmReadyLatch.countDown();
+                                    warmupPcm = null;
+                                }
+                            } else {
+                                pcmQueue.add(pcm);
+                                pcmReadyLatch.countDown();
+                            }
+                        }
+                    } catch (OrcaException e) {
+                        onEngineProcessError(e.getMessage());
+                        return;
+                    }
+                }
+            }
+
+            try {
+                orcaProfiler.tick();
+                short[] flushedPcm = orcaStream.flush();
+                orcaProfiler.tock(flushedPcm);
+
+                if (flushedPcm != null && flushedPcm.length > 0) {
+                    pcmQueue.add(flushedPcm);
+                    pcmReadyLatch.countDown();
+                }
+                Log.i("PICOVOICE", String.format("RTF: %.2f", orcaProfiler.rtf()));
+            } catch (OrcaException e) {
+                onEngineProcessError(e.getMessage());
+            }
+
+            isQueueingPcm.set(false);
+
+            orcaStream.close();
+        });
+
+        ttsPlaybackExecutor.submit(() -> {
+            AudioTrack ttsOutput;
+            try {
+                ttsOutput = new AudioTrack(
+                        AudioManager.STREAM_MUSIC,
+                        orca.getSampleRate(),
+                        AudioFormat.CHANNEL_OUT_MONO,
+                        AudioFormat.ENCODING_PCM_16BIT,
+                        AudioTrack.getMinBufferSize(
+                                orca.getSampleRate(),
+                                AudioFormat.CHANNEL_OUT_MONO,
+                                AudioFormat.ENCODING_PCM_16BIT),
+                        AudioTrack.MODE_STREAM);
+
+                ttsOutput.play();
+            } catch (Exception e) {
+                onEngineProcessError(e.getMessage());
+                return;
+            }
+
+            try {
+                pcmReadyLatch.await();
+            } catch (InterruptedException e) {
+                onEngineProcessError(e.getMessage());
+                return;
+            }
+
+            while(isQueueingPcm.get() || !pcmQueue.isEmpty()) {
+                short[] pcm = pcmQueue.poll();
+                if (pcm != null && pcm.length > 0) {
+                    ttsOutput.write(pcm, 0, pcm.length);
+                }
+            }
+
+            ttsOutput.stop();
+            ttsOutput.release();
+        });
+    }
+
+    private File extractModelFile(Uri uri) {
+        File modelFile = new File(getApplicationContext().getFilesDir(), "model.pllm");
+
+        try (InputStream is = getContentResolver().openInputStream(uri);
+             OutputStream os = new FileOutputStream(modelFile)) {
+            byte[] buffer = new byte[8192];
+            int numBytesRead;
+            while ((numBytesRead = is.read(buffer)) != -1) {
+                os.write(buffer, 0, numBytesRead);
+            }
+        } catch (IOException e) {
+            return null;
+        }
+
+        return modelFile;
+    }
+
+    private void onEngineInitError(String message) {
+        updateUIState(UIState.INIT);
+        mainHandler.post(() -> loadModelText.setText(message));
+    }
+
+    private void onEngineProcessError(String message) {
+        updateUIState(UIState.WAKE_WORD);
+        mainHandler.post(() -> chatText.setText(message));
+    }
+
 
     private void startWakeWordListening() {
         if (voiceProcessor.hasRecordAudioPermission(this)) {
@@ -358,217 +583,6 @@ public class MainActivity extends AppCompatActivity {
         } else {
             startWakeWordListening();
         }
-    }
-
-    private void onEngineInitError(String message) {
-        updateUIState(UIState.INIT);
-        mainHandler.post(() -> loadModelText.setText(message));
-    }
-
-    private void onEngineProcessError(String message) {
-        updateUIState(UIState.WAKE_WORD);
-        mainHandler.post(() -> chatText.setText(message));
-    }
-
-    private File extractModelFile(Uri uri) {
-        File modelFile = new File(getApplicationContext().getFilesDir(), "model.pllm");
-
-        try (InputStream is = getContentResolver().openInputStream(uri);
-                OutputStream os = new FileOutputStream(modelFile)) {
-            byte[] buffer = new byte[8192];
-            int numBytesRead;
-            while ((numBytesRead = is.read(buffer)) != -1) {
-                os.write(buffer, 0, numBytesRead);
-            }
-        } catch (IOException e) {
-            return null;
-        }
-
-        return modelFile;
-    }
-
-    private void promptLLM(String prompt) {
-        if (prompt.length() == 0) {
-            return;
-        }
-
-        AtomicBoolean isQueueingTokens = new AtomicBoolean(false);
-        CountDownLatch tokensReadyLatch = new CountDownLatch(1);
-        ConcurrentLinkedQueue<String> tokenQueue = new ConcurrentLinkedQueue<>();
-
-        AtomicBoolean isQueueingPcm = new AtomicBoolean(false);
-        CountDownLatch pcmReadyLatch = new CountDownLatch(1);
-        ConcurrentLinkedQueue<short[]> pcmQueue = new ConcurrentLinkedQueue<>();
-
-
-        updateUIState(UIState.LLM_TTS);
-
-        finalCompletion = null;
-
-        mainHandler.post(() -> {
-            int start = chatTextBuilder.length();
-            chatTextBuilder.append("picoLLM:\n\n");
-            chatTextBuilder.setSpan(
-                    new ForegroundColorSpan(spanColour),
-                    start,
-                    start + 8,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            chatText.setText(chatTextBuilder);
-        });
-
-        llmExecutor.submit(() -> {
-            try {
-                isQueueingTokens.set(true);
-
-                dialog.addHumanRequest(prompt);
-                finalCompletion = picollm.generate(
-                        dialog.getPrompt(),
-                        new PicoLLMGenerateParams.Builder()
-                                .setStreamCallback(token -> {
-                                    mainHandler.post(() -> {
-                                        chatTextBuilder.append(token);
-                                        chatText.setText(chatTextBuilder);
-                                        chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
-                                    });
-
-                                    if (token != null && token.length() > 0) {
-                                        tokenQueue.add(token);
-//                                        Log.i("PICOVOICE", "token produced");
-                                        tokensReadyLatch.countDown();
-                                    }
-                                })
-                                .setCompletionTokenLimit(COMPLETION_TOKEN_LIMIT)
-                                .build());
-                dialog.addLLMResponse(finalCompletion.getCompletion());
-
-                isQueueingTokens.set(false);
-
-                updateUIState(UIState.WAKE_WORD);
-                mainHandler.post(() -> {
-                    clearTextButton.setEnabled(true);
-                    clearTextButton.setImageDrawable(
-                            ResourcesCompat.getDrawable(getResources(),
-                                    R.drawable.clear_button,
-                                    null));
-                    chatTextBuilder.append("\n\n");
-                });
-
-                startWakeWordListening();
-            } catch (PicoLLMException e) {
-                onEngineProcessError(e.getMessage());
-            }
-        });
-
-        ttsSynthesizeExecutor.submit(() -> {
-            Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
-
-            Orca.OrcaStream orcaStream;
-            try {
-                orcaStream = orca.streamOpen(new OrcaSynthesizeParams.Builder().build());
-            } catch (OrcaException e) {
-                onEngineProcessError(e.getMessage());
-                return;
-            }
-
-            short[] warmupPcm;
-            if (TTS_WARMUP_SECONDS > 0) {
-                warmupPcm = new short[0];
-            }
-
-            try {
-                tokensReadyLatch.await();
-            } catch (InterruptedException e) {
-                onEngineProcessError(e.getMessage());
-                return;
-            }
-
-            isQueueingPcm.set(true);
-            while (isQueueingTokens.get() || !tokenQueue.isEmpty()) {
-                String token = tokenQueue.poll();
-                if (token != null && token.length() > 0) {
-                    try {
-                        short[] pcm = orcaStream.synthesize(token);
-                        if (pcm != null && pcm.length > 0) {
-                            if (warmupPcm != null) {
-//                                Log.i("PICOVOICE", "pcm added to warmup");
-                                int offset = warmupPcm.length;
-                                warmupPcm = Arrays.copyOf(warmupPcm, offset + pcm.length);
-                                System.arraycopy(pcm, 0, warmupPcm, offset, pcm.length);
-                                if (warmupPcm.length > TTS_WARMUP_SECONDS * orca.getSampleRate()) {
-                                    pcmQueue.add(warmupPcm);
-//                                    Log.i("PICOVOICE", "pcm warmup released");
-                                    pcmReadyLatch.countDown();
-                                    warmupPcm = null;
-                                }
-                            } else {
-//                                Log.i("PICOVOICE", "pcm added to regular queue");
-                                pcmQueue.add(pcm);
-                                pcmReadyLatch.countDown();
-                            }
-                        }
-                    } catch (OrcaException e) {
-                        onEngineProcessError(e.getMessage());
-                        return;
-                    }
-                }
-            }
-
-            try {
-                short[] flushedPcm = orcaStream.flush();
-                if (flushedPcm != null && flushedPcm.length > 0) {
-                    pcmQueue.add(flushedPcm);
-//                    Log.i("PICOVOICE", "pcm produced");
-                    pcmReadyLatch.countDown();
-                }
-            } catch (OrcaException e) {
-                onEngineProcessError(e.getMessage());
-            }
-
-            isQueueingPcm.set(false);
-
-            orcaStream.close();
-        });
-
-        ttsPlaybackExecutor.submit(() -> {
-            Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
-
-            AudioTrack ttsOutput;
-            try {
-                ttsOutput = new AudioTrack(
-                        AudioManager.STREAM_MUSIC,
-                        orca.getSampleRate(),
-                        AudioFormat.CHANNEL_OUT_MONO,
-                        AudioFormat.ENCODING_PCM_16BIT,
-                        AudioTrack.getMinBufferSize(
-                                orca.getSampleRate(),
-                                AudioFormat.CHANNEL_OUT_MONO,
-                                AudioFormat.ENCODING_PCM_16BIT),
-                        AudioTrack.MODE_STREAM);
-
-                ttsOutput.play();
-            } catch (Exception e) {
-                onEngineProcessError(e.getMessage());
-                return;
-            }
-
-            try {
-                pcmReadyLatch.await();
-            } catch (InterruptedException e) {
-                onEngineProcessError(e.getMessage());
-                return;
-            }
-
-            while(isQueueingPcm.get() || !pcmQueue.isEmpty()) {
-                short[] pcm = pcmQueue.poll();
-                if (pcm != null && pcm.length > 0) {
-                    Log.i("PICOVOICE", "playing pcm");
-                    ttsOutput.write(pcm, 0, pcm.length);
-                }
-            }
-
-            ttsOutput.stop();
-            ttsOutput.release();
-        });
     }
 
     private void updateUIState(UIState state) {
@@ -681,8 +695,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
 
-        loadExecutor.shutdownNow();
-        llmExecutor.shutdownNow();
+        engineExecutor.shutdownNow();
         ttsSynthesizeExecutor.shutdownNow();
         ttsPlaybackExecutor.shutdownNow();
 
