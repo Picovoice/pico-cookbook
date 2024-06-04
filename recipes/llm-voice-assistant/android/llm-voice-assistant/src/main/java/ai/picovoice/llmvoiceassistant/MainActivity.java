@@ -57,19 +57,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import ai.picovoice.android.voiceprocessor.VoiceProcessor;
 import ai.picovoice.android.voiceprocessor.VoiceProcessorException;
+import ai.picovoice.cheetah.Cheetah;
 import ai.picovoice.cheetah.CheetahException;
 import ai.picovoice.cheetah.CheetahTranscript;
-import ai.picovoice.orca.OrcaException;
-import ai.picovoice.porcupine.Porcupine;
 import ai.picovoice.orca.Orca;
+import ai.picovoice.orca.OrcaException;
 import ai.picovoice.orca.OrcaSynthesizeParams;
-import ai.picovoice.cheetah.Cheetah;
-
 import ai.picovoice.picollm.PicoLLM;
 import ai.picovoice.picollm.PicoLLMCompletion;
 import ai.picovoice.picollm.PicoLLMDialog;
 import ai.picovoice.picollm.PicoLLMException;
 import ai.picovoice.picollm.PicoLLMGenerateParams;
+import ai.picovoice.porcupine.Porcupine;
 import ai.picovoice.porcupine.PorcupineException;
 
 public class MainActivity extends AppCompatActivity {
@@ -88,11 +87,11 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TTS_MODEL_FILE = "orca_params_female.pv";
 
-    private static final int COMPLETION_TOKEN_LIMIT = 256;
+    private static final int COMPLETION_TOKEN_LIMIT = 128;
 
     private static final int TTS_WARMUP_SECONDS = 1;
 
-    private static final String[] STOP_PHRASES = new String[] {
+    private static final String[] STOP_PHRASES = new String[]{
             "</s>",             // Llama-2, Mistral, and Mixtral
             "<end_of_turn>",    // Gemma
             "<|endoftext|>",    // Phi-2
@@ -328,6 +327,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
     private void runLLM(String prompt) {
         if (prompt.length() == 0) {
             return;
@@ -369,7 +369,7 @@ public class MainActivity extends AppCompatActivity {
                                     picoLLMProfiler.tock();
                                     if (token != null && token.length() > 0) {
                                         boolean containsStopPhrase = false;
-                                        for (String k: STOP_PHRASES) {
+                                        for (String k : STOP_PHRASES) {
                                             if (token.contains(k)) {
                                                 containsStopPhrase = true;
                                                 break;
@@ -512,7 +512,7 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            while(isQueueingPcm.get() || !pcmQueue.isEmpty()) {
+            while (isQueueingPcm.get() || !pcmQueue.isEmpty()) {
                 short[] pcm = pcmQueue.poll();
                 if (pcm != null && pcm.length > 0) {
                     ttsOutput.write(pcm, 0, pcm.length);
@@ -528,7 +528,7 @@ public class MainActivity extends AppCompatActivity {
         File modelFile = new File(getApplicationContext().getFilesDir(), "model.pllm");
 
         try (InputStream is = getContentResolver().openInputStream(uri);
-             OutputStream os = new FileOutputStream(modelFile)) {
+                OutputStream os = new FileOutputStream(modelFile)) {
             byte[] buffer = new byte[8192];
             int numBytesRead;
             while ((numBytesRead = is.read(buffer)) != -1) {
@@ -642,9 +642,9 @@ public class MainActivity extends AppCompatActivity {
                                     R.drawable.arrow_back_button_disabled,
                                     null));
                     loadNewModelButton.setEnabled(false);
-                    statusProgress.setVisibility(View.VISIBLE);
+                    statusProgress.setVisibility(View.GONE);
                     statusText.setVisibility(View.VISIBLE);
-                    statusText.setText("Listening");
+                    statusText.setText("Listening...");
 
                     int start = chatTextBuilder.length();
                     chatTextBuilder.append("You:\n\n");
@@ -717,6 +717,11 @@ public class MainActivity extends AppCompatActivity {
         if (orca != null) {
             orca.delete();
             orca = null;
+        }
+
+        if (voiceProcessor != null) {
+            voiceProcessor.clearFrameListeners();
+            voiceProcessor.clearErrorListeners();
         }
     }
 }
