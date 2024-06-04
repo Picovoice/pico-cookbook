@@ -111,6 +111,7 @@ const init = async (
 
     const { completion, completionTokens } = await pllm.generate(dialog.prompt(), {
       completionTokenLimit: 128,
+      stopPhrases: stopPhrases,
       streamCallback: async token => {
         if (!stopPhrases.includes(token)) {
           onText(token);

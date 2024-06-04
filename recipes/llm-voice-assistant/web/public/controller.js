@@ -112,7 +112,7 @@ window.onload = () => {
           addMessage(humanElem, transcript);
         },
         onEndpoint: async () => {
-          message.innerText = "Generating...";
+          message.innerHTML = "Generating <div class='loader'></div>";
           llmElem = startLLMMessage();
         },
         onText: (text) => {

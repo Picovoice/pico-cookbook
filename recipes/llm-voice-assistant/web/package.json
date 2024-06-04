@@ -1,5 +1,5 @@
 {
-  "name": "picollm-web-voice-assistant",
+  "name": "llm-voice-assistant",
   "version": "1.0.0",
   "description": "",
   "entry": "src/index.ts",

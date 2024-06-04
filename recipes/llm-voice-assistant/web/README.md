@@ -1,3 +1,7 @@
+## See It In Action!
+
+[![LLM VA in Action](https://img.youtube.com/vi/WWVSACJQknw/0.jpg)](https://www.youtube.com/watch?v=WWVSACJQknw)
+
 ## Compatibility
 
 - Node.js 18+

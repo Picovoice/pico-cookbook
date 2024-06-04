@@ -79,6 +79,7 @@
       border-radius: 5px;
       background-color: lightblue;
       padding: 6px;
+      margin-bottom: 5px;
     }
 
     .llm-border {
@@ -93,6 +94,7 @@
       border-radius: 5px;
       background-color: lightgrey;
       padding: 6px;
+      margin-bottom: 5px;
     }
 
     .result-container {
@@ -118,10 +120,25 @@
         color: #377dff;
       }
     }
+
+    .loader {
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid black;
+      border-radius: 50%;
+      width: 12pt;
+      height: 12pt;
+      animation: spin 2s linear infinite;
+      margin-left: 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
-  <h1>picoLLM Web Voice Assistant</h1>
+  <h1>LLM Voice Assistant</h1>
   <div><b>Status:</b> <span id="status">Not loaded.</span><span id="dotdotdot"></span></div>
   <div id="error" style="white-space: pre; display: none;"></div>
   <hr/>
