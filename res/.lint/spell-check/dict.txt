@@ -1,6 +1,11 @@
+Colour
+Compat
 dotdotdot
 dtype
 endoftext
+iife
+llmvoiceassistant
+logcat
 logit
 mixtral
 numpy
@@ -13,7 +18,10 @@ pvorca
 pvporcupine
 pvrecorder
 samplerate
+sdcard
 sounddevice
+Spannable
+tock
 tock
 WAKEWORD
 xcworkspace

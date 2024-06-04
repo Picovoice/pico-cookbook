@@ -53,7 +53,7 @@ porcupine = new Porcupine.Builder()
 
 ## Profiling
 
-Profiling data is automatically printed in the app's logcat.
+Profiling data is automatically printed in the app's `logcat`.
 
 ### Real-time Factor (RTF)
 

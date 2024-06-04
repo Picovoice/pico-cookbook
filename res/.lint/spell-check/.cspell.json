@@ -11,10 +11,14 @@
     }
   ],
   "ignorePaths": [
-    "**/__pycache__/**",
+    // binaries
+    "**/*.jar",
+    "**/*.ppn",
+    "**/*.pv",
+    "**/*.wasm",
 
     // ios
-    "../../../recipes/llm-voice-assistant/ios/PicoLLMVoiceAssistantDemo/resources/**/*",
+    "../../../recipes/llm-voice-assistant/ios/LLMVoiceAssistantDemo/resources/**/*",
     "**/*.xcconfig",
     "**/*.podspec",
     "**/Podfile",
@@ -31,7 +35,19 @@
     "**/tsconfig.json",
     "**/tslint.json",
 
-    // common
-    "**/*.pv"
+    // java
+    "**/build.gradle",
+    "**/gradle-wrapper.properties",
+    "**/gradle.properties",
+    "**/gradlew",
+    "**/gradlew.bat",
+    "**/proguard-rules.pro",
+
+    // android
+    "**/AndroidManifest.xml",
+    "**/main_layout.xml",
+
+    // python
+    "**/__pycache__/**"
   ]
 }
