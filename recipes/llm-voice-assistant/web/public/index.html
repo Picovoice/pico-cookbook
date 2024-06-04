@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="index.js"></script>
+  <script type="application/javascript" src="controller.js"></script>
+  <style>
+    html, body {
+      height: 90%;
+    }
+
+    #error {
+      white-space: pre;
+      background: red;
+      color: white;
+      padding: 5px;
+      font-size: 16px;
+    }
+
+    #chatBlock {
+      display: none;
+      align-items: center;
+      flex-flow: column;
+      height: 100%;
+      font-size: 14px;
+      min-width: 780px;
+    }
+
+    .dialogArea {
+      flex: 0 0 auto;
+      height: 95%;
+      width: 60%;
+      max-width: 500px;
+    }
+
+    .messageArea {
+      flex: 0 0 auto;
+      width: 60%;
+      display: flex;
+      max-width: 500px;
+    }
+
+    #result {
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      height: calc(100% - 45px);
+      overflow-y: auto;
+      padding: 5px;
+    }
+
+    #message {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 12pt;
+      background-color: lightblue;
+      height: 40px;
+    }
+
+    .align-start {
+      display: flex;
+    }
+
+    .align-end {
+      display: flex;
+      justify-content: end;
+    }
+
+    .human-border {
+      border-radius: 20px;
+      background-color: #377dff;
+      color: white;
+      padding: 5px;
+      margin-bottom: 2px;
+      margin-top: 0;
+    }
+
+    .human-text {
+      border-radius: 5px;
+      background-color: lightblue;
+      padding: 6px;
+      margin-bottom: 5px;
+    }
+
+    .llm-border {
+      border-radius: 20px;
+      background-color: darkgrey;
+      color: white;
+      padding: 5px;
+      margin-bottom: 2px;
+    }
+
+    .llm-text {
+      border-radius: 5px;
+      background-color: lightgrey;
+      padding: 6px;
+      margin-bottom: 5px;
+    }
+
+    .result-container {
+      height: 100%;
+      border: 1px solid rgb(118, 118, 118);
+    }
+
+    #changeModel {
+      font-size: 30px;
+      cursor: pointer;
+
+      &:hover {
+        color: #377dff;
+      }
+    }
+
+    #resetDialog {
+      font-size: 30px;
+      cursor: pointer;
+      float: right;
+
+      &:hover {
+        color: #377dff;
+      }
+    }
+
+    .loader {
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid black;
+      border-radius: 50%;
+      width: 12pt;
+      height: 12pt;
+      animation: spin 2s linear infinite;
+      margin-left: 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <h1>LLM Voice Assistant</h1>
+  <div><b>Status:</b> <span id="status">Not loaded.</span><span id="dotdotdot"></span></div>
+  <div id="error" style="white-space: pre; display: none;"></div>
+  <hr/>
+
+  <div id="initBlock">
+    <label for="accessKey">
+      AccessKey obtained from
+      <a href="https://console.picovoice.ai/">Picovoice Console</a>:
+    </label>
+    <input type="text" id="accessKey" name="accessKey"/>
+    <br/>
+    <label for="uploadFile">Upload model file: </label>
+    <input id="uploadFile" name="uploadFile" type="file" accept=".pllm">
+    <br/>
+    <button id="init" disabled>Init Voice Assistant</button>
+  </div>
+
+  <div id="chatBlock">
+    <div class="dialogArea">
+      <div class="result-container">
+        <pre id="result"></pre>
+        <span id="resetDialog">&#x21bb;</span>
+      </div>
+    </div>
+    <div id="message" class="messageArea">
+    </div>
+  </div>
+</body>
+</html>
