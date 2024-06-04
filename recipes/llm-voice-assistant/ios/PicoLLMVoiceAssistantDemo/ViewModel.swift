@@ -49,7 +49,7 @@ You can download directly to your device or airdrop from a Mac.
 
     @Published var enginesLoaded = false
 
-    static let statusTextDefault = "Say `Picovoice` to start!"
+    static let statusTextDefault = "Say `Picovoice`!"
     @Published var statusText = statusTextDefault
 
     @Published var promptText = ""
@@ -169,8 +169,19 @@ You can download directly to your device or airdrop from a Mac.
     private var completionQueue = DispatchQueue(label: "text-stream-queue")
     private var completionArray: [String] = []
 
+    private let stopPhrases = [
+        "</s>",  // Llama-2, Mistral, and Mixtral
+        "<end_of_turn>",  // Gemma
+        "<|endoftext|>",  // Phi-2
+        "<|eot_id|>",  // Llama-3
+    ]
+
     private func streamCallback(completion: String) {
         DispatchQueue.main.async { [self] in
+            if self.stopPhrases.contains(token) {
+                continue
+            }
+
             completionQueue.async {
                 self.completionArray.append(completion)
             }
@@ -188,7 +199,7 @@ You can download directly to your device or airdrop from a Mac.
                 try dialog!.addHumanRequest(content: chatText[chatText.count - 1].msg)
 
                 DispatchQueue.main.async { [self] in
-                    chatText.append(Message(speaker: "picoLLM", msg: ""))
+                    chatText.append(Message(speaker: "picoLLM:", msg: ""))
                 }
 
                 let result = try picollm!.generate(
@@ -212,13 +223,6 @@ You can download directly to your device or airdrop from a Mac.
             }
         }
 
-        let stopPhrases = [
-            "</s>",  // Llama-2, Mistral, and Mixtral
-            "<end_of_turn>",  // Gemma
-            "<|endoftext|>",  // Phi-2
-            "<|eot_id|>",  // Llama-3
-        ]
-
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             do {
                 let orcaStream = try self.orca!.streamOpen()
@@ -237,10 +241,6 @@ You can download directly to your device or airdrop from a Mac.
                         completionQueue.sync {
                             token = completionArray[0]
                             completionArray.removeFirst()
-                        }
-
-                        if stopPhrases.contains(token) {
-                            continue
                         }
 
                         let pcm = try orcaStream.synthesize(text: token)
@@ -288,12 +288,12 @@ You can download directly to your device or airdrop from a Mac.
                 if keyword != -1 {
                     DispatchQueue.main.async { [self] in
                         statusText = "Listening..."
-                        chatText.append(Message(speaker: "You", msg: ""))
+                        chatText.append(Message(speaker: "You:", msg: ""))
                         chatState = .STT
                     }
                 }
             }
-            if chatState == .STT {
+            else if chatState == .STT {
                 var (transcription, endpoint) = try self.cheetah!.process(frame)
                 if endpoint {
                     transcription += "\(try self.cheetah!.flush())"

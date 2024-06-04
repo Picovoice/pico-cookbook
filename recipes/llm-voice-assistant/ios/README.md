@@ -41,7 +41,7 @@ pod install
 
 5. Press the `Load Model` button and load the model file from your device's storage.
 
-6. Say "picovoice", then speak to the voice assistant!
+6. Say "Picovoice", then speak to the voice assistant!
 
 ## Custom Wake Word
 
