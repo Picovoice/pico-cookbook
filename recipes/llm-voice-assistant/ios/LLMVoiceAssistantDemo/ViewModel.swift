@@ -178,8 +178,8 @@ You can download directly to your device or airdrop from a Mac.
 
     private func streamCallback(completion: String) {
         DispatchQueue.main.async { [self] in
-            if self.stopPhrases.contains(token) {
-                continue
+            if self.stopPhrases.contains(completion) {
+                return
             }
 
             completionQueue.async {
