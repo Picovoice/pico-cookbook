@@ -35,7 +35,7 @@ pod install
 
 2. Open the `PicoLLMCompletionDemo.xcworkspace` in XCode
 
-3. Replace `let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"` in the file [VieModel.swift](./PicoLLMVoiceAssistantDemo/ViewModel.swift) with your AccessKey obtained from [Picovoice Console](https://console.picovoice.ai/).
+3. Replace `let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"` in the file [VieModel.swift](./LLMVoiceAssistantDemo/ViewModel.swift) with your AccessKey obtained from [Picovoice Console](https://console.picovoice.ai/).
 
 4. Build and run the project on your device.
 
@@ -47,5 +47,5 @@ pod install
 
 The demo's default wake phrase is `Picovoice`.
 You can generate your custom (branded) wake word using Picovoice Console by following [Porcupine Wake Word documentation (https://picovoice.ai/docs/porcupine/).
-Once you have the model trained, add it to the [resources](./PicoLLMVoiceAssistantDemo/resources) directory
-and include it as an argument to the `Porcupine` initialization in [VieModel.swift](./PicoLLMVoiceAssistantDemo/ViewModel.swift)
+Once you have the model trained, add it to the [resources](./LLMVoiceAssistantDemo/resources) directory
+and include it as an argument to the `Porcupine` initialization in [VieModel.swift](./LLMVoiceAssistantDemo/ViewModel.swift)
