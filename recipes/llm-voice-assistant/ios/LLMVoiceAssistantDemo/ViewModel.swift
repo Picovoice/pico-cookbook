@@ -173,7 +173,7 @@ You can download directly to your device or airdrop from a Mac.
         "</s>",  // Llama-2, Mistral, and Mixtral
         "<end_of_turn>",  // Gemma
         "<|endoftext|>",  // Phi-2
-        "<|eot_id|>",  // Llama-3
+        "<|eot_id|>"  // Llama-3
     ]
 
     private func streamCallback(completion: String) {
@@ -248,12 +248,12 @@ You can download directly to your device or airdrop from a Mac.
                             if warmup {
                                 pcmBuffer.append(contentsOf: pcm!)
                                 if pcmBuffer.count >= (1 * orca!.sampleRate!) {
-                                    audioStream!.playStreamPCM(pcmBuffer, completion: {isPlaying in })
+                                    audioStream!.playStreamPCM(pcmBuffer, completion: {_ in })
                                     pcmBuffer.removeAll()
                                     warmup = false
                                 }
                             } else {
-                                audioStream!.playStreamPCM(pcm!, completion: {isPlaying in })
+                                audioStream!.playStreamPCM(pcm!, completion: {_ in })
                             }
                         }
                     }
@@ -261,7 +261,7 @@ You can download directly to your device or airdrop from a Mac.
 
                 let pcm = try orcaStream.flush()
                 if pcm != nil {
-                    audioStream!.playStreamPCM(pcm!, completion: {isPlaying in })
+                    audioStream!.playStreamPCM(pcm!, completion: {_ in })
                 }
 
                 orcaStream.close()
@@ -292,8 +292,7 @@ You can download directly to your device or airdrop from a Mac.
                         chatState = .STT
                     }
                 }
-            }
-            else if chatState == .STT {
+            } else if chatState == .STT {
                 var (transcription, endpoint) = try self.cheetah!.process(frame)
                 if endpoint {
                     transcription += "\(try self.cheetah!.flush())"
