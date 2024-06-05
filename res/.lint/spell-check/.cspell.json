@@ -13,6 +13,18 @@
   "ignorePaths": [
     "**/__pycache__/**",
 
+    // ios
+    "../../../recipes/llm-voice-assistant/ios/PicoLLMVoiceAssistantDemo/resources/**/*",
+    "**/*.xcconfig",
+    "**/*.podspec",
+    "**/Podfile",
+    "**/*.plist",
+    "**/contents.xcworkspacedata",
+    "**/*.storyboard",
+    "**/*.pbxproj",
+    "**/*.xcscheme",
+    "**/*.m",
+
     // javascript
     "**/package.json",
     "**/packages-lock.json",

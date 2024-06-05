@@ -15,3 +15,5 @@ pvrecorder
 samplerate
 sounddevice
 tock
+WAKEWORD
+xcworkspace
