@@ -1,6 +1,6 @@
 ## See It In Action!
 
-[![LLM VA in Action](https://img.youtube.com/vi/ <TODO> /0.jpg)](https://www.youtube.com/ <TODO>)
+[![LLM VA in Action](https://img.youtube.com/vi/5JkDVbkedBU/0.jpg)](https://www.youtube.com/watch?v=5JkDVbkedBU)
 
 ## Compatibility
 
