@@ -188,7 +188,6 @@ public class MainActivity extends AppCompatActivity {
                         ResourcesCompat.getDrawable(getResources(),
                                 R.drawable.clear_button_disabled,
                                 null));
-                statusText.setText("");
             });
 
             try {
@@ -472,8 +471,17 @@ public class MainActivity extends AppCompatActivity {
                 orcaProfiler.tock(flushedPcm);
 
                 if (flushedPcm != null && flushedPcm.length > 0) {
-                    pcmQueue.add(flushedPcm);
-                    pcmReadyLatch.countDown();
+                    if (warmupPcm != null) {
+                        int offset = warmupPcm.length;
+                        warmupPcm = Arrays.copyOf(warmupPcm, offset + flushedPcm.length);
+                        System.arraycopy(flushedPcm, 0, warmupPcm, offset, flushedPcm.length);
+                        pcmQueue.add(warmupPcm);
+                        pcmReadyLatch.countDown();
+                    }
+                    else {
+                        pcmQueue.add(flushedPcm);
+                        pcmReadyLatch.countDown();
+                    }
                 }
                 Log.i("PICOVOICE", String.format("RTF: %.2f", orcaProfiler.rtf()));
             } catch (OrcaException e) {
