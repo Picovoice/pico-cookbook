@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE suppressions PUBLIC
+        "-//Puppy Crawl//DTD Suppressions 1.1//EN"
+        "http://www.puppycrawl.com/dtds/suppressions_1_1.dtd">
+
+<suppressions>
+    <suppress files="Utils\.java" checks="LocalVariableName"/>
+    <suppress files=".*\.java" checks="MissingJavadocType"/>
+    <suppress files=".*\.java" checks="MissingJavadocMethod"/>
+    <suppress files=".*(Test|Exception|Error|demo).*\.java" checks="OneTopLevelClass"/>
+    <suppress files=".*(Test).*\.java" checks="MethodName"/>
+    <suppress files=".*generated-sources.*" checks="[a-zA-Z0-9]*"/>
+    <suppress files=".*build.*" checks="[a-zA-Z0-9]*"/>
+    <suppress files=".*" checks="CustomImportOrder"/>
+    <suppress files=".*\/testapp\/.*\.java" checks="MissingJavadocMethod"/>
+</suppressions>

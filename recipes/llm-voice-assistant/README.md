@@ -12,5 +12,6 @@ Hands-free voice assistant powered by a large language model (LLM), all voice re
 ## Implementations
 
 - [Python](python)
-- [Web](web)
+- [Android](android)
 - [iOS](ios)
+- [Web](web)
