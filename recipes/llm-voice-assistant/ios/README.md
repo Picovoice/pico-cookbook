@@ -33,7 +33,7 @@ Copy your model file to the device.
 pod install
 ```
 
-2. Open the `PicoLLMCompletionDemo.xcworkspace` in XCode
+2. Open the `LLMVoiceAssistantDemo.xcworkspace` in XCode
 
 3. Replace `let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"` in the file [VieModel.swift](./LLMVoiceAssistantDemo/ViewModel.swift) with your AccessKey obtained from [Picovoice Console](https://console.picovoice.ai/).
 
