@@ -87,18 +87,21 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
                 delay_sec[0] = time.perf_counter() - utterance_end_sec
 
             pcm_deque.append(pcm_chunk)
-            if warmup[0]:
-                if len(list(chain.from_iterable(pcm_deque))) < int(warmup_sec * orca.sample_rate):
-                    return
-                else:
-                    warmup[0] = False
 
-            if len(pcm_deque) > 0:
-                pcm_chunk = pcm_deque.popleft()
+        if warmup[0]:
+            if len(list(chain.from_iterable(pcm_deque))) < int(warmup_sec * orca.sample_rate):
+                return
+            else:
+                warmup[0] = False
 
+        if len(pcm_deque) > 0:
+            pcm_chunk = pcm_deque.popleft()
+
+        if pcm_chunk is not None:
             written = speaker.write(pcm_chunk)
-            if written > len(pcm_chunk):
+            if written < len(pcm_chunk):
                 pcm_deque.appendleft(pcm_chunk[written:])
+
 
     while True:
         if synthesize and len(texts) > 0:
