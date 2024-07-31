@@ -95,7 +95,8 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
                 warmup[0] = False
 
         if len(pcm_deque) > 0:
-            pcm_chunk = pcm_deque.popleft()
+            pcm_chunk = list(chain.from_iterable(pcm_deque))
+            pcm_deque.clear()
 
         if pcm_chunk is not None:
             written = speaker.write(pcm_chunk)
