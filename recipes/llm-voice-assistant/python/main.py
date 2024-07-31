@@ -89,6 +89,8 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
             pcm_deque.append(pcm_chunk)
             if warmup[0] and len(list(chain.from_iterable(pcm_deque))) < int(warmup_sec * orca.sample_rate):
                 return
+            else:
+                warmup[0] = False
 
             if len(pcm_deque) > 0:
                 pcm_chunk = pcm_deque.popleft()
