@@ -9,6 +9,7 @@ from typing import (
     Optional,
     Sequence,
 )
+from collections import deque
 
 import picollm
 import pvcheetah
@@ -59,13 +60,13 @@ class TPSProfiler(object):
 def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec: int = 0.03) -> None:
     # noinspection PyUnresolvedReferences
     import numpy as np
-    from sounddevice import OutputStream
+    from pvspeaker import PvSpeaker
 
     orca = pvorca.create(access_key=access_key)
     orca_stream = orca.stream_open()
 
     texts = list()
-    pcm_buffer = list()
+    pcm_deque = deque()
     warmup = [False]
     synthesize = False
     flush = False
@@ -73,58 +74,63 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
     utterance_end_sec = 0.
     delay_sec = [-1.]
 
-    def callback(data, _, __, ___) -> None:
-        if warmup[0]:
-            if len(pcm_buffer) < int(warmup_sec * orca.sample_rate):
-                data[:, 0] = 0
-                return
-            else:
-                warmup[0] = False
+    # warmup: audio_wait_chunks, but in seconds
+    # stream_frame_sec: time to sleep between each orca_worker loop
+    # utterance_end_sec: time when user stopped talking
+    # delay_sec: delay between time when user stopped talking and orca generate first pcm
 
-        if len(pcm_buffer) < data.shape[0]:
-            pcm_buffer.extend([0] * (data.shape[0] - len(pcm_buffer)))
-
-        data[:, 0] = pcm_buffer[:data.shape[0]]
-        del pcm_buffer[:data.shape[0]]
-
-    stream = OutputStream(
-        samplerate=orca.sample_rate,
-        blocksize=int(stream_frame_sec * orca.sample_rate),
-        channels=1,
-        dtype='int16',
-        callback=callback)
+    speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16, buffer_size_secs=20)
 
     connection.send({'version': orca.version})
 
     orca_profiler = RTFProfiler(orca.sample_rate)
 
-    def buffer_pcm(x: Optional[Sequence[int]]) -> None:
-        if x is not None:
-            pcm_buffer.extend(x)
+    def merge_pcm_chunks(remaining_pcm: deque[Sequence[int]]) -> Sequence[int]:
+        combined_pcm = []
+
+        for pcm_chunk in remaining_pcm:
+            for sample in pcm_chunk:
+                combined_pcm.append(sample)
+
+        return combined_pcm
+
+    def buffer_and_play(pcm_chunk: Optional[Sequence[int]]) -> None:
+        if pcm_chunk is not None:
             if delay_sec[0] == -1:
                 delay_sec[0] = time.perf_counter() - utterance_end_sec
+
+            pcm_deque.append(pcm_chunk)
+            if warmup[0] and len(merge_pcm_chunks(pcm_deque)) < int(warmup_sec * orca.sample_rate):
+                return
+
+            if len(pcm_deque) > 0:
+                pcm_chunk = pcm_deque.popleft()
+
+            written = speaker.write(pcm_chunk)
+            if written > len(pcm_chunk):
+                pcm_deque.appendleft(pcm_chunk[written:])
 
     while True:
         if synthesize and len(texts) > 0:
             orca_profiler.tick()
             pcm = orca_stream.synthesize(texts.pop(0))
             orca_profiler.tock(pcm)
-            buffer_pcm(pcm)
+            buffer_and_play(pcm)
         elif flush:
             while len(texts) > 0:
                 orca_profiler.tick()
                 pcm = orca_stream.synthesize(texts.pop(0))
                 orca_profiler.tock(pcm)
-                buffer_pcm(pcm)
+                buffer_and_play(pcm)
             orca_profiler.tick()
             pcm = orca_stream.flush()
             orca_profiler.tock(pcm)
-            buffer_pcm(pcm)
+            buffer_and_play(pcm)
             connection.send({'rtf': orca_profiler.rtf(), 'delay': delay_sec[0]})
             flush = False
-            while len(pcm_buffer) > 0:
-                time.sleep(stream_frame_sec)
-            stream.stop()
+            speaker.flush(merge_pcm_chunks(pcm_deque))
+            pcm_deque.clear()
+            speaker.stop()
             delay_sec[0] = -1
             connection.send({'done': True})
         elif close:
@@ -136,8 +142,8 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
             message = connection.recv()
             if message['command'] == 'synthesize':
                 texts.append(message['text'])
-                if not stream.active:
-                    stream.start()
+                if not speaker.is_started:
+                    speaker.start()
                     warmup[0] = True
                 utterance_end_sec = message['utterance_end_sec']
                 synthesize = True
@@ -147,7 +153,8 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
             elif message['command'] == 'close':
                 close = True
 
-    stream.close()
+    speaker.close()
+    speaker.delete()
     orca_stream.close()
     orca.delete()
 
