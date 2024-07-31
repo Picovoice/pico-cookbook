@@ -10,6 +10,7 @@ from typing import (
     Sequence,
 )
 from collections import deque
+from itertools import chain
 
 import picollm
 import pvcheetah
@@ -74,25 +75,11 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
     utterance_end_sec = 0.
     delay_sec = [-1.]
 
-    # warmup: audio_wait_chunks, but in seconds
-    # stream_frame_sec: time to sleep between each orca_worker loop
-    # utterance_end_sec: time when user stopped talking
-    # delay_sec: delay between time when user stopped talking and orca generate first pcm
-
     speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16, buffer_size_secs=20)
 
     connection.send({'version': orca.version})
 
     orca_profiler = RTFProfiler(orca.sample_rate)
-
-    def merge_pcm_chunks(remaining_pcm: deque[Sequence[int]]) -> Sequence[int]:
-        combined_pcm = []
-
-        for pcm_chunk in remaining_pcm:
-            for sample in pcm_chunk:
-                combined_pcm.append(sample)
-
-        return combined_pcm
 
     def buffer_and_play(pcm_chunk: Optional[Sequence[int]]) -> None:
         if pcm_chunk is not None:
@@ -100,7 +87,7 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
                 delay_sec[0] = time.perf_counter() - utterance_end_sec
 
             pcm_deque.append(pcm_chunk)
-            if warmup[0] and len(merge_pcm_chunks(pcm_deque)) < int(warmup_sec * orca.sample_rate):
+            if warmup[0] and len(list(chain.from_iterable(pcm_deque))) < int(warmup_sec * orca.sample_rate):
                 return
 
             if len(pcm_deque) > 0:
@@ -128,7 +115,7 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
             buffer_and_play(pcm)
             connection.send({'rtf': orca_profiler.rtf(), 'delay': delay_sec[0]})
             flush = False
-            speaker.flush(merge_pcm_chunks(pcm_deque))
+            speaker.flush(list(chain.from_iterable(pcm_deque)))
             pcm_deque.clear()
             speaker.stop()
             delay_sec[0] = -1
