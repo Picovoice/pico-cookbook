@@ -81,13 +81,14 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
 
     orca_profiler = RTFProfiler(orca.sample_rate)
 
-    def buffer_and_play(pcm_chunk: Optional[Sequence[int]]) -> None:
+    def buffer_pcm(pcm_chunk: Optional[Sequence[int]]) -> None:
         if pcm_chunk is not None:
             if delay_sec[0] == -1:
                 delay_sec[0] = time.perf_counter() - utterance_end_sec
 
             pcm_deque.append(pcm_chunk)
 
+    def play_buffered_pcm() -> None:
         if warmup[0]:
             if len(list(chain.from_iterable(pcm_deque))) < int(warmup_sec * orca.sample_rate):
                 return
@@ -98,7 +99,6 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
             pcm_chunk = list(chain.from_iterable(pcm_deque))
             pcm_deque.clear()
 
-        if pcm_chunk is not None:
             written = speaker.write(pcm_chunk)
             if written < len(pcm_chunk):
                 pcm_deque.appendleft(pcm_chunk[written:])
@@ -109,26 +109,22 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
             orca_profiler.tick()
             pcm = orca_stream.synthesize(texts.pop(0))
             orca_profiler.tock(pcm)
-            buffer_and_play(pcm)
+            buffer_pcm(pcm)
+            play_buffered_pcm()
         elif flush:
             while len(texts) > 0:
                 orca_profiler.tick()
                 pcm = orca_stream.synthesize(texts.pop(0))
                 orca_profiler.tock(pcm)
-                buffer_and_play(pcm)
+                buffer_pcm(pcm)
+                play_buffered_pcm()
             orca_profiler.tick()
             pcm = orca_stream.flush()
             orca_profiler.tock(pcm)
-            pcm_deque.append(pcm)
+            buffer_pcm(pcm)
+            play_buffered_pcm()
             connection.send({'rtf': orca_profiler.rtf(), 'delay': delay_sec[0]})
             flush = False
-            warmup[0] = False
-            # TODO: can remove this write call after pvspeaker api update
-            first_pcm_chunk = pcm_deque.popleft()
-            written = speaker.write(first_pcm_chunk)
-            if written < len(first_pcm_chunk):
-                pcm_deque.appendleft(first_pcm_chunk[written:])
-            # TODO: can remove this write call after pvspeaker api update
             speaker.flush(list(chain.from_iterable(pcm_deque)))
             pcm_deque.clear()
             speaker.stop()
@@ -154,7 +150,6 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
             elif message['command'] == 'close':
                 close = True
 
-    speaker.close()
     speaker.delete()
     orca_stream.close()
     orca.delete()
