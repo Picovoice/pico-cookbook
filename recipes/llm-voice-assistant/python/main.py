@@ -84,6 +84,7 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
     def buffer_pcm(pcm_chunk: Optional[Sequence[int]]) -> None:
         if pcm_chunk is not None:
             if delay_sec[0] == -1:
+                print(time.perf_counter(), utterance_end_sec)
                 delay_sec[0] = time.perf_counter() - utterance_end_sec
 
             pcm_deque.append(pcm_chunk)
