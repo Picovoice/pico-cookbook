@@ -4,5 +4,4 @@ pvcheetah==2.0.1
 pvorca==0.2.3
 pvporcupine==3.0.2
 pvrecorder==1.2.2
-pvspeaker==1.0.1
-sounddevice
+pvspeaker==1.0.2
