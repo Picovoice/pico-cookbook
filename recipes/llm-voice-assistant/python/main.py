@@ -103,7 +103,6 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
             if written < len(pcm_chunk):
                 pcm_deque.appendleft(pcm_chunk[written:])
 
-
     while True:
         if synthesize and len(texts) > 0:
             orca_profiler.tick()
