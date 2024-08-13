@@ -1,3 +1,4 @@
+appendleft
 Colour
 Compat
 dotdotdot
@@ -17,9 +18,9 @@ pvcheetah
 pvorca
 pvporcupine
 pvrecorder
+pvspeaker
 samplerate
 sdcard
-sounddevice
 Spannable
 tock
 tock
