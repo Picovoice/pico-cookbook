@@ -21,7 +21,6 @@ pvrecorder
 pvspeaker
 samplerate
 sdcard
-sounddevice
 Spannable
 tock
 tock
