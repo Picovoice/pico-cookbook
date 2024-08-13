@@ -1,6 +1,8 @@
 import signal
 import time
 from argparse import ArgumentParser
+from collections import deque
+from itertools import chain
 from multiprocessing import (
     Pipe,
     Process,
@@ -9,14 +11,13 @@ from typing import (
     Optional,
     Sequence,
 )
-from collections import deque
-from itertools import chain
 
 import picollm
 import pvcheetah
 import pvorca
 import pvporcupine
 from pvrecorder import PvRecorder
+from pvspeaker import PvSpeaker
 
 
 class RTFProfiler:
@@ -59,10 +60,6 @@ class TPSProfiler(object):
 
 
 def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec: int = 0.03) -> None:
-    # noinspection PyUnresolvedReferences
-    import numpy as np
-    from pvspeaker import PvSpeaker
-
     orca = pvorca.create(access_key=access_key)
     orca_stream = orca.stream_open()
 
