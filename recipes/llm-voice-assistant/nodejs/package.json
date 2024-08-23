@@ -1,0 +1,42 @@
+{
+  "name": "llm-voice-assistant",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "bin": {
+    "llm-voice-assistant": "./index.js"
+  },
+  "keywords": [
+    "Picovoice",
+    "generative ai",
+    "llm"
+  ],
+  "author": "Picovoice Inc.",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@picovoice/cheetah-node": "^2.0.2",
+    "@picovoice/orca-node": "^1.0.0",
+    "@picovoice/picollm-node": "=1.0.2",
+    "@picovoice/porcupine-node": "^3.0.3",
+    "@picovoice/pvrecorder-node": "^1.2.3",
+    "@picovoice/pvspeaker-node": "^1.0.0",
+    "commander": "^6.1.0"
+  },
+  "homepage": "https://picovoice.ai/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Picovoice/pico-cookbook.git",
+    "directory": "recipes/llm-voice-assistant/nodejs"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "cpu": [
+    "!ia32",
+    "!mips",
+    "!ppc",
+    "!ppc64"
+  ]
+}
