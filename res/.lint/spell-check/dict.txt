@@ -8,6 +8,8 @@ iife
 llmvoiceassistant
 logcat
 logit
+logits
+Millisec
 mixtral
 numpy
 pico
