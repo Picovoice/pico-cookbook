@@ -220,9 +220,9 @@ async function llmVoiceAssistant() {
         porcupineProfiler.tock(pcm);
         if (isWakeWordDetected) {
           if (profile) {
-            process.stdout.write(`\n[Porcupine RTF: ${porcupineProfiler.rtf()}]\n`);
+            process.stdout.write(`\n[Porcupine RTF: ${porcupineProfiler.rtf()}]`);
           }
-          process.stdout.write('\n$ Wake word detected, utter your request or question ...');
+          process.stdout.write('\n\n$ Wake word detected, utter your request or question ...');
           process.stdout.write('\n\nUser > ');
         }
       } else if (!isEndpointReached) {
@@ -261,7 +261,7 @@ async function llmVoiceAssistant() {
         let completion = '';
         let isStartedPlaying = false;
 
-        process.stdout.write(`\n\nLLM >`);
+        process.stdout.write(`\nLLM >`);
         const res = await pllm.generate(
           dialog.prompt(),
           {
@@ -289,8 +289,10 @@ async function llmVoiceAssistant() {
         orcaProfiler.tick();
         const flushedPcm = orcaStream.flush();
         orcaProfiler.tock(flushedPcm);
-        process.stdout.write(`\n[Orca RTF: ${orcaProfiler.rtf()}]`);
-        process.stdout.write(`\n[Delay: ${delaySec.toFixed(3)} sec]`);
+        if (profile) {
+          process.stdout.write(`\n[Orca RTF: ${orcaProfiler.rtf()}]`);
+          process.stdout.write(`\n[Delay: ${delaySec.toFixed(3)} sec]`);
+        }
         if (flushedPcm !== null) {
           pcmBuffer.push(...flushedPcm);
         }
