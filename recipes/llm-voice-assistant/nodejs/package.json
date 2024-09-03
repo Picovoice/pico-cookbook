@@ -19,7 +19,7 @@
     "@picovoice/picollm-node": "=1.0.2",
     "@picovoice/porcupine-node": "^3.0.3",
     "@picovoice/pvrecorder-node": "^1.2.3",
-    "@picovoice/pvspeaker-node": "^1.0.0",
+    "@picovoice/pvspeaker-node": "^1.0.1",
     "@typescript-eslint/eslint-plugin": "^5.19.0",
     "@typescript-eslint/parser": "^5.19.0",
     "commander": "^6.1.0",
