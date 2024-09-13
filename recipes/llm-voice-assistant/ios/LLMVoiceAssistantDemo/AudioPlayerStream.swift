@@ -17,10 +17,11 @@ class AudioPlayerStream {
 
     private var pcmBuffers = [AVAudioPCMBuffer]()
     public var isPlaying = false
+    public var isStopped = false
 
     init(sampleRate: Double) throws {
         let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.playback, mode: .default)
+        try audioSession.setCategory(.playAndRecord, options: [.mixWithOthers, .allowBluetooth])
         try audioSession.setActive(true)
 
         let format = AVAudioFormat(
@@ -38,7 +39,10 @@ class AudioPlayerStream {
         try engine.start()
     }
 
-    func playStreamPCM(_ pcmData: [Int16], completion: @escaping (Bool) -> Void) {
+    func playStreamPCM(_ pcmData: [Int16]) {
+        if isStopped {
+            return
+        }
         let audioBuffer = AVAudioPCMBuffer(
             pcmFormat: playerNode.outputFormat(forBus: 0), frameCapacity: AVAudioFrameCount(pcmData.count))!
 
@@ -57,31 +61,35 @@ class AudioPlayerStream {
 
         pcmBuffers.append(audioBuffer)
         if !isPlaying {
-            playNextPCMBuffer(completion: completion)
-        } else {
-            completion(true)
+            playNextPCMBuffer()
         }
     }
 
-    private func playNextPCMBuffer(completion: @escaping (Bool) -> Void) {
+    private func playNextPCMBuffer() {
+        if isStopped {
+            return
+        }
         guard let pcmData = pcmBuffers.first else {
             isPlaying = false
-            completion(false)
             return
         }
         pcmBuffers.removeFirst()
 
         playerNode.scheduleBuffer(pcmData) { [weak self] in
-            self?.playNextPCMBuffer(completion: completion)
+            self?.playNextPCMBuffer()
         }
 
         playerNode.play()
         isPlaying = true
-        completion(true)
+    }
+
+    func resetAudioPlayer() {
+        isStopped = false
+        isPlaying = false
     }
 
     func stopStreamPCM() {
         playerNode.stop()
-        engine.stop()
+        isStopped = true
     }
 }
