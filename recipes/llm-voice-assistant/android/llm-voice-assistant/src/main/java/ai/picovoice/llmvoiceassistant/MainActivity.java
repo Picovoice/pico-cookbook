@@ -115,6 +115,8 @@ public class MainActivity extends AppCompatActivity {
     private final ExecutorService ttsSynthesizeExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService ttsPlaybackExecutor = Executors.newSingleThreadExecutor();
 
+    private AudioTrack ttsOutput;
+
     private UIState currentState = UIState.INIT;
 
     private StringBuilder llmPromptText = new StringBuilder();
@@ -296,6 +298,15 @@ public class MainActivity extends AppCompatActivity {
             } catch (PorcupineException e) {
                 onEngineProcessError(e.getMessage());
             }
+        } else if (currentState == UIState.LLM_TTS) {
+            try {
+                int keywordIndex = porcupine.process(frame);
+                if (keywordIndex == 0) {
+                    interrupt();
+                }
+            } catch (PorcupineException e) {
+                onEngineProcessError(e.getMessage());
+            }
         } else if (currentState == UIState.STT) {
             try {
                 CheetahTranscript result = cheetah.process(frame);
@@ -317,11 +328,9 @@ public class MainActivity extends AppCompatActivity {
                         chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
                     });
 
-                    voiceProcessor.stop();
-
                     runLLM(llmPromptText.toString());
                 }
-            } catch (CheetahException | VoiceProcessorException e) {
+            } catch (CheetahException e) {
                 onEngineProcessError(e.getMessage());
             }
         }
@@ -375,7 +384,7 @@ public class MainActivity extends AppCompatActivity {
                                             }
                                         }
 
-                                        if (!containsStopPhrase) {
+                                        if (!containsStopPhrase && currentState == UIState.LLM_TTS) {
                                             tokenQueue.add(token);
                                             tokensReadyLatch.countDown();
 
@@ -395,7 +404,6 @@ public class MainActivity extends AppCompatActivity {
 
                 isQueueingTokens.set(false);
 
-                updateUIState(UIState.WAKE_WORD);
                 mainHandler.post(() -> {
                     clearTextButton.setEnabled(true);
                     clearTextButton.setImageDrawable(
@@ -404,8 +412,13 @@ public class MainActivity extends AppCompatActivity {
                                     null));
                     chatTextBuilder.append("\n\n");
                 });
+                if (finalCompletion.getEndpoint() == PicoLLMCompletion.Endpoint.INTERRUPTED) {
+                    llmPromptText = new StringBuilder();
+                    updateUIState(UIState.STT);
+                } else {
+                    updateUIState(UIState.WAKE_WORD);
+                }
 
-                startWakeWordListening();
             } catch (PicoLLMException e) {
                 onEngineProcessError(e.getMessage());
             }
@@ -494,7 +507,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         ttsPlaybackExecutor.submit(() -> {
-            AudioTrack ttsOutput;
             try {
                 ttsOutput = new AudioTrack(
                         AudioManager.STREAM_MUSIC,
@@ -522,7 +534,7 @@ public class MainActivity extends AppCompatActivity {
 
             while (isQueueingPcm.get() || !pcmQueue.isEmpty()) {
                 short[] pcm = pcmQueue.poll();
-                if (pcm != null && pcm.length > 0) {
+                if (pcm != null && pcm.length > 0 && currentState == UIState.LLM_TTS) {
                     ttsOutput.write(pcm, 0, pcm.length);
                 }
             }
@@ -530,6 +542,18 @@ public class MainActivity extends AppCompatActivity {
             ttsOutput.stop();
             ttsOutput.release();
         });
+    }
+
+    private void interrupt() {
+        try {
+            picollm.interrupt();
+            if (ttsOutput != null) {
+                ttsOutput.stop();
+                ttsOutput.release();
+            }
+        } catch (PicoLLMException e) {
+            onEngineProcessError(e.getMessage());
+        }
     }
 
     private File extractModelFile(Uri uri) {
