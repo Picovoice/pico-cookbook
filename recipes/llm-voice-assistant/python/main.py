@@ -1,4 +1,5 @@
 import signal
+import concurrent.futures
 import time
 from argparse import ArgumentParser
 from collections import deque
@@ -69,6 +70,7 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
     synthesize = False
     flush = False
     close = False
+    interrupt = False
     utterance_end_sec = 0.
     delay_sec = [-1.]
 
@@ -128,6 +130,16 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
             connection.send({'done': True})
         elif close:
             break
+        elif interrupt:
+            orca_profiler.tick()
+            pcm = orca_stream.flush()
+            orca_profiler.tock(pcm)
+            connection.send({'rtf': orca_profiler.rtf(), 'delay': delay_sec[0]})
+            interrupt = False
+            pcm_deque.clear()
+            speaker.stop()
+            delay_sec[0] = -1
+            connection.send({'done': True})
         else:
             time.sleep(stream_frame_sec)
 
@@ -145,6 +157,8 @@ def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec
                 flush = True
             elif message['command'] == 'close':
                 close = True
+            elif message['command'] == 'interrupt':
+                interrupt = True
 
     speaker.delete()
     orca_stream.close()
@@ -269,10 +283,70 @@ def main() -> None:
 
     signal.signal(signal.SIGINT, handler)
 
+    def generate_task(dialog, user_request, utterance_end_sec, main_connection):
+        short_answers_instruction = \
+            "You are a voice assistant and your answers are very short but informative"
+        dialog.add_human_request(
+            f"{short_answers_instruction}. {user_request}" if short_answers else user_request)
+
+        picollm_profiler = TPSProfiler()
+
+        stop_phrases = {
+            '</s>',  # Llama-2, Mistral, and Mixtral
+            '<end_of_turn>',  # Gemma
+            '<|endoftext|>',  # Phi-2
+            '<|eot_id|>',  # Llama-3
+        }
+
+        completion = ['']
+
+        def llm_callback(text: str) -> None:
+            picollm_profiler.tock()
+            completion[0] += text
+            if not any(x in completion[0] for x in stop_phrases):
+                main_connection.send({
+                    'command': 'synthesize',
+                    'text': text.replace('\n', ' . '),
+                    'utterance_end_sec': utterance_end_sec})
+                print(text, end='', flush=True)
+
+        print("\nLLM (say `Picovoice` to interrupt) > ", end='', flush=True)
+        res = pllm.generate(
+            prompt=dialog.prompt(),
+            completion_token_limit=picollm_completion_token_limit,
+            stop_phrases=stop_phrases,
+            presence_penalty=picollm_presence_penalty,
+            frequency_penalty=picollm_frequency_penalty,
+            temperature=picollm_temperature,
+            top_p=picollm_top_p,
+            stream_callback=llm_callback)
+
+        if res.endpoint == picollm.PicoLLMEndpoints.INTERRUPTED:
+            main_connection.send({'command': 'interrupt'})
+        else:
+            main_connection.send({'command': 'flush'})
+
+        print('\n')
+        dialog.add_llm_response(res.completion)
+
+        if profile:
+            print(f"[picoLLM TPS: {picollm_profiler.tps():.2f}]")
+
+        while not main_connection.poll():
+            time.sleep(0.01)
+        message = main_connection.recv()
+        if profile:
+            print(f"[Orca RTF: {message['rtf']:.2f}]")
+            print(f"[Delay: {message['delay']:.2f} sec]")
+        while not main_connection.poll():
+            time.sleep(0.01)
+        assert main_connection.recv()['done']
+
+        return res
+
     wake_word_detected = False
     user_request = ''
     endpoint_reached = False
-    utterance_end_sec = 0
 
     porcupine_profiler = RTFProfiler(porcupine.sample_rate)
     cheetah_profiler = RTFProfiler(cheetah.sample_rate)
@@ -304,66 +378,37 @@ def main() -> None:
                     remaining_transcript = cheetah.flush()
                     cheetah_profiler.tock()
                     user_request += remaining_transcript
-                    print(remaining_transcript, end='\n\n')
+                    print(remaining_transcript, end='\n')
                     if profile:
                         print(f"[Cheetah RTF: {cheetah_profiler.rtf():.3f}]")
-            else:
-                short_answers_instruction = \
-                    "You are a voice assistant and your answers are very short but informative"
-                dialog.add_human_request(
-                    f"{short_answers_instruction}. {user_request}" if short_answers else user_request)
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        llm_future = executor.submit(
+                            generate_task,
+                            dialog,
+                            user_request,
+                            utterance_end_sec,
+                            main_connection)
 
-                picollm_profiler = TPSProfiler()
+                        while not llm_future.done():
+                            pcm = mic.read()
+                            porcupine_profiler.tick()
+                            wake_word_detected = porcupine.process(pcm) == 0
+                            porcupine_profiler.tock(pcm)
+                            if wake_word_detected:
+                                pllm.interrupt()
+                                break
 
-                stop_phrases = {
-                    '</s>',  # Llama-2, Mistral, and Mixtral
-                    '<end_of_turn>',  # Gemma
-                    '<|endoftext|>',  # Phi-2
-                    '<|eot_id|>',  # Llama-3
-                }
+                        llm_result = llm_future.result()
+                        if llm_result.endpoint == picollm.PicoLLMEndpoints.INTERRUPTED:
+                            wake_word_detected = True
+                            print("$ Wake word detected, utter your request or question ...\n")
+                            print("User > ", end='', flush=True)
+                        else:
+                            wake_word_detected = False
+                            print(f"$ Say {'`Picovoice`' if keyword_model_path is None else 'the wake word'} ...")
+                        user_request = ''
+                        endpoint_reached = False
 
-                completion = ['']
-
-                def llm_callback(text: str) -> None:
-                    picollm_profiler.tock()
-                    completion[0] += text
-                    if not any(x in completion[0] for x in stop_phrases):
-                        main_connection.send({
-                            'command': 'synthesize',
-                            'text': text.replace('\n', ' . '),
-                            'utterance_end_sec': utterance_end_sec})
-                        print(text, end='', flush=True)
-
-                print("\nLLM > ", end='', flush=True)
-                res = pllm.generate(
-                    prompt=dialog.prompt(),
-                    completion_token_limit=picollm_completion_token_limit,
-                    stop_phrases=stop_phrases,
-                    presence_penalty=picollm_presence_penalty,
-                    frequency_penalty=picollm_frequency_penalty,
-                    temperature=picollm_temperature,
-                    top_p=picollm_top_p,
-                    stream_callback=llm_callback)
-                main_connection.send({'command': 'flush'})
-                print('\n')
-                dialog.add_llm_response(res.completion)
-                if profile:
-                    print(f"[picoLLM TPS: {picollm_profiler.tps():.2f}]")
-
-                while not main_connection.poll():
-                    time.sleep(0.01)
-                message = main_connection.recv()
-                if profile:
-                    print(f"[Orca RTF: {message['rtf']:.2f}]")
-                    print(f"[Delay: {message['delay']:.2f} sec]")
-                while not main_connection.poll():
-                    time.sleep(0.01)
-                assert main_connection.recv()['done']
-
-                wake_word_detected = False
-                user_request = ''
-                endpoint_reached = False
-                print(f"\n$ Say {'`Picovoice`' if keyword_model_path is None else 'the wake word'} ...")
     finally:
         main_connection.send({'command': 'close'})
         mic.delete()

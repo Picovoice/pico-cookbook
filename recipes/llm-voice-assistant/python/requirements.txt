@@ -1,4 +1,4 @@
-picollm==1.0.0
+../../../../picollm/binding/python/dist/picollm-1.1.0-py3-none-any.whl
 pvcheetah==2.0.1
 pvorca==1.0.0
 pvporcupine==3.0.2
