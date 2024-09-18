@@ -283,7 +283,7 @@ def main() -> None:
 
     signal.signal(signal.SIGINT, handler)
 
-    def generate_task(dialog, user_request, utterance_end_sec, main_connection):
+    def llm_task(dialog, user_request, utterance_end_sec, main_connection):
         short_answers_instruction = \
             "You are a voice assistant and your answers are very short but informative"
         dialog.add_human_request(
@@ -383,7 +383,7 @@ def main() -> None:
                         print(f"[Cheetah RTF: {cheetah_profiler.rtf():.3f}]")
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         llm_future = executor.submit(
-                            generate_task,
+                            llm_task,
                             dialog,
                             user_request,
                             utterance_end_sec,
