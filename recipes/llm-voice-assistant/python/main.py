@@ -252,24 +252,24 @@ def main() -> None:
         porcupine = pvporcupine.create(access_key=access_key, keywords=['picovoice'])
     else:
         porcupine = pvporcupine.create(access_key=access_key, keyword_paths=[keyword_model_path])
-    print(f"→ Porcupine V{porcupine.version}")
+    print(f"→ Porcupine v{porcupine.version}")
 
     cheetah = pvcheetah.create(
         access_key=access_key,
         endpoint_duration_sec=cheetah_endpoint_duration_sec,
         enable_automatic_punctuation=True)
-    print(f"→ Cheetah V{cheetah.version}")
+    print(f"→ Cheetah v{cheetah.version}")
 
     pllm = picollm.create(access_key=access_key, model_path=picollm_model_path, device=picollm_device)
     dialog = pllm.get_dialog()
-    print(f"→ picoLLM V{pllm.version} <{pllm.model}>")
+    print(f"→ picoLLM v{pllm.version} <{pllm.model}>")
 
     main_connection, orca_process_connection = Pipe()
     orca_process = Process(target=orca_worker, args=(access_key, orca_process_connection, orca_warmup_sec))
     orca_process.start()
     while not main_connection.poll():
         time.sleep(0.01)
-    print(f"→ Orca V{main_connection.recv()['version']}")
+    print(f"→ Orca v{main_connection.recv()['version']}")
 
     mic = PvRecorder(frame_length=porcupine.frame_length)
     mic.start()
