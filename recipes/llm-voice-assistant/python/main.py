@@ -311,7 +311,7 @@ def main() -> None:
                     'utterance_end_sec': utterance_end_sec})
                 print(text, end='', flush=True)
 
-        print("\nLLM (say `Picovoice` to interrupt) > ", end='', flush=True)
+        print(f"\nLLM (say {'`Picovoice`' if keyword_model_path is None else 'the wake word'} to interrupt) > ", end='', flush=True)
         res = pllm.generate(
             prompt=dialog.prompt(),
             completion_token_limit=picollm_completion_token_limit,
