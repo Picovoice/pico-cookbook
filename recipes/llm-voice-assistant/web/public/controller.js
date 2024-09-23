@@ -135,6 +135,7 @@ window.onload = () => {
           }
           await audioStream.waitPlayback();
 
+          audioStream.clear();
           if (!interrupted && !isDetected) {
             await Picovoice.start();
             message.innerText = "Say `Picovoice`"
