@@ -84,8 +84,10 @@
   resolved "https://registry.yarnpkg.com/@picovoice/orca-node/-/orca-node-1.0.0.tgz#812728c3183a914eff6b3189dfa958ef4d44f2f7"
   integrity sha512-YDTqJ5KsueBC4Nj0Zo287VF+/y7SRjXbOyHy8h66joJYPF0QNsz8oDCzbQO7hzymNbkFXd0crMPK+gQElvd83w==
 
-"@picovoice/picollm-node@../../../../picollm/binding/nodejs":
-  version "1.0.2"
+"@picovoice/picollm-node@1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@picovoice/picollm-node/-/picollm-node-1.1.0.tgz#8f97ea5e46428af8a902dba0f264724d66999a96"
+  integrity sha512-vyVdHT/xQBy8LM1VAfxULivNS9gPIypIpvXE6r29IRKw8+VZtVQSv8c2+2O4qLiXD5FUIz8ErOa0A3rhAZHwyQ==
 
 "@picovoice/porcupine-node@^3.0.3":
   version "3.0.3"
