@@ -96,6 +96,7 @@ public class MainActivity extends AppCompatActivity {
             "<end_of_turn>",    // Gemma
             "<|endoftext|>",    // Phi-2
             "<|eot_id|>",       // Llama-3
+            "<|end|>", "<|user|>", "<|assistant|>", // Phi-3
     };
 
     private final VoiceProcessor voiceProcessor = VoiceProcessor.getInstance();
