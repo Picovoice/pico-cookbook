@@ -196,7 +196,7 @@ async function llmVoiceAssistant() {
     '<end_of_turn>', // Gemma
     '<|endoftext|>', // Phi-2
     '<|eot_id|>', // Llama-3
-    '<|end|>', '<|user|>', '<|assistant|>'
+    '<|end|>', '<|user|>', '<|assistant|>' // Phi-3
   ];
 
   function handleLlmText(text, isStartedPlaying) {
