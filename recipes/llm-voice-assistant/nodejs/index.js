@@ -3,7 +3,7 @@
 
 const { Porcupine, BuiltinKeyword } = require('@picovoice/porcupine-node');
 const { Cheetah } = require('@picovoice/cheetah-node');
-const { PicoLLM } = require('@picovoice/picollm-node');
+const { PicoLLM, PicoLLMEndpoint } = require('@picovoice/picollm-node');
 const { Orca } = require('@picovoice/orca-node');
 const { PvRecorder } = require('@picovoice/pvrecorder-node');
 const { PvSpeaker } = require('@picovoice/pvspeaker-node');
@@ -156,16 +156,16 @@ async function llmVoiceAssistant() {
   const isShortAnswers = program.short_answers;
 
   let porcupine = new Porcupine(accessKey, [keywordModelPath ?? BuiltinKeyword.PICOVOICE], [0.5]);
-  process.stdout.write(`\n→ Porcupine V${porcupine.version}`);
+  process.stdout.write(`\n→ Porcupine v${porcupine.version}`);
 
   const cheetah = new Cheetah(accessKey, { endpointDurationSec, enableAutomaticPunctuation: true });
-  process.stdout.write(`\n→ Cheetah V${cheetah.version}`);
+  process.stdout.write(`\n→ Cheetah v${cheetah.version}`);
 
   const pllm = new PicoLLM(accessKey, picollmModelPath, { device: picollmDevice });
-  process.stdout.write(`\n→ picoLLM V${pllm.version} <${pllm.model}>`);
+  process.stdout.write(`\n→ picoLLM v${pllm.version} <${pllm.model}>`);
 
   const orca = new Orca(accessKey);
-  process.stdout.write(`\n→ Orca V${orca.version}`);
+  process.stdout.write(`\n→ Orca v${orca.version}`);
 
   const dialog = pllm.getDialog();
   const orcaStream = orca.streamOpen();
@@ -186,9 +186,25 @@ async function llmVoiceAssistant() {
   const orcaProfiler = new RTFProfiler(orca.sampleRate);
   let utteranceEndMillisec = 0;
   let delaySec = -1;
+  let picollmProfiler = new TPSProfiler();
+  let isListeningForInterrupt = false;
+  let isInterruptingGeneration = false;
+  let completion = '';
+  let isStartedPlaying = false;
+  const stopPhrases = [
+    '</s>', // Llama-2, Mistral, and Mixtral
+    '<end_of_turn>', // Gemma
+    '<|endoftext|>', // Phi-2
+    '<|eot_id|>', // Llama-3
+    '<|end|>', '<|user|>', '<|assistant|>' // Phi-3
+  ];
 
   function handleLlmText(text, isStartedPlaying) {
+    if (isInterruptingGeneration) {
+      return false;
+    }
     process.stdout.write(text);
+
     orcaProfiler.tick();
     const pcm = orcaStream.synthesize(text.replace('\n', ' . '));
     orcaProfiler.tock(pcm);
@@ -209,6 +225,61 @@ async function llmVoiceAssistant() {
     }
 
     return false;
+  }
+
+  function onGenerateComplete(res) {
+    dialog.addLLMResponse(res.completion);
+    completion = '';
+    if (profile) {
+      process.stdout.write(`\n[picoLLM TPS: ${picollmProfiler.tps()}]`);
+    }
+
+    orcaProfiler.tick();
+    const flushedPcm = orcaStream.flush();
+    orcaProfiler.tock(flushedPcm);
+    if (profile) {
+      process.stdout.write(`\n[Orca RTF: ${orcaProfiler.rtf()}]`);
+      process.stdout.write(`\n[Delay: ${delaySec.toFixed(3)} sec]`);
+    }
+
+    if (res.endpoint === PicoLLMEndpoint.INTERRUPTED) {
+      isWakeWordDetected = true;
+      process.stdout.write('\n\n$ Wake word detected, utter your request or question ...');
+      process.stdout.write('\n\nUser > ');
+    } else {
+      if (flushedPcm !== null) {
+        pcmBuffer.push(...flushedPcm);
+      }
+
+      const arrayBuffer = new Int16Array(pcmBuffer).buffer;
+      speaker.flush(arrayBuffer);
+
+      isWakeWordDetected = false;
+      process.stdout.write(`\n${ppnPrompt}\n`);
+    }
+    speaker.stop();
+    delaySec = -1;
+
+    isEndpointReached = false;
+    userRequest = '';
+    pcmBuffer = [];
+
+    isListeningForInterrupt = false;
+    isInterruptingGeneration = false;
+  }
+
+  function streamCallback(text) {
+    if (!isInterruptingGeneration) {
+      picollmProfiler.tock();
+      completion += text;
+      if (!stopPhrases.some(x => completion.includes(x))) {
+        isStartedPlaying = handleLlmText(text, isStartedPlaying);
+      }
+    }
+  }
+
+  function sleep(milliSec) {
+    return new Promise(resolve => setTimeout(resolve, milliSec));
   }
 
   try {
@@ -249,20 +320,13 @@ async function llmVoiceAssistant() {
 
         speaker.start();
 
-        const picollmProfiler = new TPSProfiler();
+        picollmProfiler = new TPSProfiler();
 
-        const stopPhrases = [
-          '</s>', // Llama-2, Mistral, and Mixtral
-          '<end_of_turn>', // Gemma
-          '<|endoftext|>', // Phi-2
-          '<|eot_id|>', // Llama-3
-        ];
+        completion = '';
+        isStartedPlaying = false;
 
-        let completion = '';
-        let isStartedPlaying = false;
-
-        process.stdout.write(`\nLLM >`);
-        const res = await pllm.generate(
+        process.stdout.write(`\nLLM (say ${keywordModelPath ? 'the wake word' : '`Picovoice`'} to interrupt) >`);
+        pllm.generate(
           dialog.prompt(),
           {
             completionTokenLimit: picollmCompletionTokenLimit,
@@ -271,42 +335,25 @@ async function llmVoiceAssistant() {
             frequencyPenalty: picollmFrequencyPenalty,
             temperature: picollmTemperature,
             topP: picollmTopP,
-            streamCallback: text => {
-              picollmProfiler.tock();
-              completion += text;
-              if (!stopPhrases.some(x => completion.includes(x))) {
-                isStartedPlaying = handleLlmText(text, isStartedPlaying);
-              }
-            },
+            streamCallback: streamCallback,
           },
-        );
+        ).then(onGenerateComplete);
 
-        dialog.addLLMResponse(res.completion);
-        if (profile) {
-          process.stdout.write(`\n[picoLLM TPS: ${picollmProfiler.tps()}]`);
+        isListeningForInterrupt = true;
+        isInterruptingGeneration = false;
+        while (isListeningForInterrupt) {
+          const pcm = await recorder.read();
+          porcupineProfiler.tick();
+          isWakeWordDetected = porcupine.process(pcm) === 0;
+          porcupineProfiler.tock(pcm);
+          if (isWakeWordDetected) {
+            isInterruptingGeneration = true;
+            pllm.interrupt();
+            while (isInterruptingGeneration) {
+              await sleep(500);
+            }
+          }
         }
-
-        orcaProfiler.tick();
-        const flushedPcm = orcaStream.flush();
-        orcaProfiler.tock(flushedPcm);
-        if (profile) {
-          process.stdout.write(`\n[Orca RTF: ${orcaProfiler.rtf()}]`);
-          process.stdout.write(`\n[Delay: ${delaySec.toFixed(3)} sec]`);
-        }
-        if (flushedPcm !== null) {
-          pcmBuffer.push(...flushedPcm);
-        }
-
-        const arrayBuffer = new Int16Array(pcmBuffer).buffer;
-        speaker.flush(arrayBuffer);
-        speaker.stop();
-        delaySec = -1;
-
-        isWakeWordDetected = false;
-        isEndpointReached = false;
-        userRequest = '';
-        pcmBuffer = [];
-        process.stdout.write(`\n${ppnPrompt}\n`);
       }
     }
   } finally {
