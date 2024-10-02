@@ -4,7 +4,7 @@ platform :ios, '16.0'
 target 'LLMVoiceAssistantDemo' do
   pod 'Porcupine-iOS', '~> 3.0.1'
   pod 'Cheetah-iOS', '~> 2.0.0'
-  pod 'picoLLM-iOS', '~> 1.0.0'
+  pod 'picoLLM-iOS', '~> 1.1.0'
   pod 'Orca-iOS', '~> 1.0.0'
   pod 'ios-voice-processor', '~> 1.1.0'
 end

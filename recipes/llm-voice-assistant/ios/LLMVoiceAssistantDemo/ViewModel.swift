@@ -192,7 +192,7 @@ You can download directly to your device or airdrop from a Mac.
 
     private func streamCallback(completion: String) {
         DispatchQueue.main.async { [self] in
-            if self.stopPhrases.contains(completion) {
+            if self.stopPhrases.contains(completion) || chatState != .GENERATE {
                 return
             }
 
@@ -222,23 +222,33 @@ You can download directly to your device or airdrop from a Mac.
                     streamCallback: streamCallback)
 
                 try dialog!.addLLMResponse(content: result.completion)
+
+                DispatchQueue.main.async { [self] in
+                    if result.endpoint == .interrupted {
+                        statusText = "Listening..."
+                        chatText.append(Message(speaker: "You:", msg: ""))
+                        chatState = .STT
+
+                        promptText = ""
+                        enableGenerateButton = true
+                    } else {
+                        statusText = ViewModel.statusTextDefault
+                        chatState = .WAKEWORD
+
+                        promptText = ""
+                        enableGenerateButton = true
+                    }
+                }
             } catch {
                 DispatchQueue.main.async { [self] in
                     errorMessage = "\(error.localizedDescription)"
                 }
             }
-
-            DispatchQueue.main.async { [self] in
-                statusText = ViewModel.statusTextDefault
-                chatState = .WAKEWORD
-
-                promptText = ""
-                enableGenerateButton = true
-            }
         }
 
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             do {
+                audioStream!.resetAudioPlayer()
                 let orcaStream = try self.orca!.streamOpen()
 
                 var warmup = true
@@ -262,38 +272,41 @@ You can download directly to your device or airdrop from a Mac.
                             if warmup {
                                 warmupBuffer.append(contentsOf: pcm!)
                                 if warmupBuffer.count >= (1 * orca!.sampleRate!) {
-                                    audioStream!.playStreamPCM(warmupBuffer, completion: { isPlaying in
-                                        if !isPlaying {
-                                            self.startAudioRecording()
-                                        }
-                                    })
+                                    try audioStream!.playStreamPCM(pcm!)
                                     warmupBuffer.removeAll()
                                     warmup = false
                                 }
                             } else {
-                                audioStream!.playStreamPCM(pcm!, completion: {_ in })
+                                try audioStream!.playStreamPCM(pcm!)
                             }
                         }
                     }
                 }
 
                 if !warmupBuffer.isEmpty {
-                    audioStream!.playStreamPCM(warmupBuffer, completion: { isPlaying in
-                        if !isPlaying {
-                            self.startAudioRecording()
-                        }
-                    })
+                    try audioStream!.playStreamPCM(warmupBuffer)
                 }
 
                 let pcm = try orcaStream.flush()
                 if pcm != nil {
-                    audioStream!.playStreamPCM(pcm!, completion: {_ in})
+                    try audioStream!.playStreamPCM(pcm!)
                 }
                 orcaStream.close()
             } catch {
                 DispatchQueue.main.async { [self] in
                     errorMessage = "\(error.localizedDescription)"
                 }
+            }
+        }
+    }
+
+    public func interrupt() {
+        do {
+            audioStream!.stopStreamPCM()
+            try picollm?.interrupt()
+        } catch {
+            DispatchQueue.main.async { [self] in
+                errorMessage = "\(error.localizedDescription)"
             }
         }
     }
@@ -305,16 +318,20 @@ You can download directly to your device or airdrop from a Mac.
 
     private func audioCallback(frame: [Int16]) {
         do {
-            if audioStream?.isPlaying ?? false {
-                return
-            }
             if chatState == .WAKEWORD {
-                let keyword = try self.porcupine!.process(pcm: frame)
-                if keyword != -1 {
+                let keywordIndex = try self.porcupine!.process(pcm: frame)
+                if keywordIndex == 0 {
                     DispatchQueue.main.async { [self] in
                         statusText = "Listening..."
                         chatText.append(Message(speaker: "You:", msg: ""))
                         chatState = .STT
+                    }
+                }
+            } else if chatState == .GENERATE {
+                let keywordIndex = try self.porcupine!.process(pcm: frame)
+                if keywordIndex == 0 {
+                    DispatchQueue.main.async { [self] in
+                        self.interrupt()
                     }
                 }
             } else if chatState == .STT {
@@ -329,9 +346,8 @@ You can download directly to your device or airdrop from a Mac.
                 }
                 if endpoint {
                     DispatchQueue.main.async { [self] in
-                        statusText = "Generating..."
+                        statusText = "Generating, Say `Picovoice` to interrupt"
                         chatState = .GENERATE
-                        stopAudioRecording()
                         self.generate()
                     }
                 }
