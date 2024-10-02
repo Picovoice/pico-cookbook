@@ -130,12 +130,12 @@ window.onload = () => {
           }
         },
         onComplete: async (interrupted) => {
-          if (streamCalls <= 2) {
-            audioStream.play();
+          audioStream.play();
+          if (interrupted && isDetected) {
+            audioStream.clear();
           }
           await audioStream.waitPlayback();
 
-          audioStream.clear();
           if (!interrupted && !isDetected) {
             await Picovoice.start();
             message.innerText = "Say `Picovoice`"

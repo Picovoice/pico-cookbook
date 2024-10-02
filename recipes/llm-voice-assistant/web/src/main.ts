@@ -141,7 +141,7 @@ const init = async (
 
     const waitForSynthesize = (): Promise<void> => new Promise<void>(resolve => {
       const interval = setInterval(() => {
-        if (synthesized === (completionTokens.length - stopTokens)) {
+        if ((synthesized === (completionTokens.length - stopTokens)) || endpoint === PicoLLMEndpoint.INTERRUPTED) {
           clearInterval(interval);
           resolve();
         }
