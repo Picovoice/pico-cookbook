@@ -10,7 +10,7 @@ DEPENDENCIES:
   - Cheetah-iOS (~> 2.0.0)
   - ios-voice-processor (~> 1.1.0)
   - Orca-iOS (~> 1.0.0)
-  - picoLLM-iOS (from `https://raw.githubusercontent.com/Picovoice/picollm/v1.1-ios/binding/ios/picoLLM-iOS.podspec`)
+  - picoLLM-iOS (~> 1.1.0)
   - Porcupine-iOS (~> 3.0.1)
 
 SPEC REPOS:
@@ -18,11 +18,8 @@ SPEC REPOS:
     - Cheetah-iOS
     - ios-voice-processor
     - Orca-iOS
+    - picoLLM-iOS
     - Porcupine-iOS
-
-EXTERNAL SOURCES:
-  picoLLM-iOS:
-    :podspec: https://raw.githubusercontent.com/Picovoice/picollm/v1.1-ios/binding/ios/picoLLM-iOS.podspec
 
 SPEC CHECKSUMS:
   Cheetah-iOS: d98a5edcbf3b74dda6027aeac6a8c0f5997a47a2
@@ -31,6 +28,6 @@ SPEC CHECKSUMS:
   picoLLM-iOS: dc03cd7e992c702ff34c667f9a35dd9a8084c061
   Porcupine-iOS: 6d69509fa587f3ac0be1adfefb48e0c6ce029fff
 
-PODFILE CHECKSUM: c97e17229c09fc9f63ec858e2a40078a71550321
+PODFILE CHECKSUM: 1cc2ff3bc3e1abc97fbf7a3b3910e8d2b805f8b7
 
-COCOAPODS: 1.11.3
+COCOAPODS: 1.15.2

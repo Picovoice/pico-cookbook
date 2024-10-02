@@ -220,7 +220,7 @@ You can download directly to your device or airdrop from a Mac.
                     prompt: dialog!.prompt(),
                     completionTokenLimit: 128,
                     streamCallback: streamCallback)
-
+                
                 try dialog!.addLLMResponse(content: result.completion)
                 
                 DispatchQueue.main.async { [self] in
@@ -272,24 +272,24 @@ You can download directly to your device or airdrop from a Mac.
                             if warmup {
                                 warmupBuffer.append(contentsOf: pcm!)
                                 if warmupBuffer.count >= (1 * orca!.sampleRate!) {
-                                    audioStream!.playStreamPCM(pcm!)
+                                    try audioStream!.playStreamPCM(pcm!)
                                     warmupBuffer.removeAll()
                                     warmup = false
                                 }
                             } else {
-                                audioStream!.playStreamPCM(pcm!)
+                                try audioStream!.playStreamPCM(pcm!)
                             }
                         }
                     }
                 }
 
                 if !warmupBuffer.isEmpty {
-                    audioStream!.playStreamPCM(warmupBuffer)
+                    try audioStream!.playStreamPCM(warmupBuffer)
                 }
 
                 let pcm = try orcaStream.flush()
                 if pcm != nil {
-                    audioStream!.playStreamPCM(pcm!)
+                    try audioStream!.playStreamPCM(pcm!)
                 }
                 orcaStream.close()
             } catch {
@@ -347,7 +347,7 @@ You can download directly to your device or airdrop from a Mac.
                 }
                 if endpoint {
                     DispatchQueue.main.async { [self] in
-                        statusText = "Generating..."
+                        statusText = "Generating, Say `Picovoice` to interrupt"
                         chatState = .GENERATE
                         self.generate()
                     }

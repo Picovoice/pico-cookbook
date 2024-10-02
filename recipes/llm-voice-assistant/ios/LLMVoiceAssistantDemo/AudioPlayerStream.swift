@@ -39,7 +39,7 @@ class AudioPlayerStream {
         try engine.start()
     }
 
-    func playStreamPCM(_ pcmData: [Int16]) {
+    func playStreamPCM(_ pcmData: [Int16]) throws {
         if isStopped {
             return
         }
@@ -60,6 +60,11 @@ class AudioPlayerStream {
         }
 
         pcmBuffers.append(audioBuffer)
+        
+        if !engine.isRunning {
+            try engine.start()
+            return
+        }
         if !isPlaying {
             playNextPCMBuffer()
         }
@@ -89,7 +94,7 @@ class AudioPlayerStream {
     }
 
     func stopStreamPCM() {
-        playerNode.stop()
         isStopped = true
+        pcmBuffers.removeAll()
     }
 }
