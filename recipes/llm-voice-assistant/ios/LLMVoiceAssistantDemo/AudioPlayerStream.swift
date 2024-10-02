@@ -60,7 +60,7 @@ class AudioPlayerStream {
         }
 
         pcmBuffers.append(audioBuffer)
-        
+
         if !engine.isRunning {
             try engine.start()
         }

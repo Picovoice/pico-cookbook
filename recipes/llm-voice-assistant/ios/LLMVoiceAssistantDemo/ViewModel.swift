@@ -220,15 +220,15 @@ You can download directly to your device or airdrop from a Mac.
                     prompt: dialog!.prompt(),
                     completionTokenLimit: 128,
                     streamCallback: streamCallback)
-                
+
                 try dialog!.addLLMResponse(content: result.completion)
-                
+
                 DispatchQueue.main.async { [self] in
                     if result.endpoint == .interrupted {
                         statusText = "Listening..."
                         chatText.append(Message(speaker: "You:", msg: ""))
                         chatState = .STT
-                        
+
                         promptText = ""
                         enableGenerateButton = true
                     } else {
@@ -248,7 +248,7 @@ You can download directly to your device or airdrop from a Mac.
 
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             do {
-                audioStream!.resetAudioPlayer();
+                audioStream!.resetAudioPlayer()
                 let orcaStream = try self.orca!.streamOpen()
 
                 var warmup = true
@@ -299,11 +299,11 @@ You can download directly to your device or airdrop from a Mac.
             }
         }
     }
-    
+
     public func interrupt() {
         do {
-            audioStream!.stopStreamPCM();
-            try picollm?.interrupt();
+            audioStream!.stopStreamPCM()
+            try picollm?.interrupt()
         } catch {
             DispatchQueue.main.async { [self] in
                 errorMessage = "\(error.localizedDescription)"
@@ -327,12 +327,11 @@ You can download directly to your device or airdrop from a Mac.
                         chatState = .STT
                     }
                 }
-            }
-            else if chatState == .GENERATE {
+            } else if chatState == .GENERATE {
                 let keywordIndex = try self.porcupine!.process(pcm: frame)
                 if keywordIndex == 0 {
                     DispatchQueue.main.async { [self] in
-                        self.interrupt();
+                        self.interrupt()
                     }
                 }
             } else if chatState == .STT {
