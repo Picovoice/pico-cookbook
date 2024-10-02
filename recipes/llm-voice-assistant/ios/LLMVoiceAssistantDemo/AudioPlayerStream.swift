@@ -63,7 +63,6 @@ class AudioPlayerStream {
         
         if !engine.isRunning {
             try engine.start()
-            return
         }
         if !isPlaying {
             playNextPCMBuffer()
