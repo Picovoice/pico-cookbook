@@ -3,7 +3,7 @@ import { Mutex } from 'async-mutex';
 import { BuiltInKeyword, PorcupineDetection, PorcupineWorker } from '@picovoice/porcupine-web';
 import { CheetahTranscript, CheetahWorker } from '@picovoice/cheetah-web';
 import { OrcaStreamWorker, OrcaWorker } from '@picovoice/orca-web';
-import { Dialog, PicoLLMModel, PicoLLMWorker } from '@picovoice/picollm-web';
+import { Dialog, PicoLLMEndpoint, PicoLLMModel, PicoLLMWorker } from '@picovoice/picollm-web';
 import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 
 type PvObject = {
@@ -21,7 +21,7 @@ type PvCallback = {
   onEndpoint: () => void;
   onText: (text: string) => void;
   onStream: (pcm: Int16Array) => void;
-  onComplete: () => void;
+  onComplete: (interrupted: boolean) => Promise<void>;
 }
 
 let object: PvObject | null = null;
@@ -43,9 +43,14 @@ const init = async (
 
   const detectionCallback = async (detection: PorcupineDetection): Promise<void> => {
     if (detection.index === 0) {
+      pllm.interrupt();
+
       await WebVoiceProcessor.subscribe(cheetah);
       await WebVoiceProcessor.unsubscribe(porcupine);
+
+      const release = await mutex.acquire();
       onDetection(detection);
+      release();
     }
   };
 
@@ -59,6 +64,7 @@ const init = async (
 
   const transcriptCallback = async (transcript: CheetahTranscript): Promise<void> => {
     if (transcript.isEndpoint) {
+      await WebVoiceProcessor.subscribe(porcupine);
       await WebVoiceProcessor.unsubscribe(cheetah);
       cheetah.flush();
     }
@@ -102,6 +108,7 @@ const init = async (
     '<end_of_turn>', // Gemma
     '<|endoftext|>', // Phi-2
     '<|eot_id|>', // Llama-3
+    '<|end|>', '<|user|>', '<|assistant|>'
   ];
 
   const onCheetahFlushed = async (): Promise<void> => {
@@ -109,15 +116,15 @@ const init = async (
     transcripts = [];
     dialog.addHumanRequest(prompt);
 
-    const { completion, completionTokens } = await pllm.generate(dialog.prompt(), {
+    const release = await mutex.acquire();
+
+    const { completion, completionTokens, endpoint } = await pllm.generate(dialog.prompt(), {
       completionTokenLimit: 128,
       stopPhrases: stopPhrases,
       streamCallback: async token => {
         if (!stopPhrases.includes(token)) {
           onText(token);
-          const release = await mutex.acquire();
           const pcm = await stream.synthesize(token);
-          release();
           synthesized++;
           if (pcm !== null) {
             onStream(pcm);
@@ -127,11 +134,14 @@ const init = async (
         }
       }
     });
+
+    release();
+
     dialog.addLLMResponse(completion);
 
     const waitForSynthesize = (): Promise<void> => new Promise<void>(resolve => {
       const interval = setInterval(() => {
-        if (synthesized === (completionTokens.length - stopTokens)) {
+        if ((synthesized === (completionTokens.length - stopTokens)) || endpoint === PicoLLMEndpoint.INTERRUPTED) {
           clearInterval(interval);
           resolve();
         }
@@ -145,7 +155,9 @@ const init = async (
     }
     synthesized = 0;
     stopTokens = 0;
-    onComplete();
+
+    const interrupted = (endpoint === PicoLLMEndpoint.INTERRUPTED);
+    await onComplete(interrupted);
   };
 
   object = {

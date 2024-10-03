@@ -58,6 +58,11 @@ class AudioStream {
     });
   }
 
+  public clear(): void {
+    this._audioBuffers = [];
+    this._isPlaying = false;
+  }
+
   private createBuffer(pcm: Int16Array): AudioBuffer {
     const buffer = this._audioContext.createBuffer(
       1,
