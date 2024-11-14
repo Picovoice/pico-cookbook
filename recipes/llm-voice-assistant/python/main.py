@@ -60,6 +60,32 @@ class TPSProfiler(object):
         return tps
 
 
+class CompletionText(object):
+    def __init__(self, stop_phrases: list) -> None:
+        self.stop_phrases = stop_phrases
+        self.start: int = 0
+        self.text: str = ''
+    def append(self, text: str) -> str:
+        self.text += text
+        end = len(self.text)
+
+        for stop_phrase in self.stop_phrases:
+            if stop_phrase in self.text:
+                contains = self.text.index(stop_phrase)
+                if end > contains:
+                    end = contains
+            for i in range(len(stop_phrase) - 1, 0, -1):
+                if self.text.endswith(stop_phrase[:i]):
+                    ends = len(self.text) - i
+                    if end > ends:
+                        end = ends
+                    break
+
+        start = self.start
+        self.start = end
+        return self.text[start:end]
+
+
 def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec: int = 0.03) -> None:
     orca = pvorca.create(access_key=access_key)
     orca_stream = orca.stream_open()
@@ -299,17 +325,17 @@ def main() -> None:
             '<|end|>', '<|user|>', '<|assistant|>',  # Phi-3
         }
 
-        completion = ['']
+        completion = CompletionText(stop_phrases)
 
         def llm_callback(text: str) -> None:
             picollm_profiler.tock()
-            completion[0] += text
-            if not any(x in completion[0] for x in stop_phrases):
+            diff = completion.append(text)
+            if len(diff) > 0:
                 main_connection.send({
                     'command': 'synthesize',
-                    'text': text.replace('\n', ' . '),
+                    'text': diff.replace('\n', ' . '),
                     'utterance_end_sec': utterance_end_sec})
-                print(text, end='', flush=True)
+                print(f'{diff}', end='', flush=True)
 
         print(
             f"\nLLM (say {'`Picovoice`' if keyword_model_path is None else 'the wake word'} to interrupt) > ",
