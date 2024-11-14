@@ -65,6 +65,6 @@ dependencies {
     implementation 'ai.picovoice:android-voice-processor:1.0.2'
     implementation 'ai.picovoice:porcupine-android:3.0.1'
     implementation 'ai.picovoice:cheetah-android:2.0.0'
-    implementation 'ai.picovoice:picollm-android:1.1.0'
+    implementation 'ai.picovoice:picollm-android:1.2.0'
     implementation 'ai.picovoice:orca-android:1.0.0'
 }
