@@ -65,6 +65,7 @@ class CompletionText(object):
         self.stop_phrases = stop_phrases
         self.start: int = 0
         self.text: str = ''
+
     def append(self, text: str) -> str:
         self.text += text
         end = len(self.text)
