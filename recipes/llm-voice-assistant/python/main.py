@@ -65,8 +65,9 @@ class CompletionText(object):
         self.stop_phrases = stop_phrases
         self.start: int = 0
         self.text: str = ''
+        self.new_tokens: str = ''
 
-    def append(self, text: str) -> str:
+    def append(self, text: str) -> None:
         self.text += text
         end = len(self.text)
 
@@ -84,7 +85,11 @@ class CompletionText(object):
 
         start = self.start
         self.start = end
-        return self.text[start:end]
+        self.new_tokens = self.text[start:end]
+
+    def get_new_tokens(self) -> str:
+        return self.new_tokens
+
 
 
 def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec: int = 0.03) -> None:
@@ -330,13 +335,14 @@ def main() -> None:
 
         def llm_callback(text: str) -> None:
             picollm_profiler.tock()
-            diff = completion.append(text)
-            if len(diff) > 0:
+            completion.append(text)
+            new_tokens = completion.get_new_tokens()
+            if len(new_tokens) > 0:
                 main_connection.send({
                     'command': 'synthesize',
-                    'text': diff.replace('\n', ' . '),
+                    'text': new_tokens.replace('\n', ' . '),
                     'utterance_end_sec': utterance_end_sec})
-                print(f'{diff}', end='', flush=True)
+                print(f'{new_tokens}', end='', flush=True)
 
         print(
             f"\nLLM (say {'`Picovoice`' if keyword_model_path is None else 'the wake word'} to interrupt) > ",
