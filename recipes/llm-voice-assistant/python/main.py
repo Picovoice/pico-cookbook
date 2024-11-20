@@ -91,7 +91,6 @@ class CompletionText(object):
         return self.new_tokens
 
 
-
 def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec: int = 0.03) -> None:
     orca = pvorca.create(access_key=access_key)
     orca_stream = orca.stream_open()
