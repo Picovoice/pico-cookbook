@@ -84,10 +84,10 @@
   resolved "https://registry.yarnpkg.com/@picovoice/orca-node/-/orca-node-1.0.0.tgz#812728c3183a914eff6b3189dfa958ef4d44f2f7"
   integrity sha512-YDTqJ5KsueBC4Nj0Zo287VF+/y7SRjXbOyHy8h66joJYPF0QNsz8oDCzbQO7hzymNbkFXd0crMPK+gQElvd83w==
 
-"@picovoice/picollm-node@1.2.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@picovoice/picollm-node/-/picollm-node-1.2.0.tgz#9950706ea98d7021e3ff3a476d01426a7bd970d5"
-  integrity sha512-E5Af+zQ7hCCptHwLcH6ZYwtVGpJAA8cdwjSpq3hGyW4PxgksDfizzhPZbBrgMECXzFtOZjCerkZBdYsYI/D5rQ==
+"@picovoice/picollm-node@1.2.1":
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/@picovoice/picollm-node/-/picollm-node-1.2.1.tgz#90a47daed6a90ce0ec43b2a29666152ca014792b"
+  integrity sha512-Es1S18yYDsGED+0M7HIn7NspdL/IP7XoFz1WwsCoi6+3IYLZ3F9K+KGqdSusBrUv9+NL4uhrVJA29HPZs407CA==
 
 "@picovoice/porcupine-node@^3.0.3":
   version "3.0.4"
@@ -301,9 +301,9 @@ concat-map@0.0.1:
   integrity sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==
 
 cross-spawn@^7.0.2:
-  version "7.0.5"
-  resolved "https://registry.yarnpkg.com/cross-spawn/-/cross-spawn-7.0.5.tgz#910aac880ff5243da96b728bc6521a5f6c2f2f82"
-  integrity sha512-ZVJrKKYunU38/76t0RMOulHOnUcbU9GbpWKAOZ0mhjr7CX6FVrH+4FrAapSOekrgFQ3f/8gwMEuIft0aKq6Hug==
+  version "7.0.6"
+  resolved "https://registry.yarnpkg.com/cross-spawn/-/cross-spawn-7.0.6.tgz#8a58fe78f00dcd70c370451759dfbfaf03e8ee9f"
+  integrity sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==
   dependencies:
     path-key "^3.1.0"
     shebang-command "^2.0.0"
@@ -515,9 +515,9 @@ flat-cache@^3.0.4:
     rimraf "^3.0.2"
 
 flatted@^3.2.9:
-  version "3.3.1"
-  resolved "https://registry.yarnpkg.com/flatted/-/flatted-3.3.1.tgz#21db470729a6734d4997002f439cb308987f567a"
-  integrity sha512-X8cqMLLie7KsNUDSdzeN8FYK9rEt4Dt67OsG/DNGnYTSDBG4uFAJFBnUeiV+zCVAvwFy56IjM9sH51jVaEhNxw==
+  version "3.3.2"
+  resolved "https://registry.yarnpkg.com/flatted/-/flatted-3.3.2.tgz#adba1448a9841bec72b42c532ea23dbbedef1a27"
+  integrity sha512-AiwGJM8YcNOaobumgtng+6NHuOqC3A7MixFeDafM3X9cIUM+xUXoS5Vfgf+OihAYe20fxqNM9yPBXJzRtZ/4eA==
 
 fs.realpath@^1.0.0:
   version "1.0.0"
