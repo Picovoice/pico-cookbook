@@ -3,15 +3,8 @@ import concurrent.futures
 import time
 from argparse import ArgumentParser
 from collections import deque
-from itertools import chain
-from multiprocessing import (
-    Pipe,
-    Process,
-)
-from typing import (
-    Optional,
-    Sequence,
-)
+from multiprocessing import Process, Queue
+from typing import Optional, Sequence
 
 import picollm
 import pvcheetah
@@ -19,6 +12,18 @@ import pvorca
 import pvporcupine
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
+
+
+class Commands:
+    CLOSE = 'close'
+    START = 'start'
+    INTERRUPT = 'interrupt'
+    TEXT = 'text'
+    GENERATE = 'generate'
+    SYNTHESIZE_START = 'synthesize-start'
+    SYNTHESIZE = 'synthesize'
+    SYNTHESIZE_FLUSH = 'synthesize-flush'
+    PROFILE = 'profile'
 
 
 class RTFProfiler:
@@ -67,6 +72,11 @@ class CompletionText(object):
         self.text: str = ''
         self.new_tokens: str = ''
 
+    def reset(self):
+        self.start: int = 0
+        self.text: str = ''
+        self.new_tokens: str = ''
+
     def append(self, text: str) -> None:
         self.text += text
         end = len(self.text)
@@ -91,109 +101,276 @@ class CompletionText(object):
         return self.new_tokens
 
 
-def orca_worker(access_key: str, connection, warmup_sec: float, stream_frame_sec: int = 0.03) -> None:
+def listen_worker(main_queue, listen_queue, access_key, keyword_model_path, cheetah_endpoint_duration_sec):
+    def handler(_, __) -> None:
+        main_queue.put({'command': Commands.CLOSE})
+
+    signal.signal(signal.SIGINT, handler)
+
+    if keyword_model_path is None:
+        porcupine = pvporcupine.create(access_key=access_key, keywords=['picovoice'])
+    else:
+        porcupine = pvporcupine.create(access_key=access_key, keyword_paths=[keyword_model_path])
+    porcupine_profiler = RTFProfiler(porcupine.sample_rate)
+
+    main_queue.put({'command': 'init', 'name': 'Porcupine', 'version': porcupine.version})
+
+    cheetah = pvcheetah.create(
+        access_key=access_key,
+        endpoint_duration_sec=cheetah_endpoint_duration_sec,
+        enable_automatic_punctuation=True)
+    cheetah_profiler = RTFProfiler(cheetah.sample_rate)
+
+    main_queue.put({'command': 'init', 'name': 'Cheetah', 'version': cheetah.version})
+
+    mic = PvRecorder(frame_length=porcupine.frame_length)
+    mic.start()
+
+    main_queue.put({'command': 'init', 'name': 'PvRecorder', 'version': mic.version})
+
+    while listen_queue.empty():
+        time.sleep(0.01)
+    listen_queue.get()
+
+    try:
+        close = False
+        listening = False
+        user_request = ''
+        while not close:
+            if listen_queue.empty():
+                time.sleep(0.01)
+
+            while not listen_queue.empty():
+                message = listen_queue.get()
+                if message['command'] == Commands.CLOSE:
+                    close = True
+
+            pcm = mic.read()
+            if not listening:
+                porcupine_profiler.tick()
+                wake_word_detected = porcupine.process(pcm) == 0
+                porcupine_profiler.tock(pcm)
+                if wake_word_detected:
+                    listening = True
+                    main_queue.put({'command': Commands.PROFILE, 'text': f"[Porcupine RTF: {porcupine_profiler.rtf():.3f}]"})
+                    main_queue.put({'command': Commands.INTERRUPT})
+            else:
+                cheetah_profiler.tick()
+                partial_transcript, endpoint_reached = cheetah.process(pcm)
+                cheetah_profiler.tock(pcm)
+                user_request += partial_transcript
+                main_queue.put({'command': Commands.TEXT, 'text': partial_transcript})
+                if endpoint_reached:
+                    utterance_end_sec = time.perf_counter()
+                    cheetah_profiler.tick()
+                    remaining_transcript = cheetah.flush()
+                    cheetah_profiler.tock(pcm)
+                    user_request += remaining_transcript
+                    main_queue.put({'command': Commands.TEXT, 'text': remaining_transcript})
+                    main_queue.put({'command': Commands.GENERATE, 'text': user_request, 'utterance_end_sec': utterance_end_sec})
+                    main_queue.put({'command': Commands.PROFILE, 'text': f"[Cheetah RTF: {cheetah_profiler.rtf():.3f}]"})
+                    user_request = ''
+                    listening = False
+    finally:
+        porcupine.delete()
+        cheetah.delete()
+        mic.delete()
+
+
+def generate_worker(main_queue, generate_queue, access_key, picollm_model_path, picollm_device, picollm_completion_token_limit, picollm_presence_penalty, picollm_frequency_penalty, picollm_temperature, picollm_top_p, short_answers):
+    def handler(_, __) -> None:
+        main_queue.put({'command': Commands.CLOSE})
+
+    signal.signal(signal.SIGINT, handler)
+
+    pllm = picollm.create(access_key=access_key, model_path=picollm_model_path, device=picollm_device)
+    pllm_profiler = TPSProfiler()
+    dialog = pllm.get_dialog()
+    generating = False
+
+    main_queue.put({'command': 'init', 'name': 'picoLLM', 'version': f"{pllm.version} <{pllm.model}>"})
+
+    stop_phrases = {
+        '</s>',  # Llama-2, Mistral, and Mixtral
+        '<end_of_turn>',  # Gemma
+        '<|endoftext|>',  # Phi-2
+        '<|eot_id|>',  # Llama-3
+        '<|end|>', '<|user|>', '<|assistant|>',  # Phi-3
+    }
+
+    completion = CompletionText(stop_phrases)
+
+    def llm_callback(text: str):
+        pllm_profiler.tock()
+        completion.append(text)
+        new_tokens = completion.get_new_tokens()
+        if len(new_tokens) > 0 and generating:
+            main_queue.put({'command': Commands.SYNTHESIZE, 'text': new_tokens})
+
+    def llm_task(user_request, utterance_end_sec):
+        short_answers_instruction = \
+            "You are a voice assistant and your answers are very short but informative"
+        dialog.add_human_request(
+            f"{short_answers_instruction}. {user_request}" if short_answers else user_request)
+
+        main_queue.put({'command': Commands.SYNTHESIZE_START, 'utterance_end_sec': utterance_end_sec})
+
+        res = pllm.generate(
+            prompt=dialog.prompt(),
+            completion_token_limit=picollm_completion_token_limit,
+            stop_phrases=stop_phrases,
+            presence_penalty=picollm_presence_penalty,
+            frequency_penalty=picollm_frequency_penalty,
+            temperature=picollm_temperature,
+            top_p=picollm_top_p,
+            stream_callback=llm_callback)
+
+        dialog.add_llm_response(res.completion)
+
+        if res.endpoint != picollm.PicoLLMEndpoints.INTERRUPTED:
+            main_queue.put({'command': Commands.SYNTHESIZE_FLUSH})
+
+        main_queue.put({'command': Commands.PROFILE, 'text': f"[picoLLM TPS: {pllm_profiler.tps():.2f}]"})
+
+        return res
+
+    executor = concurrent.futures.ThreadPoolExecutor()
+
+    while generate_queue.empty():
+        time.sleep(0.01)
+    generate_queue.get()
+
+    try:
+        close = False
+        llm_future = None
+        while not close:
+            if generate_queue.empty():
+                time.sleep(0.01)
+
+            while not generate_queue.empty():
+                message = generate_queue.get()
+                if message['command'] == Commands.CLOSE:
+                    close = True
+                elif message['command'] == Commands.GENERATE:
+                    generating = True
+                    completion.reset()
+                    llm_future = executor.submit(
+                        llm_task,
+                        message['text'],
+                        message['utterance_end_sec'])
+                elif message['command'] == Commands.INTERRUPT and generating:
+                    generating = False
+                    pllm.interrupt()
+
+                if llm_future and llm_future.done():
+                    llm_future = None
+                    generating = False
+    finally:
+        while llm_future and not llm_future.done():
+            time.sleep(0.01)
+
+        executor.shutdown(True)
+        pllm.release()
+
+
+def speak_worker(main_queue, speak_queue, access_key, warmup_sec):
+    def handler(_, __) -> None:
+        main_queue.put({'command': Commands.CLOSE})
+
+    signal.signal(signal.SIGINT, handler)
+
     orca = pvorca.create(access_key=access_key)
     orca_stream = orca.stream_open()
+    orca_profiler = RTFProfiler(orca.sample_rate)
+    warmup_size = int(warmup_sec * orca.sample_rate)
 
-    texts = list()
-    pcm_deque = deque()
-    warmup = [False]
-    synthesize = False
-    flush = False
-    close = False
-    interrupt = False
-    utterance_end_sec = 0.
-    delay_sec = [-1.]
+    main_queue.put({'command': 'init', 'name': 'Orca', 'version': orca.version})
 
     speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16, buffer_size_secs=20)
 
-    connection.send({'version': orca.version})
+    main_queue.put({'command': 'init', 'name': 'PvSpeaker', 'version': speaker.version})
 
-    orca_profiler = RTFProfiler(orca.sample_rate)
+    while speak_queue.empty():
+        time.sleep(0.01)
+    speak_queue.get()
 
-    def buffer_pcm(pcm_chunk: Optional[Sequence[int]]) -> None:
-        if pcm_chunk is not None:
-            if delay_sec[0] == -1:
-                delay_sec[0] = time.perf_counter() - utterance_end_sec
+    try:
+        close = False
+        synthesizing = False
+        speaking = False
+        flush = False
+        text_queue = deque()
+        pcm_queue = list()
+        delay_sec = -1
+        utterance_end_sec = 0
+        while not close:
+            if speak_queue.empty():
+                time.sleep(0.01)
 
-            pcm_deque.append(pcm_chunk)
+            while not speak_queue.empty():
+                message = speak_queue.get()
+                if message['command'] == Commands.CLOSE:
+                    close = True
+                elif message['command'] == Commands.SYNTHESIZE_START:
+                    synthesizing = True
+                    utterance_end_sec = message['utterance_end_sec']
+                    delay_sec = -1
+                elif message['command'] == Commands.SYNTHESIZE:
+                    text_queue.append(message['text'].replace('\n', ' . '))
+                elif message['command'] == Commands.INTERRUPT:
+                    if synthesizing:
+                        orca_profiler.tick()
+                        pcm = orca_stream.flush()
+                        orca_profiler.tock(pcm)
+                        main_queue.put({'command': Commands.PROFILE, 'text': f"[Orca RTF: {orca_profiler.rtf():.2f}]\n[Delay: {delay_sec:.2f} sec]"})
+                    if speaking:
+                        speaker.stop()
+                    text_queue.clear()
+                    pcm_queue.clear()
+                    synthesizing = False
+                    speaking = False
+                    flush = False
+                elif message['command'] == Commands.SYNTHESIZE_FLUSH:
+                    flush = True
 
-    def play_buffered_pcm() -> None:
-        if warmup[0]:
-            if len(list(chain.from_iterable(pcm_deque))) < int(warmup_sec * orca.sample_rate):
-                return
-            else:
-                warmup[0] = False
-
-        if len(pcm_deque) > 0:
-            pcm_chunk = list(chain.from_iterable(pcm_deque))
-            pcm_deque.clear()
-
-            written = speaker.write(pcm_chunk)
-            if written < len(pcm_chunk):
-                pcm_deque.appendleft(pcm_chunk[written:])
-
-    while True:
-        if synthesize and len(texts) > 0:
-            orca_profiler.tick()
-            pcm = orca_stream.synthesize(texts.pop(0))
-            orca_profiler.tock(pcm)
-            buffer_pcm(pcm)
-            play_buffered_pcm()
-        elif flush:
-            while len(texts) > 0:
+            while len(text_queue) > 0:
+                text = text_queue.popleft()
                 orca_profiler.tick()
-                pcm = orca_stream.synthesize(texts.pop(0))
+                pcm = orca_stream.synthesize(text)
                 orca_profiler.tock(pcm)
-                buffer_pcm(pcm)
-                play_buffered_pcm()
-            orca_profiler.tick()
-            pcm = orca_stream.flush()
-            orca_profiler.tock(pcm)
-            buffer_pcm(pcm)
-            play_buffered_pcm()
-            connection.send({'rtf': orca_profiler.rtf(), 'delay': delay_sec[0]})
-            flush = False
-            speaker.flush(list(chain.from_iterable(pcm_deque)))
-            pcm_deque.clear()
-            speaker.stop()
-            delay_sec[0] = -1
-            connection.send({'done': True})
-        elif close:
-            break
-        elif interrupt:
-            orca_profiler.tick()
-            pcm = orca_stream.flush()
-            orca_profiler.tock(pcm)
-            connection.send({'rtf': orca_profiler.rtf(), 'delay': delay_sec[0]})
-            interrupt = False
-            pcm_deque.clear()
-            speaker.stop()
-            delay_sec[0] = -1
-            connection.send({'done': True})
-        else:
-            time.sleep(stream_frame_sec)
+                if pcm is not None:
+                    if delay_sec == -1:
+                        delay_sec = time.perf_counter() - utterance_end_sec
+                    pcm_queue.extend(pcm)
 
-        while connection.poll():
-            message = connection.recv()
-            if message['command'] == 'synthesize':
-                texts.append(message['text'])
-                if not speaker.is_started:
-                    speaker.start()
-                    warmup[0] = True
-                utterance_end_sec = message['utterance_end_sec']
-                synthesize = True
-            elif message['command'] == 'flush':
-                synthesize = False
-                flush = True
-            elif message['command'] == 'close':
-                close = True
-            elif message['command'] == 'interrupt':
-                interrupt = True
+            if flush and synthesizing:
+                orca_profiler.tick()
+                pcm = orca_stream.flush()
+                orca_profiler.tock(pcm)
+                synthesizing = False
+                if pcm is not None:
+                    pcm_queue.extend(pcm)
+                    main_queue.put({'command': Commands.PROFILE, 'text': f"[Orca RTF: {orca_profiler.rtf():.2f}]\n[Delay: {delay_sec:.2f} sec]"})
 
-    speaker.delete()
-    orca_stream.close()
-    orca.delete()
+            if not speaking and len(pcm_queue) > warmup_size:
+                speaker.start()
+                speaking = True
+
+            if speaking and len(pcm_queue) > 0:
+                written = speaker.write(pcm_queue)
+                if written > 0:
+                    del pcm_queue[:written]
+
+            if speaking and flush and len(pcm_queue) == 0:
+                speaker.flush(pcm_queue)
+                speaker.stop()
+                speaking = False
+                flush = False
+                main_queue.put({'command': Commands.START})
+    finally:
+        orca_stream.close()
+        orca.delete()
+        speaker.delete()
 
 
 def main() -> None:
@@ -279,179 +456,114 @@ def main() -> None:
     profile = args.profile
     short_answers = args.short_answers
 
-    if keyword_model_path is None:
-        porcupine = pvporcupine.create(access_key=access_key, keywords=['picovoice'])
-    else:
-        porcupine = pvporcupine.create(access_key=access_key, keyword_paths=[keyword_model_path])
-    print(f"→ Porcupine v{porcupine.version}")
+    main_queue = Queue()
+    listen_queue = Queue()
+    generate_queue = Queue()
+    speak_queue = Queue()
 
-    cheetah = pvcheetah.create(
-        access_key=access_key,
-        endpoint_duration_sec=cheetah_endpoint_duration_sec,
-        enable_automatic_punctuation=True)
-    print(f"→ Cheetah v{cheetah.version}")
-
-    pllm = picollm.create(access_key=access_key, model_path=picollm_model_path, device=picollm_device)
-    dialog = pllm.get_dialog()
-    print(f"→ picoLLM v{pllm.version} <{pllm.model}>")
-
-    main_connection, orca_process_connection = Pipe()
-    orca_process = Process(target=orca_worker, args=(access_key, orca_process_connection, orca_warmup_sec))
-    orca_process.start()
-    while not main_connection.poll():
-        time.sleep(0.01)
-    print(f"→ Orca v{main_connection.recv()['version']}")
-
-    mic = PvRecorder(frame_length=porcupine.frame_length)
-    mic.start()
-
-    print(f"\n$ Say {'`Picovoice`' if keyword_model_path is None else 'the wake word'} ...")
-
-    stop = [False]
+    listen_process = Process(target=listen_worker, args=(
+        main_queue,
+        listen_queue,
+        access_key,
+        keyword_model_path,
+        cheetah_endpoint_duration_sec
+    ))
+    generate_process = Process(target=generate_worker, args=(
+        main_queue,
+        generate_queue,
+        access_key,
+        picollm_model_path,
+        picollm_device,
+        picollm_completion_token_limit,
+        picollm_presence_penalty,
+        picollm_frequency_penalty,
+        picollm_temperature,
+        picollm_top_p,
+        short_answers
+    ))
+    speak_process = Process(target=speak_worker, args=(
+        main_queue,
+        speak_queue,
+        access_key,
+        orca_warmup_sec
+    ))
 
     def handler(_, __) -> None:
-        stop[0] = True
+        main_queue.put({'command': Commands.CLOSE})
 
     signal.signal(signal.SIGINT, handler)
 
-    def llm_task(dialog, user_request, utterance_end_sec, main_connection):
-        short_answers_instruction = \
-            "You are a voice assistant and your answers are very short but informative"
-        dialog.add_human_request(
-            f"{short_answers_instruction}. {user_request}" if short_answers else user_request)
+    generate_process.start()
+    listen_process.start()
+    speak_process.start()
 
-        picollm_profiler = TPSProfiler()
-
-        stop_phrases = {
-            '</s>',  # Llama-2, Mistral, and Mixtral
-            '<end_of_turn>',  # Gemma
-            '<|endoftext|>',  # Phi-2
-            '<|eot_id|>',  # Llama-3
-            '<|end|>', '<|user|>', '<|assistant|>',  # Phi-3
-        }
-
-        completion = CompletionText(stop_phrases)
-
-        def llm_callback(text: str) -> None:
-            picollm_profiler.tock()
-            completion.append(text)
-            new_tokens = completion.get_new_tokens()
-            if len(new_tokens) > 0:
-                main_connection.send({
-                    'command': 'synthesize',
-                    'text': new_tokens.replace('\n', ' . '),
-                    'utterance_end_sec': utterance_end_sec})
-                print(f'{new_tokens}', end='', flush=True)
-
-        print(
-            f"\nLLM (say {'`Picovoice`' if keyword_model_path is None else 'the wake word'} to interrupt) > ",
-            end='',
-            flush=True)
-        res = pllm.generate(
-            prompt=dialog.prompt(),
-            completion_token_limit=picollm_completion_token_limit,
-            stop_phrases=stop_phrases,
-            presence_penalty=picollm_presence_penalty,
-            frequency_penalty=picollm_frequency_penalty,
-            temperature=picollm_temperature,
-            top_p=picollm_top_p,
-            stream_callback=llm_callback)
-
-        if res.endpoint == picollm.PicoLLMEndpoints.INTERRUPTED:
-            main_connection.send({'command': 'interrupt'})
-        else:
-            main_connection.send({'command': 'flush'})
-
-        print('\n')
-        dialog.add_llm_response(res.completion)
-
-        if profile:
-            print(f"[picoLLM TPS: {picollm_profiler.tps():.2f}]")
-
-        while not main_connection.poll():
-            time.sleep(0.01)
-        message = main_connection.recv()
-        if profile:
-            print(f"[Orca RTF: {message['rtf']:.2f}]")
-            print(f"[Delay: {message['delay']:.2f} sec]")
-        while not main_connection.poll():
-            time.sleep(0.01)
-        assert main_connection.recv()['done']
-
-        return res
-
-    wake_word_detected = False
-    user_request = ''
-    endpoint_reached = False
-
-    porcupine_profiler = RTFProfiler(porcupine.sample_rate)
-    cheetah_profiler = RTFProfiler(cheetah.sample_rate)
+    modules = [
+        'Porcupine',
+        'Cheetah',
+        'PvRecorder',
+        'picoLLM',
+        'Orca',
+        'PvSpeaker'
+    ]
 
     try:
-        while True:
-            if stop[0]:
-                break
-            elif not wake_word_detected:
-                pcm = mic.read()
-                porcupine_profiler.tick()
-                wake_word_detected = porcupine.process(pcm) == 0
-                porcupine_profiler.tock(pcm)
-                if wake_word_detected:
-                    if profile:
-                        print(f"[Porcupine RTF: {porcupine_profiler.rtf():.3f}]")
-                    print("$ Wake word detected, utter your request or question ...\n")
-                    print("User > ", end='', flush=True)
-            elif not endpoint_reached:
-                pcm = mic.read()
-                cheetah_profiler.tick()
-                partial_transcript, endpoint_reached = cheetah.process(pcm)
-                cheetah_profiler.tock(pcm)
-                print(partial_transcript, end='', flush=True)
-                user_request += partial_transcript
-                if endpoint_reached:
-                    utterance_end_sec = time.perf_counter()
-                    cheetah_profiler.tick()
-                    remaining_transcript = cheetah.flush()
-                    cheetah_profiler.tock()
-                    user_request += remaining_transcript
-                    print(remaining_transcript, end='\n')
-                    if profile:
-                        print(f"[Cheetah RTF: {cheetah_profiler.rtf():.3f}]")
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        llm_future = executor.submit(
-                            llm_task,
-                            dialog,
-                            user_request,
-                            utterance_end_sec,
-                            main_connection)
+        close = False
+        generating = False
+        while not close:
+            while main_queue.empty():
+                time.sleep(0.01)
 
-                        while not llm_future.done():
-                            pcm = mic.read()
-                            porcupine_profiler.tick()
-                            wake_word_detected = porcupine.process(pcm) == 0
-                            porcupine_profiler.tock(pcm)
-                            if wake_word_detected:
-                                pllm.interrupt()
-                                break
-
-                        llm_result = llm_future.result()
-                        if llm_result.endpoint == picollm.PicoLLMEndpoints.INTERRUPTED:
-                            wake_word_detected = True
-                            print("$ Wake word detected, utter your request or question ...\n")
-                            print("User > ", end='', flush=True)
-                        else:
-                            wake_word_detected = False
-                            print(f"$ Say {'`Picovoice`' if keyword_model_path is None else 'the wake word'} ...")
-                        user_request = ''
-                        endpoint_reached = False
-
+            message = main_queue.get(block=True)
+            if message['command'] == Commands.CLOSE:
+                close = True
+            elif message['command'] == 'init':
+                print(f"→ {message['name']} v{message['version']}")
+                modules.remove(message['name'])
+                if len(modules) == 0:
+                    main_queue.put({'command': Commands.START})
+                    listen_queue.put({'command': Commands.START})
+                    generate_queue.put({'command': Commands.START})
+                    speak_queue.put({'command': Commands.START})
+            elif message['command'] == Commands.START:
+                print(f"$ Say {'`Picovoice`' if keyword_model_path is None else 'the wake word'} ...")
+            elif message['command'] == Commands.INTERRUPT:
+                if generating:
+                    print()
+                    generating = False
+                print("$ Wake word detected, utter your request or question ...")
+                print("User > ", end='', flush=True)
+                generate_queue.put(message)
+                speak_queue.put(message)
+            elif message['command'] == Commands.TEXT:
+                print(message['text'], end='', flush=True)
+            elif message['command'] == Commands.GENERATE:
+                print()
+                generate_queue.put(message)
+            elif message['command'] == Commands.SYNTHESIZE_START:
+                print(f"LLM (say {'`Picovoice`' if keyword_model_path is None else 'the wake word'} to interrupt) > ", end='', flush=True)
+                speak_queue.put(message)
+                generating = True
+            elif message['command'] == Commands.SYNTHESIZE:
+                print(message['text'], end='', flush=True)
+                speak_queue.put(message)
+            elif message['command'] == Commands.SYNTHESIZE_FLUSH:
+                print()
+                speak_queue.put(message)
+                generating = False
+            elif message['command'] == Commands.PROFILE:
+                if profile:
+                    print(message['text'])
     finally:
-        main_connection.send({'command': 'close'})
-        mic.delete()
-        pllm.release()
-        cheetah.delete()
-        porcupine.delete()
-        orca_process.join()
+        generate_queue.put({'command': Commands.INTERRUPT})
+        speak_queue.put({'command': Commands.INTERRUPT})
+
+        listen_queue.put({'command': Commands.CLOSE})
+        generate_queue.put({'command': Commands.CLOSE})
+        speak_queue.put({'command': Commands.CLOSE})
+
+        listen_process.join()
+        generate_process.join()
+        speak_process.join()
 
 
 if __name__ == '__main__':
