@@ -16,6 +16,7 @@ pico
 picollm
 picovoice
 pllm
+popleft
 pvcheetah
 pvorca
 pvporcupine
