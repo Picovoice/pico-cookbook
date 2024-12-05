@@ -155,7 +155,9 @@ def listen_worker(main_queue, listen_queue, access_key, keyword_model_path, chee
                 porcupine_profiler.tock(pcm)
                 if wake_word_detected:
                     listening = True
-                    main_queue.put({'command': Commands.PROFILE, 'text': f"[Porcupine RTF: {porcupine_profiler.rtf():.3f}]"})
+                    main_queue.put({
+                        'command': Commands.PROFILE,
+                        'text': f"[Porcupine RTF: {porcupine_profiler.rtf():.3f}]"})
                     main_queue.put({'command': Commands.INTERRUPT})
             else:
                 cheetah_profiler.tick()
@@ -171,8 +173,13 @@ def listen_worker(main_queue, listen_queue, access_key, keyword_model_path, chee
                     cheetah_profiler.tock(pcm)
                     user_request += remaining_transcript
                     main_queue.put({'command': Commands.TEXT, 'text': remaining_transcript})
-                    main_queue.put({'command': Commands.GENERATE, 'text': user_request, 'utterance_end_sec': utterance_end_sec})
-                    main_queue.put({'command': Commands.PROFILE, 'text': f"[Cheetah RTF: {cheetah_profiler.rtf():.3f}]"})
+                    main_queue.put({
+                        'command': Commands.GENERATE,
+                        'text': user_request,
+                        'utterance_end_sec': utterance_end_sec})
+                    main_queue.put({
+                        'command': Commands.PROFILE,
+                        'text': f"[Cheetah RTF: {cheetah_profiler.rtf():.3f}]"})
                     user_request = ''
                     listening = False
     finally:
@@ -181,7 +188,18 @@ def listen_worker(main_queue, listen_queue, access_key, keyword_model_path, chee
         mic.delete()
 
 
-def generate_worker(main_queue, generate_queue, access_key, picollm_model_path, picollm_device, picollm_completion_token_limit, picollm_presence_penalty, picollm_frequency_penalty, picollm_temperature, picollm_top_p, short_answers):
+def generate_worker(
+        main_queue,
+        generate_queue,
+        access_key,
+        picollm_model_path,
+        picollm_device,
+        picollm_completion_token_limit,
+        picollm_presence_penalty,
+        picollm_frequency_penalty,
+        picollm_temperature,
+        picollm_top_p,
+        short_answers):
     def handler(_, __) -> None:
         main_queue.put({'command': Commands.CLOSE})
 
@@ -324,7 +342,9 @@ def speak_worker(main_queue, speak_queue, access_key, warmup_sec):
                         orca_profiler.tick()
                         pcm = orca_stream.flush()
                         orca_profiler.tock(pcm)
-                        main_queue.put({'command': Commands.PROFILE, 'text': f"[Orca RTF: {orca_profiler.rtf():.2f}]\n[Delay: {delay_sec:.2f} sec]"})
+                        main_queue.put({
+                            'command': Commands.PROFILE,
+                            'text': f"[Orca RTF: {orca_profiler.rtf():.2f}]\n[Delay: {delay_sec:.2f} sec]"})
                     if speaking:
                         speaker.stop()
                     text_queue.clear()
@@ -352,7 +372,9 @@ def speak_worker(main_queue, speak_queue, access_key, warmup_sec):
                 synthesizing = False
                 if pcm is not None:
                     pcm_queue.extend(pcm)
-                main_queue.put({'command': Commands.PROFILE, 'text': f"[Orca RTF: {orca_profiler.rtf():.2f}]\n[Delay: {delay_sec:.2f} sec]"})
+                main_queue.put({
+                    'command': Commands.PROFILE,
+                    'text': f"[Orca RTF: {orca_profiler.rtf():.2f}]\n[Delay: {delay_sec:.2f} sec]"})
 
             if not speaking and len(pcm_queue) > warmup_size:
                 speaker.start()
@@ -546,7 +568,8 @@ def main() -> None:
                 generate_queue.put(message)
                 listening = False
             elif message['command'] == Commands.SYNTHESIZE_START:
-                print(f"LLM (say {'`Picovoice`' if keyword_model_path is None else 'the wake word'} to interrupt) > ", end='', flush=True)
+                wake_word = '`Picovoice`' if keyword_model_path is None else 'the wake word'
+                print(f"LLM (say {wake_word} to interrupt) > ", end='', flush=True)
                 speak_queue.put(message)
                 generating = True
             elif message['command'] == Commands.SYNTHESIZE:

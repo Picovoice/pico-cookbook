@@ -24,6 +24,7 @@ picollm
 picovoice
 pids
 pllm
+popleft
 psutil
 pvcheetah
 pvorca
