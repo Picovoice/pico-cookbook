@@ -3,7 +3,7 @@
 
 const { Porcupine, BuiltinKeyword } = require('@picovoice/porcupine-node');
 const { Cheetah } = require('@picovoice/cheetah-node');
-const { PicoLLM, PicoLLMEndpoint } = require('@picovoice/picollm-node');
+const { PicoLLM } = require('@picovoice/picollm-node');
 const { Orca } = require('@picovoice/orca-node');
 const { PvRecorder } = require('@picovoice/pvrecorder-node');
 const { PvSpeaker } = require('@picovoice/pvspeaker-node');
@@ -65,31 +65,31 @@ class TPSProfiler {
 }
 
 class CompletionText {
-  constructor(stop_phrases) {
-    this._stop_phrases = stop_phrases;
+  constructor(stopPhrases) {
+    this._stopPhrases = stopPhrases;
     this._start = 0;
     this._text = '';
-    this._new_tokens = '';
+    this._newTokens = '';
   }
   reset() {
     this._start = 0;
     this._text = '';
-    this._new_tokens = '';
+    this._newTokens = '';
   }
   append(text) {
     this._text += text;
     let end = this._text.length;
 
-    for (let stop_phrase of this._stop_phrases) {
-      let contains = this._text.indexOf(stop_phrase);
+    for (let stopPhrase of this._stopPhrases) {
+      let contains = this._text.indexOf(stopPhrase);
       if (contains >= 0) {
         if (end > contains) {
           end = contains;
         }
       }
-      for (let i = stop_phrase.length - 1; i > 0; i--) {
-        if (this._text.endsWith(stop_phrase.slice(0, i))) {
-          let ends = this._text.length - i
+      for (let i = stopPhrase.length - 1; i > 0; i--) {
+        if (this._text.endsWith(stopPhrase.slice(0, i))) {
+          let ends = this._text.length - i;
           if (end > ends) {
             end = ends;
           }
@@ -100,10 +100,10 @@ class CompletionText {
 
     let start = this._start;
     this._start = end;
-    this._new_tokens = this._text.slice(start, end);
+    this._newTokens = this._text.slice(start, end);
   }
-  get_new_tokens() {
-    return this._new_tokens;
+  getNewTokens() {
+    return this._newTokens;
   }
 }
 
@@ -247,9 +247,9 @@ async function llmVoiceAssistant() {
   function streamCallback(text) {
     picollmProfiler.tock();
     completionText.append(text);
-    let new_tokens = completionText.get_new_tokens();
-    if (new_tokens.length > 0 && generating) {
-      textQueue.push(new_tokens);
+    let newTokens = completionText.getNewTokens();
+    if (newTokens.length > 0 && generating) {
+      textQueue.push(newTokens);
     }
   }
 
@@ -289,7 +289,7 @@ async function llmVoiceAssistant() {
           if (speaking) {
             speaker.flush();
             speaker.stop();
-            let pcm = await recorder.read();
+            await recorder.read();
             speaking = false;
           }
           if (flush) {
@@ -400,7 +400,7 @@ async function llmVoiceAssistant() {
         pcmQueue = pcmQueue.slice(written);
       }
 
-      if (speaking && flush && pcmQueue.length == 0) {
+      if (speaking && flush && pcmQueue.length === 0) {
         const arrayBuffer = new Int16Array(pcmQueue).buffer;
         speaker.flush(arrayBuffer);
         speaker.stop();
