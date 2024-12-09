@@ -184,7 +184,7 @@ class Generator {
     this.profile = profile;
     this.picollmProfiler = new TPSProfiler();
     this.generating = false;
-    this.isGenerateComlete = false;
+    this.isGenerateComplete = false;
     this.textQueue = [];
     this.completion = new CompletionText(stopPhrases);
     this.utteranceEndMillisec = 0;
@@ -198,7 +198,7 @@ class Generator {
       self.textQueue.push(text);
     }
     function onGenerateComplete(res) {
-      self.isGenerateComlete = true;
+      self.isGenerateComplete = true;
       self.dialog.addLLMResponse(res.completion);
     }
 
@@ -207,7 +207,7 @@ class Generator {
     this.generating = true;
     this.dialog.addHumanRequest(this.isShortAnswers ? `You are a voice assistant and your answers are very short but informative. ${prompt}` : prompt);
     this.completion.reset();
-    this.isGenerateComlete = false;
+    this.isGenerateComplete = false;
     this.picollm.generate(this.dialog.prompt(), {
       completionTokenLimit: this.picollmGenerateOptions.picollmCompletionTokenLimit,
       stopPhrases: this.picollmGenerateOptions.stopPhrases,
@@ -237,7 +237,7 @@ class Generator {
           this.synthesizer.process(text, this.utteranceEndMillisec);
         }
       }
-      if (this.isGenerateComlete) {
+      if (this.isGenerateComplete) {
         this.generating = false;
         this.synthesizer.flush();
         process.stdout.write('\n');
@@ -294,26 +294,26 @@ class Synthesizer {
       this.orcaProfiler.tock(pcm);
       this.speaker.process(pcm);
 
-      if (pcm !== null && this.delaySec == -1) {
+      if (pcm !== null && this.delaySec === -1) {
         this.delaySec = (performance.now() - this.utteranceEndMillisec) / 1000;
       }
     }
 
-    if (this.synthesizing && this.flushing && this.textQueue.length == 0) {
-        this.synthesizing = false;
-        this.flushing = false;
-        this.orcaProfiler.tick();
-        const pcm = this.orcaStream.flush();
-        this.orcaProfiler.tock(pcm);
-        this.speaker.process(pcm);
-        this.speaker.flush();
+    if (this.synthesizing && this.flushing && this.textQueue.length === 0) {
+      this.synthesizing = false;
+      this.flushing = false;
+      this.orcaProfiler.tick();
+      const pcm = this.orcaStream.flush();
+      this.orcaProfiler.tock(pcm);
+      this.speaker.process(pcm);
+      this.speaker.flush();
 
-        if (this.profile) {
-          process.stdout.write(`[Orca RTF: ${this.orcaProfiler.rtf()}]\n`);
-          process.stdout.write(`[Delay: ${this.delaySec.toFixed(3)} sec]\n`);
-          this.delaySec = -1;
-          this.utteranceEndMillisec = 0;
-        }
+      if (this.profile) {
+        process.stdout.write(`[Orca RTF: ${this.orcaProfiler.rtf()}]\n`);
+        process.stdout.write(`[Delay: ${this.delaySec.toFixed(3)} sec]\n`);
+        this.delaySec = -1;
+        this.utteranceEndMillisec = 0;
+      }
     }
   }
 }
@@ -474,7 +474,7 @@ async function llmVoiceAssistant() {
     frequencyPenalty: picollmFrequencyPenalty,
     temperature: picollmTemperature,
     topP: picollmTopP,
-  }
+  };
 
   const porcupine = new Porcupine(accessKey, [keywordModelPath ?? BuiltinKeyword.PICOVOICE], [0.5]);
   process.stdout.write(`→ Porcupine v${porcupine.version}\n`);
