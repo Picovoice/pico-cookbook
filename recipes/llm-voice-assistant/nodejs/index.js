@@ -12,7 +12,6 @@ const { program } = require('commander');
 const { performance } = require('perf_hooks');
 const process = require('process');
 
-
 class RTFProfiler {
   constructor(sampleRate) {
     this._sampleRate = sampleRate;
@@ -107,7 +106,269 @@ class CompletionText {
   }
 }
 
-let isInterrupted = false;
+class Recorder {
+  constructor(listener, recorder, profile) {
+    this.listener = listener;
+    this.recorder = recorder;
+    this.profile = profile;
+
+    this.recorder.start();
+  }
+  async tick() {
+    const pcm = await this.recorder.read();
+    this.listener.process(pcm);
+  }
+}
+
+class Listener {
+  constructor(generator, porcupine, cheetah, profile) {
+    this.generator = generator;
+    this.porcupine = porcupine;
+    this.cheetah = cheetah;
+    this.profile = profile;
+    this.porcupineProfiler = new RTFProfiler(porcupine.sampleRate);
+    this.cheetahProfiler = new RTFProfiler(cheetah.sampleRate);
+    this.sleeping = true;
+    this.listening = false;
+    this.userRequest = '';
+  }
+  process(pcm) {
+    if (this.sleeping) {
+      this.porcupineProfiler.tick();
+      let wakeWordDetected = this.porcupine.process(pcm) === 0;
+      this.porcupineProfiler.tock(pcm);
+      if (wakeWordDetected) {
+        this.sleeping = false;
+        this.generator.interrupt();
+
+        if (this.profile) {
+          process.stdout.write(`[Porcupine RTF: ${this.porcupineProfiler.rtf()}]\n`);
+        }
+      }
+    } else if (this.listening) {
+      this.cheetahProfiler.tick();
+      const [partialTranscript, isEndpoint] = this.cheetah.process(pcm);
+      this.cheetahProfiler.tock(pcm);
+      this.userRequest += partialTranscript;
+      process.stdout.write(partialTranscript);
+      if (isEndpoint) {
+        this.sleeping = true;
+        this.listening = false;
+        this.cheetahProfiler.tick();
+        const remainingTranscript = this.cheetah.flush();
+        this.cheetahProfiler.tock(pcm);
+        process.stdout.write(`${remainingTranscript}\n`);
+        this.userRequest += remainingTranscript;
+        if (this.profile) {
+          process.stdout.write(`[Cheetah RTF: ${this.cheetahProfiler.rtf()}]\n`);
+        }
+        this.generator.process(this.userRequest, performance.now());
+        this.userRequest = '';
+      }
+    } else {
+      this.listening = true;
+      process.stdout.write('$ Wake word detected, utter your request or question ...\n');
+      process.stdout.write('User > ');
+    }
+  }
+}
+
+class Generator {
+  constructor(synthesizer, picollm, dialog, picollmGenerateOptions, isShortAnswers, stopPhrases, ppnPrompt, profile) {
+    this.synthesizer = synthesizer;
+    this.picollm = picollm;
+    this.dialog = dialog;
+    this.picollmGenerateOptions = picollmGenerateOptions;
+    this.isShortAnswers = isShortAnswers;
+    this.ppnPrompt = ppnPrompt;
+    this.profile = profile;
+    this.picollmProfiler = new TPSProfiler();
+    this.generating = false;
+    this.isGenerateComlete = false;
+    this.textQueue = [];
+    this.completion = new CompletionText(stopPhrases);
+    this.utteranceEndMillisec = 0;
+  }
+  process(prompt, utteranceEndMillisec) {
+    this.utteranceEndMillisec = utteranceEndMillisec;
+
+    let self = this;
+    function streamCallback(text) {
+      self.picollmProfiler.tock();
+      self.textQueue.push(text);
+    }
+    function onGenerateComplete(res) {
+      self.isGenerateComlete = true;
+      self.dialog.addLLMResponse(res.completion);
+    }
+
+    process.stdout.write(`LLM (say ${this.ppnPrompt} to interrupt) > `);
+
+    this.generating = true;
+    this.dialog.addHumanRequest(this.isShortAnswers ? `You are a voice assistant and your answers are very short but informative. ${prompt}` : prompt);
+    this.completion.reset();
+    this.isGenerateComlete = false;
+    this.picollm.generate(this.dialog.prompt(), {
+      completionTokenLimit: this.picollmGenerateOptions.picollmCompletionTokenLimit,
+      stopPhrases: this.picollmGenerateOptions.stopPhrases,
+      presencePenalty: this.picollmGenerateOptions.picollmPresencePenalty,
+      frequencyPenalty: this.picollmGenerateOptions.picollmFrequencyPenalty,
+      temperature: this.picollmGenerateOptions.picollmTemperature,
+      topP: this.picollmGenerateOptions.picollmTopP,
+      streamCallback: streamCallback
+    }).then(onGenerateComplete);
+  }
+  interrupt() {
+    if (this.generating) {
+      this.generating = false;
+      this.picollm.interrupt();
+      process.stdout.write('\n');
+    }
+    this.synthesizer.interrupt();
+  }
+  tick() {
+    if (this.generating) {
+      while (this.textQueue.length > 0) {
+        const text = this.textQueue.shift();
+        this.completion.append(text);
+        const newTokens = this.completion.getNewTokens();
+        if (newTokens && newTokens.length > 0) {
+          process.stdout.write(text);
+          this.synthesizer.process(text, this.utteranceEndMillisec);
+        }
+      }
+      if (this.isGenerateComlete) {
+        this.generating = false;
+        this.synthesizer.flush();
+        process.stdout.write('\n');
+
+        if (this.profile) {
+          process.stdout.write(`[picoLLM TPS: ${this.picollmProfiler.tps()}]\n`);
+        }
+      }
+    } else if (this.textQueue.length > 0) {
+      this.textQueue = [];
+    }
+  }
+}
+
+class Synthesizer {
+  constructor(speaker, orca, orcaStream, profile) {
+    this.speaker = speaker;
+    this.orca = orca;
+    this.orcaStream = orcaStream;
+    this.profile = profile;
+    this.orcaProfiler = new RTFProfiler(orca.sampleRate);
+    this.synthesizing = false;
+    this.flushing = false;
+    this.textQueue = [];
+    this.delaySec = -1;
+    this.utteranceEndMillisec = null;
+  }
+  process(text, utteranceEndMillisec) {
+    this.utteranceEndMillisec = utteranceEndMillisec;
+    if (!this.synthesizing) {
+      this.synthesizing = true;
+    }
+    this.textQueue.push(text);
+  }
+  flush() {
+    if (this.synthesizing) {
+      this.flushing = true;
+    }
+  }
+  interrupt() {
+    if (this.synthesizing) {
+      this.synthesizing = false;
+      this.flushing = false;
+      this.textQueue = [];
+      this.orcaStream.flush();
+    }
+    this.speaker.interrupt();
+  }
+  tick() {
+    while (this.synthesizing && this.textQueue.length > 0) {
+      const text = this.textQueue.shift();
+      this.orcaProfiler.tick();
+      const pcm = this.orcaStream.synthesize(text.replace('\n', ' . '));
+      this.orcaProfiler.tock(pcm);
+      this.speaker.process(pcm);
+
+      if (pcm !== null && this.delaySec == -1) {
+        this.delaySec = (performance.now() - this.utteranceEndMillisec) / 1000;
+      }
+    }
+
+    if (this.synthesizing && this.flushing && this.textQueue.length == 0) {
+        this.synthesizing = false;
+        this.flushing = false;
+        this.orcaProfiler.tick();
+        const pcm = this.orcaStream.flush();
+        this.orcaProfiler.tock(pcm);
+        this.speaker.process(pcm);
+        this.speaker.flush();
+
+        if (this.profile) {
+          process.stdout.write(`[Orca RTF: ${this.orcaProfiler.rtf()}]\n`);
+          process.stdout.write(`[Delay: ${this.delaySec.toFixed(3)} sec]\n`);
+          this.delaySec = -1;
+          this.utteranceEndMillisec = 0;
+        }
+    }
+  }
+}
+
+class Speaker {
+  constructor(speaker, orcaWarmup, ppnPrompt, profile) {
+    this.speaker = speaker;
+    this.orcaWarmup = orcaWarmup;
+    this.ppnPrompt = ppnPrompt;
+    this.profile = profile;
+
+    this.speaking = false;
+    this.flushing = false;
+    this.pcmQueue = [];
+  }
+  process(pcm) {
+    if (pcm !== null) {
+      this.pcmQueue.push(...pcm);
+    }
+  }
+  flush() {
+    if (this.speaking) {
+      this.flushing = true;
+    }
+  }
+  interrupt() {
+    if (this.speaking) {
+      this.speaking = false;
+      this.pcmQueue = [];
+      this.speaker.stop();
+    }
+  }
+  tick() {
+    if (!this.speaking && this.pcmQueue.length >= this.orcaWarmup) {
+      this.speaking = true;
+      this.speaker.start();
+    }
+
+    if (this.speaking && this.pcmQueue.length > 0) {
+      const arrayBuffer = new Int16Array(this.pcmQueue).buffer;
+      const written = this.speaker.write(arrayBuffer);
+      this.pcmQueue = this.pcmQueue.slice(written);
+    }
+
+    if (this.speaking && this.flushing && this.pcmQueue.length === 0) {
+      this.speaking = false;
+      this.flushing = false;
+
+      this.speaker.flush();
+      this.speaker.stop();
+
+      process.stdout.write(`$ Say ${this.ppnPrompt} ...\n`);
+    }
+  }
+}
 
 program
   .requiredOption(
@@ -198,33 +459,7 @@ async function llmVoiceAssistant() {
   const profile = program.profile;
   const isShortAnswers = program.short_answers;
 
-  let porcupine = new Porcupine(accessKey, [keywordModelPath ?? BuiltinKeyword.PICOVOICE], [0.5]);
-  process.stdout.write(`→ Porcupine v${porcupine.version}\n`);
-
-  const cheetah = new Cheetah(accessKey, { endpointDurationSec, enableAutomaticPunctuation: true });
-  process.stdout.write(`→ Cheetah v${cheetah.version}\n`);
-
-  const pllm = new PicoLLM(accessKey, picollmModelPath, { device: picollmDevice });
-  process.stdout.write(`→ picoLLM v${pllm.version} <${pllm.model}>\n`);
-
-  const orca = new Orca(accessKey);
-  process.stdout.write(`→ Orca v${orca.version}\n`);
-
-  const dialog = pllm.getDialog();
-  const orcaStream = orca.streamOpen();
-  const speaker = new PvSpeaker(orca.sampleRate, 16, { 'bufferSizeSecs': 1 });
-  const recorder = new PvRecorder(porcupine.frameLength);
-  recorder.start();
-
-  const ppnPrompt = `$ Say ${keywordModelPath ? 'the wake word' : '`Picovoice`'} ...`;
-  process.stdout.write(`${ppnPrompt}\n`);
-
-  const picollmProfiler = new TPSProfiler();
-  const porcupineProfiler = new RTFProfiler(porcupine.sampleRate);
-  const cheetahProfiler = new RTFProfiler(cheetah.sampleRate);
-  const orcaProfiler = new RTFProfiler(orca.sampleRate);
-  let utteranceEndMillisec = 0;
-  let delaySec = -1;
+  const ppnPrompt = `${keywordModelPath ? 'the wake word' : '`Picovoice`'}`;
   const stopPhrases = [
     '</s>', // Llama-2, Mistral, and Mixtral
     '<end_of_turn>', // Gemma
@@ -232,199 +467,64 @@ async function llmVoiceAssistant() {
     '<|eot_id|>', // Llama-3
     '<|end|>', '<|user|>', '<|assistant|>' // Phi-3
   ];
-
-  let listening = false;
-  let generating = false;
-  let synthesizing = false;
-  let speaking = false;
-  let flush = false;
-
-  let completionText = new CompletionText(stopPhrases);
-  let userRequest = '';
-  let textQueue = [];
-  let pcmQueue = [];
-
-  function streamCallback(text) {
-    picollmProfiler.tock();
-    completionText.append(text);
-    let newTokens = completionText.getNewTokens();
-    if (newTokens.length > 0 && generating) {
-      textQueue.push(newTokens);
-    }
+  const picollmGenerateOptions = {
+    completionTokenLimit: picollmCompletionTokenLimit,
+    stopPhrases: stopPhrases,
+    presencePenalty: picollmPresencePenalty,
+    frequencyPenalty: picollmFrequencyPenalty,
+    temperature: picollmTemperature,
+    topP: picollmTopP,
   }
 
-  let generateResult = null;
-  function onGenerateComplete(res) {
-    generateResult = res;
-  }
+  const porcupine = new Porcupine(accessKey, [keywordModelPath ?? BuiltinKeyword.PICOVOICE], [0.5]);
+  process.stdout.write(`→ Porcupine v${porcupine.version}\n`);
+
+  const cheetah = new Cheetah(accessKey, { endpointDurationSec, enableAutomaticPunctuation: true });
+  process.stdout.write(`→ Cheetah v${cheetah.version}\n`);
+
+  const picollm = new PicoLLM(accessKey, picollmModelPath, { device: picollmDevice });
+  process.stdout.write(`→ picoLLM v${picollm.version} <${picollm.model}>\n`);
+
+  const orca = new Orca(accessKey);
+  process.stdout.write(`→ Orca v${orca.version}\n`);
+
+  const dialog = picollm.getDialog();
+  const orcaStream = orca.streamOpen();
+  const pvSpeaker = new PvSpeaker(orca.sampleRate, 16, { 'bufferSizeSecs': 1 });
+  const pvRecorder = new PvRecorder(porcupine.frameLength);
+
+  const speaker = new Speaker(pvSpeaker, orcaWarmupSec * orca.sampleRate, ppnPrompt, profile);
+  const synthesizer = new Synthesizer(speaker, orca, orcaStream, profile);
+  const generator = new Generator(synthesizer, picollm, dialog, picollmGenerateOptions, isShortAnswers, stopPhrases, ppnPrompt, profile);
+  const listener = new Listener(generator, porcupine, cheetah, profile);
+  const recorder = new Recorder(listener, pvRecorder, profile);
+
+  process.stdout.write(`$ Say ${ppnPrompt} ...\n`);
+
+  let isInterrupted = false;
+  process.on('SIGINT', function () {
+    isInterrupted = true;
+  });
 
   try {
     while (!isInterrupted) {
-      let pcm = await recorder.read();
-      if (!listening) {
-        porcupineProfiler.tick();
-        let isWakeWordDetected = porcupine.process(pcm) === 0;
-        porcupineProfiler.tock(pcm);
-        if (isWakeWordDetected) {
-          if (generating) {
-            pllm.interrupt();
-            process.stdout.write('\n');
-            textQueue = [];
-            generating = false;
-            if (profile) {
-              process.stdout.write(`[picoLLM TPS: ${picollmProfiler.tps()}]\n`);
-            }
-          }
-          if (synthesizing) {
-            orcaProfiler.tick();
-            const flushedPcm = orcaStream.flush();
-            orcaProfiler.tock(flushedPcm);
-            pcmQueue = [];
-            if (profile) {
-              process.stdout.write(`[Orca RTF: ${orcaProfiler.rtf()}]\n`);
-              process.stdout.write(`[Delay: ${delaySec.toFixed(3)} sec]\n`);
-            }
-            synthesizing = false;
-          }
-          if (speaking) {
-            speaker.flush();
-            speaker.stop();
-            await recorder.read();
-            speaking = false;
-          }
-          if (flush) {
-            flush = false;
-          }
-
-          if (profile) {
-            process.stdout.write(`[Porcupine RTF: ${porcupineProfiler.rtf()}]\n`);
-          }
-
-          listening = true;
-
-          process.stdout.write('$ Wake word detected, utter your request or question ...\n');
-          process.stdout.write('User > ');
-        }
-      } else {
-        cheetahProfiler.tick();
-        const [partialTranscript, isEndpoint] = cheetah.process(pcm);
-        cheetahProfiler.tock(pcm);
-        process.stdout.write(partialTranscript);
-        userRequest += partialTranscript;
-        if (isEndpoint) {
-          utteranceEndMillisec = performance.now();
-          delaySec = -1;
-          cheetahProfiler.tick();
-          const remainingTranscript = cheetah.flush();
-          cheetahProfiler.tock(pcm);
-          userRequest += remainingTranscript;
-          process.stdout.write(`${remainingTranscript}\n`);
-          if (profile) {
-            process.stdout.write(`[Cheetah RTF: ${cheetahProfiler.rtf()}]\n`);
-          }
-
-          listening = false;
-          generating = true;
-
-          completionText.reset();
-          dialog.addHumanRequest(isShortAnswers ? `You are a voice assistant and your answers are very short but informative. ${userRequest}` : userRequest);
-          pllm.generate(
-            dialog.prompt(),
-            {
-              completionTokenLimit: picollmCompletionTokenLimit,
-              stopPhrases: stopPhrases,
-              presencePenalty: picollmPresencePenalty,
-              frequencyPenalty: picollmFrequencyPenalty,
-              temperature: picollmTemperature,
-              topP: picollmTopP,
-              streamCallback: streamCallback,
-            },
-          ).then(onGenerateComplete);
-        }
-      }
-
-      if (generateResult !== null) {
-        if (generating) {
-          process.stdout.write('\n');
-          if (profile) {
-            process.stdout.write(`[picoLLM TPS: ${picollmProfiler.tps()}]\n`);
-          }
-          flush = true;
-          generating = false;
-        }
-        dialog.addLLMResponse(generateResult.completion);
-        generateResult = null;
-      }
-
-      if (!synthesizing && textQueue.length > 0) {
-        synthesizing = true;
-      }
-
-      while (textQueue.length > 0) {
-        let text = textQueue.shift();
-        process.stdout.write(text);
-
-        orcaProfiler.tick();
-        const pcm = orcaStream.synthesize(text.replace('\n', ' . '));
-        orcaProfiler.tock(pcm);
-        if (pcm !== null) {
-          if (delaySec === -1) {
-            delaySec = (performance.now() - utteranceEndMillisec) / 1000;
-          }
-          pcmQueue.push(...pcm);
-        }
-      }
-
-      if (synthesizing && flush) {
-        orcaProfiler.tick();
-        const flushedPcm = orcaStream.flush();
-        orcaProfiler.tock(flushedPcm);
-        if (pcm !== null) {
-          pcmQueue.push(...flushedPcm);
-        }
-        if (profile) {
-          process.stdout.write(`[Orca RTF: ${orcaProfiler.rtf()}]\n`);
-          process.stdout.write(`[Delay: ${delaySec.toFixed(3)} sec]\n`);
-        }
-        synthesizing = false;
-      }
-
-      if (!speaking && pcmQueue.length >= orcaWarmupSec * orca.sampleRate) {
-        speaking = true;
-        speaker.start();
-      }
-
-      if (speaking && pcmQueue.length > 0) {
-        const arrayBuffer = new Int16Array(pcmQueue).buffer;
-        const written = speaker.write(arrayBuffer);
-        pcmQueue = pcmQueue.slice(written);
-      }
-
-      if (speaking && flush && pcmQueue.length === 0) {
-        const arrayBuffer = new Int16Array(pcmQueue).buffer;
-        speaker.flush(arrayBuffer);
-        speaker.stop();
-        process.stdout.write(`${ppnPrompt}\n`);
-        speaking = false;
-        flush = false;
-      }
+      await recorder.tick();
+      generator.tick();
+      synthesizer.tick();
+      speaker.tick();
     }
   } finally {
-    recorder.stop();
-    recorder.release();
-    speaker.stop();
-    speaker.release();
+    pvRecorder.stop();
+    pvRecorder.release();
+    pvSpeaker.stop();
+    pvSpeaker.release();
     porcupine.release();
     cheetah.release();
-    pllm.release();
+    picollm.release();
     orcaStream.close();
     orca.release();
   }
 }
-
-process.on('SIGINT', function () {
-  isInterrupted = true;
-});
 
 (async function () {
   try {
