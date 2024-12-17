@@ -1,4 +1,4 @@
-picollm==1.2.1
+picollm==1.2.2
 pvcheetah==2.0.1
 pvorca==1.0.0
 pvporcupine==3.0.2
