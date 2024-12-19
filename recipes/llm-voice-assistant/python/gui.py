@@ -677,8 +677,6 @@ def main(config):
     display.tick()
 
     if 'keyword_model_path' not in config:
-        # {'jarvis', 'terminator', 'ok google', 'picovoice', 'pico clock', 'porcupine', 'computer', 'hey google',
-        # 'grapefruit', 'bumblebee', 'blueberry', 'grasshopper', 'hey barista', 'alexa', 'hey siri', 'americano'}
         porcupine = pvporcupine.create(access_key=config['access_key'], keywords=['picovoice'])
     else:
         porcupine = pvporcupine.create(access_key=config['access_key'], keyword_paths=[config['keyword_model_path']])
