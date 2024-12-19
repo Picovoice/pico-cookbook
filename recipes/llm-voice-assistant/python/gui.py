@@ -421,7 +421,7 @@ class Display:
         self.height, self.width = self.screen.getmaxyx()
 
         if self.height < 30 or self.width < 120:
-            print(f'Error: Console window not large enough was ({self.height}, {self.width}) needs (x, x)')
+            print(f'Error: Console window not large enough was ({self.height}, {self.width}) needs (30, 120)')
             exit(1)
 
         self.last_blink = 0.0
@@ -431,6 +431,7 @@ class Display:
         self.sample_rate_in = 1
         self.samples_in = []
         self.volume_in = [0.0] * 4
+        self.max_in = 8192
         self.volume_index_in = 0
         self.sample_rate_out = 1
         self.samples_out = []
@@ -548,12 +549,17 @@ class Display:
             if len(self.samples_out) > self.sample_rate_out * 2:
                 del self.samples_out[:-(self.sample_rate_out * 2)]
 
-        INT16_MAX = 32768
-        EPSILON = 1e-9
+        def compute_amplitude(samples, sample_max = 32768, scale = 1.0):
+            rms = math.sqrt(sum([(x / sample_max) ** 2 for x in samples]) / len(samples))
+            dbfs = math.log10(max(rms * math.sqrt(2), 1e-9))
+            dbfs = min(0, dbfs)
+            return min(1, (10 ** dbfs) * scale)
+
         if len(self.samples_in) > 0:
-            rms_in = sum([(x / INT16_MAX) ** 2 for x in self.samples_in])
-            volume_in = math.log10(max(rms_in, EPSILON))
-            volume_in = max(0, min(1, volume_in))
+            max_in = max([abs(x) for x in self.samples_in])
+            if self.max_in < max_in:
+                self.max_in = max_in
+            volume_in = compute_amplitude(self.samples_in, self.max_in)
             self.volume_in[self.volume_index_in] = volume_in
             self.volume_index_in = (self.volume_index_in + 1) % len(self.volume_in)
         else:
@@ -564,9 +570,7 @@ class Display:
             frame_size_out = min(len(self.samples_out), int(delta * self.sample_rate_out + 1))
             frame_out = self.samples_out[:frame_size_out]
             del self.samples_out[:frame_size_out]
-            rms_out = sum([(x / INT16_MAX) ** 2 for x in frame_out])
-            volume_out = math.log10(max(rms_out, EPSILON))
-            volume_out = max(0, min(1, volume_out))
+            volume_out = compute_amplitude(frame_out, scale=5.0)
             self.volume_out[self.volume_index_out] = volume_out
             self.volume_index_out = (self.volume_index_out + 1) % len(self.volume_out)
         else:
@@ -585,10 +589,10 @@ class Display:
         self.pcm_in.addstr(1, 1, 'You'.center(18))
         self.pcm_out.addstr(1, 1, (f'{self.model_name}' if self.model_name else 'AI').center(18))
         for j in range(width_in - 4):
-            for i in range(int(volume_in * (height_in - 3))):
+            for i in range(int(volume_in * (height_in - 4))):
                 self.pcm_in.addch(height_in - 2 - i, 2 + j, '▄', curses.color_pair(3))
         for j in range(width_out - 4):
-            for i in range(int(volume_out * (height_out - 3))):
+            for i in range(int(volume_out * (height_out - 4))):
                 self.pcm_out.addch(height_out - 2 - i, 2 + j, '▄', curses.color_pair(2))
 
         self.window.box()
@@ -609,7 +613,6 @@ class Display:
         signal.signal(signal.SIGINT, handler)
 
         while not should_close.is_set():
-            time.sleep(0.01)
             cpu_usage = sum([psutil.Process(pid).cpu_percent(0.25) for pid in pids]) / os.cpu_count()
             queue.put({
                 'command': Commands.USAGE,
@@ -647,7 +650,7 @@ class Display:
 
         ram_total = Display.run_command(cpu_mem_total_cmd)
         while not should_close.is_set():
-            time.sleep(0.01)
+            time.sleep(0.25)
             ram_usage = sum([psutil.Process(pid).memory_info().rss for pid in pids]) / 1024 / 1024 / 1024
             if ram_usage is not None:
                 queue.put({
@@ -674,6 +677,8 @@ def main(config):
     display.tick()
 
     if 'keyword_model_path' not in config:
+        # {'jarvis', 'terminator', 'ok google', 'picovoice', 'pico clock', 'porcupine', 'computer', 'hey google',
+        # 'grapefruit', 'bumblebee', 'blueberry', 'grasshopper', 'hey barista', 'alexa', 'hey siri', 'americano'}
         porcupine = pvporcupine.create(access_key=config['access_key'], keywords=['picovoice'])
     else:
         porcupine = pvporcupine.create(access_key=config['access_key'], keyword_paths=[config['keyword_model_path']])
