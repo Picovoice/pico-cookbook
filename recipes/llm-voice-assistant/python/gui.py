@@ -116,7 +116,10 @@ class Speaker:
         if self.speaking and len(self.pcmBuffer) > 0:
             written = self.speaker.write(self.pcmBuffer)
             if written > 0:
-                self.queue.put({ 'command': Commands.PCM_OUT, 'pcm': self.pcmBuffer[:written], 'sample-rate': self.speaker.sample_rate })
+                self.queue.put({
+                    'command': Commands.PCM_OUT,
+                    'pcm': self.pcmBuffer[:written],
+                    'sample-rate': self.speaker.sample_rate})
                 del self.pcmBuffer[:written]
         elif self.speaking and self.flushing and len(self.pcmBuffer) == 0:
             self.started = False
@@ -125,7 +128,7 @@ class Speaker:
             self.future = self.executor.submit(stop)
         if self.future and self.future.done():
             self.future = None
-            self.queue.put({ 'command': Commands.TEXT_STATE, 'state': 1 })
+            self.queue.put({'command': Commands.TEXT_STATE, 'state': 1})
 
 
 class Synthesizer:
@@ -136,21 +139,21 @@ class Synthesizer:
         self.orca_process = orca_process
 
     def close(self):
-        self.orca_connection.send({ 'command': Commands.CLOSE })
+        self.orca_connection.send({'command': Commands.CLOSE})
         self.orca_process.join()
 
     def start(self):
         self.speaker.start()
-        self.orca_connection.send({ 'command': Commands.START })
+        self.orca_connection.send({'command': Commands.START})
 
     def process(self, text: str):
-        self.orca_connection.send({ 'command': Commands.PROCESS, 'text': text })
+        self.orca_connection.send({'command': Commands.PROCESS, 'text': text})
 
     def flush(self):
-        self.orca_connection.send({ 'command': Commands.FLUSH })
+        self.orca_connection.send({'command': Commands.FLUSH})
 
     def interrupt(self):
-        self.orca_connection.send({ 'command': Commands.INTERRUPT })
+        self.orca_connection.send({'command': Commands.INTERRUPT})
         while self.orca_connection.poll() and self.orca_connection.recv()['command'] != Commands.INTERRUPT:
             time.sleep(0.01)
         self.speaker.interrupt()
@@ -195,20 +198,20 @@ class Synthesizer:
                         if synthesizing:
                             pcm = orca_stream.synthesize(message['text'])
                             if pcm is not None:
-                                connection.send({ 'command': Commands.SPEAK, 'pcm': pcm })
+                                connection.send({'command': Commands.SPEAK, 'pcm': pcm})
                     elif message['command'] == Commands.FLUSH:
                         flushing = True
                     elif message['command'] == Commands.INTERRUPT:
                         synthesizing = False
                         flushing = False
                         orca_stream.flush()
-                        connection.send({ 'command': Commands.INTERRUPT })
+                        connection.send({'command': Commands.INTERRUPT})
                 if synthesizing and flushing:
                     synthesizing = False
                     flushing = False
                     pcm = orca_stream.flush()
-                    connection.send({ 'command': Commands.SPEAK, 'pcm': pcm })
-                    connection.send({ 'command': Commands.FLUSH })
+                    connection.send({'command': Commands.SPEAK, 'pcm': pcm})
+                    connection.send({'command': Commands.FLUSH})
                 elif flushing:
                     flushing = False
         finally:
@@ -224,15 +227,15 @@ class Generator:
         self.pllm_process = pllm_process
 
     def close(self):
-        self.pllm_connection.send({ 'command': Commands.CLOSE })
+        self.pllm_connection.send({'command': Commands.CLOSE})
         self.pllm_process.join()
 
     def process(self, text: str):
         self.synthesizer.start()
-        self.pllm_connection.send({ 'command': Commands.PROCESS, 'text': text })
+        self.pllm_connection.send({'command': Commands.PROCESS, 'text': text})
 
     def interrupt(self):
-        self.pllm_connection.send({ 'command': Commands.INTERRUPT })
+        self.pllm_connection.send({'command': Commands.INTERRUPT})
         while self.pllm_connection.poll() and self.pllm_connection.recv()['command'] != Commands.INTERRUPT:
             time.sleep(0.01)
         self.synthesizer.interrupt()
@@ -267,7 +270,7 @@ class Generator:
         dialog = pllm.get_dialog()
         generating = False
 
-        connection.send({ 'command': Commands.MODEL_NAME, 'name': pllm.model.split(' ')[0] })
+        connection.send({'command': Commands.MODEL_NAME, 'name': pllm.model.split(' ')[0]})
 
         stop_phrases = {
             '</s>',  # Llama-2, Mistral, and Mixtral
@@ -326,13 +329,13 @@ class Generator:
                     dialog.add_llm_response(llm_result.completion)
                     if llm_result.endpoint == picollm.PicoLLMEndpoints.INTERRUPTED:
                         interrupting = False
-                        connection.send({ 'command': Commands.INTERRUPT })
+                        connection.send({'command': Commands.INTERRUPT})
                     else:
-                        connection.send({ 'command': Commands.FLUSH })
+                        connection.send({'command': Commands.FLUSH})
                     llm_future = None
                 if not llm_future and interrupting:
                     interrupting = False
-                    connection.send({ 'command': Commands.INTERRUPT })
+                    connection.send({'command': Commands.INTERRUPT})
         finally:
             while llm_future and llm_future.done():
                 time.sleep(0.01)
@@ -341,7 +344,12 @@ class Generator:
 
 
 class Listener:
-    def __init__(self, queue: Queue, generator: Generator, porcupine: pvporcupine.Porcupine, cheetah: pvcheetah.Cheetah):
+    def __init__(
+            self,
+            queue: Queue,
+            generator: Generator,
+            porcupine: pvporcupine.Porcupine,
+            cheetah: pvcheetah.Cheetah):
         self.queue = queue
         self.generator = generator
         self.porcupine = porcupine
@@ -373,12 +381,12 @@ class Listener:
                     self.user_request += remaining_transcript
                 self.generator.process(self.user_request)
                 self.user_request = ''
-                self.queue.put({ 'command': Commands.TEXT_STATE, 'state': 3 })
+                self.queue.put({'command': Commands.TEXT_STATE, 'state': 3})
         elif self.tick_count > 0:
             self.tick_count -= 1
         else:
             self.listening = True
-            self.queue.put({ 'command': Commands.TEXT_STATE, 'state': 2 })
+            self.queue.put({'command': Commands.TEXT_STATE, 'state': 2})
 
 
 class Recorder:
@@ -398,7 +406,7 @@ class Recorder:
             self.recorder.start()
         pcm = self.recorder.read()
         self.listener.process(pcm)
-        self.queue.put({ 'command': Commands.PCM_IN, 'pcm': pcm, 'sample-rate': self.recorder.sample_rate })
+        self.queue.put({'command': Commands.PCM_IN, 'pcm': pcm, 'sample-rate': self.recorder.sample_rate})
 
 
 class Display:
@@ -422,11 +430,11 @@ class Display:
 
         self.sample_rate_in = 1
         self.samples_in = []
-        self.volume_in = [ 0.0 ] * 4
+        self.volume_in = [0.0] * 4
         self.volume_index_in = 0
         self.sample_rate_out = 1
         self.samples_out = []
-        self.volume_out = [ 0.0 ] * 12
+        self.volume_out = [0.0] * 12
         self.volume_index_out = 0
 
         curses.curs_set(0)
@@ -463,11 +471,11 @@ class Display:
         ]
 
         try:
-            self.title = self.window.subwin(len(TITLE), self.width - 4, 1, 2)
+            self.title = self.window.subwin(6, self.width - 4, 1, 2)
             for i, line in enumerate(TITLE):
                 disp = line.center(self.width - 4, '░')
                 self.title.addstr(i, 0, disp)
-        except:
+        finally:
             pass
 
     def start(self, pids: list):
@@ -589,7 +597,10 @@ class Display:
     @staticmethod
     def run_command(command):
         val = subprocess.run(['powershell', '-Command', command], capture_output=True).stdout.decode("ascii")
-        return float(val.strip().replace(',', '.'))
+        try:
+            return float(val.strip().replace(',', '.'))
+        except Exception:
+            return None
 
     @staticmethod
     def worker_cpu(queue: Queue, should_close, pids: list):
@@ -598,17 +609,14 @@ class Display:
         signal.signal(signal.SIGINT, handler)
 
         while not should_close.is_set():
-            try:
-                time.sleep(0.01)
-                cpu_usage = sum([ psutil.Process(pid).cpu_percent(0.25) for pid in pids ]) / os.cpu_count()
-                queue.put({
-                    'command': Commands.USAGE,
-                    'name': 'CPU',
-                    'text': f"{round(cpu_usage, 2)}%",
-                    'bar': (cpu_usage / 100)
-                })
-            except:
-                pass
+            time.sleep(0.01)
+            cpu_usage = sum([psutil.Process(pid).cpu_percent(0.25) for pid in pids]) / os.cpu_count()
+            queue.put({
+                'command': Commands.USAGE,
+                'name': 'CPU',
+                'text': f"{round(cpu_usage, 2)}%",
+                'bar': (cpu_usage / 100)
+            })
 
     @staticmethod
     def worker_gpu(queue: Queue, should_close, pids: list):
@@ -616,19 +624,18 @@ class Display:
             pass
         signal.signal(signal.SIGINT, handler)
 
-        temp = ', '.join([r'"\GPU Engine(pid_{}_*)\Utilization Percentage"'.format(pid) for pid in pids])
-        gpu_usage_cmd = r'(((Get-Counter ' + temp + r').CounterSamples | where CookedValue).CookedValue | measure -sum).sum'
+        gpu_usage_counters = ', '.join([r'"\GPU Engine(pid_{}_*)\Utilization Percentage"'.format(pid) for pid in pids])
+        gpu_usage_cmd = r'(((Get-Counter {}).CounterSamples | where CookedValue).CookedValue | measure -sum).sum'
+        gpu_usage_cmd = gpu_usage_cmd.format(gpu_usage_counters)
         while not should_close.is_set():
-            try:
-                gpu_usage = Display.run_command(gpu_usage_cmd)
+            gpu_usage = Display.run_command(gpu_usage_cmd)
+            if gpu_usage is not None:
                 queue.put({
                     'command': Commands.USAGE,
                     'name': 'GPU',
                     'text': f"{round(gpu_usage, 2)}%",
                     'bar': (float(gpu_usage) / 100)
                 })
-            except:
-                pass
 
     @staticmethod
     def worker_ram(queue: Queue, should_close, pids: list):
@@ -640,24 +647,22 @@ class Display:
 
         ram_total = Display.run_command(cpu_mem_total_cmd)
         while not should_close.is_set():
-            try:
-                time.sleep(0.01)
-                ram_usage = sum([ psutil.Process(pid).memory_info().rss for pid in pids ]) / 1024 / 1024 / 1024
+            time.sleep(0.01)
+            ram_usage = sum([psutil.Process(pid).memory_info().rss for pid in pids]) / 1024 / 1024 / 1024
+            if ram_usage is not None:
                 queue.put({
                     'command': Commands.USAGE,
                     'name': 'RAM',
                     'text': f"{round(ram_usage, 2)}GB / {round(ram_total, 2)}GB",
                     'bar': (float(ram_usage) / float(ram_total))
                 })
-            except:
-                pass
 
 
 def main(config):
+    stop = [False]
     queue = Queue()
     display = Display(queue, config)
 
-    stop = [ False ]
     def handler(_, __) -> None:
         stop[0] = True
     signal.signal(signal.SIGINT, handler)
@@ -687,7 +692,7 @@ def main(config):
     listener = Listener(queue, generator, porcupine, cheetah)
     recorder = Recorder(queue, listener, pv_recorder)
 
-    queue.put({ 'command': Commands.TEXT_STATE, 'state': 1 })
+    queue.put({'command': Commands.TEXT_STATE, 'state': 1})
     display.tick()
 
     try:
@@ -784,10 +789,10 @@ if __name__ == '__main__':
     else:
         config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.json')
 
-    try:
+    if os.path.exists(config_path):
         with open(config_path, 'r') as fd:
             config = json.load(fd)
-    except:
+    else:
         config = {}
 
     REQUIRED_ARGS = [
@@ -813,7 +818,7 @@ if __name__ == '__main__':
         if arg is not None:
             config[key] = arg
 
-    missing = [ f'--{arg}' for arg in REQUIRED_ARGS if arg not in config ]
+    missing = [f'--{arg}' for arg in REQUIRED_ARGS if arg not in config]
     if len(missing) > 0:
         print(parser.error('the following arguments are required: ' + ', '.join(missing)))
 
