@@ -821,6 +821,7 @@ if __name__ == '__main__':
     missing = [f'--{arg}' for arg in REQUIRED_ARGS if arg not in config]
     if len(missing) > 0:
         print(parser.error('the following arguments are required: ' + ', '.join(missing)))
+        exit(1)
 
     for key in DEFAULT_ARGS:
         if key not in config:
