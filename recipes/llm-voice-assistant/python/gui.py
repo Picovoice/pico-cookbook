@@ -551,7 +551,7 @@ class Display:
 
         def compute_amplitude(samples, sample_max = 32768, scale = 1.0):
             rms = math.sqrt(sum([(x / sample_max) ** 2 for x in samples]) / len(samples))
-            dbfs = math.log10(max(rms * math.sqrt(2), 1e-9))
+            dbfs = math.log10(max(rms, 1e-9))
             dbfs = min(0, dbfs)
             return min(1, (10 ** dbfs) * scale)
 
@@ -570,7 +570,7 @@ class Display:
             frame_size_out = min(len(self.samples_out), int(delta * self.sample_rate_out + 1))
             frame_out = self.samples_out[:frame_size_out]
             del self.samples_out[:frame_size_out]
-            volume_out = compute_amplitude(frame_out, scale=5.0)
+            volume_out = compute_amplitude(frame_out, scale=4.0)
             self.volume_out[self.volume_index_out] = volume_out
             self.volume_index_out = (self.volume_index_out + 1) % len(self.volume_out)
         else:
