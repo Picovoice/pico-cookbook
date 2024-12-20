@@ -639,7 +639,7 @@ class Display:
         signal.signal(signal.SIGINT, handler)
 
         while not should_close.is_set():
-            cpu_usage = sum([psutil.Process(pid).cpu_percent(0.25) for pid in pids]) / os.cpu_count()
+            cpu_usage = sum([psutil.Process(pid).cpu_percent(0.25) for pid in pids]) / len(pids)
             queue.put({
                 'command': Commands.USAGE,
                 'name': 'CPU',
@@ -764,6 +764,7 @@ def main(config):
 if __name__ == '__main__':
     if not sys.platform.lower().startswith('win'):
         print('Error: Only runs on Windows platforms')
+        exit(1)
 
     parser = ArgumentParser()
     parser.add_argument(
