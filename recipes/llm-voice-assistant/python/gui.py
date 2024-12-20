@@ -187,6 +187,7 @@ class Synthesizer:
             close = False
             synthesizing = False
             flushing = False
+            textQueue = Queue()
             while not close:
                 while connection.poll():
                     message = connection.recv()
@@ -196,17 +197,22 @@ class Synthesizer:
                         synthesizing = True
                     elif message['command'] == Commands.PROCESS:
                         if synthesizing:
-                            pcm = orca_stream.synthesize(message['text'])
-                            if pcm is not None:
-                                connection.send({'command': Commands.SPEAK, 'pcm': pcm})
+                            textQueue.put(message['text'])
                     elif message['command'] == Commands.FLUSH:
                         flushing = True
                     elif message['command'] == Commands.INTERRUPT:
                         synthesizing = False
                         flushing = False
+                        while not textQueue.empty():
+                            textQueue.get()
                         orca_stream.flush()
                         connection.send({'command': Commands.INTERRUPT})
-                if synthesizing and flushing:
+                if not textQueue.empty():
+                    text = textQueue.get()
+                    pcm = orca_stream.synthesize(text)
+                    if pcm is not None:
+                        connection.send({'command': Commands.SPEAK, 'pcm': pcm})
+                if synthesizing and flushing and textQueue.empty():
                     synthesizing = False
                     flushing = False
                     pcm = orca_stream.flush()
@@ -369,6 +375,7 @@ class Listener:
                 self.sleeping = False
                 self.tick_count = 4
                 self.generator.interrupt()
+                self.queue.put({'command': Commands.INTERRUPT})
         elif self.listening:
             partial_transcript, endpoint_reached = self.cheetah.process(pcm)
             if len(partial_transcript) > 0:
@@ -497,9 +504,9 @@ class Display:
     def render_prompt(self):
         TEXT_STATES = [
             'Loading...',
-            'Say `Picovoice`',
+            'Say `Jarvis`',
             'Ask a Question',
-            'Say `Picovoice` to Interrupt'
+            'Say `Jarvis` to Interrupt'
         ]
 
         self.prompt.clear()
@@ -522,6 +529,8 @@ class Display:
             elif message['command'] == Commands.PCM_OUT:
                 self.samples_out.extend(message['pcm'])
                 self.sample_rate_out = message['sample-rate']
+            elif message['command'] == Commands.INTERRUPT:
+                self.samples_out.clear()
             elif message['command'] == Commands.USAGE:
                 name = message['name']
                 text = message['text']
@@ -630,6 +639,7 @@ class Display:
         while not should_close.is_set():
             gpu_usage = Display.run_command(gpu_usage_cmd)
             if gpu_usage is not None:
+                gpu_usage = max(0, min(100, gpu_usage))
                 queue.put({
                     'command': Commands.USAGE,
                     'name': 'GPU',
@@ -674,9 +684,15 @@ def main(config):
     display.tick()
 
     if 'keyword_model_path' not in config:
-        porcupine = pvporcupine.create(access_key=config['access_key'], keywords=['picovoice'])
+        porcupine = pvporcupine.create(
+            access_key=config['access_key'],
+            keywords=['jarvis'],
+            sensitivities=[config['porcupine_sensitivity']])
     else:
-        porcupine = pvporcupine.create(access_key=config['access_key'], keyword_paths=[config['keyword_model_path']])
+        porcupine = pvporcupine.create(
+            access_key=config['access_key'],
+            keyword_paths=[config['keyword_model_path']],
+            sensitivities=[config['porcupine_sensitivity']])
 
     cheetah = pvcheetah.create(
         access_key=config['access_key'],
@@ -725,8 +741,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument(
         '--config',
-        help='path to a json config file to load the arguments from'
-    )
+        help='path to a json config file to load the arguments from')
     parser.add_argument(
         '--access_key',
         help='`AccessKey` obtained from `Picovoice Console` (https://console.picovoice.ai/).')
@@ -735,7 +750,7 @@ if __name__ == '__main__':
         help='Absolute path to the file containing LLM parameters (`.pllm`).')
     parser.add_argument(
         '--keyword-model_path',
-        help='Absolute path to the keyword model file (`.ppn`). If not set, `Picovoice` will be the wake phrase')
+        help='Absolute path to the keyword model file (`.ppn`). If not set, `Jarvis` will be the wake phrase')
     parser.add_argument(
         '--cheetah_endpoint_duration_sec',
         type=float,
@@ -781,6 +796,10 @@ if __name__ == '__main__':
         type=float,
         help="Duration of the synthesized audio to buffer before streaming it out. A higher value helps slower "
              "(e.g., Raspberry Pi) to keep up with real-time at the cost of increasing the initial delay.")
+    parser.add_argument(
+        '--porcupine_sensitivity',
+        type=float,
+        help="Sensitivity for detecting keywords.")
     parser.add_argument('--short_answers', action='store_true')
     args = parser.parse_args()
 
@@ -810,6 +829,7 @@ if __name__ == '__main__':
         'picollm_temperature': 0,
         'picollm_top_p': 1,
         'orca_warmup_sec': 0,
+        'porcupine_sensitivity': 0.5,
         'short_answers': False
     }
 
