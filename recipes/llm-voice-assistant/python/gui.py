@@ -595,8 +595,8 @@ class Display:
 
         self.title = self.window.subwin(6, self.width - 4, 1, 2)
         for i, line in enumerate(TITLE):
-            disp = line.center(self.width - 4, '░')
-            self.title.addstr(i, 0, disp)
+            display = line.center(self.width - 4, '░')
+            self.title.addstr(i, 0, display)
 
         self.window.box()
         self.window.refresh()
