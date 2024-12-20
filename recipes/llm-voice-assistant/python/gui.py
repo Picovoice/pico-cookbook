@@ -469,22 +469,6 @@ class Display:
             self.usage[key].box()
             self.usage[key].addstr(1, 2, key)
 
-        TITLE = [
-            '',
-            '░█▀█░▀█▀░█▀▀░█▀█░█░█░█▀█░▀█▀░█▀▀░█▀▀░',
-            '░█▀▀░░█░░█░░░█░█░▀▄▀░█░█░░█░░█░░░█▀▀░',
-            '░▀░░░▀▀▀░▀▀▀░▀▀▀░░▀░░▀▀▀░▀▀▀░▀▀▀░▀▀▀░',
-            ''
-        ]
-
-        try:
-            self.title = self.window.subwin(6, self.width - 4, 1, 2)
-            for i, line in enumerate(TITLE):
-                disp = line.center(self.width - 4, '░')
-                self.title.addstr(i, 0, disp)
-        finally:
-            pass
-
     def start(self, pids: list):
         self.should_close = Event()
         self.processes = [
@@ -557,7 +541,7 @@ class Display:
             if len(self.samples_out) > self.sample_rate_out * 2:
                 del self.samples_out[:-(self.sample_rate_out * 2)]
 
-        def compute_amplitude(samples, sample_max = 32768, scale = 1.0):
+        def compute_amplitude(samples, sample_max=32768, scale=1.0):
             rms = math.sqrt(sum([(x / sample_max) ** 2 for x in samples]) / len(samples))
             dbfs = 20 * math.log10(max(rms, 1e-9))
             dbfs = min(0, dbfs)
@@ -600,6 +584,19 @@ class Display:
         for j in range(width_out - 4):
             for i in range(int(volume_out * (height_out - 4))):
                 self.pcm_out.addch(height_out - 2 - i, 2 + j, '▄', curses.color_pair(2))
+
+        TITLE = [
+            '',
+            '░█▀█░▀█▀░█▀▀░█▀█░█░█░█▀█░▀█▀░█▀▀░█▀▀░',
+            '░█▀▀░░█░░█░░░█░█░▀▄▀░█░█░░█░░█░░░█▀▀░',
+            '░▀░░░▀▀▀░▀▀▀░▀▀▀░░▀░░▀▀▀░▀▀▀░▀▀▀░▀▀▀░',
+            ''
+        ]
+
+        self.title = self.window.subwin(6, self.width - 4, 1, 2)
+        for i, line in enumerate(TITLE):
+            disp = line.center(self.width - 4, '░')
+            self.title.addstr(i, 0, disp)
 
         self.window.box()
         self.window.refresh()
@@ -720,6 +717,10 @@ def main(config):
             display.tick()
     finally:
         generator.interrupt()
+        generator.tick()
+        synthesizer.tick()
+        speaker.tick()
+        display.tick()
 
         display.close()
         recorder.close()
