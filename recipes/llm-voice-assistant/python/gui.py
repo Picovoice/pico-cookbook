@@ -187,7 +187,7 @@ class Synthesizer:
             close = False
             synthesizing = False
             flushing = False
-            textQueue = Queue()
+            text_queue = Queue()
             while not close:
                 while connection.poll():
                     message = connection.recv()
@@ -197,22 +197,22 @@ class Synthesizer:
                         synthesizing = True
                     elif message['command'] == Commands.PROCESS:
                         if synthesizing:
-                            textQueue.put(message['text'])
+                            text_queue.put(message['text'])
                     elif message['command'] == Commands.FLUSH:
                         flushing = True
                     elif message['command'] == Commands.INTERRUPT:
                         synthesizing = False
                         flushing = False
-                        while not textQueue.empty():
-                            textQueue.get()
+                        while not text_queue.empty():
+                            text_queue.get()
                         orca_stream.flush()
                         connection.send({'command': Commands.INTERRUPT})
-                if not textQueue.empty():
-                    text = textQueue.get()
+                if not text_queue.empty():
+                    text = text_queue.get()
                     pcm = orca_stream.synthesize(text)
                     if pcm is not None:
                         connection.send({'command': Commands.SPEAK, 'pcm': pcm})
-                if synthesizing and flushing and textQueue.empty():
+                if synthesizing and flushing and text_queue.empty():
                     synthesizing = False
                     flushing = False
                     pcm = orca_stream.flush()
@@ -486,7 +486,7 @@ class Display:
         curses.endwin()
 
     def render_prompt(self):
-        TEXT_STATES = [
+        text_states = [
             'Loading...',
             'Say `Jarvis`',
             'Ask a Question',
@@ -494,7 +494,7 @@ class Display:
         ]
 
         self.prompt.clear()
-        self.prompt.addstr(0, 3, TEXT_STATES[self.text_state])
+        self.prompt.addstr(0, 3, text_states[self.text_state])
         self.prompt.addch(0, 1, '>', curses.color_pair(1) if self.in_blink else 0)
 
     def tick(self):
@@ -585,7 +585,7 @@ class Display:
             for i in range(int(volume_out * (height_out - 4))):
                 self.pcm_out.addch(height_out - 2 - i, 2 + j, '▄', curses.color_pair(2))
 
-        TITLE = [
+        title_text = [
             '',
             '░█▀█░▀█▀░█▀▀░█▀█░█░█░█▀█░▀█▀░█▀▀░█▀▀░',
             '░█▀▀░░█░░█░░░█░█░▀▄▀░█░█░░█░░█░░░█▀▀░',
@@ -594,7 +594,7 @@ class Display:
         ]
 
         self.title = self.window.subwin(6, self.width - 4, 1, 2)
-        for i, line in enumerate(TITLE):
+        for i, line in enumerate(title_text):
             display = line.center(self.width - 4, '░')
             self.title.addstr(i, 0, display)
 
