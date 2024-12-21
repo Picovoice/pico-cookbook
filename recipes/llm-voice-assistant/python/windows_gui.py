@@ -600,7 +600,7 @@ class Display:
         height_in, width_in = self.pcm_in.getmaxyx()
         height_out, width_out = self.pcm_out.getmaxyx()
         self.pcm_in.addstr(1, 1, 'You'.center(18))
-        self.pcm_out.addstr(1, 1, (f'{self.model_name}' if self.model_name else 'AI').center(18))
+        self.pcm_out.addstr(1, 1, (f'{self.model_name}' if self.model_name and len(self.model_name) < 18 else 'AI').center(18))
         for j in range(width_in - 4):
             for i in range(int(volume_in * (height_in - 4))):
                 self.pcm_in.addch(height_in - 2 - i, 2 + j, '▄', curses.color_pair(3))
