@@ -1,17 +1,19 @@
-import os
+import curses
 import json
-import time
 import math
+import os
+import psutil
 import signal
 import subprocess
-import psutil
+import sys
+import time
 from argparse import ArgumentParser
+from concurrent.futures import ThreadPoolExecutor
+from itertools import chain
 from multiprocessing import Event, Pipe, Process, Queue, active_children
 from multiprocessing.connection import Connection
-from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Sequence
-from itertools import chain
-import curses
+
 
 import picollm
 import pvcheetah
@@ -74,7 +76,11 @@ class CompletionText(object):
 
 
 class Speaker:
-    def __init__(self, queue: Queue, speaker: PvSpeaker, orca_warmup_sec: int):
+    def __init__(
+            self,
+            queue: Queue,
+            speaker: PvSpeaker,
+            orca_warmup_sec: int):
         self.queue = queue
         self.speaker = speaker
         self.orca_warmup = self.speaker.sample_rate * orca_warmup_sec
@@ -132,7 +138,12 @@ class Speaker:
 
 
 class Synthesizer:
-    def __init__(self, queue: Queue, speaker: Speaker, orca_connection: Connection, orca_process: Process):
+    def __init__(
+            self,
+            queue: Queue,
+            speaker: Speaker,
+            orca_connection: Connection,
+            orca_process: Process):
         self.queue = queue
         self.speaker = speaker
         self.orca_connection = orca_connection
@@ -226,7 +237,12 @@ class Synthesizer:
 
 
 class Generator:
-    def __init__(self, queue: Queue, synthesizer: Synthesizer, pllm_connection: Connection, pllm_process: Process):
+    def __init__(
+            self,
+            queue: Queue,
+            synthesizer: Synthesizer,
+            pllm_connection: Connection,
+            pllm_process: Process):
         self.queue = queue
         self.synthesizer = synthesizer
         self.pllm_connection = pllm_connection
@@ -273,7 +289,10 @@ class Generator:
             access_key=config['access_key'],
             model_path=config['picollm_model_path'],
             device=config['picollm_device'])
-        dialog = pllm.get_dialog()
+        if config['picollm_system_prompt'] is not None:
+            dialog = pllm.get_dialog(system=config['picollm_system_prompt'])
+        else:
+            dialog = pllm.get_dialog()
         generating = False
 
         connection.send({'command': Commands.MODEL_NAME, 'name': pllm.model.split(' ')[0]})
@@ -397,7 +416,11 @@ class Listener:
 
 
 class Recorder:
-    def __init__(self, queue: Queue, listener: Listener, recorder: PvRecorder):
+    def __init__(
+            self,
+            queue: Queue,
+            listener: Listener,
+            recorder: PvRecorder):
         self.queue = queue
         self.listener = listener
         self.recorder = recorder
@@ -739,6 +762,9 @@ def main(config):
 
 
 if __name__ == '__main__':
+    if not sys.platform.lower().startswith('win'):
+        print('Error: Only runs on Windows platforms')
+
     parser = ArgumentParser()
     parser.add_argument(
         '--config',
@@ -793,6 +819,11 @@ if __name__ == '__main__':
              "unlikely logits. A value of `1.` enables the sampler to pick any token with non-zero probability, "
              "turning off the feature.")
     parser.add_argument(
+        '--picollm_system_prompt',
+        type=str,
+        help="A text prompt to give to the llm prior to it's input to instruct it on how to behave."
+    )
+    parser.add_argument(
         '--orca_warmup_sec',
         type=float,
         help="Duration of the synthesized audio to buffer before streaming it out. A higher value helps slower "
@@ -812,6 +843,9 @@ if __name__ == '__main__':
     if os.path.exists(config_path):
         with open(config_path, 'r') as fd:
             config = json.load(fd)
+    elif args.config is not None:
+        print(parser.error(f'File {config_path} does not exist'))
+        exit(1)
     else:
         config = {}
 
@@ -829,6 +863,7 @@ if __name__ == '__main__':
         'picollm_frequency_penalty': 0,
         'picollm_temperature': 0,
         'picollm_top_p': 1,
+        'picollm_system_prompt': None,
         'orca_warmup_sec': 0,
         'porcupine_sensitivity': 0.5,
         'short_answers': False
