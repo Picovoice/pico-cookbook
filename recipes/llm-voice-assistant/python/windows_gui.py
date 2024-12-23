@@ -644,7 +644,7 @@ class Display:
             queue.put({
                 'command': Commands.USAGE,
                 'name': 'CPU',
-                'text': f"{round(cpu_usage, 2)}%",
+                'text': f"{math.ceil(cpu_usage)}%",
                 'bar': (cpu_usage / 100)
             })
 
@@ -664,7 +664,7 @@ class Display:
                 queue.put({
                     'command': Commands.USAGE,
                     'name': 'GPU',
-                    'text': f"{round(gpu_usage, 2)}%",
+                    'text': f"{math.ceil(gpu_usage)}%",
                     'bar': (float(gpu_usage) / 100)
                 })
 
