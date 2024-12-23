@@ -96,6 +96,7 @@ window.onload = () => {
     let audioStream;
     let streamCalls = 0;
     let isDetected = false;
+    let isResponding = false;
 
     try {
       await Picovoice.init(accessKey.value,
@@ -106,6 +107,8 @@ window.onload = () => {
         {
         onDetection: () => {
           isDetected = true;
+          isResponding = false;
+          audioStream.clear();
           message.innerText = "Wake word detected, utter your request or question...";
           humanElem = startHumanMessage();
         },
@@ -115,6 +118,7 @@ window.onload = () => {
         },
         onEndpoint: () => {
           isDetected = false;
+          isResponding = true;
           message.innerHTML = "Generating <div class='loader'></div> say `Picovoice` to interrupt";
           llmElem = startLLMMessage();
         },
@@ -122,14 +126,17 @@ window.onload = () => {
           addMessage(llmElem, text);
         },
         onStream: (pcm) => {
-          audioStream.stream(pcm);
-          if (streamCalls > 1) {
-            audioStream.play();
-          } else {
-            streamCalls++;
+          if (isResponding) {
+            audioStream.stream(pcm);
+            if (streamCalls > 1) {
+              audioStream.play();
+            } else {
+              streamCalls++;
+            }
           }
         },
         onComplete: async (interrupted) => {
+          isResponding = false;
           audioStream.play();
           if (interrupted && isDetected) {
             audioStream.clear();
