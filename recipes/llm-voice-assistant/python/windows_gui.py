@@ -640,11 +640,11 @@ class Display:
         signal.signal(signal.SIGINT, handler)
 
         while not should_close.is_set():
-            cpu_usage = sum([psutil.Process(pid).cpu_percent(0.25) for pid in pids]) / len(pids)
+            cpu_usage = sum([psutil.Process(pid).cpu_percent(0.25) for pid in pids]) / psutil.cpu_count()
             queue.put({
                 'command': Commands.USAGE,
                 'name': 'CPU',
-                'text': f"{round(cpu_usage, 2)}%",
+                'text': f"{math.ceil(cpu_usage)}%",
                 'bar': (cpu_usage / 100)
             })
 
@@ -664,7 +664,7 @@ class Display:
                 queue.put({
                     'command': Commands.USAGE,
                     'name': 'GPU',
-                    'text': f"{round(gpu_usage, 2)}%",
+                    'text': f"{math.ceil(gpu_usage)}%",
                     'bar': (float(gpu_usage) / 100)
                 })
 
@@ -674,9 +674,7 @@ class Display:
             pass
         signal.signal(signal.SIGINT, handler)
 
-        cpu_mem_total_cmd = r'(Get-WMIObject Win32_OperatingSystem).TotalVisibleMemorySize / 1MB'
-
-        ram_total = Display.run_command(cpu_mem_total_cmd)
+        ram_total = psutil.virtual_memory().total / 1024 / 1024 / 1024
         while not should_close.is_set():
             time.sleep(0.25)
             ram_usage = sum([psutil.Process(pid).memory_info().rss for pid in pids]) / 1024 / 1024 / 1024
