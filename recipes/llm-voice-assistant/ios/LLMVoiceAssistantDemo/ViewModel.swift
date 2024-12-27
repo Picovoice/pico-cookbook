@@ -322,6 +322,7 @@ You can download directly to your device or airdrop from a Mac.
                 let keywordIndex = try self.porcupine!.process(pcm: frame)
                 if keywordIndex == 0 {
                     DispatchQueue.main.async { [self] in
+                        self.interrupt()
                         statusText = "Listening..."
                         chatText.append(Message(speaker: "You:", msg: ""))
                         chatState = .STT
