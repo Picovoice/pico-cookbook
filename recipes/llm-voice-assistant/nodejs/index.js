@@ -311,9 +311,10 @@ class Synthesizer {
       if (this.profile) {
         process.stdout.write(`[Orca RTF: ${this.orcaProfiler.rtf()}]\n`);
         process.stdout.write(`[Delay: ${this.delaySec.toFixed(3)} sec]\n`);
-        this.delaySec = -1;
-        this.utteranceEndMillisec = 0;
       }
+
+      this.delaySec = -1;
+      this.utteranceEndMillisec = 0;
     }
   }
 }
