@@ -1,8 +1,8 @@
 PODS:
-  - Cheetah-iOS (2.0.0)
+  - Cheetah-iOS (2.0.1)
   - ios-voice-processor (1.1.2)
-  - Orca-iOS (1.0.0)
-  - picoLLM-iOS (1.2.0)
+  - Orca-iOS (1.0.1)
+  - picoLLM-iOS (1.2.4)
   - Porcupine-iOS (3.0.2):
     - ios-voice-processor (~> 1.1.1)
 
@@ -10,7 +10,7 @@ DEPENDENCIES:
   - Cheetah-iOS (~> 2.0.0)
   - ios-voice-processor (~> 1.1.0)
   - Orca-iOS (~> 1.0.0)
-  - picoLLM-iOS (~> 1.2.0)
+  - picoLLM-iOS (~> 1.2.4)
   - Porcupine-iOS (~> 3.0.1)
 
 SPEC REPOS:
@@ -22,12 +22,12 @@ SPEC REPOS:
     - Porcupine-iOS
 
 SPEC CHECKSUMS:
-  Cheetah-iOS: d98a5edcbf3b74dda6027aeac6a8c0f5997a47a2
+  Cheetah-iOS: 2f1a662b84de3696498b9f9bbac3758b1b19ccb7
   ios-voice-processor: 00bf226d172c7006f565d6b6dbf2dc5e5b76938b
-  Orca-iOS: d50a0dbbf596f20c6c2e2f727f20f72ac012aa0e
-  picoLLM-iOS: 9ff6baa0b9e577d99491f4fa63f898a16fc6925c
+  Orca-iOS: 4737912b04dd7740a334ae7041c38647c89af026
+  picoLLM-iOS: 5603adaccdaf94685773e1a1aaa9bb47f5a170c0
   Porcupine-iOS: b8408a28fe3df81ea8d8f3cf1e5a04823ffb71d3
 
-PODFILE CHECKSUM: da00234d72f8294a9db6b2710dde5563485a00e9
+PODFILE CHECKSUM: ccf4a0bb8d40b0ee55eb5145a8f36bf009b38dad
 
 COCOAPODS: 1.15.2
