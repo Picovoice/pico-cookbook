@@ -523,6 +523,7 @@ class Recorder:
         pcm = self.recorder.read()
         self.listener.process(pcm)
 
+
 def main(config):
     stop = [False]
 
@@ -552,7 +553,7 @@ def main(config):
         access_key=config['access_key'],
         endpoint_duration_sec=config['cheetah_endpoint_duration_sec'],
         enable_automatic_punctuation=True)
-    
+
     print(f"→ Cheetah v{cheetah.version}")
 
     pv_recorder = PvRecorder(frame_length=porcupine.frame_length)
