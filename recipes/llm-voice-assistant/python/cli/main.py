@@ -52,6 +52,11 @@ class RTFProfiler:
         self._audio_sec = 0.
         return rtf
 
+    def reset(self) -> None:
+        self._compute_sec = 0.
+        self._audio_sec = 0.
+        self._tick_sec = 0.
+
 
 class TPSProfiler(object):
     def __init__(self) -> None:
@@ -69,6 +74,10 @@ class TPSProfiler(object):
         self._num_tokens = 0
         self._start_sec = 0.
         return tps
+
+    def reset(self) -> None:
+        self._num_tokens = 0
+        self._start_sec = 0.
 
 
 class CompletionText(object):
@@ -111,9 +120,10 @@ class Speaker:
     def __init__(
             self,
             speaker: PvSpeaker,
-            orca_warmup_sec: int):
+            config):
         self.speaker = speaker
-        self.orca_warmup = self.speaker.sample_rate * orca_warmup_sec
+        self.config = config
+        self.orca_warmup = self.speaker.sample_rate * self.config['orca_warmup_sec']
         self.started = False
         self.speaking = False
         self.flushing = False
@@ -160,7 +170,7 @@ class Speaker:
             self.future = self.executor.submit(stop)
         if self.future and self.future.done():
             self.future = None
-            ppn_prompt = config['ppn_prompt']
+            ppn_prompt = self.config['ppn_prompt']
             print(f'$ Say {ppn_prompt} ...', flush=True)
 
 
@@ -169,18 +179,20 @@ class Synthesizer:
             self,
             speaker: Speaker,
             orca_connection: Connection,
-            orca_process: Process):
+            orca_process: Process,
+            config):
         self.speaker = speaker
         self.orca_connection = orca_connection
         self.orca_process = orca_process
+        self.config = config
 
     def close(self):
         self.orca_connection.send({'command': Commands.CLOSE})
         self.orca_process.join()
 
-    def start(self):
+    def start(self, utterance_end_sec):
         self.speaker.start()
-        self.orca_connection.send({'command': Commands.START})
+        self.orca_connection.send({'command': Commands.START, 'utterance_end_sec': utterance_end_sec})
 
     def process(self, text: str):
         self.orca_connection.send({'command': Commands.PROCESS, 'text': text})
@@ -200,6 +212,11 @@ class Synthesizer:
             if message['command'] == Commands.SPEAK:
                 self.speaker.process(message['pcm'])
             elif message['command'] == Commands.FLUSH:
+                if self.config['profile']:
+                    rtf = message['profile']
+                    delay = message['delay']
+                    print(f'[Orca RTF: {round(rtf, 2)}]')
+                    print(f"[Delay: {round(delay, 2)} sec]")
                 self.speaker.flush()
 
     @staticmethod
@@ -218,6 +235,11 @@ class Synthesizer:
         orca = pvorca.create(access_key=config['access_key'])
         orca_stream = orca.stream_open()
         connection.send(orca.sample_rate)
+        connection.send({'version': orca.version})
+
+        orca_profiler = RTFProfiler(orca.sample_rate)
+        utterance_end_sec = 0
+        delay_sec = -1
 
         try:
             close = False
@@ -231,6 +253,7 @@ class Synthesizer:
                         close = True
                     elif message['command'] == Commands.START:
                         synthesizing = True
+                        utterance_end_sec = message['utterance_end_sec']
                     elif message['command'] == Commands.PROCESS:
                         if synthesizing:
                             text_queue.put(message['text'])
@@ -243,17 +266,28 @@ class Synthesizer:
                             text_queue.get()
                         orca_stream.flush()
                         connection.send({'command': Commands.INTERRUPT})
+                        orca_profiler.reset()
+                        utterance_end_sec = 0
+                        delay_sec = -1
                 if not text_queue.empty():
                     text = text_queue.get()
+                    orca_profiler.tick()
                     pcm = orca_stream.synthesize(text)
+                    orca_profiler.tock(pcm)
                     if pcm is not None:
                         connection.send({'command': Commands.SPEAK, 'pcm': pcm})
+                        if delay_sec == -1:
+                            delay_sec = time.perf_counter() - utterance_end_sec
                 if synthesizing and flushing and text_queue.empty():
                     synthesizing = False
                     flushing = False
+                    orca_profiler.tick()
                     pcm = orca_stream.flush()
+                    orca_profiler.tock(pcm)
                     connection.send({'command': Commands.SPEAK, 'pcm': pcm})
-                    connection.send({'command': Commands.FLUSH})
+                    connection.send({'command': Commands.FLUSH, 'profile': orca_profiler.rtf(), 'delay': delay_sec})
+                    utterance_end_sec = 0
+                    delay_sec = -1
                 elif flushing:
                     flushing = False
         finally:
@@ -266,20 +300,22 @@ class Generator:
             self,
             synthesizer: Synthesizer,
             pllm_connection: Connection,
-            pllm_process: Process):
+            pllm_process: Process,
+            config):
         self.synthesizer = synthesizer
         self.pllm_connection = pllm_connection
         self.pllm_process = pllm_process
+        self.config = config
 
     def close(self):
         self.pllm_connection.send({'command': Commands.CLOSE})
         self.pllm_process.join()
 
-    def process(self, text: str):
-        ppn_prompt = config['ppn_prompt']
+    def process(self, text: str, utterance_end_sec):
+        ppn_prompt = self.config['ppn_prompt']
         print(f'LLM (say ${ppn_prompt} to interrupt) > ', end='', flush=True)
 
-        self.synthesizer.start()
+        self.synthesizer.start(utterance_end_sec)
         self.pllm_connection.send({'command': Commands.PROCESS, 'text': text})
 
     def interrupt(self):
@@ -297,6 +333,9 @@ class Generator:
                 self.synthesizer.process(message['text'])
             elif message['command'] == Commands.FLUSH:
                 print('', flush=True)
+                if self.config['profile']:
+                    tps = message['profile']
+                    print(f'[picoLLM TPS: {round(tps, 2)}]')
                 self.synthesizer.flush()
 
     @staticmethod
@@ -316,11 +355,16 @@ class Generator:
             access_key=config['access_key'],
             model_path=config['picollm_model_path'],
             device=config['picollm_device'])
+
+        connection.send({'version': pllm.version, 'model': pllm.model})
+
         if config['picollm_system_prompt'] is not None:
             dialog = pllm.get_dialog(system=config['picollm_system_prompt'])
         else:
             dialog = pllm.get_dialog()
         generating = False
+
+        pllm_profiler = TPSProfiler()
 
         stop_phrases = {
             '</s>',  # Llama-2, Mistral, and Mixtral
@@ -332,6 +376,7 @@ class Generator:
         completion = CompletionText(stop_phrases)
 
         def llm_callback(text):
+            pllm_profiler.tock()
             if generating:
                 completion.append(text)
                 new_tokens = completion.get_new_tokens()
@@ -368,6 +413,7 @@ class Generator:
                     elif message['command'] == Commands.PROCESS:
                         generating = True
                         text = message['text']
+                        pllm_profiler.reset()
                         llm_future = executor.submit(llm_task, text)
                     elif message['command'] == Commands.INTERRUPT:
                         interrupting = True
@@ -381,7 +427,7 @@ class Generator:
                         interrupting = False
                         connection.send({'command': Commands.INTERRUPT})
                     else:
-                        connection.send({'command': Commands.FLUSH})
+                        connection.send({'command': Commands.FLUSH, 'profile': pllm_profiler.tps()})
                     llm_future = None
                 if not llm_future and interrupting:
                     interrupting = False
@@ -398,10 +444,14 @@ class Listener:
             self,
             generator: Generator,
             porcupine: pvporcupine.Porcupine,
-            cheetah: pvcheetah.Cheetah):
+            cheetah: pvcheetah.Cheetah,
+            config):
         self.generator = generator
         self.porcupine = porcupine
         self.cheetah = cheetah
+        self.config = config
+        self.porcupine_profiler = RTFProfiler(porcupine.sample_rate)
+        self.cheetah_profiler = RTFProfiler(cheetah.sample_rate)
 
         self.sleeping = True
         self.listening = False
@@ -413,23 +463,37 @@ class Listener:
 
     def process(self, pcm: Optional[Sequence[int]]):
         if self.sleeping:
-            if self.porcupine.process(pcm) == 0:
+            self.porcupine_profiler.tick()
+            wake_word_detected = self.porcupine.process(pcm) == 0
+            self.porcupine_profiler.tock(pcm)
+            if wake_word_detected:
                 self.sleeping = False
                 self.tick_count = 4
                 self.generator.interrupt()
+                if self.config['profile']:
+                    print(f'[Porcupine RTF: {round(self.porcupine_profiler.rtf(), 2)}]')
+                self.porcupine_profiler.reset()
+                self.cheetah_profiler.reset()
         elif self.listening:
+            self.cheetah_profiler.tick()
             partial_transcript, endpoint_reached = self.cheetah.process(pcm)
+            self.cheetah_profiler.tock(pcm)
             if len(partial_transcript) > 0:
                 self.user_request += partial_transcript
                 print(partial_transcript, end='', flush=True)
             if endpoint_reached:
+                utterance_end_sec = time.perf_counter()
                 self.sleeping = True
                 self.listening = False
+                self.cheetah_profiler.tick()
                 remaining_transcript = self.cheetah.flush()
+                self.cheetah_profiler.tock()
                 if len(remaining_transcript) > 0:
                     self.user_request += remaining_transcript
                 print(remaining_transcript, flush=True)
-                self.generator.process(self.user_request)
+                if self.config['profile']:
+                    print(f'[Cheetah RTF: {round(self.cheetah_profiler.rtf(), 2)}]')
+                self.generator.process(self.user_request, utterance_end_sec)
                 self.user_request = ''
         elif self.tick_count > 0:
             self.tick_count -= 1
@@ -482,18 +546,28 @@ def main(config):
             sensitivities=[config['porcupine_sensitivity']])
         config['ppn_prompt'] = 'the wake word'
 
+    print(f"→ Porcupine v{porcupine.version}")
+
     cheetah = pvcheetah.create(
         access_key=config['access_key'],
         endpoint_duration_sec=config['cheetah_endpoint_duration_sec'],
         enable_automatic_punctuation=True)
+    
+    print(f"→ Cheetah v{cheetah.version}")
 
     pv_recorder = PvRecorder(frame_length=porcupine.frame_length)
     pv_speaker = PvSpeaker(sample_rate=int(orca_connection.recv()), bits_per_sample=16, buffer_size_secs=1)
 
-    speaker = Speaker(pv_speaker, config['orca_warmup_sec'])
-    synthesizer = Synthesizer(speaker, orca_connection, orca_process)
-    generator = Generator(synthesizer, pllm_connection, pllm_process)
-    listener = Listener(generator, porcupine, cheetah)
+    pllm_info = pllm_connection.recv()
+    print(f"→ picoLLM v{pllm_info['version']} <{pllm_info['model']}>")
+
+    orca_info = orca_connection.recv()
+    print(f"→ Orca v{orca_info['version']}")
+
+    speaker = Speaker(pv_speaker, config)
+    synthesizer = Synthesizer(speaker, orca_connection, orca_process, config)
+    generator = Generator(synthesizer, pllm_connection, pllm_process, config)
+    listener = Listener(generator, porcupine, cheetah, config)
     recorder = Recorder(listener, pv_recorder)
 
     ppn_prompt = config['ppn_prompt']
