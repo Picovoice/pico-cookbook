@@ -25,7 +25,7 @@ enum ChatState {
 
 class ViewModel: ObservableObject {
 
-    private let ACCESS_KEY = "NejFRnq+pZsa3QbiMsziYXYsisrR5xoPQ2aDT9aEqcgZkQnFq70aEg=="
+    private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
 
     private var porcupine: Porcupine?
     private var cheetah: Cheetah?
