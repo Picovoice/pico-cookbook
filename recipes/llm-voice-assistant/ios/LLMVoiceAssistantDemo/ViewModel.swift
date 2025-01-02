@@ -25,7 +25,7 @@ enum ChatState {
 
 class ViewModel: ObservableObject {
 
-    private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
+    private let ACCESS_KEY = "NejFRnq+pZsa3QbiMsziYXYsisrR5xoPQ2aDT9aEqcgZkQnFq70aEg=="
 
     private var porcupine: Porcupine?
     private var cheetah: Cheetah?
@@ -348,7 +348,7 @@ You can download directly to your device or airdrop from a Mac.
                 }
                 if endpoint {
                     DispatchQueue.main.async { [self] in
-                        statusText = "Generating, Say `Picovoice` to interrupt"
+                        statusText = "Generating...\nSay `Picovoice` to interrupt"
                         chatState = .GENERATE
                         self.generate()
                     }
