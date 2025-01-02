@@ -721,7 +721,7 @@ public class MainActivity extends AppCompatActivity {
                     chatText.setText("");
                     statusProgress.setVisibility(View.VISIBLE);
                     statusText.setVisibility(View.VISIBLE);
-                    statusText.setText("Generating...");
+                    statusText.setText("Generating...\nSay 'Picovoice' to interrupt");
                     clearTextButton.setEnabled(false);
                     clearTextButton.setImageDrawable(
                             ResourcesCompat.getDrawable(
