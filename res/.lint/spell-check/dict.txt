@@ -23,6 +23,7 @@ pico
 picollm
 picovoice
 pids
+playstate
 pllm
 psutil
 pvcheetah

@@ -15,8 +15,8 @@ package ai.picovoice.llmvoiceassistant;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
 import android.media.AudioFormat;
-import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.net.Uri;
 import android.os.Bundle;
@@ -293,6 +293,8 @@ public class MainActivity extends AppCompatActivity {
             try {
                 int keywordIndex = porcupine.process(frame);
                 if (keywordIndex == 0) {
+                    interrupt();
+
                     llmPromptText = new StringBuilder();
                     updateUIState(UIState.STT);
                 }
@@ -509,16 +511,26 @@ public class MainActivity extends AppCompatActivity {
 
         ttsPlaybackExecutor.submit(() -> {
             try {
+                AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build();
+
+                AudioFormat audioFormat = new AudioFormat.Builder()
+                        .setSampleRate(orca.getSampleRate())
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build();
+
                 ttsOutput = new AudioTrack(
-                        AudioManager.STREAM_MUSIC,
-                        orca.getSampleRate(),
-                        AudioFormat.CHANNEL_OUT_MONO,
-                        AudioFormat.ENCODING_PCM_16BIT,
+                        audioAttributes,
+                        audioFormat,
                         AudioTrack.getMinBufferSize(
                                 orca.getSampleRate(),
                                 AudioFormat.CHANNEL_OUT_MONO,
                                 AudioFormat.ENCODING_PCM_16BIT),
-                        AudioTrack.MODE_STREAM);
+                        AudioTrack.MODE_STREAM,
+                        0);
 
                 ttsOutput.play();
             } catch (Exception e) {
@@ -535,12 +547,15 @@ public class MainActivity extends AppCompatActivity {
 
             while (isQueueingPcm.get() || !pcmQueue.isEmpty()) {
                 short[] pcm = pcmQueue.poll();
-                if (pcm != null && pcm.length > 0 && currentState == UIState.LLM_TTS) {
+                if (pcm != null && pcm.length > 0 && ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
                     ttsOutput.write(pcm, 0, pcm.length);
                 }
             }
 
-            ttsOutput.stop();
+            if (ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
+                ttsOutput.flush();
+                ttsOutput.stop();
+            }
             ttsOutput.release();
         });
     }
@@ -548,9 +563,8 @@ public class MainActivity extends AppCompatActivity {
     private void interrupt() {
         try {
             picollm.interrupt();
-            if (ttsOutput != null) {
+            if (ttsOutput != null && ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
                 ttsOutput.stop();
-                ttsOutput.release();
             }
         } catch (PicoLLMException e) {
             onEngineProcessError(e.getMessage());
@@ -583,7 +597,6 @@ public class MainActivity extends AppCompatActivity {
         updateUIState(UIState.WAKE_WORD);
         mainHandler.post(() -> chatText.setText(message));
     }
-
 
     private void startWakeWordListening() {
         if (voiceProcessor.hasRecordAudioPermission(this)) {
@@ -708,7 +721,7 @@ public class MainActivity extends AppCompatActivity {
                     chatText.setText("");
                     statusProgress.setVisibility(View.VISIBLE);
                     statusText.setVisibility(View.VISIBLE);
-                    statusText.setText("Generating...");
+                    statusText.setText("Generating...\nSay 'Picovoice' to interrupt");
                     clearTextButton.setEnabled(false);
                     clearTextButton.setImageDrawable(
                             ResourcesCompat.getDrawable(
