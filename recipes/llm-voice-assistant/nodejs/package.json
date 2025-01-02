@@ -14,9 +14,9 @@
   "author": "Picovoice Inc.",
   "license": "Apache-2.0",
   "dependencies": {
-    "@picovoice/cheetah-node": "^2.0.2",
+    "@picovoice/cheetah-node": "^2.1.0",
     "@picovoice/orca-node": "^1.0.0",
-    "@picovoice/picollm-node": "1.2.1",
+    "@picovoice/picollm-node": "1.2.3",
     "@picovoice/porcupine-node": "^3.0.3",
     "@picovoice/pvrecorder-node": "^1.2.3",
     "@picovoice/pvspeaker-node": "^1.0.1",
