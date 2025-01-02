@@ -27,17 +27,15 @@ Copy your model file to the device.
 
 ## Usage
 
-1. Install the dependencies using `Swift Package Manager`:
+1. Open the `LLMVoiceAssistantDemo.xcodeproj` in XCode
 
-2. Open the `LLMVoiceAssistantDemo.xcworkspace` in XCode
+2. Replace `let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"` in the file [VieModel.swift](./LLMVoiceAssistantDemo/ViewModel.swift) with your AccessKey obtained from [Picovoice Console](https://console.picovoice.ai/).
 
-3. Replace `let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"` in the file [VieModel.swift](./LLMVoiceAssistantDemo/ViewModel.swift) with your AccessKey obtained from [Picovoice Console](https://console.picovoice.ai/).
+3. Build and run the project on your device.
 
-4. Build and run the project on your device.
+4. Press the `Load Model` button and load the model file from your device's storage.
 
-5. Press the `Load Model` button and load the model file from your device's storage.
-
-6. Say "Picovoice", then speak to the voice assistant!
+5. Say "Picovoice", then speak to the voice assistant!
 
 ## Custom Wake Word
 
