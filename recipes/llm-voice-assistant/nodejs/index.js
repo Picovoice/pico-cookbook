@@ -167,7 +167,7 @@ class Listener {
       }
     } else {
       this.listening = true;
-      process.stdout.write('$ Wake word detected, utter your request or question ...\n');
+      process.stdout.write('\n$ Wake word detected, utter your request or question ...\n');
       process.stdout.write('User > ');
     }
   }
