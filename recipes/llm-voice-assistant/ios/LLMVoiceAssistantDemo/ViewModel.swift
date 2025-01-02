@@ -14,6 +14,7 @@ import Orca
 import ios_voice_processor
 
 import Combine
+import Foundation
 
 enum ChatState {
     case WAKEWORD

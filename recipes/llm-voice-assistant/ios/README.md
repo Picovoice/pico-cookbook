@@ -27,11 +27,7 @@ Copy your model file to the device.
 
 ## Usage
 
-1. Install the dependencies using `CocoaPods`:
-
-```console
-pod install
-```
+1. Install the dependencies using `Swift Package Manager`:
 
 2. Open the `LLMVoiceAssistantDemo.xcworkspace` in XCode
 
