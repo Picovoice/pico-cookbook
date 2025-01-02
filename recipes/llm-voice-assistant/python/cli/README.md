@@ -1,6 +1,6 @@
-# LLM Voice Assistant CLI Demo
+# Cross-Platform LLM Voice Assistant CLI Demo
 
-A voice assistant using Porcupine, Cheetah, picoLLM, and Orca with a text based interface.
+A cross-platform voice assistant using Picovoice's Wake Word, STT, TTS and LLM technology with a text-based interface.
 
 ## See It In Action!
 

@@ -1,6 +1,6 @@
-# LLM Voice Assistant GUI Demo
+# Windows LLM Voice Assistant GUI Demo
 
-A voice assistant using Porcupine, Cheetah, picoLLM, and Orca with a console based graphical interface.
+A voice assistant for Windows using Picovoice's Wake Word, STT, TTS and LLM technology with a console-based graphical interface.
 
 ## Compatibility
 
