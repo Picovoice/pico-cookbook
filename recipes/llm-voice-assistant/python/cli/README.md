@@ -1,3 +1,7 @@
+# Cross-Platform LLM Voice Assistant CLI Demo
+
+A cross-platform voice assistant using Picovoice's Wake Word, STT, TTS and LLM technology with a text-based interface.
+
 ## See It In Action!
 
 [![LLM VA in Action](https://img.youtube.com/vi/06K_YtUr8mc/0.jpg)](https://www.youtube.com/watch?v=06K_YtUr8mc)
@@ -41,6 +45,17 @@ To see all available options, type the following:
 
 ```console
 python main.py --help
+```
+
+## Config File
+
+In addition to command line arguments a config file can be used to pass arguments to the demo. By default the demo looks for `config.json` in the same directory as `main.py` but an alternative path can be passed using the `--config` option. Below is an example config file.
+
+```json
+{
+    "access_key": "${ACCESS_KEY}",
+    "picollm_model_path": "${PICOLLM_MODEL_PATH}"
+}
 ```
 
 ## Custom Wake Word

@@ -25,6 +25,7 @@ picovoice
 pids
 playstate
 pllm
+popleft
 psutil
 pvcheetah
 pvorca
