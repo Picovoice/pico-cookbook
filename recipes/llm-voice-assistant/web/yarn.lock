@@ -917,6 +917,11 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
+"@picovoice/cheetah-node@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-node/-/cheetah-node-2.1.0.tgz#d68a86b55bc21bf586a23f4c33563dce58b18385"
+  integrity sha512-B63Aqmjs2berQ/YVEooIJTSQVXrJ/naz5YG5ZG+mlyfahYaOBbudXAdQP4FxTiQBlGLNhQSqZjllgoEs394n1Q==
+
 "@picovoice/cheetah-web@^2.0.0":
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/@picovoice/cheetah-web/-/cheetah-web-2.0.0.tgz#d4415c25e324726356f979bed3761a94e884198e"

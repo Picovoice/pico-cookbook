@@ -119,7 +119,7 @@ window.onload = () => {
         onEndpoint: () => {
           isDetected = false;
           isResponding = true;
-          message.innerHTML = "Generating <div class='loader'></div> say `Picovoice` to interrupt";
+          message.innerHTML = "<div class='loader'></div> Generating... Say `Picovoice` to interrupt";
           llmElem = startLLMMessage();
         },
         onText: (text) => {
