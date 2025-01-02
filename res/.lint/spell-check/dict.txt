@@ -38,4 +38,5 @@ subwin
 tock
 tock
 WAKEWORD
+xcodeproj
 xcworkspace

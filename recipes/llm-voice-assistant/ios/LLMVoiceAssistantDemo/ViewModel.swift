@@ -14,6 +14,7 @@ import Orca
 import ios_voice_processor
 
 import Combine
+import Foundation
 
 enum ChatState {
     case WAKEWORD
@@ -322,6 +323,7 @@ You can download directly to your device or airdrop from a Mac.
                 let keywordIndex = try self.porcupine!.process(pcm: frame)
                 if keywordIndex == 0 {
                     DispatchQueue.main.async { [self] in
+                        self.interrupt()
                         statusText = "Listening..."
                         chatText.append(Message(speaker: "You:", msg: ""))
                         chatState = .STT
@@ -346,7 +348,7 @@ You can download directly to your device or airdrop from a Mac.
                 }
                 if endpoint {
                     DispatchQueue.main.async { [self] in
-                        statusText = "Generating, Say `Picovoice` to interrupt"
+                        statusText = "Generating...\nSay `Picovoice` to interrupt"
                         chatState = .GENERATE
                         self.generate()
                     }

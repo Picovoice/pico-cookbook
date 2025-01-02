@@ -95,5 +95,6 @@ class AudioPlayerStream {
     func stopStreamPCM() {
         isStopped = true
         pcmBuffers.removeAll()
+        playerNode.stop()
     }
 }
