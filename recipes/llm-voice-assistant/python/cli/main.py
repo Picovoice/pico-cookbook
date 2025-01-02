@@ -499,7 +499,7 @@ class Listener:
             self.tick_count -= 1
         else:
             self.listening = True
-            print('$ Wake word detected, utter your request or question ...', flush=True)
+            print('\n$ Wake word detected, utter your request or question ...', flush=True)
             print('User > ', end='', flush=True)
 
 
@@ -601,10 +601,6 @@ def main(config):
 
 
 if __name__ == '__main__':
-    if not sys.platform.lower().startswith('win'):
-        print('Error: Only runs on Windows platforms')
-        exit(1)
-
     parser = ArgumentParser()
     parser.add_argument(
         '--config',
