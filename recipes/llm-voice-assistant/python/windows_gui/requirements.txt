@@ -4,5 +4,4 @@ pvorca==1.0.1
 pvporcupine==3.0.4
 pvrecorder==1.2.4
 pvspeaker==1.0.4
-windows-curses==2.4.0; sys_platform == 'win32'
-psutil==6.1.1; sys_platform == 'win32'
+psutil==6.1.1

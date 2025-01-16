@@ -152,7 +152,8 @@ class Synthesizer:
         try:
             self.orca_connection.send({'command': Commands.CLOSE})
             self.orca_process.join(1.0)
-        except:
+        except Exception as e:
+            sys.stderr.write(str(e))
             self.orca_process.kill()
 
     def start(self):
@@ -171,8 +172,8 @@ class Synthesizer:
             while self.orca_connection.poll() and self.orca_connection.recv()['command'] != Commands.INTERRUPT:
                 time.sleep(0.1)
             self.speaker.interrupt()
-        except:
-            pass
+        except Exception as e:
+            sys.stderr.write(str(e))
 
     def tick(self):
         while self.orca_connection.poll():
@@ -261,7 +262,8 @@ class Generator:
         try:
             self.pllm_connection.send({'command': Commands.CLOSE})
             self.pllm_process.join(1.0)
-        except:
+        except Exception as e:
+            sys.stderr.write(str(e))
             self.pllm_process.kill()
 
     def process(self, text: str):
@@ -457,7 +459,7 @@ class Window:
 
     @staticmethod
     def goto(y, x):
-        return f"\u001B[{y+1};{x+1}H"
+        return f"\u001B[{y + 1};{x + 1}H"
 
     @staticmethod
     def color(col):
@@ -467,7 +469,7 @@ class Window:
     def present():
         sys.stdout.flush()
 
-    def __init__(self, height, width, y = 0, x = 0):
+    def __init__(self, height, width, y=0, x=0):
         self.height = height
         self.width = width
         self.y = y
@@ -490,14 +492,14 @@ class Window:
             sys.stdout.write(text)
 
     def box(self):
-        TOP = '┌' + '─' * (self.width - 2) + '┐'
-        ROW = '│' + ' ' * (self.width - 2) + '│'
-        BOTTOM = '└' + '─' * (self.width - 2) + '┘'
+        top = '┌' + '─' * (self.width - 2) + '┐'
+        row = '│' + ' ' * (self.width - 2) + '│'
+        bottom = '└' + '─' * (self.width - 2) + '┘'
         sys.stdout.write(Window.color([0]))
-        sys.stdout.write(Window.goto(self.y, self.x) + TOP)
+        sys.stdout.write(Window.goto(self.y, self.x) + top)
         for i in range(1, self.height - 1):
-            sys.stdout.write(Window.goto(self.y + i, self.x) + ROW)
-        sys.stdout.write(Window.goto(self.y + self.height - 1, self.x) + BOTTOM)
+            sys.stdout.write(Window.goto(self.y + i, self.x) + row)
+        sys.stdout.write(Window.goto(self.y + self.height - 1, self.x) + bottom)
 
 
 class VerticalBar:
@@ -632,12 +634,14 @@ class Display:
             display = line.center(self.title.width, '░')
             self.title.write(i, 0, display)
 
-    def render_prompt(self, text_state = None):
+    def render_prompt(self, text_state=None):
         if text_state:
             self.text_state = text_state
 
         self.prompt.clear()
-        self.prompt.write(0, 1, Window.color([90]) if self.in_blink else '', '> ', Window.color([0]), self.prompt_text[self.text_state])
+        self.prompt.write(0, 1,
+                          Window.color([90]) if self.in_blink else '', '> ',
+                          Window.color([0]), self.prompt_text[self.text_state])
 
     def tick(self):
         self.prev_time = self.current_time
@@ -732,8 +736,8 @@ class Display:
                     'text': f"{math.ceil(cpu_usage)}%",
                     'bar': (cpu_usage / 100)
                 })
-        except:
-            pass
+        except Exception as e:
+            sys.stderr.write(str(e))
 
     @staticmethod
     def worker_gpu(queue: Queue, should_close, pids: list):
@@ -742,7 +746,8 @@ class Display:
         signal.signal(signal.SIGINT, handler)
 
         try:
-            gpu_usage_counters = ', '.join([r'"\GPU Engine(pid_{}_*)\Utilization Percentage"'.format(pid) for pid in pids])
+            gpu_usage_counters_format = r'"\GPU Engine(pid_{}_*)\Utilization Percentage"'
+            gpu_usage_counters = ', '.join([gpu_usage_counters_format.format(pid) for pid in pids])
             gpu_usage_cmd = r'(((Get-Counter {}).CounterSamples | where CookedValue).CookedValue | measure -sum).sum'
             gpu_usage_cmd = gpu_usage_cmd.format(gpu_usage_counters)
             while not should_close.is_set():
@@ -755,8 +760,8 @@ class Display:
                         'text': f"{math.ceil(gpu_usage)}%",
                         'bar': (float(gpu_usage) / 100)
                     })
-        except:
-            pass
+        except Exception as e:
+            sys.stderr.write(str(e))
 
     @staticmethod
     def worker_ram(queue: Queue, should_close, pids: list):
@@ -776,8 +781,8 @@ class Display:
                         'text': f"{round(ram_usage, 2)}GB / {round(ram_total, 2)}GB",
                         'bar': (float(ram_usage) / float(ram_total))
                     })
-        except:
-            pass
+        except Exception as e:
+            sys.stderr.write(str(e))
 
 
 def main(config):
