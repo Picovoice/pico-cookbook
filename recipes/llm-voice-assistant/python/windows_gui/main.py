@@ -1,4 +1,3 @@
-import curses
 import json
 import math
 import os
@@ -150,8 +149,11 @@ class Synthesizer:
         self.orca_process = orca_process
 
     def close(self):
-        self.orca_connection.send({'command': Commands.CLOSE})
-        self.orca_process.join()
+        try:
+            self.orca_connection.send({'command': Commands.CLOSE})
+            self.orca_process.join(1.0)
+        except:
+            self.orca_process.kill()
 
     def start(self):
         self.speaker.start()
@@ -164,10 +166,13 @@ class Synthesizer:
         self.orca_connection.send({'command': Commands.FLUSH})
 
     def interrupt(self):
-        self.orca_connection.send({'command': Commands.INTERRUPT})
-        while self.orca_connection.poll() and self.orca_connection.recv()['command'] != Commands.INTERRUPT:
-            time.sleep(0.01)
-        self.speaker.interrupt()
+        try:
+            self.orca_connection.send({'command': Commands.INTERRUPT})
+            while self.orca_connection.poll() and self.orca_connection.recv()['command'] != Commands.INTERRUPT:
+                time.sleep(0.1)
+            self.speaker.interrupt()
+        except:
+            pass
 
     def tick(self):
         while self.orca_connection.poll():
@@ -204,6 +209,10 @@ class Synthesizer:
                     message = connection.recv()
                     if message['command'] == Commands.CLOSE:
                         close = True
+                        synthesizing = False
+                        flushing = False
+                        while not text_queue.empty():
+                            text_queue.get()
                     elif message['command'] == Commands.START:
                         synthesizing = True
                     elif message['command'] == Commands.PROCESS:
@@ -249,8 +258,11 @@ class Generator:
         self.pllm_process = pllm_process
 
     def close(self):
-        self.pllm_connection.send({'command': Commands.CLOSE})
-        self.pllm_process.join()
+        try:
+            self.pllm_connection.send({'command': Commands.CLOSE})
+            self.pllm_process.join(1.0)
+        except:
+            self.pllm_process.kill()
 
     def process(self, text: str):
         self.synthesizer.start()
@@ -259,7 +271,7 @@ class Generator:
     def interrupt(self):
         self.pllm_connection.send({'command': Commands.INTERRUPT})
         while self.pllm_connection.poll() and self.pllm_connection.recv()['command'] != Commands.INTERRUPT:
-            time.sleep(0.01)
+            time.sleep(0.1)
         self.synthesizer.interrupt()
 
     def tick(self):
@@ -340,6 +352,7 @@ class Generator:
                     message = connection.recv()
                     if message['command'] == Commands.CLOSE:
                         close = True
+                        pllm.interrupt()
                     elif message['command'] == Commands.PROCESS:
                         generating = True
                         text = message['text']
@@ -362,8 +375,6 @@ class Generator:
                     interrupting = False
                     connection.send({'command': Commands.INTERRUPT})
         finally:
-            while llm_future and llm_future.done():
-                time.sleep(0.01)
             del executor
             pllm.release()
 
@@ -439,6 +450,100 @@ class Recorder:
         self.queue.put({'command': Commands.PCM_IN, 'pcm': pcm, 'sample-rate': self.recorder.sample_rate})
 
 
+class Window:
+    @staticmethod
+    def reset():
+        os.system('cls' if os.name == 'nt' else 'clear')
+
+    @staticmethod
+    def goto(y, x):
+        return f"\u001B[{y+1};{x+1}H"
+
+    @staticmethod
+    def color(col):
+        return f"\u001B[{';'.join([str(arg) for arg in col])}m"
+
+    @staticmethod
+    def present():
+        sys.stdout.flush()
+
+    def __init__(self, height, width, y = 0, x = 0):
+        self.height = height
+        self.width = width
+        self.y = y
+        self.x = x
+
+    def subwin(self, height, width, y, x):
+        return Window(height, width, self.y + y, self.x + x)
+
+    def clear(self):
+        display = ' ' * self.width
+        sys.stdout.write(Window.color([0]))
+        for i in range(self.height):
+            sys.stdout.write(Window.goto(self.y + i, self.x))
+            sys.stdout.write(display)
+
+    def write(self, y, x, *args):
+        sys.stdout.write(Window.goto(self.y + y, self.x + x))
+        sys.stdout.write(Window.color([0]))
+        for text in args:
+            sys.stdout.write(text)
+
+    def box(self):
+        TOP = '┌' + '─' * (self.width - 2) + '┐'
+        ROW = '│' + ' ' * (self.width - 2) + '│'
+        BOTTOM = '└' + '─' * (self.width - 2) + '┘'
+        sys.stdout.write(Window.color([0]))
+        sys.stdout.write(Window.goto(self.y, self.x) + TOP)
+        for i in range(1, self.height - 1):
+            sys.stdout.write(Window.goto(self.y + i, self.x) + ROW)
+        sys.stdout.write(Window.goto(self.y + self.height - 1, self.x) + BOTTOM)
+
+
+class VerticalBar:
+    def __init__(self, window: Window, title: str, color: list = [0]):
+        self.window = window
+        self.title = title
+        self.color = color
+        self.prev = None
+
+    def set_title(self, title: str):
+        self.title = title
+        self.window.write(1, 1, self.title.center(self.window.width - 2))
+
+    def update(self, value):
+        current = round(value * (self.window.height - 4))
+        display = '▄' * (self.window.width - 4)
+
+        if self.prev != current:
+            self.prev = current
+            self.window.box()
+            self.window.write(1, 1, self.title.center(self.window.width - 2))
+            for i in range(current):
+                self.window.write(self.window.height - i - 2, 2, Window.color(self.color), display)
+
+
+class HorizontalBar:
+    def __init__(self, window: Window, title: str):
+        self.window = window
+        self.title = title
+        self.prev = None
+
+    def update(self, value, text):
+        current = (round(value * (self.window.width - 4)), text)
+        display0 = '▖' * current[0]
+        display1 = '▌' * current[0]
+
+        if self.prev != current:
+            self.prev = current
+            self.window.box()
+            self.window.write(1, 2, self.title.ljust(12) + text.rjust(self.window.width - 16))
+            self.window.write(1, self.window.width)
+            self.window.write(2, 2, display0)
+            for i in range(3, self.window.height - 1):
+                self.window.write(i, 2, display1)
+
+
 class Display:
     def __init__(self, queue: Queue, config):
         self.queue = queue
@@ -447,12 +552,25 @@ class Display:
         self.current_time = time.time()
         self.model_name = None
 
-        self.screen = curses.initscr()
-        self.height, self.width = self.screen.getmaxyx()
-
-        if self.height < 30 or self.width < 120:
-            print(f'Error: Console window not large enough was ({self.height}, {self.width}) needs (30, 120)')
+        width, height = os.get_terminal_size()
+        if height < 30 or width < 120:
+            print(f'Error: Console window not large enough was ({height}, {width}) needs (30, 120)')
             exit(1)
+
+        self.prompt_text = [
+            'Loading...',
+            'Say `Jarvis`',
+            'Ask a Question',
+            'Say `Jarvis` to Interrupt'
+        ]
+
+        self.title_text = [
+            '',
+            '░█▀█░▀█▀░█▀▀░█▀█░█░█░█▀█░▀█▀░█▀▀░█▀▀░',
+            '░█▀▀░░█░░█░░░█░█░▀▄▀░█░█░░█░░█░░░█▀▀░',
+            '░▀░░░▀▀▀░▀▀▀░▀▀▀░░▀░░▀▀▀░▀▀▀░▀▀▀░▀▀▀░',
+            ''
+        ]
 
         self.last_blink = 0.0
         self.in_blink = False
@@ -467,30 +585,31 @@ class Display:
         self.volume_out = [0.0] * 12
         self.volume_index_out = 0
 
-        curses.curs_set(0)
-        curses.start_color()
-        curses.use_default_colors()
-        curses.init_color(128, 500, 500, 500)
-        curses.init_color(129, 215, 489, 999)
-        curses.init_color(130, 215, 999, 489)
-        curses.init_pair(1, 128, curses.COLOR_BLACK)
-        curses.init_pair(2, 129, curses.COLOR_BLACK)
-        curses.init_pair(3, 130, curses.COLOR_BLACK)
-
-        self.window = curses.newwin(self.height, self.width)
-        self.prompt = self.window.subwin(1, self.width - 2, self.height - 2, 1)
-        self.pcm_in = self.window.subwin(self.height - 10, 20, 7, 2)
-        self.pcm_out = self.window.subwin(self.height - 10, 20, 7, 23)
+        Window.reset()
+        self.screen = Window(height, width, 0, 0)
+        self.title = self.screen.subwin(6, self.screen.width - 4, 1, 2)
+        self.prompt = self.screen.subwin(1, self.screen.width - 2, self.screen.height - 2, 1)
+        self.pcm_in = VerticalBar(self.screen.subwin(self.screen.height - 10, 20, 7, 2), 'You', [38, 2, 55, 255, 125])
+        self.pcm_out = VerticalBar(self.screen.subwin(self.screen.height - 10, 20, 7, 23), 'AI', [38, 2, 55, 125, 255])
 
         self.usage = {
-            'CPU': self.window.subwin(6, self.width - 47, 7, 45),
-            'GPU': self.window.subwin(6, self.width - 47, 14, 45),
-            'RAM': self.window.subwin(6, self.width - 47, 21, 45),
+            'CPU': HorizontalBar(self.screen.subwin(6, self.screen.width - 47, 7, 45), 'CPU'),
+            'GPU': HorizontalBar(self.screen.subwin(6, self.screen.width - 47, 14, 45), 'GPU'),
+            'RAM': HorizontalBar(self.screen.subwin(6, self.screen.width - 47, 21, 45), 'RAM'),
         }
 
-        for key in self.usage:
-            self.usage[key].box()
-            self.usage[key].addstr(1, 2, key)
+        self.screen.box()
+        self.render_title()
+        self.render_prompt(0)
+
+        self.pcm_in.update(0)
+        self.pcm_out.update(0)
+        self.usage['CPU'].update(0, '')
+        self.usage['GPU'].update(0, '')
+        self.usage['RAM'].update(0, '')
+
+        self.title.write(0, 0)
+        Window.present()
 
     def start(self, pids: list):
         self.should_close = Event()
@@ -505,20 +624,20 @@ class Display:
     def close(self):
         self.should_close.set()
         for process in self.processes:
-            process.join()
-        curses.endwin()
+            process.join(1.0)
+        Window.reset()
 
-    def render_prompt(self):
-        text_states = [
-            'Loading...',
-            'Say `Jarvis`',
-            'Ask a Question',
-            'Say `Jarvis` to Interrupt'
-        ]
+    def render_title(self):
+        for i, line in enumerate(self.title_text):
+            display = line.center(self.title.width, '░')
+            self.title.write(i, 0, display)
+
+    def render_prompt(self, text_state = None):
+        if text_state:
+            self.text_state = text_state
 
         self.prompt.clear()
-        self.prompt.addstr(0, 3, text_states[self.text_state])
-        self.prompt.addch(0, 1, '>', curses.color_pair(1) if self.in_blink else 0)
+        self.prompt.write(0, 1, Window.color([90]) if self.in_blink else '', '> ', Window.color([0]), self.prompt_text[self.text_state])
 
     def tick(self):
         self.prev_time = self.current_time
@@ -528,8 +647,7 @@ class Display:
         while not self.queue.empty():
             message = self.queue.get()
             if message['command'] == Commands.TEXT_STATE:
-                self.text_state = int(message['state'])
-                self.render_prompt()
+                self.render_prompt(int(message['state']))
             elif message['command'] == Commands.PCM_IN:
                 self.samples_in = message['pcm']
                 self.sample_rate_in = message['sample-rate']
@@ -541,19 +659,11 @@ class Display:
             elif message['command'] == Commands.USAGE:
                 name = message['name']
                 text = message['text']
-                bar = message['bar']
-                height, width = self.usage[name].getmaxyx()
-                bar_width = round((width - 4) * max(0, min(1, bar)))
-                self.usage[name].clear()
-                self.usage[name].box()
-                text0 = f'{text}'.rjust(width - 12)
-                self.usage[name].addstr(1, 2, f'{name:<8}{text0}')
-                for j in range(height - 3):
-                    for i in range(bar_width):
-                        self.usage[name].addch(2 + j, 2 + i, '▖' if j == 0 else '▌')
-                self.usage[name].refresh()
+                bar = max(0, min(1, message['bar']))
+                self.usage[name].update(bar, text)
             elif message['command'] == Commands.MODEL_NAME:
-                self.model_name = message['name']
+                if message['name'] and len(message['name']) < 18:
+                    self.pcm_out.set_title(message['name'])
 
         if self.current_time > self.last_blink + 0.5:
             self.last_blink = self.current_time
@@ -593,37 +703,11 @@ class Display:
         volume_in = sum(self.volume_in) / len(self.volume_in)
         volume_out = sum(self.volume_out) / len(self.volume_out)
 
-        self.pcm_in.clear()
-        self.pcm_out.clear()
-        self.pcm_in.box()
-        self.pcm_out.box()
-        height_in, width_in = self.pcm_in.getmaxyx()
-        height_out, width_out = self.pcm_out.getmaxyx()
-        self.pcm_in.addstr(1, 1, 'You'.center(18))
-        model_name = f'{self.model_name}' if self.model_name and len(self.model_name) < 18 else 'AI'
-        self.pcm_out.addstr(1, 1, model_name.center(18))
-        for j in range(width_in - 4):
-            for i in range(int(volume_in * (height_in - 4))):
-                self.pcm_in.addch(height_in - 2 - i, 2 + j, '▄', curses.color_pair(3))
-        for j in range(width_out - 4):
-            for i in range(int(volume_out * (height_out - 4))):
-                self.pcm_out.addch(height_out - 2 - i, 2 + j, '▄', curses.color_pair(2))
+        self.pcm_in.update(volume_in)
+        self.pcm_out.update(volume_out)
 
-        title_text = [
-            '',
-            '░█▀█░▀█▀░█▀▀░█▀█░█░█░█▀█░▀█▀░█▀▀░█▀▀░',
-            '░█▀▀░░█░░█░░░█░█░▀▄▀░█░█░░█░░█░░░█▀▀░',
-            '░▀░░░▀▀▀░▀▀▀░▀▀▀░░▀░░▀▀▀░▀▀▀░▀▀▀░▀▀▀░',
-            ''
-        ]
-
-        self.title = self.window.subwin(6, self.width - 4, 1, 2)
-        for i, line in enumerate(title_text):
-            display = line.center(self.width - 4, '░')
-            self.title.addstr(i, 0, display)
-
-        self.window.box()
-        self.window.refresh()
+        self.title.write(0, 0)
+        Window.present()
 
     @staticmethod
     def run_command(command):
@@ -639,14 +723,17 @@ class Display:
             pass
         signal.signal(signal.SIGINT, handler)
 
-        while not should_close.is_set():
-            cpu_usage = sum([psutil.Process(pid).cpu_percent(0.25) for pid in pids]) / psutil.cpu_count()
-            queue.put({
-                'command': Commands.USAGE,
-                'name': 'CPU',
-                'text': f"{math.ceil(cpu_usage)}%",
-                'bar': (cpu_usage / 100)
-            })
+        try:
+            while not should_close.is_set():
+                cpu_usage = sum([psutil.Process(pid).cpu_percent(0.25) for pid in pids]) / psutil.cpu_count()
+                queue.put({
+                    'command': Commands.USAGE,
+                    'name': 'CPU',
+                    'text': f"{math.ceil(cpu_usage)}%",
+                    'bar': (cpu_usage / 100)
+                })
+        except:
+            pass
 
     @staticmethod
     def worker_gpu(queue: Queue, should_close, pids: list):
@@ -654,19 +741,22 @@ class Display:
             pass
         signal.signal(signal.SIGINT, handler)
 
-        gpu_usage_counters = ', '.join([r'"\GPU Engine(pid_{}_*)\Utilization Percentage"'.format(pid) for pid in pids])
-        gpu_usage_cmd = r'(((Get-Counter {}).CounterSamples | where CookedValue).CookedValue | measure -sum).sum'
-        gpu_usage_cmd = gpu_usage_cmd.format(gpu_usage_counters)
-        while not should_close.is_set():
-            gpu_usage = Display.run_command(gpu_usage_cmd)
-            if gpu_usage is not None:
-                gpu_usage = max(0, min(100, gpu_usage))
-                queue.put({
-                    'command': Commands.USAGE,
-                    'name': 'GPU',
-                    'text': f"{math.ceil(gpu_usage)}%",
-                    'bar': (float(gpu_usage) / 100)
-                })
+        try:
+            gpu_usage_counters = ', '.join([r'"\GPU Engine(pid_{}_*)\Utilization Percentage"'.format(pid) for pid in pids])
+            gpu_usage_cmd = r'(((Get-Counter {}).CounterSamples | where CookedValue).CookedValue | measure -sum).sum'
+            gpu_usage_cmd = gpu_usage_cmd.format(gpu_usage_counters)
+            while not should_close.is_set():
+                gpu_usage = Display.run_command(gpu_usage_cmd)
+                if gpu_usage is not None:
+                    gpu_usage = max(0, min(100, gpu_usage))
+                    queue.put({
+                        'command': Commands.USAGE,
+                        'name': 'GPU',
+                        'text': f"{math.ceil(gpu_usage)}%",
+                        'bar': (float(gpu_usage) / 100)
+                    })
+        except:
+            pass
 
     @staticmethod
     def worker_ram(queue: Queue, should_close, pids: list):
@@ -674,17 +764,20 @@ class Display:
             pass
         signal.signal(signal.SIGINT, handler)
 
-        ram_total = psutil.virtual_memory().total / 1024 / 1024 / 1024
-        while not should_close.is_set():
-            time.sleep(0.25)
-            ram_usage = sum([psutil.Process(pid).memory_info().rss for pid in pids]) / 1024 / 1024 / 1024
-            if ram_usage is not None:
-                queue.put({
-                    'command': Commands.USAGE,
-                    'name': 'RAM',
-                    'text': f"{round(ram_usage, 2)}GB / {round(ram_total, 2)}GB",
-                    'bar': (float(ram_usage) / float(ram_total))
-                })
+        try:
+            ram_total = psutil.virtual_memory().total / 1024 / 1024 / 1024
+            while not should_close.is_set():
+                time.sleep(0.25)
+                ram_usage = sum([psutil.Process(pid).memory_info().rss for pid in pids]) / 1024 / 1024 / 1024
+                if ram_usage is not None:
+                    queue.put({
+                        'command': Commands.USAGE,
+                        'name': 'RAM',
+                        'text': f"{round(ram_usage, 2)}GB / {round(ram_total, 2)}GB",
+                        'bar': (float(ram_usage) / float(ram_total))
+                    })
+        except:
+            pass
 
 
 def main(config):
@@ -732,18 +825,15 @@ def main(config):
 
     try:
         while not stop[0]:
+            if not pllm_process.is_alive() or not orca_process.is_alive():
+                break
+
             recorder.tick()
             generator.tick()
             synthesizer.tick()
             speaker.tick()
             display.tick()
     finally:
-        generator.interrupt()
-        generator.tick()
-        synthesizer.tick()
-        speaker.tick()
-        display.tick()
-
         display.close()
         recorder.close()
         listener.close()
@@ -752,7 +842,7 @@ def main(config):
         speaker.close()
 
         for child in active_children():
-            child.terminate()
+            child.kill()
 
         porcupine.delete()
         cheetah.delete()
