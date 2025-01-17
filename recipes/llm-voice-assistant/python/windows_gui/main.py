@@ -206,6 +206,7 @@ class Synthesizer:
             flushing = False
             text_queue = Queue()
             while not close:
+                time.sleep(0.1)
                 while connection.poll():
                     message = connection.recv()
                     if message['command'] == Commands.CLOSE:
@@ -350,6 +351,7 @@ class Generator:
             llm_future = None
             interrupting = False
             while not close:
+                time.sleep(0.1)
                 while connection.poll():
                     message = connection.recv()
                     if message['command'] == Commands.CLOSE:
@@ -745,6 +747,9 @@ class Display:
             pass
         signal.signal(signal.SIGINT, handler)
 
+        if not sys.platform.lower().startswith('win'):
+            return
+
         try:
             gpu_usage_counters_format = r'"\GPU Engine(pid_{}_*)\Utilization Percentage"'
             gpu_usage_counters = ', '.join([gpu_usage_counters_format.format(pid) for pid in pids])
@@ -856,10 +861,6 @@ def main(config):
 
 
 if __name__ == '__main__':
-    if not sys.platform.lower().startswith('win'):
-        print('Error: Only runs on Windows platforms')
-        exit(1)
-
     parser = ArgumentParser()
     parser.add_argument(
         '--config',

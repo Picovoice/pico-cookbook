@@ -203,7 +203,7 @@ class Synthesizer:
     def interrupt(self):
         self.orca_connection.send({'command': Commands.INTERRUPT})
         while self.orca_connection.poll() and self.orca_connection.recv()['command'] != Commands.INTERRUPT:
-            time.sleep(0.01)
+            time.sleep(0.1)
         self.speaker.interrupt()
 
     def tick(self):
@@ -248,6 +248,7 @@ class Synthesizer:
             text_queue = Queue()
             while not close:
                 while connection.poll():
+                    time.sleep(0.1)
                     message = connection.recv()
                     if message['command'] == Commands.CLOSE:
                         close = True
@@ -269,7 +270,7 @@ class Synthesizer:
                         orca_profiler.reset()
                         utterance_end_sec = 0
                         delay_sec = -1
-                if not text_queue.empty():
+                while not text_queue.empty():
                     text = text_queue.get()
                     orca_profiler.tick()
                     pcm = orca_stream.synthesize(text)
@@ -321,7 +322,7 @@ class Generator:
     def interrupt(self):
         self.pllm_connection.send({'command': Commands.INTERRUPT})
         while self.pllm_connection.poll() and self.pllm_connection.recv()['command'] != Commands.INTERRUPT:
-            time.sleep(0.01)
+            time.sleep(0.1)
         print('', flush=True)
         self.synthesizer.interrupt()
 
@@ -406,6 +407,7 @@ class Generator:
             llm_future = None
             interrupting = False
             while not close:
+                time.sleep(0.1)
                 while connection.poll():
                     message = connection.recv()
                     if message['command'] == Commands.CLOSE:
@@ -434,7 +436,7 @@ class Generator:
                     connection.send({'command': Commands.INTERRUPT})
         finally:
             while llm_future and llm_future.done():
-                time.sleep(0.01)
+                time.sleep(0.1)
             del executor
             pllm.release()
 
