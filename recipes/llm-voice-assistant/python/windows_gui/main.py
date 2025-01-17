@@ -7,10 +7,10 @@ import subprocess
 import sys
 import time
 from argparse import ArgumentParser
-from concurrent.futures import ThreadPoolExecutor
 from itertools import chain
 from multiprocessing import Event, Pipe, Process, Queue, active_children
 from multiprocessing.connection import Connection
+from threading import Thread
 from typing import Optional, Sequence
 
 
@@ -87,11 +87,10 @@ class Speaker:
         self.speaking = False
         self.flushing = False
         self.pcmBuffer = []
-        self.executor = ThreadPoolExecutor()
         self.future = None
 
     def close(self):
-        self.executor.shutdown()
+        self.interrupt()
 
     def start(self):
         self.started = True
@@ -115,6 +114,7 @@ class Speaker:
         def stop():
             self.speaker.flush()
             self.speaker.stop()
+            self.queue.put({'command': Commands.TEXT_STATE, 'state': 1})
         if not self.speaking and len(self.pcmBuffer) > self.orca_warmup:
             self.speaking = True
             self.speaker.start()
@@ -130,10 +130,7 @@ class Speaker:
             self.started = False
             self.speaking = False
             self.flushing = False
-            self.future = self.executor.submit(stop)
-        if self.future and self.future.done():
-            self.future = None
-            self.queue.put({'command': Commands.TEXT_STATE, 'state': 1})
+            Thread(target=stop).start()
 
 
 class Synthesizer:
@@ -169,8 +166,6 @@ class Synthesizer:
     def interrupt(self):
         try:
             self.orca_connection.send({'command': Commands.INTERRUPT})
-            while self.orca_connection.poll() and self.orca_connection.recv()['command'] != Commands.INTERRUPT:
-                time.sleep(0.1)
             self.speaker.interrupt()
         except Exception as e:
             sys.stderr.write(str(e))
@@ -228,19 +223,19 @@ class Synthesizer:
                         while not text_queue.empty():
                             text_queue.get()
                         orca_stream.flush()
-                        connection.send({'command': Commands.INTERRUPT})
-                if not text_queue.empty():
+                while not text_queue.empty():
                     text = text_queue.get()
-                    pcm = orca_stream.synthesize(text)
-                    if pcm is not None:
-                        connection.send({'command': Commands.SPEAK, 'pcm': pcm})
+                    if synthesizing:
+                        pcm = orca_stream.synthesize(text)
+                        if pcm is not None:
+                            connection.send({'command': Commands.SPEAK, 'pcm': pcm})
                 if synthesizing and flushing and text_queue.empty():
                     synthesizing = False
                     flushing = False
                     pcm = orca_stream.flush()
                     connection.send({'command': Commands.SPEAK, 'pcm': pcm})
                     connection.send({'command': Commands.FLUSH})
-                elif flushing:
+                elif not synthesizing and flushing and text_queue.empty():
                     flushing = False
         finally:
             orca_stream.close()
@@ -273,8 +268,6 @@ class Generator:
 
     def interrupt(self):
         self.pllm_connection.send({'command': Commands.INTERRUPT})
-        while self.pllm_connection.poll() and self.pllm_connection.recv()['command'] != Commands.INTERRUPT:
-            time.sleep(0.1)
         self.synthesizer.interrupt()
 
     def tick(self):
@@ -308,7 +301,6 @@ class Generator:
             dialog = pllm.get_dialog(system=config['picollm_system_prompt'])
         else:
             dialog = pllm.get_dialog()
-        generating = False
 
         connection.send({'command': Commands.MODEL_NAME, 'name': pllm.model.split(' ')[0]})
 
@@ -322,64 +314,52 @@ class Generator:
         completion = CompletionText(stop_phrases)
 
         def llm_callback(text):
-            if generating:
-                completion.append(text)
-                new_tokens = completion.get_new_tokens()
-                if len(new_tokens) > 0:
-                    connection.send({'command': Commands.SYNTHESIZE, 'text': new_tokens})
+            completion.append(text)
+            new_tokens = completion.get_new_tokens()
+            if len(new_tokens) > 0:
+                connection.send({'command': Commands.SYNTHESIZE, 'text': new_tokens})
 
-        def llm_task(text):
-            short_answers_instruction = \
-                "You are a voice assistant and your answers are very short but informative"
-            dialog.add_human_request(
-                f"{short_answers_instruction}. {text}" if config['short_answers'] else text)
-
-            completion.reset()
-            return pllm.generate(
-                prompt=dialog.prompt(),
-                completion_token_limit=config['picollm_completion_token_limit'],
-                stop_phrases=stop_phrases,
-                presence_penalty=config['picollm_presence_penalty'],
-                frequency_penalty=config['picollm_frequency_penalty'],
-                temperature=config['picollm_temperature'],
-                top_p=config['picollm_top_p'],
-                stream_callback=llm_callback)
+        close = [False]
+        prompt = [None]
+        def event_manager():
+            while not close[0]:
+                message = connection.recv()
+                if message['command'] == Commands.CLOSE:
+                    close[0] = True
+                    pllm.interrupt()
+                    return
+                elif message['command'] == Commands.INTERRUPT:
+                    pllm.interrupt()
+                elif message['command'] == Commands.PROCESS:
+                    prompt[0] = message['text']
+        Thread(target=event_manager).start()
 
         try:
-            close = False
-            executor = ThreadPoolExecutor()
-            llm_future = None
-            interrupting = False
-            while not close:
-                time.sleep(0.1)
-                while connection.poll():
-                    message = connection.recv()
-                    if message['command'] == Commands.CLOSE:
-                        close = True
-                        pllm.interrupt()
-                    elif message['command'] == Commands.PROCESS:
-                        generating = True
-                        text = message['text']
-                        llm_future = executor.submit(llm_task, text)
-                    elif message['command'] == Commands.INTERRUPT:
-                        interrupting = True
-                        generating = False
-                        pllm.interrupt()
-                if llm_future and llm_future.done():
-                    generating = False
-                    llm_result = llm_future.result()
-                    dialog.add_llm_response(llm_result.completion)
-                    if llm_result.endpoint == picollm.PicoLLMEndpoints.INTERRUPTED:
-                        interrupting = False
-                        connection.send({'command': Commands.INTERRUPT})
-                    else:
+            while not close[0]:
+                if prompt[0] is not None:
+                    short_answers_instruction = \
+                        "You are a voice assistant and your answers are very short but informative"
+                    dialog.add_human_request(
+                        f"{short_answers_instruction}. {prompt[0]}" if config['short_answers'] else prompt[0])
+                    prompt[0] = None
+
+                    completion.reset()
+                    result = pllm.generate(
+                        prompt=dialog.prompt(),
+                        completion_token_limit=config['picollm_completion_token_limit'],
+                        stop_phrases=stop_phrases,
+                        presence_penalty=config['picollm_presence_penalty'],
+                        frequency_penalty=config['picollm_frequency_penalty'],
+                        temperature=config['picollm_temperature'],
+                        top_p=config['picollm_top_p'],
+                        stream_callback=llm_callback)
+
+                    dialog.add_llm_response(result.completion)
+                    if result.endpoint != picollm.PicoLLMEndpoints.INTERRUPTED:
                         connection.send({'command': Commands.FLUSH})
-                    llm_future = None
-                if not llm_future and interrupting:
-                    interrupting = False
-                    connection.send({'command': Commands.INTERRUPT})
+                else:
+                    time.sleep(0.25)
         finally:
-            del executor
             pllm.release()
 
 
