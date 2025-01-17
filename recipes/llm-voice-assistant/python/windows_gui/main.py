@@ -192,7 +192,7 @@ class Synthesizer:
         signal.signal(signal.SIGINT, handler)
 
         orca = pvorca.create(access_key=config['access_key'])
-        orca_stream = orca.stream_open()
+        orca_stream = orca.stream_open(speech_rate=config['orca_speech_rate'])
         connection.send(orca.sample_rate)
 
         try:
@@ -321,6 +321,7 @@ class Generator:
 
         close = [False]
         prompt = [None]
+
         def event_manager():
             while not close[0]:
                 message = connection.recv()
@@ -852,7 +853,7 @@ if __name__ == '__main__':
         '--picollm_model_path',
         help='Absolute path to the file containing LLM parameters (`.pllm`).')
     parser.add_argument(
-        '--keyword-model_path',
+        '--keyword_model_path',
         help='Absolute path to the keyword model file (`.ppn`). If not set, `Jarvis` will be the wake phrase')
     parser.add_argument(
         '--cheetah_endpoint_duration_sec',
@@ -905,6 +906,10 @@ if __name__ == '__main__':
         help="Duration of the synthesized audio to buffer before streaming it out. A higher value helps slower "
              "(e.g., Raspberry Pi) to keep up with real-time at the cost of increasing the initial delay.")
     parser.add_argument(
+        '--orca_speech_rate',
+        type=float,
+        help="Rate of speech of the generated audio.")
+    parser.add_argument(
         '--porcupine_sensitivity',
         type=float,
         help="Sensitivity for detecting keywords.")
@@ -941,6 +946,7 @@ if __name__ == '__main__':
         'picollm_top_p': 1,
         'picollm_system_prompt': None,
         'orca_warmup_sec': 0,
+        'orca_speech_rate': 1.0,
         'porcupine_sensitivity': 0.5,
         'short_answers': False
     }
