@@ -497,7 +497,7 @@ class VerticalBar:
         self.window.write(1, 1, self.title.center(self.window.width - 2))
 
     def update(self, value):
-        current = round(value * (self.window.height - 4))
+        current = round(value * (self.window.height - 3))
         display = '▄' * (self.window.width - 4)
 
         if self.prev != current:
@@ -509,12 +509,13 @@ class VerticalBar:
 
 
 class HorizontalBar:
-    def __init__(self, window: Window, title: str):
+    def __init__(self, window: Window, title: str, color: list = [0]):
         self.window = window
         self.title = title
+        self.color = color
         self.prev = None
 
-    def update(self, value, text):
+    def update(self, value, text=''):
         current = (round(value * (self.window.width - 4)), text)
         display0 = '▖' * current[0]
         display1 = '▌' * current[0]
@@ -523,10 +524,9 @@ class HorizontalBar:
             self.prev = current
             self.window.box()
             self.window.write(1, 2, self.title.ljust(12) + text.rjust(self.window.width - 16))
-            self.window.write(1, self.window.width)
-            self.window.write(2, 2, display0)
+            self.window.write(2, 2,  Window.color(self.color), display0)
             for i in range(3, self.window.height - 1):
-                self.window.write(i, 2, display1)
+                self.window.write(i, 2, Window.color(self.color), display1)
 
 
 class Display:
@@ -536,10 +536,11 @@ class Display:
         self.prev_time = 0
         self.current_time = time.time()
         self.model_name = None
+        self.widgets = {}
 
         width, height = os.get_terminal_size()
-        if height < 30 or width < 120:
-            print(f'Error: Console window not large enough was ({height}, {width}) needs (30, 120)')
+        if height < 9 or width < 41:
+            print(f'Error: Console window not large enough was ({height}, {width}) needs (9, 41)')
             exit(1)
 
         self.prompt_text = [
@@ -574,35 +575,45 @@ class Display:
         self.screen = Window(height, width, 0, 0)
         self.title = self.screen.subwin(6, self.screen.width - 4, 1, 2)
         self.prompt = self.screen.subwin(1, self.screen.width - 2, self.screen.height - 2, 1)
-        self.pcm_in = VerticalBar(self.screen.subwin(self.screen.height - 10, 20, 7, 2), 'You', [38, 2, 55, 255, 125])
-        self.pcm_out = VerticalBar(self.screen.subwin(self.screen.height - 10, 20, 7, 23), 'AI', [38, 2, 55, 125, 255])
 
-        self.usage = {
-            'CPU': HorizontalBar(self.screen.subwin(6, self.screen.width - 47, 7, 45), 'CPU'),
-            'GPU': HorizontalBar(self.screen.subwin(6, self.screen.width - 47, 14, 45), 'GPU'),
-            'RAM': HorizontalBar(self.screen.subwin(6, self.screen.width - 47, 21, 45), 'RAM'),
-        }
+        if height >= 30 and width >= 120:
+            self.widgets['pcm_in'] = VerticalBar(self.screen.subwin(self.screen.height - 10, 20, 7, 2), 'You', [38, 2, 55, 255, 125])
+            self.widgets['pcm_out'] = VerticalBar(self.screen.subwin(self.screen.height - 10, 20, 7, 23), 'AI', [38, 2, 55, 125, 255])
+        elif height >= 17:
+            bar_width = (width - 4) // 2
+            self.widgets['pcm_in'] = VerticalBar(self.screen.subwin(self.screen.height - 10, min(20, bar_width), 7, 2), 'You', [38, 2, 55, 255, 125])
+            self.widgets['pcm_out'] = VerticalBar(self.screen.subwin(self.screen.height - 10, min(20, bar_width), 7, width - bar_width - 2 if bar_width < 20 else 23), 'AI', [38, 2, 55, 125, 255])
+
+        if width >= 80:
+            if height >= 30 and sys.platform.lower().startswith('win'):
+                bar_height = (self.screen.height - 11) // 3
+                self.widgets['CPU'] = HorizontalBar(self.screen.subwin(bar_height, self.screen.width - 47, 7, 45), 'CPU')
+                self.widgets['GPU'] = HorizontalBar(self.screen.subwin(bar_height, self.screen.width - 47, 8 + bar_height, 45), 'GPU')
+                self.widgets['RAM'] = HorizontalBar(self.screen.subwin(bar_height, self.screen.width - 47, 9 + bar_height * 2, 45), 'RAM')
+            elif height >= 19:
+                bar_height = (self.screen.height - 11) // 2
+                self.widgets['CPU'] = HorizontalBar(self.screen.subwin(bar_height, self.screen.width - 47, 7, 45), 'CPU')
+                self.widgets['RAM'] = HorizontalBar(self.screen.subwin(bar_height, self.screen.width - 47, 8 + bar_height, 45), 'RAM')
 
         self.screen.box()
         self.render_title()
         self.render_prompt(0)
 
-        self.pcm_in.update(0)
-        self.pcm_out.update(0)
-        self.usage['CPU'].update(0, '')
-        self.usage['GPU'].update(0, '')
-        self.usage['RAM'].update(0, '')
+        for key in self.widgets:
+            self.widgets[key].update(0.0)
 
         self.title.write(0, 0)
         Window.present()
 
     def start(self, pids: list):
         self.should_close = Event()
-        self.processes = [
-            Process(target=Display.worker_cpu, args=(self.queue, self.should_close, pids)),
-            Process(target=Display.worker_gpu, args=(self.queue, self.should_close, pids)),
-            Process(target=Display.worker_ram, args=(self.queue, self.should_close, pids)),
-        ]
+        self.processes = []
+        if 'CPU' in self.widgets:
+            self.processes.append(Process(target=Display.worker_cpu, args=(self.queue, self.should_close, pids)))
+        if 'RAM' in self.widgets:
+            self.processes.append(Process(target=Display.worker_ram, args=(self.queue, self.should_close, pids)))
+        if 'GPU' in self.widgets:
+            self.processes.append(Process(target=Display.worker_gpu, args=(self.queue, self.should_close, pids)))
         for process in self.processes:
             process.start()
 
@@ -645,12 +656,14 @@ class Display:
                 self.samples_out.clear()
             elif message['command'] == Commands.USAGE:
                 name = message['name']
-                text = message['text']
-                bar = max(0, min(1, message['bar']))
-                self.usage[name].update(bar, text)
+                if name in self.widgets:
+                    text = message['text']
+                    bar = max(0, min(1, message['bar']))
+                    self.widgets[name].update(bar, text)
             elif message['command'] == Commands.MODEL_NAME:
-                if message['name'] and len(message['name']) < 18:
-                    self.pcm_out.set_title(message['name'])
+                if 'pcm_out' in self.widgets:
+                    if message['name'] and len(message['name']) < 18:
+                        self.widgets['pcm_out'].set_title(message['name'])
 
         if self.current_time > self.last_blink + 0.5:
             self.last_blink = self.current_time
@@ -690,8 +703,10 @@ class Display:
         volume_in = sum(self.volume_in) / len(self.volume_in)
         volume_out = sum(self.volume_out) / len(self.volume_out)
 
-        self.pcm_in.update(volume_in)
-        self.pcm_out.update(volume_out)
+        if 'pcm_in' in self.widgets:
+            self.widgets['pcm_in'].update(volume_in)
+        if 'pcm_out' in self.widgets:
+            self.widgets['pcm_out'].update(volume_out)
 
         self.title.write(0, 0)
         Window.present()
