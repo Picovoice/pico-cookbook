@@ -524,7 +524,7 @@ class HorizontalBar:
             self.prev = current
             self.window.box()
             self.window.write(1, 2, self.title.ljust(12) + text.rjust(self.window.width - 16))
-            self.window.write(2, 2,  Window.color(self.color), display0)
+            self.window.write(2, 2, Window.color(self.color), display0)
             for i in range(3, self.window.height - 1):
                 self.window.write(i, 2, Window.color(self.color), display1)
 
@@ -577,23 +577,46 @@ class Display:
         self.prompt = self.screen.subwin(1, self.screen.width - 2, self.screen.height - 2, 1)
 
         if height >= 30 and width >= 120:
-            self.widgets['pcm_in'] = VerticalBar(self.screen.subwin(self.screen.height - 10, 20, 7, 2), 'You', [38, 2, 55, 255, 125])
-            self.widgets['pcm_out'] = VerticalBar(self.screen.subwin(self.screen.height - 10, 20, 7, 23), 'AI', [38, 2, 55, 125, 255])
+            self.widgets['pcm_in'] = VerticalBar(
+                self.screen.subwin(self.screen.height - 10, 20, 7, 2),
+                'You',
+                [38, 2, 55, 255, 125])
+            self.widgets['pcm_out'] = VerticalBar(
+                self.screen.subwin(self.screen.height - 10, 20, 7, 23),
+                'AI',
+                [38, 2, 55, 125, 255])
         elif height >= 17:
             bar_width = (width - 4) // 2
-            self.widgets['pcm_in'] = VerticalBar(self.screen.subwin(self.screen.height - 10, min(20, bar_width), 7, 2), 'You', [38, 2, 55, 255, 125])
-            self.widgets['pcm_out'] = VerticalBar(self.screen.subwin(self.screen.height - 10, min(20, bar_width), 7, width - bar_width - 2 if bar_width < 20 else 23), 'AI', [38, 2, 55, 125, 255])
+            self.widgets['pcm_in'] = VerticalBar(
+                self.screen.subwin(self.screen.height - 10, min(20, bar_width), 7, 2),
+                'You',
+                [38, 2, 55, 255, 125])
+            self.widgets['pcm_out'] = VerticalBar(
+                self.screen.subwin(self.screen.height - 10, min(20, bar_width), 7,
+                                   width - bar_width - 2 if bar_width < 20 else 23),
+                'AI',
+                [38, 2, 55, 125, 255])
 
         if width >= 80:
             if height >= 30 and sys.platform.lower().startswith('win'):
                 bar_height = (self.screen.height - 11) // 3
-                self.widgets['CPU'] = HorizontalBar(self.screen.subwin(bar_height, self.screen.width - 47, 7, 45), 'CPU')
-                self.widgets['GPU'] = HorizontalBar(self.screen.subwin(bar_height, self.screen.width - 47, 8 + bar_height, 45), 'GPU')
-                self.widgets['RAM'] = HorizontalBar(self.screen.subwin(bar_height, self.screen.width - 47, 9 + bar_height * 2, 45), 'RAM')
+                self.widgets['CPU'] = HorizontalBar(
+                    self.screen.subwin(bar_height, self.screen.width - 47, 7, 45),
+                    'CPU')
+                self.widgets['GPU'] = HorizontalBar(
+                    self.screen.subwin(bar_height, self.screen.width - 47, 8 + bar_height, 45),
+                    'GPU')
+                self.widgets['RAM'] = HorizontalBar(
+                    self.screen.subwin(bar_height, self.screen.width - 47, 9 + bar_height * 2, 45),
+                    'RAM')
             elif height >= 19:
                 bar_height = (self.screen.height - 11) // 2
-                self.widgets['CPU'] = HorizontalBar(self.screen.subwin(bar_height, self.screen.width - 47, 7, 45), 'CPU')
-                self.widgets['RAM'] = HorizontalBar(self.screen.subwin(bar_height, self.screen.width - 47, 8 + bar_height, 45), 'RAM')
+                self.widgets['CPU'] = HorizontalBar(
+                    self.screen.subwin(bar_height, self.screen.width - 47, 7, 45),
+                    'CPU')
+                self.widgets['RAM'] = HorizontalBar(
+                    self.screen.subwin(bar_height, self.screen.width - 47, 8 + bar_height, 45),
+                    'RAM')
 
         self.screen.box()
         self.render_title()
