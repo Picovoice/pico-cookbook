@@ -827,12 +827,13 @@ def main(config):
         stop[0] = True
     signal.signal(signal.SIGINT, handler)
 
-    def resize_handler(_, __):
-        terminal_width, terminal_height = os.get_terminal_size()
-        terminal_width = min(terminal_width, 120)
-        terminal_height = min(terminal_height, 30)
-        display.set_display_size(terminal_height, terminal_width)
-    signal.signal(signal.SIGWINCH, resize_handler)
+    if not sys.platform.lower().startswith('win'):
+        def resize_handler(_, __):
+            terminal_width, terminal_height = os.get_terminal_size()
+            terminal_width = min(terminal_width, 120)
+            terminal_height = min(terminal_height, 30)
+            display.set_display_size(terminal_height, terminal_width)
+        signal.signal(signal.SIGWINCH, resize_handler)
 
     pllm_connection, pllm_process = Generator.create_worker(config)
     orca_connection, orca_process = Synthesizer.create_worker(config)
