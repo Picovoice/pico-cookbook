@@ -533,15 +533,22 @@ class Display:
     def __init__(self, queue: Queue, config):
         self.queue = queue
         self.config = config
+        self.screen = None
         self.prev_time = 0
         self.current_time = time.time()
-        self.model_name = None
-        self.widgets = {}
 
-        width, height = os.get_terminal_size()
-        if height < 9 or width < 41:
-            print(f'Error: Console window not large enough was ({height}, {width}) needs (9, 41)')
-            exit(1)
+        self.last_blink = 0.0
+        self.in_blink = False
+        self.text_state = 0
+
+        self.sample_rate_in = 1
+        self.samples_in = []
+        self.volume_in = [0.0] * 4
+        self.volume_index_in = 0
+        self.sample_rate_out = 1
+        self.samples_out = []
+        self.volume_out = [0.0] * 12
+        self.volume_index_out = 0
 
         self.prompt_text = [
             'Loading...',
@@ -558,85 +565,84 @@ class Display:
             ''
         ]
 
-        self.last_blink = 0.0
-        self.in_blink = False
-        self.text_state = 0
+    def set_display_size(self, height, width):
+        self.display_width = width
+        self.display_height = height
 
-        self.sample_rate_in = 1
-        self.samples_in = []
-        self.volume_in = [0.0] * 4
-        self.volume_index_in = 0
-        self.sample_rate_out = 1
-        self.samples_out = []
-        self.volume_out = [0.0] * 12
-        self.volume_index_out = 0
-
+    def generate_gui(self):
         Window.reset()
-        self.screen = Window(height, width, 0, 0)
+        self.screen = Window(self.display_height, self.display_width, 0, 0)
         self.title = self.screen.subwin(6, self.screen.width - 4, 1, 2)
         self.prompt = self.screen.subwin(1, self.screen.width - 2, self.screen.height - 2, 1)
+        self.widgets = {}
 
-        if height >= 30 and width >= 120:
+        vu_bar_width = min(20, (self.screen.width - 5) // 2)
+        perf_bar_height = min(6, (self.screen.height - 11) // 2)
+        perf_offset = 7
+
+        show_vu = False
+        show_cpu = False
+        show_gpu = False
+        show_ram = False
+
+        if self.display_height >= 19 and self.display_width >= 41:
+            show_vu = True
+            if self.display_width >= 80:
+                show_cpu = True
+                show_ram = True
+                if self.display_height >= 30 and sys.platform.lower().startswith('win'):
+                    show_gpu = True
+
+        if show_vu:
             self.widgets['pcm_in'] = VerticalBar(
-                self.screen.subwin(self.screen.height - 10, 20, 7, 2),
+                self.screen.subwin(self.screen.height - 10, vu_bar_width, 7, 2),
                 'You',
                 [38, 2, 55, 255, 125])
             self.widgets['pcm_out'] = VerticalBar(
-                self.screen.subwin(self.screen.height - 10, 20, 7, 23),
-                'AI',
-                [38, 2, 55, 125, 255])
-        elif height >= 17:
-            bar_width = (width - 4) // 2
-            self.widgets['pcm_in'] = VerticalBar(
-                self.screen.subwin(self.screen.height - 10, min(20, bar_width), 7, 2),
-                'You',
-                [38, 2, 55, 255, 125])
-            self.widgets['pcm_out'] = VerticalBar(
-                self.screen.subwin(self.screen.height - 10, min(20, bar_width), 7,
-                                   width - bar_width - 2 if bar_width < 20 else 23),
+                self.screen.subwin(self.screen.height - 10, vu_bar_width, 7, 3 + vu_bar_width),
                 'AI',
                 [38, 2, 55, 125, 255])
 
-        if width >= 80:
-            if height >= 30 and sys.platform.lower().startswith('win'):
-                bar_height = (self.screen.height - 11) // 3
-                self.widgets['CPU'] = HorizontalBar(
-                    self.screen.subwin(bar_height, self.screen.width - 47, 7, 45),
-                    'CPU')
-                self.widgets['GPU'] = HorizontalBar(
-                    self.screen.subwin(bar_height, self.screen.width - 47, 8 + bar_height, 45),
-                    'GPU')
-                self.widgets['RAM'] = HorizontalBar(
-                    self.screen.subwin(bar_height, self.screen.width - 47, 9 + bar_height * 2, 45),
-                    'RAM')
-            elif height >= 19:
-                bar_height = (self.screen.height - 11) // 2
-                self.widgets['CPU'] = HorizontalBar(
-                    self.screen.subwin(bar_height, self.screen.width - 47, 7, 45),
-                    'CPU')
-                self.widgets['RAM'] = HorizontalBar(
-                    self.screen.subwin(bar_height, self.screen.width - 47, 8 + bar_height, 45),
-                    'RAM')
+        if show_cpu:
+            self.widgets['CPU'] = HorizontalBar(
+                self.screen.subwin(perf_bar_height, self.screen.width - 47, perf_offset, 45),
+                'CPU')
+            perf_offset += perf_bar_height + 1
 
-        self.screen.box()
-        self.render_title()
-        self.render_prompt(0)
+        if show_gpu:
+            self.widgets['GPU'] = HorizontalBar(
+                self.screen.subwin(perf_bar_height, self.screen.width - 47, perf_offset, 45),
+                'GPU')
+            perf_offset += perf_bar_height + 1
+
+        if show_ram:
+            self.widgets['RAM'] = HorizontalBar(
+                self.screen.subwin(perf_bar_height, self.screen.width - 47, perf_offset, 45),
+                'RAM')
+
+        self.screen.clear()
+        if self.screen.height >= 19 and self.screen.width >= 41:
+            self.screen.box()
+            for i, line in enumerate(self.title_text):
+                display = line.center(self.title.width, '░')
+                self.title.write(i, 0, display)
+            self.render_prompt(0)
+        else:
+            self.screen.write(0, 0, f'Screen too small ({self.display_height}, {self.display_width}) please resize')
 
         for key in self.widgets:
             self.widgets[key].update(0.0)
 
-        self.title.write(0, 0)
+        self.screen.write(1, 2)
         Window.present()
 
     def start(self, pids: list):
         self.should_close = Event()
-        self.processes = []
-        if 'CPU' in self.widgets:
-            self.processes.append(Process(target=Display.worker_cpu, args=(self.queue, self.should_close, pids)))
-        if 'RAM' in self.widgets:
-            self.processes.append(Process(target=Display.worker_ram, args=(self.queue, self.should_close, pids)))
-        if 'GPU' in self.widgets:
-            self.processes.append(Process(target=Display.worker_gpu, args=(self.queue, self.should_close, pids)))
+        self.processes = [
+            Process(target=Display.worker_cpu, args=(self.queue, self.should_close, pids)),
+            Process(target=Display.worker_ram, args=(self.queue, self.should_close, pids)),
+            Process(target=Display.worker_gpu, args=(self.queue, self.should_close, pids))
+        ]
         for process in self.processes:
             process.start()
 
@@ -645,11 +651,6 @@ class Display:
         for process in self.processes:
             process.join(1.0)
         Window.reset()
-
-    def render_title(self):
-        for i, line in enumerate(self.title_text):
-            display = line.center(self.title.width, '░')
-            self.title.write(i, 0, display)
 
     def render_prompt(self, text_state=None):
         if text_state:
@@ -661,6 +662,9 @@ class Display:
                           Window.color([0]), self.prompt_text[self.text_state])
 
     def tick(self):
+        if self.screen is None or self.display_height != self.screen.height or self.display_width != self.screen.width:
+            self.generate_gui()
+
         self.prev_time = self.current_time
         self.current_time = time.time()
         delta = self.current_time - self.prev_time
@@ -731,7 +735,7 @@ class Display:
         if 'pcm_out' in self.widgets:
             self.widgets['pcm_out'].update(volume_out)
 
-        self.title.write(0, 0)
+        self.screen.write(1, 2)
         Window.present()
 
     @staticmethod
@@ -814,9 +818,21 @@ def main(config):
     queue = Queue()
     display = Display(queue, config)
 
+    terminal_width, terminal_height = os.get_terminal_size()
+    terminal_width = min(terminal_width, 120)
+    terminal_height = min(terminal_height, 30)
+    display.set_display_size(terminal_height, terminal_width)
+
     def handler(_, __) -> None:
         stop[0] = True
     signal.signal(signal.SIGINT, handler)
+
+    def resize_handler(_, __):
+        terminal_width, terminal_height = os.get_terminal_size()
+        terminal_width = min(terminal_width, 120)
+        terminal_height = min(terminal_height, 30)
+        display.set_display_size(terminal_height, terminal_width)
+    signal.signal(signal.SIGWINCH, resize_handler)
 
     pllm_connection, pllm_process = Generator.create_worker(config)
     orca_connection, orca_process = Synthesizer.create_worker(config)

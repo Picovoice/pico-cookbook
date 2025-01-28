@@ -324,7 +324,7 @@ class Generator:
 
     def process(self, text: str, utterance_end_sec):
         ppn_prompt = self.config['ppn_prompt']
-        print(f'LLM (say ${ppn_prompt} to interrupt) > ', end='', flush=True)
+        print(f'LLM (say {ppn_prompt} to interrupt) > ', end='', flush=True)
 
         self.synthesizer.start(utterance_end_sec)
         self.pllm_connection.send({'command': Commands.PROCESS, 'text': text})
