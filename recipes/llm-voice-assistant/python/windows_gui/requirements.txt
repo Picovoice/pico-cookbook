@@ -1,8 +1,7 @@
-picollm==1.2.3
-pvcheetah==2.1.0
-pvorca==1.0.0
-pvporcupine==3.0.2
-pvrecorder==1.2.2
-pvspeaker==1.0.3
-windows-curses==2.4.0; sys_platform == 'win32'
-psutil==6.1.1; sys_platform == 'win32'
+picollm==1.2.4
+pvcheetah==2.1.1
+pvorca==1.0.1
+pvporcupine==3.0.4
+pvrecorder==1.2.4
+pvspeaker==1.0.4
+psutil==6.1.1
