@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Channels;
 
 using Pv;
@@ -110,11 +111,9 @@ namespace LLMVoiceAssistant
             private readonly PvRecorder _recorder;
             public event EventHandler<string>? UserInputReceived;
             public event EventHandler? WakeWordDetected;
-            public event EventHandler? WakeWordDetectedWhileGenerating;
             private event EventHandler<short[]>? AudioReceived;
 
             private string _transcript = "";
-            private bool generating = false;
 
             public Listener()
             {
@@ -138,12 +137,6 @@ namespace LLMVoiceAssistant
                 UserInputReceived += OnUserInputReceived;
             }
 
-            public void RegisterGenerationCallback(Generator generator)
-            {
-                generator.CompletionGenerationCompleted += (_, _) => generating = false;
-                generator.CompletionGenerationStarted += (_, _) => generating = true;
-            }
-
             public void run()
             {
                 _recorder.Start();
@@ -162,10 +155,6 @@ namespace LLMVoiceAssistant
                 if (keywordIndex >= 0)
                 {
                     WakeWordDetected?.Invoke(this, EventArgs.Empty);
-                    if (generating)
-                    {
-                        WakeWordDetectedWhileGenerating?.Invoke(this, EventArgs.Empty);
-                    }
                 }
             }
 
@@ -197,7 +186,7 @@ namespace LLMVoiceAssistant
                 cheetahProfiler?.Reset();
                 Console.WriteLine(
                     "Wake word detected, utter your request or question ...");
-                Console.Write("User: ");
+                Console.Write("User > ");
                 AudioReceived -= PorcupineOnAudioReceived;
                 AudioReceived += CheetahOnAudioReceived;
             }
@@ -216,7 +205,6 @@ namespace LLMVoiceAssistant
             readonly PicoLLM _pllm;
             readonly Channel<string> _userInputChannel = Channel.CreateUnbounded<string>();
             public event EventHandler<string>? PartialCompletionGenerated;
-            public event EventHandler? CompletionGenerationStarted;
             public event EventHandler<PicoLLMEndpoint>? CompletionGenerationCompleted;
 
             public Generator(Listener listener)
@@ -224,21 +212,19 @@ namespace LLMVoiceAssistant
                 _pllm = PicoLLM.Create(accessKey: ACCESS_KEY, modelPath: LLM_MODEL_PATH,
                                        device: LLM_DEVICE);
                 listener.UserInputReceived += OnUserInputReceived;
-                listener.WakeWordDetectedWhileGenerating += OnWakeWordDetected;
+                listener.WakeWordDetected += OnWakeWordDetected;
                 CompletionGenerationCompleted += (_, endpoint) =>
                     ProfilerEvent?.Invoke(null, pllmProfiler);
-                Task.Run(llmWorker);
+                Task.Run(llmWorker).ContinueWith((t) => Console.WriteLine(t.Exception));
             }
 
             private void OnUserInputReceived(object? sender, string userInput)
             {
-                if (userInput.Length != 0)
-                    _userInputChannel.Writer.WriteAsync(userInput);
+                _userInputChannel.Writer.TryWrite(userInput);
             }
 
             private void OnWakeWordDetected(object? sender, EventArgs e)
             {
-                Console.WriteLine("Interrupted by wake up word.");
                 _pllm.Interrupt();
             }
 
@@ -269,8 +255,7 @@ namespace LLMVoiceAssistant
                                                ? $"{short_answer_instruction}. {userInput}"
                                                : userInput);
                     completion.Reset();
-                    CompletionGenerationStarted?.Invoke(this, EventArgs.Empty);
-                    Console.Write($"LLM (say {PORCUPINE_WAKE_WORD} to interrupt): ");
+                    Console.Write($"LLM (say {PORCUPINE_WAKE_WORD} to interrupt) > ");
                     var result = _pllm.Generate(
                         prompt: dialog.Prompt(),
                         completionTokenLimit: COMPLETION_TOKEN_LIMIT,
@@ -289,33 +274,49 @@ namespace LLMVoiceAssistant
         private class Speaker
         {
             Orca _orca;
-            PvSpeaker _speaker;
+            Generator generator;
+            CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
             readonly Channel<short[]> _audioChannel = Channel.CreateUnbounded<short[]>();
-            event EventHandler? OrcaSynthesisCompleted;
 
-            public Speaker(Generator generator)
+            public Speaker(Generator generator, Listener listener)
             {
                 _orca = Orca.Create(accessKey: ACCESS_KEY);
-                _speaker = new PvSpeaker(_orca.SampleRate, 16, bufferSizeSecs: 1);
                 orcaProfiler?.Init(_orca.SampleRate);
-                Task.Run(() => orcaWorker(generator));
-                Task.Run(() => ttsWorker(generator));
+                this.generator = generator;
+                listener.WakeWordDetected += OnWakeWordDetected;
             }
 
-            private async Task orcaWorker(Generator generator)
+            private void OnWakeWordDetected(object? sender, EventArgs _)
             {
-                Channel<string> completionChannel = Channel.CreateUnbounded<string>();
-                var orcaStream = _orca.StreamOpen(speechRate: ORCA_SPEECH_RATE);
-                generator.CompletionGenerationCompleted += (sender, endpoint) =>
+                _cancellationTokenSource.Cancel();
+                _cancellationTokenSource.Dispose();
+                _cancellationTokenSource = new CancellationTokenSource();
+                var cancellationToken = _cancellationTokenSource.Token;
+                Orca.OrcaStream orcaStream;
+                PvSpeaker speaker = new PvSpeaker(_orca.SampleRate, 16, bufferSizeSecs: 1);
+                speaker.Start();
+                while (true)
                 {
-                    if (endpoint == PicoLLMEndpoint.INTERRUPTED)
+                    try
                     {
-                        orcaStream.Flush();
-                        orcaProfiler?.Reset();
-                        while (completionChannel.Reader.TryRead(out _))
-                            ;
+                        orcaStream = _orca.StreamOpen(speechRate: ORCA_SPEECH_RATE);
+                        break;
                     }
-                    else
+                    catch (System.Exception)
+                    {
+                        continue;
+                    }
+                }
+
+                var audioChannel = Channel.CreateUnbounded<short[]>();
+                var completionChannel = Channel.CreateUnbounded<string>();
+                void OnPartialCompletion(object? _, string completion)
+                {
+                    completionChannel.Writer.TryWrite(completion);
+                }
+                void OnCompletionGenerationCompleted(object? _, PicoLLMEndpoint endpoint)
+                {
+                    if (endpoint != PicoLLMEndpoint.INTERRUPTED)
                     {
                         while (completionChannel.Reader.Count > 0)
                             ;
@@ -325,83 +326,62 @@ namespace LLMVoiceAssistant
                         ProfilerEvent?.Invoke(null, orcaProfiler);
                         if (pcm != null)
                         {
-                            _audioChannel.Writer.TryWrite(pcm);
+                            audioChannel.Writer.TryWrite(pcm);
                         }
-                        OrcaSynthesisCompleted?.Invoke(this, EventArgs.Empty);
                     }
-                };
-                generator.PartialCompletionGenerated += (_, completion) =>
-                    completionChannel.Writer.TryWrite(completion);
-
-                while (true)
-                {
-                    var text = await completionChannel.Reader.ReadAsync();
-                    orcaProfiler?.Tick();
-                    var pcm = orcaStream.Synthesize(text);
-                    orcaProfiler?.Tock(pcm);
-                    if (pcm != null)
-                    {
-                        await _audioChannel.Writer.WriteAsync(pcm);
-                    }
+                    audioChannel.Writer.Complete();
+                    generator.PartialCompletionGenerated -= OnPartialCompletion;
+                    generator.CompletionGenerationCompleted -= OnCompletionGenerationCompleted;
                 }
-            }
-
-            private async Task ttsWorker(Generator generator)
-            {
-                ConcurrentQueue<short> pcmBuffer = [];
-                generator.CompletionGenerationCompleted += (_, endpoint) =>
+                generator.PartialCompletionGenerated += OnPartialCompletion;
+                generator.CompletionGenerationCompleted += OnCompletionGenerationCompleted;
+                var ttsTask = Task.Run(async () =>
                 {
-                    if (endpoint == PicoLLMEndpoint.INTERRUPTED)
+                    short[] pcmBuffer = [];
+                    bool isStarted = false;
+                    while (!audioChannel.Reader.Completion.IsCompleted && !cancellationToken.IsCancellationRequested)
                     {
-                        pcmBuffer = [];
-                        _speaker.Flush();
-                        _speaker.Stop();
-                    }
-                };
-
-                OrcaSynthesisCompleted += (_, _) =>
-                {
-                    if (!_speaker.IsStarted)
-                    {
-                        _speaker.Start();
-                        while (pcmBuffer.Count > 0)
+                        var pcm = await audioChannel.Reader.ReadAsync(cancellationToken);
+                        pcmBuffer = [.. pcmBuffer, .. pcm];
+                        if (!isStarted && (pcmBuffer.Length > TTS_WARMUP_SECONDS * _orca.SampleRate || audioChannel.Reader.Completion.IsCompleted))
                         {
-                            var written = _speaker.Write(
-                                pcmBuffer.SelectMany(s => BitConverter.GetBytes(s)).ToArray());
-                            while (written-- != 0)
-                                pcmBuffer.TryDequeue(out short _);
+                            isStarted = true;
+                        }
+                        if (isStarted)
+                        {
+                            while (pcmBuffer.Length > 0 && !cancellationToken.IsCancellationRequested)
+                            {
+                                var written = speaker.Write(
+                                    pcmBuffer.SelectMany(s => BitConverter.GetBytes(s)).ToArray());
+                                pcmBuffer = pcmBuffer[written..];
+                            }
                         }
                     }
-                    while (!pcmBuffer.IsEmpty)
-                        ;
-                    pcmBuffer = [];
-                    _speaker.Flush();
-                    _speaker.Stop();
-                };
-
-                while (true)
+                });
+                Task.Run(async () =>
                 {
-                    var pcm = await _audioChannel.Reader.ReadAsync();
-                    for (int i = 0; i < pcm.Length; i++)
-                        pcmBuffer.Enqueue(pcm[i]);
-                    if (!_speaker.IsStarted)
+                    while (true)
                     {
-                        if (pcmBuffer.Count > TTS_WARMUP_SECONDS * _orca.SampleRate)
+                        var text = await completionChannel.Reader.ReadAsync(cancellationToken);
+                        orcaProfiler?.Tick();
+                        var pcm = orcaStream.Synthesize(text);
+                        orcaProfiler?.Tock(pcm);
+                        if (pcm != null)
                         {
-                            _speaker.Start();
+                            audioChannel.Writer.TryWrite(pcm);
                         }
                     }
-                    if (_speaker.IsStarted)
-                    {
-                        while (!pcmBuffer.IsEmpty)
-                        {
-                            var written = _speaker.Write(
-                                pcmBuffer.SelectMany(s => BitConverter.GetBytes(s)).ToArray());
-                            while (written-- != 0)
-                                pcmBuffer.TryDequeue(out short _);
-                        }
-                    }
-                }
+                }).ContinueWith(async (t) =>
+                {
+                    Console.WriteLine(t.Exception);
+                    await ttsTask;
+                    speaker.Flush();
+                    speaker.Stop();
+                    speaker.Dispose();
+                    orcaStream.Dispose();
+                    generator.PartialCompletionGenerated -= OnPartialCompletion;
+                    generator.CompletionGenerationCompleted -= OnCompletionGenerationCompleted;
+                });
             }
         }
 
@@ -419,6 +399,52 @@ namespace LLMVoiceAssistant
             {
                 switch (args[argIndex])
                 {
+                    case "--config":
+                        // TODO: Config parsing
+                        if (++argIndex < args.Length)
+                        {
+                            var configPath = args[argIndex++];
+                            var configString = File.ReadAllText(configPath);
+                            var config = JsonSerializer.Deserialize<Dictionary<string, object>>(configString);
+                            if (config == null)
+                            {
+                                Console.WriteLine("Invalid config file.");
+                                System.Environment.Exit(1);
+                            }
+                            config.TryGetValue("access_key", out object? accessKeyObj);
+                            ACCESS_KEY = (accessKeyObj as JsonElement?)?.GetString();
+                            config.TryGetValue("picollm_model_path", out object? llmModelPathObj);
+                            LLM_MODEL_PATH = (llmModelPathObj as JsonElement?)?.GetString();
+                            config.TryGetValue("keyword_model_path", out object? keywordModelPathObj);
+                            KEYWORD_MODEL_PATH = (keywordModelPathObj as JsonElement?)?.GetString();
+                            config.TryGetValue("cheetah_endpoint_duration_sec", out object? cheetahEndpointDurationSecObj);
+                            CHEETAH_ENDPOINT_DURATION_SEC = (cheetahEndpointDurationSecObj as JsonElement?)?.GetInt32() ?? CHEETAH_ENDPOINT_DURATION_SEC;
+                            config.TryGetValue("picollm_device", out object? llmDeviceObj);
+                            LLM_DEVICE = (llmDeviceObj as JsonElement?)?.GetString() ?? LLM_DEVICE;
+                            config.TryGetValue("picollm_completion_token_limit", out object? completionTokenLimitObj);
+                            COMPLETION_TOKEN_LIMIT = (completionTokenLimitObj as JsonElement?)?.GetInt32() ?? COMPLETION_TOKEN_LIMIT;
+                            config.TryGetValue("picollm_presence_penalty", out object? llmPresencePenaltyObj);
+                            LLM_PRESENCE_PENALTY = (llmPresencePenaltyObj as JsonElement?)?.GetSingle() ?? LLM_PRESENCE_PENALTY;
+                            config.TryGetValue("picollm_frequency_penalty", out object? llmFrequencyPenaltyObj);
+                            LLM_FREQUENCY_PENALTY = (llmFrequencyPenaltyObj as JsonElement?)?.GetSingle() ?? LLM_FREQUENCY_PENALTY;
+                            config.TryGetValue("picollm_temperature", out object? llmTemperatureObj);
+                            LLM_TEMPERATURE = (llmTemperatureObj as JsonElement?)?.GetSingle() ?? LLM_TEMPERATURE;
+                            config.TryGetValue("picollm_top_p", out object? llmTopPObj);
+                            LLM_TOP_P = (llmTopPObj as JsonElement?)?.GetSingle() ?? LLM_TOP_P;
+                            config.TryGetValue("picollm_system_prompt", out object? llmSystemPromptObj);
+                            PICOLLM_SYSTEM_PROMPT = (llmSystemPromptObj as JsonElement?)?.GetString();
+                            config.TryGetValue("orca_warmup_sec", out object? orcaWarmupSecObj);
+                            TTS_WARMUP_SECONDS = (orcaWarmupSecObj as JsonElement?)?.GetInt32() ?? TTS_WARMUP_SECONDS;
+                            config.TryGetValue("orca_speech_rate", out object? orcaSpeechRateObj);
+                            ORCA_SPEECH_RATE = (orcaSpeechRateObj as JsonElement?)?.GetSingle() ?? ORCA_SPEECH_RATE;
+                            config.TryGetValue("porcupine_sensitivity", out object? porcupineSensitivityObj);
+                            PORCUPINE_SENSITIVITY = (porcupineSensitivityObj as JsonElement?)?.GetSingle() ?? PORCUPINE_SENSITIVITY;
+                            config.TryGetValue("short_answers", out object? shortAnswersObj);
+                            SHORT_ANSWERS = (shortAnswersObj as JsonElement?)?.GetBoolean() ?? SHORT_ANSWERS;
+                            config.TryGetValue("profile", out object? profileObj);
+                            PROFILE = (profileObj as JsonElement?)?.GetBoolean() ?? PROFILE;
+                        }
+                        break;
                     case "--access_key":
                         if (++argIndex < args.Length)
                         {
@@ -546,8 +572,7 @@ namespace LLMVoiceAssistant
             }
             Listener listener = new Listener();
             Generator generator = new Generator(listener);
-            Speaker speaker = new Speaker(generator);
-            listener.RegisterGenerationCallback(generator);
+            Speaker speaker = new Speaker(generator, listener);
             Console.WriteLine($"Initialized. Say {PORCUPINE_WAKE_WORD} to start.");
             listener.run();
         }
