@@ -203,7 +203,8 @@ namespace LLMVoiceAssistant
         private class Generator
         {
             readonly PicoLLM _pllm;
-            readonly Channel<string> _userInputChannel = Channel.CreateUnbounded<string>();
+            readonly Channel<string> _userInputChannel =
+                Channel.CreateUnbounded<string>();
             public event EventHandler<string>? PartialCompletionGenerated;
             public event EventHandler<PicoLLMEndpoint>? CompletionGenerationCompleted;
 
@@ -275,8 +276,10 @@ namespace LLMVoiceAssistant
         {
             Orca _orca;
             Generator generator;
-            CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
-            readonly Channel<short[]> _audioChannel = Channel.CreateUnbounded<short[]>();
+            CancellationTokenSource _cancellationTokenSource =
+                new CancellationTokenSource();
+            readonly Channel<short[]> _audioChannel =
+                Channel.CreateUnbounded<short[]>();
 
             public Speaker(Generator generator, Listener listener)
             {
@@ -293,7 +296,8 @@ namespace LLMVoiceAssistant
                 _cancellationTokenSource = new CancellationTokenSource();
                 var cancellationToken = _cancellationTokenSource.Token;
                 Orca.OrcaStream orcaStream;
-                PvSpeaker speaker = new PvSpeaker(_orca.SampleRate, 16, bufferSizeSecs: 1);
+                PvSpeaker speaker =
+                    new PvSpeaker(_orca.SampleRate, 16, bufferSizeSecs: 1);
                 speaker.Start();
                 while (true)
                 {
@@ -331,28 +335,37 @@ namespace LLMVoiceAssistant
                     }
                     audioChannel.Writer.Complete();
                     generator.PartialCompletionGenerated -= OnPartialCompletion;
-                    generator.CompletionGenerationCompleted -= OnCompletionGenerationCompleted;
+                    generator.CompletionGenerationCompleted -=
+                        OnCompletionGenerationCompleted;
                 }
                 generator.PartialCompletionGenerated += OnPartialCompletion;
-                generator.CompletionGenerationCompleted += OnCompletionGenerationCompleted;
+                generator.CompletionGenerationCompleted +=
+                    OnCompletionGenerationCompleted;
                 var ttsTask = Task.Run(async () =>
                 {
                     short[] pcmBuffer = [];
                     bool isStarted = false;
-                    while (!audioChannel.Reader.Completion.IsCompleted && !cancellationToken.IsCancellationRequested)
+                    while (!audioChannel.Reader.Completion.IsCompleted &&
+                           !cancellationToken.IsCancellationRequested)
                     {
-                        var pcm = await audioChannel.Reader.ReadAsync(cancellationToken);
+                        var pcm =
+                            await audioChannel.Reader.ReadAsync(cancellationToken);
                         pcmBuffer = [.. pcmBuffer, .. pcm];
-                        if (!isStarted && (pcmBuffer.Length > TTS_WARMUP_SECONDS * _orca.SampleRate || audioChannel.Reader.Completion.IsCompleted))
+                        if (!isStarted &&
+                            (pcmBuffer.Length >
+                                 TTS_WARMUP_SECONDS * _orca.SampleRate ||
+                             audioChannel.Reader.Completion.IsCompleted))
                         {
                             isStarted = true;
                         }
                         if (isStarted)
                         {
-                            while (pcmBuffer.Length > 0 && !cancellationToken.IsCancellationRequested)
+                            while (pcmBuffer.Length > 0 &&
+                                   !cancellationToken.IsCancellationRequested)
                             {
                                 var written = speaker.Write(
-                                    pcmBuffer.SelectMany(s => BitConverter.GetBytes(s)).ToArray());
+                                    pcmBuffer.SelectMany(s => BitConverter.GetBytes(s))
+                                        .ToArray());
                                 pcmBuffer = pcmBuffer[written..];
                             }
                         }
@@ -362,7 +375,8 @@ namespace LLMVoiceAssistant
                 {
                     while (true)
                     {
-                        var text = await completionChannel.Reader.ReadAsync(cancellationToken);
+                        var text = await completionChannel.Reader.ReadAsync(
+                            cancellationToken);
                         orcaProfiler?.Tick();
                         var pcm = orcaStream.Synthesize(text);
                         orcaProfiler?.Tock(pcm);
@@ -371,17 +385,20 @@ namespace LLMVoiceAssistant
                             audioChannel.Writer.TryWrite(pcm);
                         }
                     }
-                }).ContinueWith(async (t) =>
-                {
-                    Console.WriteLine(t.Exception);
-                    await ttsTask;
-                    speaker.Flush();
-                    speaker.Stop();
-                    speaker.Dispose();
-                    orcaStream.Dispose();
-                    generator.PartialCompletionGenerated -= OnPartialCompletion;
-                    generator.CompletionGenerationCompleted -= OnCompletionGenerationCompleted;
-                });
+                })
+                    .ContinueWith(async (t) =>
+                    {
+                        Console.WriteLine(t.Exception);
+                        await ttsTask;
+                        speaker.Flush();
+                        speaker.Stop();
+                        speaker.Dispose();
+                        orcaStream.Dispose();
+                        generator.PartialCompletionGenerated -=
+                            OnPartialCompletion;
+                        generator.CompletionGenerationCompleted -=
+                            OnCompletionGenerationCompleted;
+                    });
             }
         }
 
@@ -405,7 +422,8 @@ namespace LLMVoiceAssistant
                         {
                             var configPath = args[argIndex++];
                             var configString = File.ReadAllText(configPath);
-                            var config = JsonSerializer.Deserialize<Dictionary<string, object>>(configString);
+                            var config = JsonSerializer.Deserialize<Dictionary<string, object>>(
+                                configString);
                             if (config == null)
                             {
                                 Console.WriteLine("Invalid config file.");
