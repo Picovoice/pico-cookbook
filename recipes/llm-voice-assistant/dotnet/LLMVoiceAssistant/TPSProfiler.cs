@@ -43,7 +43,7 @@ public class TPSProfiler : Profiler
 
     public string Stats()
     {
-        return $"{Name} TPS: {TPS()}";
+        return $"{Name} TPS: {TPS():F2}";
     }
 
     public void Reset()

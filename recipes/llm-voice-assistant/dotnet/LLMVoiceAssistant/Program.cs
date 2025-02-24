@@ -38,7 +38,8 @@ namespace LLMVoiceAssistant
         static RTFProfiler? porcupineProfiler;
         static RTFProfiler? cheetahProfiler;
         static TPSProfiler? pllmProfiler;
-        static event EventHandler<Profiler?>? ProfilerEvent;
+        static DelayProfiler? delayProfiler;
+        static event EventHandler<Profiler?>? profilerEvent;
 
         public class CompletionText
         {
@@ -181,7 +182,7 @@ namespace LLMVoiceAssistant
 
             private void OnWakeWordDetected(object? sender, EventArgs e)
             {
-                ProfilerEvent?.Invoke(null, porcupineProfiler);
+                profilerEvent?.Invoke(null, porcupineProfiler);
                 porcupineProfiler?.Reset();
                 cheetahProfiler?.Reset();
                 Console.WriteLine(
@@ -193,7 +194,8 @@ namespace LLMVoiceAssistant
 
             private void OnUserInputReceived(object? sender, string userInput)
             {
-                ProfilerEvent?.Invoke(null, cheetahProfiler);
+                profilerEvent?.Invoke(null, cheetahProfiler);
+                delayProfiler?.Tick();
                 _transcript = "";
                 AudioReceived -= CheetahOnAudioReceived;
                 AudioReceived += PorcupineOnAudioReceived;
@@ -215,7 +217,7 @@ namespace LLMVoiceAssistant
                 listener.UserInputReceived += OnUserInputReceived;
                 listener.WakeWordDetected += OnWakeWordDetected;
                 CompletionGenerationCompleted += (_, endpoint) =>
-                    ProfilerEvent?.Invoke(null, pllmProfiler);
+                    profilerEvent?.Invoke(null, pllmProfiler);
                 Task.Run(llmWorker).ContinueWith((t) => Console.WriteLine(t.Exception));
             }
 
@@ -327,7 +329,7 @@ namespace LLMVoiceAssistant
                         orcaProfiler?.Tick();
                         var pcm = orcaStream.Flush();
                         orcaProfiler?.Tock(pcm);
-                        ProfilerEvent?.Invoke(null, orcaProfiler);
+                        profilerEvent?.Invoke(null, orcaProfiler);
                         if (pcm != null)
                         {
                             audioChannel.Writer.TryWrite(pcm);
@@ -337,6 +339,7 @@ namespace LLMVoiceAssistant
                     generator.PartialCompletionGenerated -= OnPartialCompletion;
                     generator.CompletionGenerationCompleted -=
                         OnCompletionGenerationCompleted;
+                    profilerEvent?.Invoke(null, delayProfiler);
                 }
                 generator.PartialCompletionGenerated += OnPartialCompletion;
                 generator.CompletionGenerationCompleted +=
@@ -356,6 +359,7 @@ namespace LLMVoiceAssistant
                                  TTS_WARMUP_SECONDS * _orca.SampleRate ||
                              audioChannel.Reader.Completion.IsCompleted))
                         {
+                            delayProfiler?.Tock();
                             isStarted = true;
                         }
                         if (isStarted)
@@ -581,12 +585,13 @@ namespace LLMVoiceAssistant
 
             if (PROFILE)
             {
-                ProfilerEvent += (_, profiler) =>
+                profilerEvent += (_, profiler) =>
                     Console.WriteLine($"[{profiler?.Stats()}]");
                 orcaProfiler = new RTFProfiler("Orca");
                 porcupineProfiler = new RTFProfiler("Porcupine");
                 cheetahProfiler = new RTFProfiler("Cheetah");
                 pllmProfiler = new TPSProfiler("PicoLLM");
+                delayProfiler = new DelayProfiler();
             }
             Listener listener = new Listener();
             Generator generator = new Generator(listener);

@@ -42,7 +42,7 @@ class RTFProfiler : Profiler
 
     public string Stats()
     {
-        return $"{Name} RTF: {RTF():F3}"; // Format to 3 decimal places
+        return $"{Name} RTF: {RTF():F2}"; // Format to 3 decimal places
     }
 
     public void Reset()
