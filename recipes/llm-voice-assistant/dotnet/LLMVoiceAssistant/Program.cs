@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+using System.Threading.Tasks;
 
 using Pv;
 
@@ -40,6 +41,7 @@ namespace LLMVoiceAssistant
         static TPSProfiler? pllmProfiler;
         static DelayProfiler? delayProfiler;
         static event EventHandler<Profiler?>? profilerEvent;
+        static TaskCompletionSource<bool> llmFinish = new TaskCompletionSource<bool>();
 
         public class CompletionText
         {
@@ -156,6 +158,10 @@ namespace LLMVoiceAssistant
                 if (keywordIndex >= 0)
                 {
                     WakeWordDetected?.Invoke(this, EventArgs.Empty);
+                    llmFinish.Task.Wait();
+                    Console.WriteLine(
+                        "\nWake word detected, utter your request or question ...");
+                    Console.Write("User > ");
                 }
             }
 
@@ -185,9 +191,6 @@ namespace LLMVoiceAssistant
                 profilerEvent?.Invoke(null, porcupineProfiler);
                 porcupineProfiler?.Reset();
                 cheetahProfiler?.Reset();
-                Console.WriteLine(
-                    "Wake word detected, utter your request or question ...");
-                Console.Write("User > ");
                 AudioReceived -= PorcupineOnAudioReceived;
                 AudioReceived += CheetahOnAudioReceived;
             }
@@ -254,6 +257,7 @@ namespace LLMVoiceAssistant
                 while (true)
                 {
                     var userInput = await _userInputChannel.Reader.ReadAsync();
+                    llmFinish = new TaskCompletionSource<bool>();
                     dialog.AddHumanRequest(SHORT_ANSWERS
                                                ? $"{short_answer_instruction}. {userInput}"
                                                : userInput);
@@ -269,7 +273,7 @@ namespace LLMVoiceAssistant
                     dialog.AddLLMResponse(result.Completion);
                     Console.WriteLine();
                     CompletionGenerationCompleted?.Invoke(this, result.Endpoint);
-                    Console.WriteLine($"Say {PORCUPINE_WAKE_WORD} to start.");
+                    llmFinish.SetResult(true);
                 }
             }
         }
@@ -280,8 +284,6 @@ namespace LLMVoiceAssistant
             Generator generator;
             CancellationTokenSource _cancellationTokenSource =
                 new CancellationTokenSource();
-            readonly Channel<short[]> _audioChannel =
-                Channel.CreateUnbounded<short[]>();
 
             public Speaker(Generator generator, Listener listener)
             {
@@ -344,6 +346,7 @@ namespace LLMVoiceAssistant
                 generator.PartialCompletionGenerated += OnPartialCompletion;
                 generator.CompletionGenerationCompleted +=
                     OnCompletionGenerationCompleted;
+
                 var ttsTask = Task.Run(async () =>
                 {
                     short[] pcmBuffer = [];
@@ -374,6 +377,10 @@ namespace LLMVoiceAssistant
                             }
                         }
                     }
+                }).ContinueWith((t) =>
+                {
+                    speaker.Flush();
+                    Console.WriteLine($"Say {PORCUPINE_WAKE_WORD} to start.");
                 });
                 Task.Run(async () =>
                 {
@@ -392,16 +399,14 @@ namespace LLMVoiceAssistant
                 })
                     .ContinueWith(async (t) =>
                     {
-                        Console.WriteLine(t.Exception);
                         await ttsTask;
-                        speaker.Flush();
                         speaker.Stop();
                         speaker.Dispose();
-                        orcaStream.Dispose();
                         generator.PartialCompletionGenerated -=
                             OnPartialCompletion;
                         generator.CompletionGenerationCompleted -=
                             OnCompletionGenerationCompleted;
+                        orcaStream.Dispose();
                     });
             }
         }
@@ -421,7 +426,6 @@ namespace LLMVoiceAssistant
                 switch (args[argIndex])
                 {
                     case "--config":
-                        // TODO: Config parsing
                         if (++argIndex < args.Length)
                         {
                             var configPath = args[argIndex++];
@@ -596,6 +600,7 @@ namespace LLMVoiceAssistant
             Listener listener = new Listener();
             Generator generator = new Generator(listener);
             Speaker speaker = new Speaker(generator, listener);
+            llmFinish.SetResult(true);
             Console.WriteLine($"Initialized. Say {PORCUPINE_WAKE_WORD} to start.");
             listener.run();
         }
