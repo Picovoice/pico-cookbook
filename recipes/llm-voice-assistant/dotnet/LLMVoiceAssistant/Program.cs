@@ -368,23 +368,31 @@ namespace LLMVoiceAssistant
                     while (!audioChannel.Reader.Completion.IsCompleted &&
                            !cancellationToken.IsCancellationRequested)
                     {
-                        short[] pcm = await audioChannel.Reader.ReadAsync(cancellationToken);
-                        pcmBuffer = [.. pcmBuffer, .. pcm];
-                        if (!isStarted &&
-                            (pcmBuffer.Length > config.OrcaWarmupSec * _orca.SampleRate ||
-                             audioChannel.Reader.Completion.IsCompleted))
+                        try
                         {
-                            delayProfiler?.Tock();
-                            isStarted = true;
-                        }
-                        if (isStarted)
-                        {
-                            while (pcmBuffer.Length > 0 && !cancellationToken.IsCancellationRequested)
+                            short[] pcm = await audioChannel.Reader.ReadAsync(cancellationToken);
+                            pcmBuffer = [.. pcmBuffer, .. pcm];
+                            if (!isStarted &&
+                                (pcmBuffer.Length > config.OrcaWarmupSec * _orca.SampleRate ||
+                                 audioChannel.Reader.Completion.IsCompleted))
                             {
-                                int written = speaker.Write(
-                                    pcmBuffer.SelectMany(s => BitConverter.GetBytes(s)).ToArray());
-                                pcmBuffer = pcmBuffer[written..];
+                                delayProfiler?.Tock();
+                                isStarted = true;
                             }
+                            if (isStarted)
+                            {
+                                while (pcmBuffer.Length > 0 && !cancellationToken.IsCancellationRequested)
+                                {
+                                    int written = speaker.Write(
+                                        pcmBuffer.SelectMany(s => BitConverter.GetBytes(s)).ToArray());
+                                    pcmBuffer = pcmBuffer[written..];
+                                }
+                            }
+                        }
+                        catch (System.Exception)
+                        {
+                            // If cancellation is requested while waiting on the channel, an exception will be thrown
+                            break;
                         }
                     }
                 }
