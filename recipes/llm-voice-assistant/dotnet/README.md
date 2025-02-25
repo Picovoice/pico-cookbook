@@ -46,7 +46,7 @@ model downloaded from Picovoice Console.
 To see all available options, type the following:
 
 ```console
-./bin/Debug/net8.0/LLMVoiceAssistant --help
+dotnet run -c Release --help
 ```
 
 ## Custom Wake Word
