@@ -51,34 +51,34 @@ namespace LLMVoiceAssistant
 
         public class CompletionText
         {
-            readonly string[] stopPhrases;
-            int start;
-            readonly StringBuilder text;
-            string newTokens;
+            private readonly string[] _stopPhrases;
+            private int _start;
+            private readonly StringBuilder _text;
+            private string _newTokens;
 
             public CompletionText(string[] stopPhrases)
             {
-                this.stopPhrases = stopPhrases;
-                this.start = 0;
-                this.text = new StringBuilder();
-                this.newTokens = string.Empty;
+                _stopPhrases = stopPhrases;
+                _start = 0;
+                _text = new StringBuilder();
+                _newTokens = string.Empty;
             }
 
             public void Reset()
             {
-                start = 0;
-                text.Clear();
-                newTokens = string.Empty;
+                _start = 0;
+                _text.Clear();
+                _newTokens = string.Empty;
             }
 
             public void Append(string input)
             {
-                text.Append(input);
-                int currentLength = text.Length;
-                string currentText = text.ToString();
+                _text.Append(input);
+                int currentLength = _text.Length;
+                string currentText = _text.ToString();
                 int end = currentLength;
 
-                foreach (string stopPhrase in stopPhrases)
+                foreach (string stopPhrase in _stopPhrases)
                 {
                     int index = currentText.IndexOf(stopPhrase, StringComparison.Ordinal);
                     if (index != -1 && end > index)
@@ -100,35 +100,36 @@ namespace LLMVoiceAssistant
                     }
                 }
 
-                int tokenLength = end - start;
+                int tokenLength = end - _start;
                 if (tokenLength < 0)
                 {
                     tokenLength = 0;
                 }
-                newTokens = currentText.Substring(start, tokenLength);
+                _newTokens = currentText.Substring(_start, tokenLength);
 
-                start = end;
+                _start = end;
             }
 
-            public string GetNewTokens() { return newTokens; }
+            public string GetNewTokens() { return _newTokens; }
         }
 
         private class Listener
         {
-            readonly Cheetah cheetah;
-            readonly Porcupine porcupine;
-            readonly PvRecorder recorder;
-            event EventHandler<short[]>? AudioReceived;
-            string transcript = "";
+            private readonly Cheetah _cheetah;
+            private readonly Porcupine _porcupine;
+            private readonly PvRecorder _recorder;
+            private string _transcript = "";
+            private event EventHandler<short[]>? AudioReceived;
             public event EventHandler<string>? UserInputReceived;
             public event EventHandler? WakeWordDetected;
 
             public Listener()
             {
-                cheetah = Cheetah.Create(accessKey: config.AccessKey,
-                                   endpointDurationSec: config.CheetahEndpointDurationSec,
-                                   enableAutomaticPunctuation: true);
-                porcupine =
+                _cheetah = Cheetah.Create(
+                                    accessKey: config.AccessKey,
+                                    endpointDurationSec: config.CheetahEndpointDurationSec,
+                                    enableAutomaticPunctuation: true);
+                _porcupine =
                     config.KeywordModelPath == null
                         ? Porcupine.FromBuiltInKeywords(
                               accessKey: config.AccessKey,
@@ -138,20 +139,25 @@ namespace LLMVoiceAssistant
                               accessKey: config.AccessKey,
                               keywordPaths: [config.KeywordModelPath],
                               sensitivities: [config.PorcupineSensitivity]);
-                recorder = PvRecorder.Create(frameLength: porcupine.FrameLength);
-                cheetahProfiler?.Init(cheetah.SampleRate);
-                porcupineProfiler?.Init(porcupine.SampleRate);
+                _recorder = PvRecorder.Create(frameLength: _porcupine.FrameLength);
+                cheetahProfiler?.Init(_cheetah.SampleRate);
+                porcupineProfiler?.Init(_porcupine.SampleRate);
                 AudioReceived += PorcupineOnAudioReceived;
                 WakeWordDetected += OnWakeWordDetected;
                 UserInputReceived += OnUserInputReceived;
             }
 
-            public void Run()
+            public void Start()
             {
-                recorder.Start();
+                _recorder.Start();
+                Task.Run(Worker).ContinueWith((t) => Console.WriteLine(t.Exception));
+            }
+
+            private void Worker()
+            {
                 while (true)
                 {
-                    short[] pcm = recorder.Read();
+                    short[] pcm = _recorder.Read();
                     AudioReceived?.Invoke(this, pcm);
                 }
             }
@@ -159,7 +165,7 @@ namespace LLMVoiceAssistant
             private void PorcupineOnAudioReceived(object? sender, short[] pcm)
             {
                 porcupineProfiler?.Tick();
-                int keywordIndex = porcupine.Process(pcm);
+                int keywordIndex = _porcupine.Process(pcm);
                 porcupineProfiler?.Tock(pcm);
                 if (keywordIndex >= 0)
                 {
@@ -173,21 +179,21 @@ namespace LLMVoiceAssistant
             private void CheetahOnAudioReceived(object? sender, short[] pcm)
             {
                 cheetahProfiler?.Tick();
-                CheetahTranscript transcript = cheetah.Process(pcm);
+                CheetahTranscript result = _cheetah.Process(pcm);
                 cheetahProfiler?.Tock(pcm);
-                if (transcript.Transcript.Length > 0)
+                if (result.Transcript.Length > 0)
                 {
-                    this.transcript += transcript.Transcript;
-                    Console.Write(transcript.Transcript);
+                    _transcript += result.Transcript;
+                    Console.Write(result.Transcript);
                 }
-                if (transcript.IsEndpoint)
+                if (result.IsEndpoint)
                 {
                     cheetahProfiler?.Tick();
-                    CheetahTranscript remainingTranscript = cheetah.Flush();
+                    CheetahTranscript remainingTranscript = _cheetah.Flush();
                     cheetahProfiler?.Tock(null);
-                    this.transcript += remainingTranscript.Transcript;
+                    _transcript += remainingTranscript.Transcript;
                     Console.WriteLine(remainingTranscript.Transcript);
-                    UserInputReceived?.Invoke(this, this.transcript);
+                    UserInputReceived?.Invoke(this, _transcript);
                 }
             }
 
@@ -204,7 +210,7 @@ namespace LLMVoiceAssistant
             {
                 profilerEvent?.Invoke(null, cheetahProfiler);
                 delayProfiler?.Tick();
-                transcript = "";
+                _transcript = "";
                 AudioReceived -= CheetahOnAudioReceived;
                 AudioReceived += PorcupineOnAudioReceived;
             }
@@ -212,30 +218,32 @@ namespace LLMVoiceAssistant
 
         private class Generator
         {
-            readonly PicoLLM pllm;
-            readonly Channel<string> userInputChannel = Channel.CreateUnbounded<string>();
+            private readonly PicoLLM _pllm;
+            private readonly Channel<string> _userInputChannel = Channel.CreateUnbounded<string>();
             public event EventHandler<string>? PartialCompletionGenerated;
             public event EventHandler<PicoLLMEndpoint>? CompletionGenerationCompleted;
 
-            public Generator(Listener listener)
+            public Generator()
             {
-                pllm = PicoLLM.Create(accessKey: config.AccessKey,
+                _pllm = PicoLLM.Create(accessKey: config.AccessKey,
                                         modelPath: config.PicollmModelPath,
                                         device: config.PicollmDevice);
-                listener.UserInputReceived += OnUserInputReceived;
-                listener.WakeWordDetected += OnWakeWordDetected;
                 CompletionGenerationCompleted += OnCompletionGenerationCompleted;
+            }
+
+            public void Start()
+            {
                 Task.Run(LlmWorker).ContinueWith((t) => Console.WriteLine(t.Exception));
             }
 
-            private void OnUserInputReceived(object? sender, string userInput)
+            public void OnUserInput(object? sender, string userInput)
             {
-                userInputChannel.Writer.TryWrite(userInput);
+                _userInputChannel.Writer.TryWrite(userInput);
             }
 
-            private void OnWakeWordDetected(object? sender, EventArgs e)
+            public void OnInterrupt(object? sender, EventArgs e)
             {
-                pllm.Interrupt();
+                _pllm.Interrupt();
             }
 
             private void OnCompletionGenerationCompleted(object? sender, PicoLLMEndpoint endpoint)
@@ -246,8 +254,8 @@ namespace LLMVoiceAssistant
             private async Task LlmWorker()
             {
                 PicoLLMDialog dialog = config.PicollmSystemPrompt == null
-                                 ? pllm.GetDialog()
-                                 : pllm.GetDialog(system: config.PicollmSystemPrompt);
+                                 ? _pllm.GetDialog()
+                                 : _pllm.GetDialog(system: config.PicollmSystemPrompt);
                 CompletionText completion = new CompletionText(config.StopPhrases);
                 string shortAnswerInstruction = "You are a voice assistant and your answers are very short but informative";
 
@@ -264,14 +272,14 @@ namespace LLMVoiceAssistant
 
                 while (true)
                 {
-                    string userInput = await userInputChannel.Reader.ReadAsync();
+                    string userInput = await _userInputChannel.Reader.ReadAsync();
                     llmFinish = new TaskCompletionSource<bool>();
                     dialog.AddHumanRequest(config.ShortAnswers
                                                ? $"{shortAnswerInstruction}. {userInput}"
                                                : userInput);
                     completion.Reset();
                     Console.Write($"LLM (say {config.PorcupineWakeWord} to interrupt) > ");
-                    PicoLLMCompletion result = pllm.Generate(
+                    PicoLLMCompletion result = _pllm.Generate(
                         prompt: dialog.Prompt(),
                         completionTokenLimit: config.PicollmCompletionTokenLimit,
                         stopPhrases: config.StopPhrases,
@@ -290,30 +298,34 @@ namespace LLMVoiceAssistant
 
         private class Speaker
         {
-            readonly Orca orca;
-            readonly Generator generator;
-            CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-            TaskCompletionSource<bool> speakerFinish = new TaskCompletionSource<bool>();
+            private readonly Orca _orca;
+            private readonly Generator _generator;
+            private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+            private TaskCompletionSource<bool> _speakerFinish = new TaskCompletionSource<bool>();
 
-            public Speaker(Generator generator, Listener listener)
+            public Speaker(Generator generator)
             {
-                orca = Orca.Create(accessKey: config.AccessKey);
-                orcaProfiler?.Init(orca.SampleRate);
-                this.generator = generator;
-                listener.WakeWordDetected += OnWakeWordDetected;
-                speakerFinish.SetResult(true);
+                _orca = Orca.Create(accessKey: config.AccessKey);
+                orcaProfiler?.Init(_orca.SampleRate);
+                _generator = generator;
+                _speakerFinish.SetResult(true);
             }
 
-            private void OnWakeWordDetected(object? sender, EventArgs _)
+            public void OnStartWorkers(object? sender, EventArgs _)
             {
-                cancellationTokenSource.Cancel();
-                cancellationTokenSource.Dispose();
-                speakerFinish.Task.Wait();
-                speakerFinish = new TaskCompletionSource<bool>();
-                cancellationTokenSource = new CancellationTokenSource();
-                CancellationToken cancellationToken = cancellationTokenSource.Token;
-                Orca.OrcaStream orcaStream = orca.StreamOpen(speechRate: config.OrcaSpeechRate);
-                PvSpeaker speaker = new PvSpeaker(orca.SampleRate, 16, bufferSizeSecs: 1);
+                StartWorkers();
+            }
+
+            private void StartWorkers()
+            {
+                _cancellationTokenSource.Cancel();
+                _cancellationTokenSource.Dispose();
+                _speakerFinish.Task.Wait();
+                _speakerFinish = new TaskCompletionSource<bool>();
+                _cancellationTokenSource = new CancellationTokenSource();
+                CancellationToken cancellationToken = _cancellationTokenSource.Token;
+                Orca.OrcaStream orcaStream = _orca.StreamOpen(speechRate: config.OrcaSpeechRate);
+                PvSpeaker speaker = new PvSpeaker(_orca.SampleRate, 16, bufferSizeSecs: 1);
                 speaker.Start();
 
                 Channel<short[]> audioChannel = Channel.CreateUnbounded<short[]>();
@@ -340,16 +352,16 @@ namespace LLMVoiceAssistant
                         }
                     }
                     audioChannel.Writer.Complete();
-                    generator.PartialCompletionGenerated -= OnPartialCompletion;
-                    generator.CompletionGenerationCompleted -=
+                    _generator.PartialCompletionGenerated -= OnPartialCompletion;
+                    _generator.CompletionGenerationCompleted -=
                         OnCompletionGenerationCompleted;
                     profilerEvent?.Invoke(null, delayProfiler);
                 }
-                generator.PartialCompletionGenerated += OnPartialCompletion;
-                generator.CompletionGenerationCompleted +=
+                _generator.PartialCompletionGenerated += OnPartialCompletion;
+                _generator.CompletionGenerationCompleted +=
                     OnCompletionGenerationCompleted;
 
-                Task ttsTask = Task.Run(async () =>
+                async Task speakerWorker()
                 {
                     short[] pcmBuffer = [];
                     bool isStarted = false;
@@ -359,7 +371,7 @@ namespace LLMVoiceAssistant
                         short[] pcm = await audioChannel.Reader.ReadAsync(cancellationToken);
                         pcmBuffer = [.. pcmBuffer, .. pcm];
                         if (!isStarted &&
-                            (pcmBuffer.Length > config.OrcaWarmupSec * orca.SampleRate ||
+                            (pcmBuffer.Length > config.OrcaWarmupSec * _orca.SampleRate ||
                              audioChannel.Reader.Completion.IsCompleted))
                         {
                             delayProfiler?.Tock();
@@ -375,34 +387,45 @@ namespace LLMVoiceAssistant
                             }
                         }
                     }
-                }).ContinueWith((t) =>
+                }
+
+                async Task orcaWorker()
+                {
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            string text = await completionChannel.Reader.ReadAsync(cancellationToken);
+                            orcaProfiler?.Tick();
+                            short[] pcm = orcaStream.Synthesize(text);
+                            orcaProfiler?.Tock(pcm);
+                            if (pcm != null)
+                            {
+                                audioChannel.Writer.TryWrite(pcm);
+                            }
+                        }
+                        catch (System.Exception)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                Task ttsTask = Task.Run(speakerWorker).ContinueWith((t) =>
                 {
                     speaker.Flush();
                     Console.WriteLine($"Say {config.PorcupineWakeWord} to start.");
                 });
-                Task.Run(async () =>
+                Task.Run(orcaWorker).ContinueWith(async (t) =>
                 {
-                    while (true)
-                    {
-                        string text = await completionChannel.Reader.ReadAsync(cancellationToken);
-                        orcaProfiler?.Tick();
-                        short[] pcm = orcaStream.Synthesize(text);
-                        orcaProfiler?.Tock(pcm);
-                        if (pcm != null)
-                        {
-                            audioChannel.Writer.TryWrite(pcm);
-                        }
-                    }
-                }).ContinueWith(async (t) =>
-                    {
-                        await ttsTask;
-                        speaker.Stop();
-                        speaker.Dispose();
-                        generator.PartialCompletionGenerated -= OnPartialCompletion;
-                        generator.CompletionGenerationCompleted -= OnCompletionGenerationCompleted;
-                        orcaStream.Dispose();
-                        speakerFinish.SetResult(true);
-                    });
+                    await ttsTask;
+                    speaker.Stop();
+                    speaker.Dispose();
+                    _generator.PartialCompletionGenerated -= OnPartialCompletion;
+                    _generator.CompletionGenerationCompleted -= OnCompletionGenerationCompleted;
+                    orcaStream.Dispose();
+                    _speakerFinish.SetResult(true);
+                });
             }
         }
 
@@ -566,11 +589,19 @@ namespace LLMVoiceAssistant
                 delayProfiler = new DelayProfiler();
             }
             Listener listener = new Listener();
-            Generator generator = new Generator(listener);
-            Speaker speaker = new Speaker(generator, listener);
+            Generator generator = new Generator();
+            Speaker speaker = new Speaker(generator);
             llmFinish.SetResult(true);
+            listener.UserInputReceived += generator.OnUserInput;
+            listener.WakeWordDetected += generator.OnInterrupt;
+            listener.WakeWordDetected += speaker.OnStartWorkers;
+            listener.Start();
+            generator.Start();
             Console.WriteLine($"Initialized. Say {config.PorcupineWakeWord} to start.");
-            listener.Run();
+            while (true)
+            {
+                Thread.Sleep(1000);
+            }
         }
 
         static readonly string HELP_TEXT = @"
@@ -625,10 +656,10 @@ interface Profiler
 
 class RTFProfiler : Profiler
 {
-    int sampleRate;
-    readonly Stopwatch stopwatch = new Stopwatch();
-    double computeTimeSeconds = 0;
-    double audioTimeSeconds = 0;
+    private int _sampleRate;
+    private readonly Stopwatch _stopwatch = new Stopwatch();
+    private double _computeTimeSeconds = 0;
+    private double _audioTimeSeconds = 0;
     public string Name { get; private set; }
 
     public RTFProfiler(string name)
@@ -638,30 +669,30 @@ class RTFProfiler : Profiler
 
     public void Init(int sampleRate)
     {
-        this.sampleRate = sampleRate;
+        _sampleRate = sampleRate;
     }
 
     public void Tick()
     {
-        stopwatch.Restart();
+        _stopwatch.Restart();
     }
 
     public void Tock(short[]? pcm)
     {
-        stopwatch.Stop();
-        computeTimeSeconds += stopwatch.Elapsed.TotalSeconds;
-        audioTimeSeconds += pcm == null ? 0 : (double)pcm.Length / sampleRate;
+        _stopwatch.Stop();
+        _computeTimeSeconds += _stopwatch.Elapsed.TotalSeconds;
+        _audioTimeSeconds += pcm == null ? 0 : (double)pcm.Length / _sampleRate;
     }
 
     public double RTF()
     {
         double rtf = 0;
-        if (audioTimeSeconds > 0)
+        if (_audioTimeSeconds > 0)
         {
-            rtf = computeTimeSeconds / audioTimeSeconds;
+            rtf = _computeTimeSeconds / _audioTimeSeconds;
         }
-        computeTimeSeconds = 0;
-        audioTimeSeconds = 0;
+        _computeTimeSeconds = 0;
+        _audioTimeSeconds = 0;
         return rtf;
     }
 
@@ -672,47 +703,47 @@ class RTFProfiler : Profiler
 
     public void Reset()
     {
-        computeTimeSeconds = 0;
-        audioTimeSeconds = 0;
+        _computeTimeSeconds = 0;
+        _audioTimeSeconds = 0;
     }
 }
 
 class TPSProfiler : Profiler
 {
-    int numTokens;
-    double startSec;
-    readonly Stopwatch stopwatch;
+    private int _numTokens;
+    private double _startSec;
+    private readonly Stopwatch _stopwatch;
     public string Name { get; private set; }
 
     public TPSProfiler(string name)
     {
-        numTokens = 0;
-        startSec = 0.0;
-        stopwatch = new Stopwatch();
+        _numTokens = 0;
+        _startSec = 0.0;
+        _stopwatch = new Stopwatch();
         Name = name;
     }
 
     public void Tock()
     {
-        if (!stopwatch.IsRunning)
+        if (!_stopwatch.IsRunning)
         {
-            stopwatch.Start();
-            startSec = stopwatch.Elapsed.TotalSeconds;
+            _stopwatch.Start();
+            _startSec = _stopwatch.Elapsed.TotalSeconds;
         }
         else
         {
-            numTokens += 1;
+            _numTokens += 1;
         }
     }
 
     public double TPS()
     {
-        double elapsedSec = stopwatch.Elapsed.TotalSeconds - startSec;
-        double tps = elapsedSec > 0 ? numTokens / elapsedSec : 0.0;
+        double elapsedSec = _stopwatch.Elapsed.TotalSeconds - _startSec;
+        double tps = elapsedSec > 0 ? _numTokens / elapsedSec : 0.0;
 
-        numTokens = 0;
-        startSec = 0.0;
-        stopwatch.Reset();
+        _numTokens = 0;
+        _startSec = 0.0;
+        _stopwatch.Reset();
 
         return tps;
     }
@@ -724,29 +755,29 @@ class TPSProfiler : Profiler
 
     public void Reset()
     {
-        numTokens = 0;
-        startSec = 0.0;
-        stopwatch.Reset();
+        _numTokens = 0;
+        _startSec = 0.0;
+        _stopwatch.Reset();
     }
 }
 
 class DelayProfiler : Profiler
 {
-    readonly Stopwatch stopwatch = new Stopwatch();
+    private readonly Stopwatch _stopwatch = new Stopwatch();
     public DelayProfiler() { }
 
     public void Tick()
     {
-        stopwatch.Restart();
+        _stopwatch.Restart();
     }
 
     public void Tock()
     {
-        stopwatch.Stop();
+        _stopwatch.Stop();
     }
 
     public string Stats()
     {
-        return $"Delay: {stopwatch.ElapsedMilliseconds:F2}ms";
+        return $"Delay: {_stopwatch.ElapsedMilliseconds:F2}ms";
     }
 }
