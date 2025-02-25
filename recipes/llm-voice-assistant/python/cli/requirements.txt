@@ -1,6 +1,6 @@
-picollm==1.2.4
-pvcheetah==2.1.1
-pvorca==1.0.1
-pvporcupine==3.0.4
-pvrecorder==1.2.4
-pvspeaker==1.0.4
+picollm==1.2.5
+pvcheetah==2.1.2
+pvorca==1.1.0
+pvporcupine==3.0.5
+pvrecorder==1.2.5
+pvspeaker==1.0.5
