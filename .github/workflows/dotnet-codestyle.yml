@@ -27,8 +27,4 @@ jobs:
 
     - name: Run Binding Codestyle
       run: dotnet format --verify-no-changes
-      working-directory: binding/dotnet
-
-    - name: Run Demo Codestyle
-      run: dotnet format --verify-no-changes
-      working-directory: demo/dotnet
+      working-directory: recipes/llm-voice-assistant/dotnet
