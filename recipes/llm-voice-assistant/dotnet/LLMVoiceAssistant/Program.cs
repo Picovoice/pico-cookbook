@@ -78,7 +78,7 @@ namespace LLMVoiceAssistant
                 string currentText = text.ToString();
                 int end = currentLength;
 
-                foreach (var stopPhrase in stopPhrases)
+                foreach (string stopPhrase in stopPhrases)
                 {
                     int index = currentText.IndexOf(stopPhrase, StringComparison.Ordinal);
                     if (index != -1 && end > index)
@@ -173,7 +173,7 @@ namespace LLMVoiceAssistant
             private void CheetahOnAudioReceived(object? sender, short[] pcm)
             {
                 cheetahProfiler?.Tick();
-                var transcript = cheetah.Process(pcm);
+                CheetahTranscript transcript = cheetah.Process(pcm);
                 cheetahProfiler?.Tock(pcm);
                 if (transcript.Transcript.Length > 0)
                 {
@@ -183,7 +183,7 @@ namespace LLMVoiceAssistant
                 if (transcript.IsEndpoint)
                 {
                     cheetahProfiler?.Tick();
-                    var remainingTranscript = cheetah.Flush();
+                    CheetahTranscript remainingTranscript = cheetah.Flush();
                     cheetahProfiler?.Tock(null);
                     this.transcript += remainingTranscript.Transcript;
                     Console.WriteLine(remainingTranscript.Transcript);
@@ -245,11 +245,11 @@ namespace LLMVoiceAssistant
 
             private async Task LlmWorker()
             {
-                var dialog = config.PicollmSystemPrompt == null
+                PicoLLMDialog dialog = config.PicollmSystemPrompt == null
                                  ? pllm.GetDialog()
                                  : pllm.GetDialog(system: config.PicollmSystemPrompt);
-                var completion = new CompletionText(config.StopPhrases);
-                var shortAnswerInstruction = "You are a voice assistant and your answers are very short but informative";
+                CompletionText completion = new CompletionText(config.StopPhrases);
+                string shortAnswerInstruction = "You are a voice assistant and your answers are very short but informative";
 
                 void callback(string token)
                 {
@@ -264,14 +264,14 @@ namespace LLMVoiceAssistant
 
                 while (true)
                 {
-                    var userInput = await userInputChannel.Reader.ReadAsync();
+                    string userInput = await userInputChannel.Reader.ReadAsync();
                     llmFinish = new TaskCompletionSource<bool>();
                     dialog.AddHumanRequest(config.ShortAnswers
                                                ? $"{shortAnswerInstruction}. {userInput}"
                                                : userInput);
                     completion.Reset();
                     Console.Write($"LLM (say {config.PorcupineWakeWord} to interrupt) > ");
-                    var result = pllm.Generate(
+                    PicoLLMCompletion result = pllm.Generate(
                         prompt: dialog.Prompt(),
                         completionTokenLimit: config.PicollmCompletionTokenLimit,
                         stopPhrases: config.StopPhrases,
@@ -311,13 +311,13 @@ namespace LLMVoiceAssistant
                 speakerFinish.Task.Wait();
                 speakerFinish = new TaskCompletionSource<bool>();
                 cancellationTokenSource = new CancellationTokenSource();
-                var cancellationToken = cancellationTokenSource.Token;
+                CancellationToken cancellationToken = cancellationTokenSource.Token;
                 Orca.OrcaStream orcaStream = orca.StreamOpen(speechRate: config.OrcaSpeechRate);
                 PvSpeaker speaker = new PvSpeaker(orca.SampleRate, 16, bufferSizeSecs: 1);
                 speaker.Start();
 
-                var audioChannel = Channel.CreateUnbounded<short[]>();
-                var completionChannel = Channel.CreateUnbounded<string>();
+                Channel<short[]> audioChannel = Channel.CreateUnbounded<short[]>();
+                Channel<string> completionChannel = Channel.CreateUnbounded<string>();
                 void OnPartialCompletion(object? _, string completion)
                 {
                     completionChannel.Writer.TryWrite(completion);
@@ -331,7 +331,7 @@ namespace LLMVoiceAssistant
                             Thread.Sleep(50);
                         }
                         orcaProfiler?.Tick();
-                        var pcm = orcaStream.Flush();
+                        short[] pcm = orcaStream.Flush();
                         orcaProfiler?.Tock(pcm);
                         profilerEvent?.Invoke(null, orcaProfiler);
                         if (pcm != null)
@@ -349,14 +349,14 @@ namespace LLMVoiceAssistant
                 generator.CompletionGenerationCompleted +=
                     OnCompletionGenerationCompleted;
 
-                var ttsTask = Task.Run(async () =>
+                Task ttsTask = Task.Run(async () =>
                 {
                     short[] pcmBuffer = [];
                     bool isStarted = false;
                     while (!audioChannel.Reader.Completion.IsCompleted &&
                            !cancellationToken.IsCancellationRequested)
                     {
-                        var pcm = await audioChannel.Reader.ReadAsync(cancellationToken);
+                        short[] pcm = await audioChannel.Reader.ReadAsync(cancellationToken);
                         pcmBuffer = [.. pcmBuffer, .. pcm];
                         if (!isStarted &&
                             (pcmBuffer.Length > config.OrcaWarmupSec * orca.SampleRate ||
@@ -369,7 +369,7 @@ namespace LLMVoiceAssistant
                         {
                             while (pcmBuffer.Length > 0 && !cancellationToken.IsCancellationRequested)
                             {
-                                var written = speaker.Write(
+                                int written = speaker.Write(
                                     pcmBuffer.SelectMany(s => BitConverter.GetBytes(s)).ToArray());
                                 pcmBuffer = pcmBuffer[written..];
                             }
@@ -384,9 +384,9 @@ namespace LLMVoiceAssistant
                 {
                     while (true)
                     {
-                        var text = await completionChannel.Reader.ReadAsync(cancellationToken);
+                        string text = await completionChannel.Reader.ReadAsync(cancellationToken);
                         orcaProfiler?.Tick();
-                        var pcm = orcaStream.Synthesize(text);
+                        short[] pcm = orcaStream.Synthesize(text);
                         orcaProfiler?.Tock(pcm);
                         if (pcm != null)
                         {
@@ -423,9 +423,9 @@ namespace LLMVoiceAssistant
                     case "--config":
                         if (++argIndex < args.Length)
                         {
-                            var configPath = args[argIndex++];
-                            var configString = File.ReadAllText(configPath);
-                            var userConfig = JsonSerializer.Deserialize<Config>(configString,
+                            string configPath = args[argIndex++];
+                            string configString = File.ReadAllText(configPath);
+                            Config? userConfig = JsonSerializer.Deserialize<Config>(configString,
                                 options: new JsonSerializerOptions
                                 {
                                     PropertyNameCaseInsensitive = true,
