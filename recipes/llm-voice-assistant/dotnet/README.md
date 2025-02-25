@@ -52,7 +52,7 @@ application using `--keyword_model_path` argument.
 
 To see the runtime profiling metrics, run the demo with the `--profile` argument
 
-The demo profiles two metrics: Real-time Factor (RTF) and Token per Second (TPS).
+The demo profiles three metrics: Real-time Factor (RTF), Token per Second (TPS), and Latency.
 
 ### Real-time Factor (RTF)
 
@@ -63,3 +63,9 @@ text-to-speech). RTF is the CPU time divided by the processed (recognized or syn
 
 Token per second is the standard metric for measuring the speed of LLM inference engines. TPS is the number of 
 generated tokens divided by the compute time used to create them. A higher TPS is better.
+
+### Latency
+
+We measure the latency as the delay between the end of the user's utterance (i.e., the time when the user finishes talking) and the 
+time that the voice assistant generates the first chunk of the audio response (i.e., when the user starts hearing the response).
+
