@@ -549,7 +549,8 @@ namespace LLMVoiceAssistant
 
             if (config.AccessKey == null || config.PicollmModelPath == null)
             {
-                Console.WriteLine("Access key and LLM model path are required.");
+                Console.WriteLine("`access_key` and `picollm_model_path` are required.");
+
                 System.Environment.Exit(1);
             }
 
