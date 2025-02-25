@@ -614,6 +614,8 @@ namespace LLMVoiceAssistant
 
         static readonly string HELP_TEXT = @"
 Arguments:
+  --config: Path to a json config file to load the arguments from.
+
   --access_key: `AccessKey` obtained from `Picovoice Console` (https://console.picovoice.ai/).
 
   --picollm_model_path: Absolute path to the file containing LLM parameters (`.pllm`).
