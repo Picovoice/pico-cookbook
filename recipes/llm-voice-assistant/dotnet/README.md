@@ -5,7 +5,7 @@ A cross-platform voice assistant using Picovoice's Wake Word, STT, TTS and LLM t
 ## Compatibility
 
 - .NET 8.0
-- Runs on Linux (x86_64), macOS (arm64, x86_64), Windows (x86_64), and Raspberry Pi (5 and 4).
+- Runs on Linux (x86_64), macOS (arm64, x86_64), Windows (arm64, x86_64), and Raspberry Pi (5 and 4).
 
 ## AccessKey
 
@@ -31,7 +31,13 @@ dotnet build
 Run the demo:
 
 ```console
-./bin/Debug/net8.0/LLMVoiceAssistant --access_key ${ACCESS_KEY} --picollm_model_path ${PICOLLM_MODEL_PATH} 
+dotent run -c Release --config ${config_file}
+```
+
+or
+
+```console
+dotent run -c Release --access_key ${ACCESS_KEY} --picollm_model_path ${PICOLLM_MODEL_PATH} 
 ```
 
 Replace `${ACCESS_KEY}` with yours obtained from Picovoice Console and `${PICOLLM_MODEL_PATH}` with the path to the 
@@ -45,7 +51,7 @@ To see all available options, type the following:
 
 ## Custom Wake Word
 
-The demo's default wake phrase is `Picovoice`. You can generate your custom (branded) wake word using Picovoice  Console by following [Porcupine Wake Word documentation (https://picovoice.ai/docs/porcupine/). Once you have the model trained, simply pass it to the demo
+The demo's default wake phrase is `Picovoice`. You can generate your custom (branded) wake word using Picovoice  Console by following [Porcupine Wake Word documentation] (https://picovoice.ai/docs/porcupine/). Once you have the model trained, simply pass it to the demo
 application using `--keyword_model_path` argument.
 
 ## Profiling
