@@ -31,13 +31,13 @@ dotnet build
 Run the demo:
 
 ```console
-dotent run -c Release --config ${config_file}
+dotnet run -c Release --config ${config_file}
 ```
 
 or
 
 ```console
-dotent run -c Release --access_key ${ACCESS_KEY} --picollm_model_path ${PICOLLM_MODEL_PATH} 
+dotnet run -c Release --access_key ${ACCESS_KEY} --picollm_model_path ${PICOLLM_MODEL_PATH} 
 ```
 
 Replace `${ACCESS_KEY}` with yours obtained from Picovoice Console and `${PICOLLM_MODEL_PATH}` with the path to the 
