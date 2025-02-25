@@ -3,7 +3,7 @@ using System.Diagnostics;
 class RTFProfiler : Profiler
 {
     int _sampleRate;
-    Stopwatch _stopwatch = new Stopwatch();
+    readonly Stopwatch _stopwatch = new Stopwatch();
     double _computeTime = 0;
     double _audioTime = 0;
     public string Name { get; private set; }

@@ -5,7 +5,7 @@ public class TPSProfiler : Profiler
 {
     private int _numTokens;
     private double _startSec;
-    private Stopwatch _stopwatch;
+    private readonly Stopwatch _stopwatch;
     public string Name { get; private set; }
 
     public TPSProfiler(string name)

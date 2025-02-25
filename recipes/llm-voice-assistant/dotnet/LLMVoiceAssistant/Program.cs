@@ -32,7 +32,9 @@ namespace LLMVoiceAssistant
             "<end_of_turn>",                        // Gemma
             "<|endoftext|>",                        // Phi-2
             "<|eot_id|>",                           // Llama-3
-            "<|end|>", "<|user|>", "<|assistant|>", // Phi-3
+            "<|end|>",
+            "<|user|>",
+            "<|assistant|>", // Phi-3
         ];
 
         static RTFProfiler? orcaProfiler;
@@ -280,8 +282,8 @@ namespace LLMVoiceAssistant
 
         private class Speaker
         {
-            Orca _orca;
-            Generator generator;
+            readonly Orca _orca;
+            readonly Generator generator;
             CancellationTokenSource _cancellationTokenSource =
                 new CancellationTokenSource();
 

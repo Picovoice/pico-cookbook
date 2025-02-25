@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 class DelayProfiler : Profiler
 {
-    Stopwatch _stopwatch = new Stopwatch();
+    readonly Stopwatch _stopwatch = new Stopwatch();
     public DelayProfiler() { }
 
     public void Tick()
