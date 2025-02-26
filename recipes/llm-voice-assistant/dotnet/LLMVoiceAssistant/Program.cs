@@ -52,8 +52,9 @@ namespace LLMVoiceAssistant
         public class CompletionText
         {
             private readonly string[] _stopPhrases;
-            private int _start;
             private readonly StringBuilder _text;
+
+            private int _start;
             private string _newTokens;
 
             public CompletionText(string[] stopPhrases)
