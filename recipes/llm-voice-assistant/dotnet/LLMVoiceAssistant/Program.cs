@@ -119,8 +119,10 @@ namespace LLMVoiceAssistant
             private readonly Cheetah _cheetah;
             private readonly Porcupine _porcupine;
             private readonly PvRecorder _recorder;
+
             private string _transcript = "";
             private event EventHandler<short[]>? AudioReceived;
+
             public event EventHandler<string>? UserInputReceived;
             public event EventHandler? WakeWordDetected;
 
