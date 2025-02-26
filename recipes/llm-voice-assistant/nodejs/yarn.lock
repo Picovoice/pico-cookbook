@@ -74,35 +74,35 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@picovoice/cheetah-node@^2.1.1":
-  version "2.1.1"
-  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-node/-/cheetah-node-2.1.1.tgz#ecc1762c56b090670853b52def624574d4cca015"
-  integrity sha512-nP+VTZYVqHF3BNz8BIuP5MAFCFJVVX6HWAQq5DStZ5c26yCUQwXs+orIlXeEpNZqlZOEvhkxbwACqFwORC3Ktw==
+"@picovoice/cheetah-node@^2.1.2":
+  version "2.1.2"
+  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-node/-/cheetah-node-2.1.2.tgz#d7b56e5a58b3216fb017209eddbd313f4597e295"
+  integrity sha512-rlxylRLC9tTLOJ0yelXwQfl3XhsqNMP5k9D/q4QcKOw1szvmnU5zEFLEMRDzT0nOlKKVLYh42ewIwpK+JwvmAA==
 
-"@picovoice/orca-node@^1.0.1":
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/@picovoice/orca-node/-/orca-node-1.0.1.tgz#455132dfc5f95c0a651e47a512d4018860b7286d"
-  integrity sha512-IOinMTVrqsTXhwDvqPFnoi/phgr2w6tj5XJ/DFTp+jSuzbZQaMEAOIeKptSKERuGWYkbzXdXDPZb4WRLanFYtQ==
+"@picovoice/orca-node@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@picovoice/orca-node/-/orca-node-1.1.0.tgz#2077907e5aa10b9b283b11140d411c71e3860e92"
+  integrity sha512-kEcyaD+i5mT6wMqMJk8bcbLVlRKYCDyekwQ4QbHaKGr6MoegEOlVKuw3wwD3mdRyPzDxFjCRwpb//RvOiN82hg==
 
-"@picovoice/picollm-node@1.2.4":
-  version "1.2.4"
-  resolved "https://registry.yarnpkg.com/@picovoice/picollm-node/-/picollm-node-1.2.4.tgz#f0dc0db5195737d731df99c91dde3e4ce1bc4ca5"
-  integrity sha512-UlJtMkn8Rl9QdPklGCngGAJaCMwnVQQRHucinZ33gplezRWCsgFRW8SdqE7D7EyK8bILJwc67Ngdtg19kyI08w==
-
-"@picovoice/porcupine-node@^3.0.5":
-  version "3.0.5"
-  resolved "https://registry.yarnpkg.com/@picovoice/porcupine-node/-/porcupine-node-3.0.5.tgz#d23af28b5a9cccc87c4f8c1ad18f83a96cc679f5"
-  integrity sha512-1N3Pf9eeLBP3XQcPgjNUDmUKxD7Wso65XtgpSnUiiCRvHhBD9GehfrJObx7nwFSazC6y/1uNWBnOJ32FKudPhQ==
-
-"@picovoice/pvrecorder-node@^1.2.5":
+"@picovoice/picollm-node@1.2.5":
   version "1.2.5"
-  resolved "https://registry.yarnpkg.com/@picovoice/pvrecorder-node/-/pvrecorder-node-1.2.5.tgz#a47e11d347979ef0f1b083657ff69dd9bd2efe5c"
-  integrity sha512-bnid5oInf22JRdrZ75z8ooewOza0whYI9w/oSQSZbkDvddylPPrY6x+1L1qIyf5Tb8ZtzKQL+aQ9m8SazgRHFg==
+  resolved "https://registry.yarnpkg.com/@picovoice/picollm-node/-/picollm-node-1.2.5.tgz#260c0aadb74a6d57383f47eb9a14ffac37ee68fd"
+  integrity sha512-sh/gyCMCk5Dlpq7BinDCnhXAZzLCgkXyF9o8n3qxy7VVgJ24OIVzi+kGtIJ+ofY41qA3W7uPC/BT2RLjL2ZZxA==
 
-"@picovoice/pvspeaker-node@^1.0.2":
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/@picovoice/pvspeaker-node/-/pvspeaker-node-1.0.2.tgz#5603864038ba7f2a8ce7f82507f68f4e3f1568b8"
-  integrity sha512-x7MTp6pdon7Dce1lp0yiM8wQcKkYt9jyLqiK2hjUuq85vGlILBpUfKCspuEUVZnyG/5tMic6VsGfXgET7n+O7A==
+"@picovoice/porcupine-node@^3.0.6":
+  version "3.0.6"
+  resolved "https://registry.yarnpkg.com/@picovoice/porcupine-node/-/porcupine-node-3.0.6.tgz#f97d54074d2d155d36b135c8ff522231dcd08a85"
+  integrity sha512-vYlY0Hf9ovRB+Z9yyLReiVYZkLsm/kVPgDWTu2dgtqAooednohljfxSRzJUojapp8BFd7aW8P3H/4sm1zy49lw==
+
+"@picovoice/pvrecorder-node@^1.2.6":
+  version "1.2.6"
+  resolved "https://registry.yarnpkg.com/@picovoice/pvrecorder-node/-/pvrecorder-node-1.2.6.tgz#6b6ea8b38892b916c9e3682342fa144c710e1aa0"
+  integrity sha512-AC8vqo+GWSGquMyyv0rhP68fjCxVe0kCo9QEq5mgBv7qHV2qVH5rm6ONPQQ6rmYD0SfppFaRP0yZKhPs1FhADQ==
+
+"@picovoice/pvspeaker-node@^1.0.3":
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/@picovoice/pvspeaker-node/-/pvspeaker-node-1.0.3.tgz#4ba734a6dfad7de8b9eec12697043ae9f8c0334f"
+  integrity sha512-N26hrnuZVCr3CB6yTsVavdv8zgF6qna/JD3jtMb17JRHXIqrEItNd+ZkfxOWYGHPqla/nJc6yeVfM1495Yd7Aw==
 
 "@types/json-schema@^7.0.9":
   version "7.0.15"
