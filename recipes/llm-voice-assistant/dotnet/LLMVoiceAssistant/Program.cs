@@ -677,7 +677,8 @@ class RTFProfiler : Profiler
 
     private readonly Stopwatch _stopwatch = new Stopwatch();
 
-    private int _sampleRate;
+    private readonly int _sampleRate;
+
     private double _computeTimeSeconds = 0;
     private double _audioTimeSeconds = 0;
 
