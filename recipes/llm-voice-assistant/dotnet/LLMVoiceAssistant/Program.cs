@@ -9,10 +9,6 @@ namespace LLMVoiceAssistant
 {
     class LLMVoiceAssistant
     {
-        static RTFProfiler? orcaProfiler;
-        static RTFProfiler? porcupineProfiler;
-        static RTFProfiler? cheetahProfiler;
-        static TPSProfiler? pllmProfiler;
         static DelayProfiler? delayProfiler;
         static event EventHandler<Profiler?>? profilerEvent;
         static TaskCompletionSource<bool> llmFinish = new TaskCompletionSource<bool>();
@@ -122,6 +118,8 @@ namespace LLMVoiceAssistant
             private readonly Cheetah _cheetah;
             private readonly Porcupine _porcupine;
             private readonly PvRecorder _recorder;
+            private readonly RTFProfiler? _porcupineProfiler;
+            private readonly RTFProfiler? _cheetahProfiler;
 
             private string _transcript = "";
             private event EventHandler<short[]>? AudioReceived;
@@ -143,8 +141,11 @@ namespace LLMVoiceAssistant
                               keywordPaths: [config.KeywordModelPath],
                               sensitivities: [config.PorcupineSensitivity]);
                 _recorder = PvRecorder.Create(frameLength: _porcupine.FrameLength);
-                cheetahProfiler?.Init(_cheetah.SampleRate);
-                porcupineProfiler?.Init(_porcupine.SampleRate);
+                if (config.Profile)
+                {
+                    _cheetahProfiler = new RTFProfiler("Cheetah", _cheetah.SampleRate);
+                    _porcupineProfiler = new RTFProfiler("Porcupine", _porcupine.SampleRate);
+                }
                 AudioReceived += PorcupineOnAudioReceived;
                 WakeWordDetected += OnWakeWordDetected;
                 UserInputReceived += OnUserInputReceived;
@@ -167,9 +168,9 @@ namespace LLMVoiceAssistant
 
             private void PorcupineOnAudioReceived(object? sender, short[] pcm)
             {
-                porcupineProfiler?.Tick();
+                _porcupineProfiler?.Tick();
                 int keywordIndex = _porcupine.Process(pcm);
-                porcupineProfiler?.Tock(pcm);
+                _porcupineProfiler?.Tock(pcm);
                 if (keywordIndex >= 0)
                 {
                     WakeWordDetected?.Invoke(this, EventArgs.Empty);
@@ -181,9 +182,9 @@ namespace LLMVoiceAssistant
 
             private void CheetahOnAudioReceived(object? sender, short[] pcm)
             {
-                cheetahProfiler?.Tick();
+                _cheetahProfiler?.Tick();
                 CheetahTranscript result = _cheetah.Process(pcm);
-                cheetahProfiler?.Tock(pcm);
+                _cheetahProfiler?.Tock(pcm);
                 if (result.Transcript.Length > 0)
                 {
                     _transcript += result.Transcript;
@@ -191,9 +192,9 @@ namespace LLMVoiceAssistant
                 }
                 if (result.IsEndpoint)
                 {
-                    cheetahProfiler?.Tick();
+                    _cheetahProfiler?.Tick();
                     CheetahTranscript remainingTranscript = _cheetah.Flush();
-                    cheetahProfiler?.Tock(null);
+                    _cheetahProfiler?.Tock(null);
                     _transcript += remainingTranscript.Transcript;
                     Console.WriteLine(remainingTranscript.Transcript);
                     UserInputReceived?.Invoke(this, _transcript);
@@ -202,16 +203,16 @@ namespace LLMVoiceAssistant
 
             private void OnWakeWordDetected(object? sender, EventArgs e)
             {
-                profilerEvent?.Invoke(null, porcupineProfiler);
-                porcupineProfiler?.Reset();
-                cheetahProfiler?.Reset();
+                profilerEvent?.Invoke(null, _porcupineProfiler);
+                _porcupineProfiler?.Reset();
+                _cheetahProfiler?.Reset();
                 AudioReceived -= PorcupineOnAudioReceived;
                 AudioReceived += CheetahOnAudioReceived;
             }
 
             private void OnUserInputReceived(object? sender, string userInput)
             {
-                profilerEvent?.Invoke(null, cheetahProfiler);
+                profilerEvent?.Invoke(null, _cheetahProfiler);
                 delayProfiler?.Tick();
                 _transcript = "";
                 AudioReceived -= CheetahOnAudioReceived;
@@ -226,12 +227,17 @@ namespace LLMVoiceAssistant
 
             private readonly PicoLLM _pllm;
             private readonly Channel<string> _userInputChannel = Channel.CreateUnbounded<string>();
+            private readonly TPSProfiler? _pllmProfiler;
 
             public Generator()
             {
                 _pllm = PicoLLM.Create(accessKey: config.AccessKey,
                                         modelPath: config.PicollmModelPath,
                                         device: config.PicollmDevice);
+                if (config.Profile)
+                {
+                    _pllmProfiler = new TPSProfiler("PicoLLM");
+                }
                 CompletionGenerationCompleted += OnCompletionGenerationCompleted;
             }
 
@@ -252,7 +258,7 @@ namespace LLMVoiceAssistant
 
             private void OnCompletionGenerationCompleted(object? sender, PicoLLMEndpoint endpoint)
             {
-                profilerEvent?.Invoke(null, pllmProfiler);
+                profilerEvent?.Invoke(null, _pllmProfiler);
             }
 
             private async Task Worker()
@@ -265,7 +271,7 @@ namespace LLMVoiceAssistant
 
                 void callback(string token)
                 {
-                    pllmProfiler?.Tock();
+                    _pllmProfiler?.Tock();
                     completion.Append(token);
                     if (completion.GetNewTokens().Length > 0)
                     {
@@ -304,6 +310,7 @@ namespace LLMVoiceAssistant
         {
             private readonly Orca _orca;
             private readonly Generator _generator;
+            private readonly RTFProfiler? _orcaProfiler;
 
             private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
             private TaskCompletionSource<bool> _speakerFinish = new TaskCompletionSource<bool>();
@@ -311,7 +318,10 @@ namespace LLMVoiceAssistant
             public Speaker(Generator generator)
             {
                 _orca = Orca.Create(accessKey: config.AccessKey);
-                orcaProfiler?.Init(_orca.SampleRate);
+                if (config.Profile)
+                {
+                    _orcaProfiler = new RTFProfiler("Orca", _orca.SampleRate);
+                }
                 _generator = generator;
                 _speakerFinish.SetResult(true);
             }
@@ -347,10 +357,10 @@ namespace LLMVoiceAssistant
                         {
                             Thread.Sleep(50);
                         }
-                        orcaProfiler?.Tick();
+                        _orcaProfiler?.Tick();
                         short[] pcm = orcaStream.Flush();
-                        orcaProfiler?.Tock(pcm);
-                        profilerEvent?.Invoke(null, orcaProfiler);
+                        _orcaProfiler?.Tock(pcm);
+                        profilerEvent?.Invoke(null, _orcaProfiler);
                         if (pcm != null)
                         {
                             audioChannel.Writer.TryWrite(pcm);
@@ -409,9 +419,9 @@ namespace LLMVoiceAssistant
                         try
                         {
                             string text = await completionChannel.Reader.ReadAsync(cancellationToken);
-                            orcaProfiler?.Tick();
+                            _orcaProfiler?.Tick();
                             short[] pcm = orcaStream.Synthesize(text);
-                            orcaProfiler?.Tock(pcm);
+                            _orcaProfiler?.Tock(pcm);
                             if (pcm != null)
                             {
                                 audioChannel.Writer.TryWrite(pcm);
@@ -596,10 +606,6 @@ namespace LLMVoiceAssistant
             if (config.Profile)
             {
                 profilerEvent += (_, profiler) => Console.WriteLine($"[{profiler?.Stats()}]");
-                orcaProfiler = new RTFProfiler("Orca");
-                porcupineProfiler = new RTFProfiler("Porcupine");
-                cheetahProfiler = new RTFProfiler("Cheetah");
-                pllmProfiler = new TPSProfiler("PicoLLM");
                 delayProfiler = new DelayProfiler();
             }
             Listener listener = new Listener();
@@ -675,13 +681,9 @@ class RTFProfiler : Profiler
     private double _computeTimeSeconds = 0;
     private double _audioTimeSeconds = 0;
 
-    public RTFProfiler(string name)
+    public RTFProfiler(string name, int sampleRate)
     {
         Name = name;
-    }
-
-    public void Init(int sampleRate)
-    {
         _sampleRate = sampleRate;
     }
 
