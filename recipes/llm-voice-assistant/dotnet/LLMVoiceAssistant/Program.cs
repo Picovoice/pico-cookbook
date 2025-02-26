@@ -116,15 +116,15 @@ namespace LLMVoiceAssistant
 
         private class Listener
         {
+            public event EventHandler<string>? UserInputReceived;
+            public event EventHandler? WakeWordDetected;
+
             private readonly Cheetah _cheetah;
             private readonly Porcupine _porcupine;
             private readonly PvRecorder _recorder;
 
             private string _transcript = "";
             private event EventHandler<short[]>? AudioReceived;
-
-            public event EventHandler<string>? UserInputReceived;
-            public event EventHandler? WakeWordDetected;
 
             public Listener()
             {
@@ -150,10 +150,10 @@ namespace LLMVoiceAssistant
                 UserInputReceived += OnUserInputReceived;
             }
 
-            public void Start()
+            public Task Run()
             {
                 _recorder.Start();
-                Task.Run(Worker).ContinueWith((t) => Console.WriteLine(t.Exception));
+                return Task.Run(Worker).ContinueWith((t) => Console.WriteLine(t.Exception));
             }
 
             private void Worker()
@@ -221,10 +221,11 @@ namespace LLMVoiceAssistant
 
         private class Generator
         {
-            private readonly PicoLLM _pllm;
-            private readonly Channel<string> _userInputChannel = Channel.CreateUnbounded<string>();
             public event EventHandler<string>? PartialCompletionGenerated;
             public event EventHandler<PicoLLMEndpoint>? CompletionGenerationCompleted;
+
+            private readonly PicoLLM _pllm;
+            private readonly Channel<string> _userInputChannel = Channel.CreateUnbounded<string>();
 
             public Generator()
             {
@@ -234,9 +235,9 @@ namespace LLMVoiceAssistant
                 CompletionGenerationCompleted += OnCompletionGenerationCompleted;
             }
 
-            public void Start()
+            public Task Run()
             {
-                Task.Run(LlmWorker).ContinueWith((t) => Console.WriteLine(t.Exception));
+                return Task.Run(Worker).ContinueWith((t) => Console.WriteLine(t.Exception));
             }
 
             public void OnUserInput(object? sender, string userInput)
@@ -254,7 +255,7 @@ namespace LLMVoiceAssistant
                 profilerEvent?.Invoke(null, pllmProfiler);
             }
 
-            private async Task LlmWorker()
+            private async Task Worker()
             {
                 PicoLLMDialog dialog = config.PicollmSystemPrompt == null
                                  ? _pllm.GetDialog()
@@ -303,6 +304,7 @@ namespace LLMVoiceAssistant
         {
             private readonly Orca _orca;
             private readonly Generator _generator;
+
             private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
             private TaskCompletionSource<bool> _speakerFinish = new TaskCompletionSource<bool>();
 
@@ -392,7 +394,7 @@ namespace LLMVoiceAssistant
                                 }
                             }
                         }
-                        catch (System.Exception)
+                        catch (OperationCanceledException)
                         {
                             // If cancellation is requested while waiting on the channel, an exception will be thrown
                             break;
@@ -415,8 +417,9 @@ namespace LLMVoiceAssistant
                                 audioChannel.Writer.TryWrite(pcm);
                             }
                         }
-                        catch (System.Exception)
+                        catch (OperationCanceledException)
                         {
+                            // If cancellation is requested while waiting on the channel, an exception will be thrown
                             break;
                         }
                     }
@@ -606,13 +609,8 @@ namespace LLMVoiceAssistant
             listener.UserInputReceived += generator.OnUserInput;
             listener.WakeWordDetected += generator.OnInterrupt;
             listener.WakeWordDetected += speaker.OnStartWorkers;
-            listener.Start();
-            generator.Start();
             Console.WriteLine($"Initialized. Say {config.PorcupineWakeWord} to start.");
-            while (true)
-            {
-                Thread.Sleep(1000);
-            }
+            Task.WaitAll(listener.Run(), generator.Run());
         }
 
         static readonly string HELP_TEXT = @"
@@ -669,11 +667,13 @@ interface Profiler
 
 class RTFProfiler : Profiler
 {
-    private int _sampleRate;
+    public string Name { get; private set; }
+
     private readonly Stopwatch _stopwatch = new Stopwatch();
+
+    private int _sampleRate;
     private double _computeTimeSeconds = 0;
     private double _audioTimeSeconds = 0;
-    public string Name { get; private set; }
 
     public RTFProfiler(string name)
     {
@@ -723,10 +723,12 @@ class RTFProfiler : Profiler
 
 class TPSProfiler : Profiler
 {
+    public string Name { get; private set; }
+
+    private readonly Stopwatch _stopwatch;
+
     private int _numTokens;
     private double _startSec;
-    private readonly Stopwatch _stopwatch;
-    public string Name { get; private set; }
 
     public TPSProfiler(string name)
     {
@@ -777,6 +779,7 @@ class TPSProfiler : Profiler
 class DelayProfiler : Profiler
 {
     private readonly Stopwatch _stopwatch = new Stopwatch();
+
     public DelayProfiler() { }
 
     public void Tick()
