@@ -1,0 +1,30 @@
+name: .NET Codestyle
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'recipes/llm-voice-assistant/dotnet/**/*.cs'
+      - '.github/workflows/dotnet-codestyle.yml'
+  pull_request:
+    branches: [ main, 'v[0-9]+.[0-9]+' ]
+    paths:
+      - 'recipes/llm-voice-assistant/dotnet/**/*.cs'
+      - '.github/workflows/dotnet-codestyle.yml'
+
+jobs:
+  check-dotnet-codestyle:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up .NET 8.0
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Run Binding Codestyle
+      run: dotnet format --verify-no-changes
+      working-directory: recipes/llm-voice-assistant/dotnet

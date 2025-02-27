@@ -42,3 +42,4 @@ tock
 WAKEWORD
 xcodeproj
 xcworkspace
+dotnet

@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="picollm" Version="1.2.1" />
+    <PackageReference Include="Picovoice.Cheetah" Version="2.1.2" />
+    <PackageReference Include="Picovoice.Orca" Version="1.1.0" />
+    <PackageReference Include="Porcupine" Version="3.0.6" />
+    <PackageReference Include="pvrecorder" Version="1.2.10" />
+    <PackageReference Include="pvspeaker" Version="1.0.2" />
+  </ItemGroup>
+
+</Project>
