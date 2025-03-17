@@ -8,7 +8,7 @@
     "build:types": "tsc --declaration --declarationMap --emitDeclarationOnly --outDir ./types",
     "build": "npm-run-all --parallel build:**",
     "lint": "eslint . --ext .js,.ts",
-    "start": "yarn run http-server -a localhost -p 5000"
+    "start": "node server.js"
   },
   "keywords": [
     "Picovoice",
@@ -21,7 +21,7 @@
   "dependencies": {
     "@picovoice/cheetah-web": "^2.1.0",
     "@picovoice/orca-web": "^1.1.0",
-    "@picovoice/picollm-web": "~1.2.3",
+    "@picovoice/picollm-web": "~1.3.0",
     "@picovoice/porcupine-web": "^3.0.3",
     "@picovoice/web-voice-processor": "^4.0.9"
   },
@@ -39,6 +39,7 @@
     "async-mutex": "^0.5.0",
     "eslint": "^8.57.0",
     "http-server": "^14.1.1",
+    "mime-types": "^2.1.35",
     "npm-run-all": "^4.1.5",
     "prettier": "^3.2.5",
     "rollup": "^4.22.4",
