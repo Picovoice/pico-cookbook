@@ -913,10 +913,10 @@
   dependencies:
     "@picovoice/web-utils" "=1.4.3"
 
-"@picovoice/picollm-web@~1.2.3":
-  version "1.2.3"
-  resolved "https://registry.yarnpkg.com/@picovoice/picollm-web/-/picollm-web-1.2.3.tgz#765f52c55943c71dbb7c95492b93cda15e483999"
-  integrity sha512-QtiZTckN6UDlO5bVnR5ldhegb9h63szu4l3PknI7V4Qsz8w4AXaloRXlnOhK87oEC5Px2C56ve7+aiH9oSPcNQ==
+"@picovoice/picollm-web@~1.3.0":
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/@picovoice/picollm-web/-/picollm-web-1.3.0.tgz#94e576211245415886df041b248c4b63f2ac0437"
+  integrity sha512-mzjG48VTbBnhvZckE7KZI3BpU+JAV+4bwRFDeFp5JbdmKSW54zGbyE14UQ0jZFWnxBaTG6dRw3L/0ZXDc2iOhg==
   dependencies:
     "@picovoice/web-utils" "~1.4.3"
 
@@ -2590,6 +2590,18 @@ micromatch@^4.0.8:
   dependencies:
     braces "^3.0.3"
     picomatch "^2.3.1"
+
+mime-db@1.52.0:
+  version "1.52.0"
+  resolved "https://registry.yarnpkg.com/mime-db/-/mime-db-1.52.0.tgz#bbabcdc02859f4987301c856e3387ce5ec43bf70"
+  integrity sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==
+
+mime-types@^2.1.35:
+  version "2.1.35"
+  resolved "https://registry.yarnpkg.com/mime-types/-/mime-types-2.1.35.tgz#381a871b62a734450660ae3deee44813f70d959a"
+  integrity sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw==
+  dependencies:
+    mime-db "1.52.0"
 
 mime@^1.6.0:
   version "1.6.0"
