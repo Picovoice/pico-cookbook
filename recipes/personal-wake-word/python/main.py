@@ -6,8 +6,10 @@ import pvporcupine
 from pveagle import (
     EagleActivationLimitError,
     EagleError,
+    EagleProfile,
     EagleProfilerEnrollFeedback,
     create_profiler,
+    create_recognizer,
 )
 from pvrecorder import PvRecorder
 
@@ -91,7 +93,7 @@ def main() -> None:
         help='Absolute path to newly enrolled speaker profile file')
 
     detection_parser = subparsers.add_parser(
-        'listen',
+        'detect',
         help='Detect utterances of the wake word spoken by a given speaker profile.',
         parents=[common_parser])
     detection_parser.add_argument(
@@ -163,6 +165,47 @@ def main() -> None:
             recorder.stop()
             recorder.delete()
             eagle_profiler.delete()
+    elif args.command == 'detect':
+        with open(args.speaker_profile_path, 'rb') as f:
+            profile = EagleProfile.from_bytes(f.read())
+
+        porcupine = pvporcupine.create(access_key=args.access_key, keyword_paths=[args.wake_word_path])
+        eagle = None
+
+        recorder = None
+        try:
+            eagle = create_recognizer(
+                access_key=args.access_key,
+                model_path=args.model_path,
+                library_path=args.library_path,
+                speaker_profiles=[profile])
+
+            recorder = PvRecorder(device_index=args.audio_device_index, frame_length=eagle.frame_length)
+            recorder.start()
+
+            print('Listening for audio... (press Ctrl+C to stop)')
+            while True:
+                pcm = recorder.read()
+                is_detected = porcupine.process(pcm)
+                score = eagle.process(pcm)[0]
+                if is_detected:
+                    print(score)
+
+
+        except KeyboardInterrupt:
+            print('\nStopping...')
+        except EagleActivationLimitError:
+            print('\nAccessKey has reached its processing limit')
+        finally:
+            if eagle is not None:
+                eagle.delete()
+            if recorder is not None:
+                recorder.stop()
+                recorder.delete()
+
+    else:
+        print('Please specify a mode: enroll or test')
+        return
 
 
 if __name__ == '__main__':
