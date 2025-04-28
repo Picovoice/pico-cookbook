@@ -2,6 +2,7 @@ import time
 from argparse import ArgumentParser
 from threading import Thread
 
+import pvporcupine
 from pveagle import (
     EagleActivationLimitError,
     EagleError,
@@ -10,7 +11,6 @@ from pveagle import (
 )
 from pvrecorder import PvRecorder
 
-PV_RECORDER_FRAME_LENGTH = 512
 FEEDBACK_TO_DESCRIPTIVE_MSG = {
     EagleProfilerEnrollFeedback.AUDIO_OK: 'Good audio',
     EagleProfilerEnrollFeedback.AUDIO_TOO_SHORT: 'Insufficient audio length',
@@ -114,10 +114,17 @@ def main() -> None:
             return
 
         print(f'Eagle version: {eagle_profiler.version}')
-        recorder = PvRecorder(frame_length=PV_RECORDER_FRAME_LENGTH, device_index=args.audio_device_index)
+
+        try:
+            porcupine = pvporcupine.create(access_key=args.access_key, keyword_paths=[args.wake_word_path])
+        except pvporcupine.PorcupineError as e:
+            print(f"Failed to initialize Porcupine wth {e}")
+            return
+        print(f"Porcupine version: {porcupine.version}")
+
+        recorder = PvRecorder(frame_length=porcupine.frame_length, device_index=args.audio_device_index)
         print(f"Recording audio from `{recorder.selected_device}`")
-        num_enroll_frames = eagle_profiler.min_enroll_samples // PV_RECORDER_FRAME_LENGTH
-        sample_rate = eagle_profiler.sample_rate
+        num_enroll_frames = eagle_profiler.min_enroll_samples // porcupine.frame_length
         enrollment_animation = EnrollmentAnimation()
         print('Please keep speaking until the enrollment percentage reaches 100%')
         try:
@@ -126,9 +133,13 @@ def main() -> None:
             while enroll_percentage < 100.0:
                 enroll_pcm = list()
                 recorder.start()
-                for _ in range(num_enroll_frames):
-                    input_frame = recorder.read()
-                    enroll_pcm.extend(input_frame)
+
+                is_detected = False
+                while not is_detected:
+                    frame = recorder.read()
+                    enroll_pcm.extend(frame)
+                    is_detected = porcupine.process(frame) == 0
+
                 recorder.stop()
 
                 enroll_percentage, feedback = eagle_profiler.enroll(enroll_pcm)
