@@ -126,7 +126,6 @@ def main() -> None:
 
         recorder = PvRecorder(frame_length=porcupine.frame_length, device_index=args.audio_device_index)
         print(f"Recording audio from `{recorder.selected_device}`")
-        num_enroll_frames = eagle_profiler.min_enroll_samples // porcupine.frame_length
         enrollment_animation = EnrollmentAnimation()
         print('Please keep speaking until the enrollment percentage reaches 100%')
         try:
@@ -176,8 +175,6 @@ def main() -> None:
         try:
             eagle = create_recognizer(
                 access_key=args.access_key,
-                model_path=args.model_path,
-                library_path=args.library_path,
                 speaker_profiles=[profile])
 
             recorder = PvRecorder(device_index=args.audio_device_index, frame_length=eagle.frame_length)
@@ -186,7 +183,7 @@ def main() -> None:
             print('Listening for audio... (press Ctrl+C to stop)')
             while True:
                 pcm = recorder.read()
-                is_detected = porcupine.process(pcm)
+                is_detected = porcupine.process(pcm) == 0
                 score = eagle.process(pcm)[0]
                 if is_detected:
                     print(score)
