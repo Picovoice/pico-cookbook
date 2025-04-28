@@ -79,6 +79,7 @@ def main() -> None:
         required=True,
         help='AccessKey obtained from Picovoice Console (https://console.picovoice.ai/)')
     common_parser.add_argument('--wake_word_path', required=True, help='Absolute path the wake word file')
+    common_parser.add_argument('--porcupine_model_path', default=None)
     common_parser.add_argument('--audio_device_index', type=int, default=-1, help='Index of input audio device')
 
     subparsers = parser.add_subparsers(dest='command')
@@ -107,10 +108,7 @@ def main() -> None:
 
     if args.command == 'enroll':
         try:
-            eagle_profiler = create_profiler(
-                access_key=args.access_key,
-                model_path=args.model_path,
-                library_path=args.library_path)
+            eagle_profiler = create_profiler(access_key=args.access_key)
         except EagleError as e:
             print(f"Failed to initialize Eagle: {e}")
             return
@@ -139,9 +137,9 @@ def main() -> None:
 
             speaker_profile = eagle_profiler.export()
             enrollment_animation.stop()
-            with open(args.output_profile_path, 'wb') as f:
+            with open(args.speaker_profile_path, 'wb') as f:
                 f.write(speaker_profile.to_bytes())
-            print('\nSpeaker profile is saved to %s' % args.output_profile_path)
+            print('\nSpeaker profile is saved to %s' % args.speaker_profile_path)
 
         except KeyboardInterrupt:
             print('\nStopping enrollment. No speaker profile is saved.')
