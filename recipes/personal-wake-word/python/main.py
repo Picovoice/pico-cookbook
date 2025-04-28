@@ -73,7 +73,7 @@ def main() -> None:
     parser.add_argument(
         '--show_audio_devices',
         action='store_true',
-        help='List available audio input devices and exit')
+        help='List available input audio devices and exit')
 
     common_parser = ArgumentParser(add_help=False)
     common_parser.add_argument(
@@ -81,7 +81,10 @@ def main() -> None:
         required=True,
         help='AccessKey obtained from Picovoice Console (https://console.picovoice.ai/)')
     common_parser.add_argument('--wake_word_path', required=True, help='Absolute path the wake word file')
-    common_parser.add_argument('--porcupine_model_path', default=None)
+    common_parser.add_argument(
+        '--porcupine_model_path',
+        default=None,
+        help='Absolute path to the Porcupine model file')
     common_parser.add_argument('--audio_device_index', type=int, default=-1, help='Index of input audio device')
 
     subparsers = parser.add_subparsers(dest='command')
@@ -103,6 +106,11 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    access_key = args.access_key
+    wake_word_path = args.wake_word_path
+    porcupine_model_path = args.porcupine_model_path
+    audio_device_index = args.audio_device_index
+
     if args.show_audio_devices:
         for index, name in enumerate(PvRecorder.get_available_devices()):
             print(f'Device #{index}: {name}')
@@ -110,7 +118,7 @@ def main() -> None:
 
     if args.command == 'enroll':
         try:
-            eagle_profiler = create_profiler(access_key=args.access_key)
+            eagle_profiler = create_profiler(access_key=access_key)
         except EagleError as e:
             print(f"Failed to initialize Eagle: {e}")
             return
@@ -118,13 +126,16 @@ def main() -> None:
         print(f'Eagle version: {eagle_profiler.version}')
 
         try:
-            porcupine = pvporcupine.create(access_key=args.access_key, keyword_paths=[args.wake_word_path])
+            porcupine = pvporcupine.create(
+                access_key=access_key,
+                model_path=porcupine_model_path,
+                keyword_paths=[wake_word_path])
         except pvporcupine.PorcupineError as e:
             print(f"Failed to initialize Porcupine wth {e}")
             return
         print(f"Porcupine version: {porcupine.version}")
 
-        recorder = PvRecorder(frame_length=porcupine.frame_length, device_index=args.audio_device_index)
+        recorder = PvRecorder(frame_length=porcupine.frame_length, device_index=audio_device_index)
         print(f"Recording audio from `{recorder.selected_device}`")
         enrollment_animation = EnrollmentAnimation()
         print('Please keep speaking until the enrollment percentage reaches 100%')
@@ -168,16 +179,16 @@ def main() -> None:
         with open(args.speaker_profile_path, 'rb') as f:
             profile = EagleProfile.from_bytes(f.read())
 
-        porcupine = pvporcupine.create(access_key=args.access_key, keyword_paths=[args.wake_word_path])
+        porcupine = pvporcupine.create(access_key=access_key, keyword_paths=[wake_word_path])
         eagle = None
 
         recorder = None
         try:
             eagle = create_recognizer(
-                access_key=args.access_key,
+                access_key=access_key,
                 speaker_profiles=[profile])
 
-            recorder = PvRecorder(device_index=args.audio_device_index, frame_length=eagle.frame_length)
+            recorder = PvRecorder(device_index=audio_device_index, frame_length=eagle.frame_length)
             recorder.start()
 
             print('Listening for audio... (press Ctrl+C to stop)')
