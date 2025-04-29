@@ -2,7 +2,6 @@ import time
 from argparse import ArgumentParser
 from threading import Thread
 
-import pvporcupine
 from pveagle import (
     EagleActivationLimitError,
     EagleError,
@@ -11,6 +10,10 @@ from pveagle import (
     create_profiler,
     create_recognizer,
 )
+from pvporcupine import (
+    PorcupineError,
+)
+from pvporcupine import create as create_porcupine
 from pvrecorder import PvRecorder
 
 FEEDBACK_TO_DESCRIPTIVE_MSG = {
@@ -86,6 +89,7 @@ def main() -> None:
         default=None,
         help='Absolute path to the Porcupine model file')
     common_parser.add_argument('--audio_device_index', type=int, default=-1, help='Index of input audio device')
+    common_parser.add_argument('--porcupine_sensitivity', type=float, default=0.5, help='')
 
     subparsers = parser.add_subparsers(dest='command')
 
@@ -93,7 +97,7 @@ def main() -> None:
     enroll_parser.add_argument(
         '--speaker_profile_path',
         required=True,
-        help='Absolute path to newly enrolled speaker profile file')
+        help='Absolute path to speaker profile file')
 
     detection_parser = subparsers.add_parser(
         'detect',
@@ -110,6 +114,7 @@ def main() -> None:
     wake_word_path = args.wake_word_path
     porcupine_model_path = args.porcupine_model_path
     audio_device_index = args.audio_device_index
+    porcupine_sensitivity = args.porcupine_sensitivity
 
     if args.show_audio_devices:
         for index, name in enumerate(PvRecorder.get_available_devices()):
@@ -126,11 +131,12 @@ def main() -> None:
         print(f'Eagle version: {eagle_profiler.version}')
 
         try:
-            porcupine = pvporcupine.create(
+            porcupine = create_porcupine(
                 access_key=access_key,
                 model_path=porcupine_model_path,
-                keyword_paths=[wake_word_path])
-        except pvporcupine.PorcupineError as e:
+                keyword_paths=[wake_word_path],
+                sensitivities=[porcupine_sensitivity])
+        except PorcupineError as e:
             print(f"Failed to initialize Porcupine wth {e}")
             return
         print(f"Porcupine version: {porcupine.version}")
@@ -179,7 +185,10 @@ def main() -> None:
         with open(args.speaker_profile_path, 'rb') as f:
             profile = EagleProfile.from_bytes(f.read())
 
-        porcupine = pvporcupine.create(access_key=access_key, keyword_paths=[wake_word_path])
+        porcupine = create_porcupine(
+            access_key=access_key,
+            keyword_paths=[wake_word_path],
+            sensitivities=[porcupine_sensitivity])
         eagle = None
 
         recorder = None
