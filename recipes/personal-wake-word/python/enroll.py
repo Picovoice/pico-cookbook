@@ -1,14 +1,19 @@
 import os
 import shutil
+import struct
 import time
+import wave
 from argparse import ArgumentParser
 from threading import Thread
 
 from pveagle import (
     EagleActivationLimitError,
-    EagleProfile,
+    EagleError,
     EagleProfilerEnrollFeedback,
-    create_recognizer,
+    create_profiler,
+)
+from pvporcupine import (
+    PorcupineError,
 )
 from pvporcupine import create as create_porcupine
 from pvrecorder import PvRecorder
@@ -91,7 +96,7 @@ def main() -> None:
     parser.add_argument(
         '--speaker_profile_path',
         required=True,
-        help='Absolute path to the speaker profile file')
+        help='Absolute path to speaker profile file')
 
     args = parser.parse_args()
 
@@ -112,44 +117,78 @@ def main() -> None:
             print(f'Device #{index}: {name}')
         return
 
-    with open(args.speaker_profile_path, 'rb') as f:
-        profile = EagleProfile.from_bytes(f.read())
-
-    porcupine = create_porcupine(
-        access_key=access_key,
-        model_path=porcupine_model_path,
-        keyword_paths=[wake_word_path],
-        sensitivities=[porcupine_sensitivity])
-    eagle = None
-
-    recorder = None
     try:
-        eagle = create_recognizer(
+        eagle_profiler = create_profiler(access_key=access_key)
+    except EagleError as e:
+        print(f"Failed to initialize Eagle: {e}")
+        return
+
+    print(f'Eagle version: {eagle_profiler.version}')
+
+    try:
+        porcupine = create_porcupine(
             access_key=access_key,
-            speaker_profiles=[profile])
+            model_path=porcupine_model_path,
+            keyword_paths=[wake_word_path],
+            sensitivities=[porcupine_sensitivity])
+    except PorcupineError as e:
+        print(f"Failed to initialize Porcupine wth {e}")
+        return
+    print(f"Porcupine version: {porcupine.version}")
 
-        recorder = PvRecorder(device_index=audio_device_index, frame_length=eagle.frame_length)
-        recorder.start()
+    recorder = PvRecorder(frame_length=porcupine.frame_length, device_index=audio_device_index)
+    print(f"Recording audio from `{recorder.selected_device}`")
+    enrollment_animation = EnrollmentAnimation()
+    print('Please keep speaking until the enrollment percentage reaches 100%')
+    try:
+        enroll_percentage = 0.0
+        enroll_index = 0
+        enrollment_animation.start()
+        while enroll_percentage < 100.0:
+            enroll_pcm = list()
+            recorder.start()
 
-        print('Listening for audio... (press Ctrl+C to stop)')
-        while True:
-            pcm = recorder.read()
-            is_detected = porcupine.process(pcm) == 0
-            score = eagle.process(pcm)[0]
-            if is_detected:
-                print(score)
+            is_detected = False
+            while not is_detected:
+                frame = recorder.read()
+                enroll_pcm.extend(frame)
+                is_detected = porcupine.process(frame) == 0
 
+            for _ in range(8):
+                enroll_pcm.extend(recorder.read())
+
+            recorder.stop()
+
+            if xray_folder is not None:
+                with wave.open(os.path.join(xray_folder, f"enroll-{enroll_index}.wav"), 'w') as wav_file:
+                    wav_file.setnchannels(1)  # mono
+                    wav_file.setsampwidth(2)  # 2 bytes per sample (16-bit)
+                    wav_file.setframerate(porcupine.sample_rate)
+                    wav_file.writeframes(struct.pack('%dh' % len(enroll_pcm), *enroll_pcm))
+
+            enroll_index += 1
+
+            enroll_percentage, feedback = eagle_profiler.enroll(enroll_pcm)
+            enrollment_animation.percentage = enroll_percentage
+            enrollment_animation.feedback = ' - %s' % FEEDBACK_TO_DESCRIPTIVE_MSG[feedback]
+
+        speaker_profile = eagle_profiler.export()
+        enrollment_animation.stop()
+        with open(args.speaker_profile_path, 'wb') as f:
+            f.write(speaker_profile.to_bytes())
+        print('\nSpeaker profile is saved to %s' % args.speaker_profile_path)
 
     except KeyboardInterrupt:
-        print('\nStopping...')
+        print('\nStopping enrollment. No speaker profile is saved.')
+        enrollment_animation.stop()
     except EagleActivationLimitError:
-        print('\nAccessKey has reached its processing limit')
+        print('AccessKey has reached its processing limit')
+    except EagleError as e:
+        print('Failed to enroll speaker: %s' % e)
     finally:
-        if eagle is not None:
-            eagle.delete()
-        if recorder is not None:
-            recorder.stop()
-            recorder.delete()
+        recorder.stop()
+        recorder.delete()
+        eagle_profiler.delete()
 
 
 if __name__ == '__main__':
