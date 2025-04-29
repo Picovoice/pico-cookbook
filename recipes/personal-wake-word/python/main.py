@@ -33,6 +33,11 @@ def main() -> None:
         type=float,
         default=0.9,
         help="Eagle's recognition threshold [0.0-1.0]")
+    parser.add_argument(
+        '--eagle_window_sec',
+        type=float,
+        default=2.,
+        help="")
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -41,6 +46,7 @@ def main() -> None:
     porcupine_sensitivity = args.porcupine_sensitivity
     eagle_speaker_profile_path = args.eagle_speaker_profile_path
     eagle_threshold = args.eagle_threshold
+    eagle_window_sec = args.eagle_window_sec
 
     with open(eagle_speaker_profile_path, 'rb') as f:
         speaker_profile = EagleProfile.from_bytes(f.read())
@@ -58,12 +64,24 @@ def main() -> None:
     recorder.start()
     print('Listening ... (press Ctrl+C to stop)')
 
+    eagle_window_sample = int(eagle_window_sec * recorder.sample_rate)
+    pcm_window = list()
+
     try:
         while True:
             pcm = recorder.read()
+
+            pcm_window.extend(pcm)
+            pcm_window = pcm_window[:eagle_window_sample]
+
             wake_word_detected = porcupine.process(pcm) == 0
-            speaker_similarity = eagle.process(pcm)[0]
             if wake_word_detected:
+                speaker_similarity = 0.
+                for i in range(len(pcm_window) // eagle.frame_length):
+                    speaker_similarity = \
+                        eagle.process(pcm_window[i * eagle.frame_length:(i + 1) * eagle.frame_length])[0]
+                eagle.reset()
+
                 if speaker_similarity > eagle_threshold:
                     print(f"✅ ({speaker_similarity:.1f})")
                 else:
