@@ -62,10 +62,12 @@ def main() -> None:
         while True:
             pcm = recorder.read()
             wake_word_detected = porcupine.process(pcm) == 0
-            score = eagle.process(pcm)[0]
+            speaker_similarity = eagle.process(pcm)[0]
             if wake_word_detected:
-                print(score)
-                print(eagle_threshold)
+                if speaker_similarity > eagle_threshold:
+                    print(f"✅ ({speaker_similarity:.1f})")
+                else:
+                    print(f"❌ ({speaker_similarity:.1f})")
     except KeyboardInterrupt:
         print('\nStopping...')
     finally:
