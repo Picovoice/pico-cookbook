@@ -1,4 +1,8 @@
+import os
+import shutil
+import struct
 import time
+import wave
 from argparse import ArgumentParser
 from threading import Thread
 
@@ -90,6 +94,7 @@ def main() -> None:
         help='Absolute path to the Porcupine model file')
     common_parser.add_argument('--audio_device_index', type=int, default=-1, help='Index of input audio device')
     common_parser.add_argument('--porcupine_sensitivity', type=float, default=0.5, help='')
+    common_parser.add_argument('--xray-folder', default=None)
 
     subparsers = parser.add_subparsers(dest='command')
 
@@ -115,6 +120,12 @@ def main() -> None:
     porcupine_model_path = args.porcupine_model_path
     audio_device_index = args.audio_device_index
     porcupine_sensitivity = args.porcupine_sensitivity
+    xray_folder = args.xray_folder
+
+    if xray_folder is not None:
+        if os.path.exists(xray_folder):
+            shutil.rmtree(xray_folder)
+        os.makedirs(xray_folder)
 
     if args.show_audio_devices:
         for index, name in enumerate(PvRecorder.get_available_devices()):
@@ -147,6 +158,7 @@ def main() -> None:
         print('Please keep speaking until the enrollment percentage reaches 100%')
         try:
             enroll_percentage = 0.0
+            enroll_index = 0
             enrollment_animation.start()
             while enroll_percentage < 100.0:
                 enroll_pcm = list()
@@ -158,7 +170,19 @@ def main() -> None:
                     enroll_pcm.extend(frame)
                     is_detected = porcupine.process(frame) == 0
 
+                for _ in range(8):
+                    enroll_pcm.extend(recorder.read())
+
                 recorder.stop()
+
+                if xray_folder is not None:
+                    with wave.open(os.path.join(xray_folder, f"enroll-{enroll_index}.wav"), 'w') as wav_file:
+                        wav_file.setnchannels(1)  # mono
+                        wav_file.setsampwidth(2)  # 2 bytes per sample (16-bit)
+                        wav_file.setframerate(porcupine.sample_rate)
+                        wav_file.writeframes(struct.pack('%dh' % len(enroll_pcm), *enroll_pcm))
+
+                enroll_index += 1
 
                 enroll_percentage, feedback = eagle_profiler.enroll(enroll_pcm)
                 enrollment_animation.percentage = enroll_percentage
