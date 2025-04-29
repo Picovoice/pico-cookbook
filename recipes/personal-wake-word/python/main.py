@@ -1,71 +1,12 @@
-import os
-import shutil
-import time
 from argparse import ArgumentParser
-from threading import Thread
 
 from pveagle import (
     EagleActivationLimitError,
     EagleProfile,
-    EagleProfilerEnrollFeedback,
     create_recognizer,
 )
 from pvporcupine import create as create_porcupine
 from pvrecorder import PvRecorder
-
-FEEDBACK_TO_DESCRIPTIVE_MSG = {
-    EagleProfilerEnrollFeedback.AUDIO_OK: 'Good audio',
-    EagleProfilerEnrollFeedback.AUDIO_TOO_SHORT: 'Insufficient audio length',
-    EagleProfilerEnrollFeedback.UNKNOWN_SPEAKER: 'Different speaker in audio',
-    EagleProfilerEnrollFeedback.NO_VOICE_FOUND: 'No voice found in audio',
-    EagleProfilerEnrollFeedback.QUALITY_ISSUE: 'Low audio quality due to bad microphone or environment'
-}
-
-
-class EnrollmentAnimation(Thread):
-    def __init__(self, sleep_time_sec=0.1):
-        self._sleep_time_sec = sleep_time_sec
-        self._frames = [
-            " .  ",
-            " .. ",
-            " ...",
-            "  ..",
-            "   .",
-            "    "
-        ]
-        self._done = False
-        self._percentage = 0
-        self._feedback = ''
-        super().__init__()
-
-    def run(self):
-        self._done = False
-        while not self._done:
-            for frame in self._frames:
-                if self._done:
-                    break
-                print('\033[2K\033[1G\r[%3d%%]' % self._percentage + self._feedback + frame, end='', flush=True)
-                time.sleep(self._sleep_time_sec)
-
-    def stop(self):
-        print('\033[2K\033[1G\r[%3d%%]' % self._percentage + self._feedback, end='', flush=True)
-        self._done = True
-
-    @property
-    def percentage(self):
-        return self._percentage
-
-    @property
-    def feedback(self):
-        return self._feedback
-
-    @percentage.setter
-    def percentage(self, value):
-        self._percentage = value
-
-    @feedback.setter
-    def feedback(self, value):
-        self._feedback = value
 
 
 def main() -> None:
@@ -86,7 +27,6 @@ def main() -> None:
         help='Absolute path to the Porcupine model file')
     parser.add_argument('--audio_device_index', type=int, default=-1, help='Index of input audio device')
     parser.add_argument('--porcupine_sensitivity', type=float, default=0.5, help='')
-    parser.add_argument('--xray-folder', default=None)
 
     parser.add_argument(
         '--speaker_profile_path',
@@ -100,12 +40,6 @@ def main() -> None:
     porcupine_model_path = args.porcupine_model_path
     audio_device_index = args.audio_device_index
     porcupine_sensitivity = args.porcupine_sensitivity
-    xray_folder = args.xray_folder
-
-    if xray_folder is not None:
-        if os.path.exists(xray_folder):
-            shutil.rmtree(xray_folder)
-        os.makedirs(xray_folder)
 
     if args.show_audio_devices:
         for index, name in enumerate(PvRecorder.get_available_devices()):
@@ -126,7 +60,7 @@ def main() -> None:
     try:
         eagle = create_recognizer(
             access_key=access_key,
-            speaker_profiles=[profile])
+            speaker_profiles=profile)
 
         recorder = PvRecorder(device_index=audio_device_index, frame_length=eagle.frame_length)
         recorder.start()
