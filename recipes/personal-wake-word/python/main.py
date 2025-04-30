@@ -1,9 +1,53 @@
+import time
 from argparse import ArgumentParser
+from threading import Thread
 
 import pveagle
 import pvporcupine
 from pveagle import EagleProfile
 from pvrecorder import PvRecorder
+
+
+class FeedbackAnimation(Thread):
+    def __init__(self):
+        super().__init__()
+
+        self._stop: bool = False
+        self.wake_word_detected: bool = False
+        self.speaker_verified: bool = False
+
+    def run(self):
+        frames = [" .  ", " .. ", " ...", "  ..", "   .", "    "]
+        i = 0
+
+        while not self._stop:
+            if self._stop:
+                break
+
+            if not self.wake_word_detected:
+                print(
+                    f'\033[2K\033[1G\r🎤 Say the wake word {frames[i % len(frames)]}',
+                    end='',
+                    flush=True)
+                i += 1
+                time.sleep(0.1)
+            else:
+                print(
+                    f'\033[2K\033[1G\r {"✅" if self.speaker_verified else "❌"}',
+                    end='',
+                    flush=True)
+                self.wake_word_detected = False
+                self.speaker_verified = False
+                i = 0
+                time.sleep(.5)
+
+        self._stop = False
+
+    def stop(self):
+        self._stop = True
+        while self._stop:
+            pass
+        print('\033[2K\033[1G\r', end='', flush=True)
 
 
 def main() -> None:
@@ -62,10 +106,12 @@ def main() -> None:
 
     recorder = PvRecorder(frame_length=eagle.frame_length)
     recorder.start()
-    print('Listening ... (press Ctrl+C to stop)')
 
     eagle_window_sample = int(eagle_window_sec * recorder.sample_rate)
     pcm_window = list()
+
+    animation = FeedbackAnimation()
+    animation.start()
 
     try:
         while True:
@@ -82,13 +128,12 @@ def main() -> None:
                         eagle.process(pcm_window[i * eagle.frame_length:(i + 1) * eagle.frame_length])[0]
                 eagle.reset()
 
-                if speaker_similarity > eagle_threshold:
-                    print(f"✅ ({speaker_similarity:.2f})")
-                else:
-                    print(f"❌ ({speaker_similarity:.2f})")
+                animation.wake_word_detected = True
+                animation.speaker_verified = speaker_similarity > eagle_threshold
     except KeyboardInterrupt:
-        print('\nStopping...')
+        pass
     finally:
+        animation.stop()
         recorder.stop()
         recorder.delete()
         eagle.delete()
