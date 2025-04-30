@@ -1,8 +1,4 @@
-import os
-import shutil
-import struct
 import time
-import wave
 from argparse import ArgumentParser
 from threading import Thread
 
@@ -76,46 +72,32 @@ class EnrollmentAnimation(Thread):
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
-        '--show_audio_devices',
-        action='store_true',
-        help='List available input audio devices and exit')
-
-    parser.add_argument(
         '--access_key',
         required=True,
         help='AccessKey obtained from Picovoice Console (https://console.picovoice.ai/)')
-    parser.add_argument('--wake_word_path', required=True, help='Absolute path the wake word file')
     parser.add_argument(
         '--porcupine_model_path',
-        default=None,
-        help='Absolute path to the Porcupine model file')
-    parser.add_argument('--audio_device_index', type=int, default=-1, help='Index of input audio device')
-    parser.add_argument('--porcupine_sensitivity', type=float, default=0.5, help='')
-    parser.add_argument('--xray-folder', default=None)
-
+        help="Absolute path to the Porcupine's model file (.pv)")
     parser.add_argument(
-        '--speaker_profile_path',
+        '--porcupine_keyword_path',
         required=True,
-        help='Absolute path to speaker profile file')
-
+        help="Absolute path to the Porcupine's keyword file (.ppn)")
+    parser.add_argument(
+        '--porcupine_sensitivity',
+        type=float,
+        default=0.5,
+        help="Porcupine's detection sensitivity [0.0-1.0]")
+    parser.add_argument(
+        '--eagle_speaker_profile_path',
+        required=True,
+        help="Absolute path to the Eagle's speaker profile file")
     args = parser.parse_args()
 
     access_key = args.access_key
-    wake_word_path = args.wake_word_path
     porcupine_model_path = args.porcupine_model_path
-    audio_device_index = args.audio_device_index
+    porcupine_keyword_path = args.porcupine_keyword_path
     porcupine_sensitivity = args.porcupine_sensitivity
-    xray_folder = args.xray_folder
-
-    if xray_folder is not None:
-        if os.path.exists(xray_folder):
-            shutil.rmtree(xray_folder)
-        os.makedirs(xray_folder)
-
-    if args.show_audio_devices:
-        for index, name in enumerate(PvRecorder.get_available_devices()):
-            print(f'Device #{index}: {name}')
-        return
+    eagle_speaker_profile_path = args.eagle_speaker_profile_path
 
     try:
         eagle_profiler = create_profiler(access_key=access_key)
@@ -129,14 +111,14 @@ def main() -> None:
         porcupine = create_porcupine(
             access_key=access_key,
             model_path=porcupine_model_path,
-            keyword_paths=[wake_word_path],
+            keyword_paths=[porcupine_keyword_path],
             sensitivities=[porcupine_sensitivity])
     except PorcupineError as e:
         print(f"Failed to initialize Porcupine wth {e}")
         return
     print(f"Porcupine version: {porcupine.version}")
 
-    recorder = PvRecorder(frame_length=porcupine.frame_length, device_index=audio_device_index)
+    recorder = PvRecorder(frame_length=porcupine.frame_length)
     print(f"Recording audio from `{recorder.selected_device}`")
     enrollment_animation = EnrollmentAnimation()
     print('Please keep speaking until the enrollment percentage reaches 100%')
@@ -159,13 +141,6 @@ def main() -> None:
 
             recorder.stop()
 
-            if xray_folder is not None:
-                with wave.open(os.path.join(xray_folder, f"enroll-{enroll_index}.wav"), 'w') as wav_file:
-                    wav_file.setnchannels(1)  # mono
-                    wav_file.setsampwidth(2)  # 2 bytes per sample (16-bit)
-                    wav_file.setframerate(porcupine.sample_rate)
-                    wav_file.writeframes(struct.pack('%dh' % len(enroll_pcm), *enroll_pcm))
-
             enroll_index += 1
 
             enroll_percentage, feedback = eagle_profiler.enroll(enroll_pcm)
@@ -174,9 +149,9 @@ def main() -> None:
 
         speaker_profile = eagle_profiler.export()
         enrollment_animation.stop()
-        with open(args.speaker_profile_path, 'wb') as f:
+        with open(eagle_speaker_profile_path, 'wb') as f:
             f.write(speaker_profile.to_bytes())
-        print('\nSpeaker profile is saved to %s' % args.speaker_profile_path)
+        print('\nSpeaker profile is saved to %s' % eagle_speaker_profile_path)
 
     except KeyboardInterrupt:
         print('\nStopping enrollment. No speaker profile is saved.')
