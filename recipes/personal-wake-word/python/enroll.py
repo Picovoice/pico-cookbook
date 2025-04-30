@@ -1,4 +1,8 @@
+import os
+import shutil
+import struct
 import time
+import wave
 from argparse import ArgumentParser
 from threading import Thread
 from typing import Optional
@@ -79,6 +83,9 @@ def main() -> None:
         '--eagle_speaker_profile_path',
         required=True,
         help="Absolute path to the Eagle's speaker profile file")
+    parser.add_argument(
+        '--xray_folder',
+        help='')
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -86,6 +93,12 @@ def main() -> None:
     porcupine_keyword_path = args.porcupine_keyword_path
     porcupine_sensitivity = args.porcupine_sensitivity
     eagle_speaker_profile_path = args.eagle_speaker_profile_path
+    xray_folder = args.xray_folder
+
+    if xray_folder is not None:
+        if os.path.exists(xray_folder):
+            shutil.rmtree(xray_folder)
+        os.makedirs(xray_folder)
 
     eagle = pveagle.create_profiler(access_key=access_key)
     porcupine = pvporcupine.create(
@@ -110,9 +123,18 @@ def main() -> None:
                 frame = recorder.read()
                 enroll_pcm.extend(frame)
                 wake_word_detected = porcupine.process(frame) == 0
-            for _ in range(8):
-                enroll_pcm.extend(recorder.read())
+            # for _ in range(8):
+            #     enroll_pcm.extend(recorder.read())
             recorder.stop()
+
+            if xray_folder is not None:
+                index = len(os.listdir(xray_folder))
+
+                with wave.open(os.path.join(xray_folder, f'{index}-{enroll_percentage}.wav'), 'w') as f:
+                    f.setnchannels(1)
+                    f.setsampwidth(2)
+                    f.setframerate(recorder.sample_rate)
+                    f.writeframes(struct.pack('%dh' % len(enroll_pcm), *enroll_pcm))
 
             enroll_percentage, feedback = eagle.enroll(enroll_pcm)
             enrollment_animation.progress = int(enroll_percentage)

@@ -1,4 +1,8 @@
+import os
+import shutil
+import struct
 import time
+import wave
 from argparse import ArgumentParser
 from threading import Thread
 
@@ -82,8 +86,11 @@ def main() -> None:
     parser.add_argument(
         '--eagle_window_sec',
         type=float,
-        default=1.,
-        help="")
+        default=2.,
+        help="The length of audio window Eagle looks back after wake word detection.")
+    parser.add_argument(
+        '--xray_folder',
+        help='')
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -93,6 +100,12 @@ def main() -> None:
     eagle_speaker_profile_path = args.eagle_speaker_profile_path
     eagle_threshold = args.eagle_threshold
     eagle_window_sec = args.eagle_window_sec
+    xray_folder = args.xray_folder
+
+    if xray_folder is not None:
+        if os.path.exists(xray_folder):
+            shutil.rmtree(xray_folder)
+        os.makedirs(xray_folder)
 
     with open(eagle_speaker_profile_path, 'rb') as f:
         speaker_profile = EagleProfile.from_bytes(f.read())
@@ -129,6 +142,14 @@ def main() -> None:
                     speaker_similarity = \
                         eagle.process(pcm_window[i * eagle.frame_length:(i + 1) * eagle.frame_length])[0]
                 eagle.reset()
+                if xray_folder is not None:
+                    index = len(os.listdir(xray_folder))
+
+                    with wave.open(os.path.join(xray_folder, f'{index}-{speaker_similarity:.2f}.wav'), 'w') as f:
+                        f.setnchannels(1)
+                        f.setsampwidth(2)
+                        f.setframerate(recorder.sample_rate)
+                        f.writeframes(struct.pack('%dh' % len(pcm_window), *pcm_window))
 
                 animation.wake_word_detected = True
                 animation.speaker_verified = speaker_similarity > eagle_threshold
