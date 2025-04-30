@@ -1,20 +1,19 @@
 import time
 from argparse import ArgumentParser
 from threading import Thread
+from typing import Optional
 
 import pveagle
 import pvporcupine
 from pveagle import EagleProfilerEnrollFeedback
 from pvrecorder import PvRecorder
 
-PROMPT = 'Say the wake word'
-
 FEEDBACK = {
     EagleProfilerEnrollFeedback.AUDIO_OK: '✅',
-    EagleProfilerEnrollFeedback.AUDIO_TOO_SHORT: 'Insufficient audio length',
-    EagleProfilerEnrollFeedback.UNKNOWN_SPEAKER: 'Different speaker in audio',
-    EagleProfilerEnrollFeedback.NO_VOICE_FOUND: 'No voice found in audio',
-    EagleProfilerEnrollFeedback.QUALITY_ISSUE: 'Low audio quality'
+    EagleProfilerEnrollFeedback.AUDIO_TOO_SHORT: '⚠️ Insufficient audio length',
+    EagleProfilerEnrollFeedback.UNKNOWN_SPEAKER: '⚠️ Different speaker in audio',
+    EagleProfilerEnrollFeedback.NO_VOICE_FOUND: '⚠️ No voice found in audio',
+    EagleProfilerEnrollFeedback.QUALITY_ISSUE: '⚠️ Low audio quality'
 }
 
 
@@ -22,9 +21,9 @@ class FeedbackAnimation(Thread):
     def __init__(self):
         super().__init__()
 
-        self._stop = False
-        self.progress = 0
-        self.feedback = ''
+        self._stop: bool = False
+        self.progress: int = 0
+        self.feedback: Optional[str] = None
 
     def run(self):
         frames = [" .  ", " .. ", " ...", "  ..", "   .", "    "]
@@ -34,21 +33,29 @@ class FeedbackAnimation(Thread):
             if self._stop:
                 break
 
-            message = self.feedback if len(self.feedback) > 0 else PROMPT
-            message = message + ' ' * (max(max(len(x) for x in FEEDBACK.values()), len(PROMPT)) - len(message))
-            print(
-                f'\033[2K\033[1G\r[{self.progress:3d}] {message} {frames[i % len(frames)]}',
-                end='',
-                flush=True)
-            self.feedback = ''
-            i += 1
-            time.sleep(0.5)
+            if self.feedback is None:
+                print(
+                    f'\033[2K\033[1G\r[{self.progress:3d}%] 🎤 Say the wake word {frames[i % len(frames)]}',
+                    end='',
+                    flush=True)
+                i += 1
+                time.sleep(0.1)
+            else:
+                print(
+                    f'\033[2K\033[1G\r[{self.progress:3d}%] {self.feedback}',
+                    end='',
+                    flush=True)
+                self.feedback = None
+                i = 0
+                time.sleep(.5 if self.feedback == FEEDBACK[EagleProfilerEnrollFeedback.AUDIO_OK] else 1.)
 
         self._stop = False
 
     def stop(self):
-        print('\033[2K\033[1G\r', end='', flush=True)
         self._stop = True
+        while self._stop:
+            pass
+        print('\033[2K\033[1G\r', end='', flush=True)
 
 
 def main() -> None:
@@ -111,10 +118,6 @@ def main() -> None:
             enroll_percentage, feedback = eagle.enroll(enroll_pcm)
             enrollment_animation.progress = int(enroll_percentage)
             enrollment_animation.feedback = FEEDBACK[feedback]
-
-            with open(eagle_speaker_profile_path, 'wb') as f:
-                f.write(eagle.export().to_bytes())
-            print('Speaker profile is saved to %s' % eagle_speaker_profile_path)
     except KeyboardInterrupt:
         pass
     finally:
@@ -122,6 +125,10 @@ def main() -> None:
         recorder.stop()
         recorder.delete()
         porcupine.delete()
+        if enroll_percentage == 100.:
+            with open(eagle_speaker_profile_path, 'wb') as f:
+                f.write(eagle.export().to_bytes())
+            print('Speaker profile is saved to %s' % eagle_speaker_profile_path)
         eagle.delete()
 
 
