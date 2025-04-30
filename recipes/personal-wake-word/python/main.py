@@ -15,6 +15,7 @@ class FeedbackAnimation(Thread):
         self._stop: bool = False
         self.wake_word_detected: bool = False
         self.speaker_verified: bool = False
+        self.speaker_similarity: float = 0.
 
     def run(self):
         frames = [" .  ", " .. ", " ...", "  ..", "   .", "    "]
@@ -33,11 +34,12 @@ class FeedbackAnimation(Thread):
                 time.sleep(0.1)
             else:
                 print(
-                    f'\033[2K\033[1G\r {"✅" if self.speaker_verified else "❌"}',
+                    f'\033[2K\033[1G\r {"✅" if self.speaker_verified else "❌"} ({self.speaker_similarity:.2f})',
                     end='',
                     flush=True)
                 self.wake_word_detected = False
                 self.speaker_verified = False
+                self.speaker_similarity = 0.
                 i = 0
                 time.sleep(.5)
 
@@ -80,7 +82,7 @@ def main() -> None:
     parser.add_argument(
         '--eagle_window_sec',
         type=float,
-        default=2.,
+        default=1.,
         help="")
     args = parser.parse_args()
 
@@ -130,6 +132,7 @@ def main() -> None:
 
                 animation.wake_word_detected = True
                 animation.speaker_verified = speaker_similarity > eagle_threshold
+                animation.speaker_similarity = speaker_similarity
     except KeyboardInterrupt:
         pass
     finally:
