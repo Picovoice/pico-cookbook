@@ -8,14 +8,6 @@ import pvporcupine
 from pveagle import EagleProfilerEnrollFeedback
 from pvrecorder import PvRecorder
 
-FEEDBACK = {
-    EagleProfilerEnrollFeedback.AUDIO_OK: '✅',
-    EagleProfilerEnrollFeedback.AUDIO_TOO_SHORT: '⚠️ Insufficient audio length',
-    EagleProfilerEnrollFeedback.UNKNOWN_SPEAKER: '⚠️ Different speaker in audio',
-    EagleProfilerEnrollFeedback.NO_VOICE_FOUND: '⚠️ No voice found in audio',
-    EagleProfilerEnrollFeedback.QUALITY_ISSUE: '⚠️ Low audio quality'
-}
-
 
 class FeedbackAnimation(Thread):
     def __init__(self):
@@ -23,7 +15,7 @@ class FeedbackAnimation(Thread):
 
         self._stop: bool = False
         self.progress: int = 0
-        self.feedback: Optional[str] = None
+        self.feedback: Optional[EagleProfilerEnrollFeedback] = None
 
     def run(self):
         frames = [" .  ", " .. ", " ...", "  ..", "   .", "    "]
@@ -41,13 +33,20 @@ class FeedbackAnimation(Thread):
                 i += 1
                 time.sleep(0.1)
             else:
+                feedback = {
+                    EagleProfilerEnrollFeedback.AUDIO_OK: '✅',
+                    EagleProfilerEnrollFeedback.AUDIO_TOO_SHORT: '⚠️ Insufficient audio length',
+                    EagleProfilerEnrollFeedback.UNKNOWN_SPEAKER: '⚠️ Different speaker in audio',
+                    EagleProfilerEnrollFeedback.NO_VOICE_FOUND: '⚠️ No voice found in audio',
+                    EagleProfilerEnrollFeedback.QUALITY_ISSUE: '⚠️ Low audio quality'
+                }[self.feedback]
                 print(
-                    f'\033[2K\033[1G\r[{self.progress:3d}%] {self.feedback}',
+                    f'\033[2K\033[1G\r[{self.progress:3d}%] {feedback}',
                     end='',
                     flush=True)
                 self.feedback = None
                 i = 0
-                time.sleep(.5 if self.feedback == FEEDBACK[EagleProfilerEnrollFeedback.AUDIO_OK] else 1.)
+                time.sleep(.5 if self.feedback == EagleProfilerEnrollFeedback.AUDIO_OK else 1.)
 
         self._stop = False
 
@@ -117,7 +116,7 @@ def main() -> None:
 
             enroll_percentage, feedback = eagle.enroll(enroll_pcm)
             enrollment_animation.progress = int(enroll_percentage)
-            enrollment_animation.feedback = FEEDBACK[feedback]
+            enrollment_animation.feedback = feedback
     except KeyboardInterrupt:
         pass
     finally:
