@@ -104,33 +104,27 @@ def main() -> None:
     enrollment_animation = EnrollmentAnimation()
 
     enroll_percentage = 0.0
-    enroll_index = 0
     enrollment_animation.start()
     while enroll_percentage < 100.0:
         enroll_pcm = list()
         recorder.start()
-
-        is_detected = False
-        while not is_detected:
+        wake_word_detected = False
+        while not wake_word_detected:
             frame = recorder.read()
             enroll_pcm.extend(frame)
-            is_detected = porcupine.process(frame) == 0
-
+            wake_word_detected = porcupine.process(frame) == 0
         for _ in range(8):
             enroll_pcm.extend(recorder.read())
-
         recorder.stop()
-
-        enroll_index += 1
 
         enroll_percentage, feedback = eagle.enroll(enroll_pcm)
         enrollment_animation.percentage = enroll_percentage
         enrollment_animation.feedback = ' - %s' % FEEDBACK_TO_DESCRIPTIVE_MSG[feedback]
 
-    speaker_profile = eagle.export()
     enrollment_animation.stop()
+
     with open(eagle_speaker_profile_path, 'wb') as f:
-        f.write(speaker_profile.to_bytes())
+        f.write(eagle.export().to_bytes())
     print('\nSpeaker profile is saved to %s' % eagle_speaker_profile_path)
 
     recorder.stop()
