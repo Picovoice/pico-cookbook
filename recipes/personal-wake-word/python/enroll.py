@@ -94,32 +94,35 @@ def main() -> None:
 
     enroll_percentage = 0.0
     enrollment_animation.start()
-    while enroll_percentage < 100.0:
-        enroll_pcm = list()
-        recorder.start()
-        wake_word_detected = False
-        while not wake_word_detected:
-            frame = recorder.read()
-            enroll_pcm.extend(frame)
-            wake_word_detected = porcupine.process(frame) == 0
-        for _ in range(8):
-            enroll_pcm.extend(recorder.read())
+
+    try:
+        while enroll_percentage < 100.0:
+            enroll_pcm = list()
+            recorder.start()
+            wake_word_detected = False
+            while not wake_word_detected:
+                frame = recorder.read()
+                enroll_pcm.extend(frame)
+                wake_word_detected = porcupine.process(frame) == 0
+            for _ in range(8):
+                enroll_pcm.extend(recorder.read())
+            recorder.stop()
+
+            enroll_percentage, feedback = eagle.enroll(enroll_pcm)
+            enrollment_animation.progress = int(enroll_percentage)
+            enrollment_animation.feedback = FEEDBACK[feedback]
+
+            with open(eagle_speaker_profile_path, 'wb') as f:
+                f.write(eagle.export().to_bytes())
+            print('Speaker profile is saved to %s' % eagle_speaker_profile_path)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        enrollment_animation.stop()
         recorder.stop()
-
-        enroll_percentage, feedback = eagle.enroll(enroll_pcm)
-        enrollment_animation.progress = int(enroll_percentage)
-        enrollment_animation.feedback = FEEDBACK[feedback]
-
-    enrollment_animation.stop()
-
-    with open(eagle_speaker_profile_path, 'wb') as f:
-        f.write(eagle.export().to_bytes())
-    print('Speaker profile is saved to %s' % eagle_speaker_profile_path)
-
-    recorder.stop()
-    recorder.delete()
-    porcupine.delete()
-    eagle.delete()
+        recorder.delete()
+        porcupine.delete()
+        eagle.delete()
 
 
 if __name__ == '__main__':
