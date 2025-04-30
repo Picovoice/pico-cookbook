@@ -7,12 +7,14 @@ import pvporcupine
 from pveagle import EagleProfilerEnrollFeedback
 from pvrecorder import PvRecorder
 
-FEEDBACK_TO_DESCRIPTIVE_MSG = {
+PROMPT = 'Say the wake word'
+
+FEEDBACK = {
     EagleProfilerEnrollFeedback.AUDIO_OK: '✅',
     EagleProfilerEnrollFeedback.AUDIO_TOO_SHORT: 'Insufficient audio length',
     EagleProfilerEnrollFeedback.UNKNOWN_SPEAKER: 'Different speaker in audio',
     EagleProfilerEnrollFeedback.NO_VOICE_FOUND: 'No voice found in audio',
-    EagleProfilerEnrollFeedback.QUALITY_ISSUE: 'Low audio quality due to bad microphone or environment'
+    EagleProfilerEnrollFeedback.QUALITY_ISSUE: 'Low audio quality'
 }
 
 
@@ -21,7 +23,7 @@ class FeedbackAnimation(Thread):
         super().__init__()
 
         self._stop = False
-        self.percentage = 0
+        self.progress = 0
         self.feedback = ''
 
     def run(self):
@@ -32,12 +34,15 @@ class FeedbackAnimation(Thread):
             if self._stop:
                 break
 
+            message = self.feedback if len(self.feedback) > 0 else PROMPT
+            message = message + ' ' * (max(max(len(x) for x in FEEDBACK.values()), len(PROMPT)) - len(message))
             print(
-                f'\033[2K\033[1G\r[{self.percentage:3d}] {frames[i % len(frames)]} [{self.feedback}]',
+                f'\033[2K\033[1G\r[{self.progress:3d}] {message} {frames[i % len(frames)]}',
                 end='',
                 flush=True)
+            self.feedback = ''
             i += 1
-            time.sleep(0.1)
+            time.sleep(0.5)
 
         self._stop = False
 
@@ -102,8 +107,8 @@ def main() -> None:
         recorder.stop()
 
         enroll_percentage, feedback = eagle.enroll(enroll_pcm)
-        enrollment_animation.percentage = int(enroll_percentage)
-        enrollment_animation.feedback = FEEDBACK_TO_DESCRIPTIVE_MSG[feedback]
+        enrollment_animation.progress = int(enroll_percentage)
+        enrollment_animation.feedback = FEEDBACK[feedback]
 
     enrollment_animation.stop()
 
