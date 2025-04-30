@@ -31,7 +31,7 @@ def main() -> None:
     parser.add_argument(
         '--eagle_threshold',
         type=float,
-        default=0.9,
+        default=0.75,
         help="Eagle's recognition threshold [0.0-1.0]")
     parser.add_argument(
         '--eagle_window_sec',
@@ -72,7 +72,7 @@ def main() -> None:
             pcm = recorder.read()
 
             pcm_window.extend(pcm)
-            pcm_window = pcm_window[:eagle_window_sample]
+            pcm_window = pcm_window[-eagle_window_sample:]
 
             wake_word_detected = porcupine.process(pcm) == 0
             if wake_word_detected:
@@ -83,9 +83,9 @@ def main() -> None:
                 eagle.reset()
 
                 if speaker_similarity > eagle_threshold:
-                    print(f"✅ ({speaker_similarity:.1f})")
+                    print(f"✅ ({speaker_similarity:.2f})")
                 else:
-                    print(f"❌ ({speaker_similarity:.1f})")
+                    print(f"❌ ({speaker_similarity:.2f})")
     except KeyboardInterrupt:
         print('\nStopping...')
     finally:
