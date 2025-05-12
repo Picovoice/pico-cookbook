@@ -556,9 +556,9 @@ class Display:
 
         self.prompt_text = [
             'Loading...',
-            'Say `Jarvis`',
+            'Say `{}`'.format(config['display_keyword']),
             'Ask a Question',
-            'Say `Jarvis` to Interrupt'
+            'Say `{}` to Interrupt'.format(config['display_keyword'])
         ]
 
         self.title_text = [
@@ -753,7 +753,10 @@ class Display:
 
     @staticmethod
     def run_command(command) -> Optional[float]:
-        val = subprocess.run(['powershell', '-Command', command], capture_output=True).stdout.decode("ascii")
+        val = subprocess.run(
+            ['powershell', '-Command', command],
+            capture_output=True,
+            check=False).stdout.decode("ascii")
         try:
             return float(val.strip().replace(',', '.'))
         except FloatingPointError:
@@ -847,6 +850,7 @@ DEFAULT_ARGS = {
     'orca_warmup_sec': 0,
     'orca_speech_rate': 1.0,
     'porcupine_sensitivity': 0.5,
+    'display_keyword': 'Jarvis',
     'short_answers': False
 }
 
@@ -923,6 +927,9 @@ def main() -> None:
         '--porcupine_sensitivity',
         type=float,
         help="Sensitivity for detecting keywords.")
+    parser.add_argument(
+        '--display_keyword',
+        help="Display name for the keyword. If not set, `Jarvis` will be used.")
     parser.add_argument('--short_answers', action='store_true')
     args = parser.parse_args()
 
@@ -931,13 +938,12 @@ def main() -> None:
     else:
         config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.json')
 
+    config = {}
     if os.path.exists(config_path):
-        with open(config_path, 'r') as fd:
+        with open(config_path, 'r', encoding='utf-8') as fd:
             config = json.load(fd)
     elif args.config is not None:
         parser.error(f'File {config_path} does not exist')
-    else:
-        config = {}
 
     for key in chain(REQUIRED_ARGS, DEFAULT_ARGS):
         arg = getattr(args, key)
@@ -948,9 +954,9 @@ def main() -> None:
     if len(missing) > 0:
         parser.error('the following arguments are required: ' + ', '.join(missing))
 
-    for key in DEFAULT_ARGS:
+    for key, value in DEFAULT_ARGS.items():
         if key not in config:
-            config[key] = DEFAULT_ARGS[key]
+            config[key] = value
 
     stop = [False]
     queue = Queue()
