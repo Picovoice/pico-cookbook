@@ -1,3 +1,4 @@
+import cpuinfo
 import json
 import math
 import os
@@ -516,8 +517,12 @@ class HorizontalBar:
     def __init__(self, window: Window, title: str, color: Optional[Sequence[int]] = None):
         self.window = window
         self.title = title
+        self.display_title = None
         self.color = color if color is not None else [0]
         self.prev = None
+
+    def set_title(self, title: str):
+        self.display_title = title
 
     def update(self, value, text=''):
         current = (round(value * (self.window.width - 4)), text)
@@ -525,9 +530,13 @@ class HorizontalBar:
         display1 = '▌' * current[0]
 
         if self.prev != current:
+            title = self.title
+            if self.display_title is not None and len(self.display_title) + len(text) + 4 < self.window.width:
+                title = self.display_title
+
             self.prev = current
             self.window.box()
-            self.window.write(1, 2, self.title.ljust(12) + text.rjust(self.window.width - 16))
+            self.window.write(1, 2, title + text.rjust(self.window.width - len(title) - 4))
             self.window.write(2, 2, Window.color(self.color), display0)
             for i in range(3, self.window.height - 1):
                 self.window.write(i, 2, Window.color(self.color), display1)
@@ -699,6 +708,8 @@ class Display:
                 if name in self.widgets:
                     text = message['text']
                     bar = max(0, min(1, message['bar']))
+                    if 'title' in message:
+                        self.widgets[name].set_title(message['title'])
                     self.widgets[name].update(bar, text)
             elif message['command'] == Commands.MODEL_NAME:
                 if 'pcm_out' in self.widgets:
@@ -769,12 +780,15 @@ class Display:
 
         signal.signal(signal.SIGINT, handler)
 
+        title = cpuinfo.get_cpu_info()['brand_raw']
+
         try:
             while not should_close.is_set():
                 cpu_usage = sum([psutil.Process(pid).cpu_percent(0.25) for pid in pids]) / psutil.cpu_count()
                 queue.put({
                     'command': Commands.USAGE,
                     'name': 'CPU',
+                    'title': title,
                     'text': f"{math.ceil(cpu_usage)}%",
                     'bar': (cpu_usage / 100)
                 })
