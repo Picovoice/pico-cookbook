@@ -314,7 +314,7 @@ class Generator:
             '<|endoftext|>',  # Phi-2
             '<|eot_id|>',  # Llama-3
             '<|end|>', '<|user|>', '<|assistant|>',  # Phi-3
-            '\n\n\n', # Phi-3.5
+            '\n\n\n',  # Phi-3.5
         }
         completion = CompletionText(stop_phrases)
 
