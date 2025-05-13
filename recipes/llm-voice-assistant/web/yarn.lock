@@ -913,10 +913,10 @@
   dependencies:
     "@picovoice/web-utils" "=1.4.3"
 
-"@picovoice/picollm-web@~1.3.0":
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/@picovoice/picollm-web/-/picollm-web-1.3.0.tgz#94e576211245415886df041b248c4b63f2ac0437"
-  integrity sha512-mzjG48VTbBnhvZckE7KZI3BpU+JAV+4bwRFDeFp5JbdmKSW54zGbyE14UQ0jZFWnxBaTG6dRw3L/0ZXDc2iOhg==
+"@picovoice/picollm-web@~1.3.1":
+  version "1.3.1"
+  resolved "https://registry.yarnpkg.com/@picovoice/picollm-web/-/picollm-web-1.3.1.tgz#4d3169338fe63a0452fbf3d96005fc04b3373649"
+  integrity sha512-DBjQcko4nTeUGXuLjwv39TaGSE9R6IWOrrF64Z0NWEeMODxgrEQcC4vfV9ibjUDjDz7Q3cz25PueJKPbr1N3Gg==
   dependencies:
     "@picovoice/web-utils" "~1.4.3"
 
