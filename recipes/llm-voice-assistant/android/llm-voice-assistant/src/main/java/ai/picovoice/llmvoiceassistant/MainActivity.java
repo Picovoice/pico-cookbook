@@ -87,6 +87,8 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TTS_MODEL_FILE = "orca_params_female.pv";
 
+    private static final String SYSTEM_PROMPT = null;
+
     private static final int COMPLETION_TOKEN_LIMIT = 128;
 
     private static final int TTS_WARMUP_SECONDS = 1;
@@ -194,7 +196,7 @@ public class MainActivity extends AppCompatActivity {
             });
 
             try {
-                dialog = picollm.getDialogBuilder().build();
+                dialog = picollm.getDialogBuilder().setSystem(SYSTEM_PROMPT).build();
             } catch (PicoLLMException e) {
                 updateUIState(UIState.WAKE_WORD);
                 mainHandler.post(() -> chatText.setText(e.toString()));
@@ -259,7 +261,7 @@ public class MainActivity extends AppCompatActivity {
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(modelFile.getAbsolutePath())
                     .build();
-            dialog = picollm.getDialogBuilder().build();
+            dialog = picollm.getDialogBuilder().setSystem(SYSTEM_PROMPT).build();
         } catch (PicoLLMException e) {
             onEngineInitError(e.getMessage());
             return;
@@ -671,12 +673,20 @@ public class MainActivity extends AppCompatActivity {
                     statusProgress.setVisibility(View.GONE);
                     statusText.setVisibility(View.VISIBLE);
                     statusText.setText("Say 'Picovoice'!");
-                    clearTextButton.setEnabled(false);
-                    clearTextButton.setImageDrawable(
-                            ResourcesCompat.getDrawable(
-                                    getResources(),
-                                    R.drawable.clear_button_disabled,
-                                    null));
+                    if (chatText.getText().length() > 0) {
+                        clearTextButton.setEnabled(true);
+                        clearTextButton.setImageDrawable(
+                                ResourcesCompat.getDrawable(getResources(),
+                                        R.drawable.clear_button,
+                                        null));
+                    } else {
+                        clearTextButton.setEnabled(false);
+                        clearTextButton.setImageDrawable(
+                                ResourcesCompat.getDrawable(
+                                        getResources(),
+                                        R.drawable.clear_button_disabled,
+                                        null));
+                    }
                     break;
                 case STT:
                     loadModelLayout.setVisibility(View.INVISIBLE);
@@ -701,11 +711,10 @@ public class MainActivity extends AppCompatActivity {
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                     chatText.setText(chatTextBuilder);
 
-                    clearTextButton.setEnabled(false);
+                    clearTextButton.setEnabled(true);
                     clearTextButton.setImageDrawable(
-                            ResourcesCompat.getDrawable(
-                                    getResources(),
-                                    R.drawable.clear_button_disabled,
+                            ResourcesCompat.getDrawable(getResources(),
+                                    R.drawable.clear_button,
                                     null));
                     break;
                 case LLM_TTS:
