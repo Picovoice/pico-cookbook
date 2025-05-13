@@ -1,7 +1,7 @@
+import cpuinfo
 import json
 import math
 import os
-import psutil
 import signal
 import subprocess
 import sys
@@ -9,12 +9,13 @@ import time
 from argparse import ArgumentParser
 from itertools import chain
 from multiprocessing import Event, Pipe, Process, Queue, active_children
+# noinspection PyProtectedMember
 from multiprocessing.connection import Connection
 from threading import Thread
-from typing import Optional, Sequence
-
+from typing import Optional, Sequence, Set
 
 import picollm
+import psutil
 import pvcheetah
 import pvorca
 import pvporcupine
@@ -39,7 +40,7 @@ class Commands:
 
 
 class CompletionText(object):
-    def __init__(self, stop_phrases: list) -> None:
+    def __init__(self, stop_phrases: Set[str]) -> None:
         self.stop_phrases = stop_phrases
         self.start: int = 0
         self.text: str = ''
@@ -115,6 +116,7 @@ class Speaker:
             self.speaker.flush()
             self.speaker.stop()
             self.queue.put({'command': Commands.TEXT_STATE, 'state': 1})
+
         if not self.speaking and len(self.pcmBuffer) > self.orca_warmup:
             self.speaking = True
             self.speaker.start()
@@ -189,6 +191,7 @@ class Synthesizer:
     def worker(connection: Connection, config):
         def handler(_, __) -> None:
             pass
+
         signal.signal(signal.SIGINT, handler)
 
         orca = pvorca.create(access_key=config['access_key'])
@@ -291,6 +294,7 @@ class Generator:
     def worker(connection: Connection, config):
         def handler(_, __) -> None:
             pass
+
         signal.signal(signal.SIGINT, handler)
 
         pllm = picollm.create(
@@ -310,6 +314,7 @@ class Generator:
             '<|endoftext|>',  # Phi-2
             '<|eot_id|>',  # Llama-3
             '<|end|>', '<|user|>', '<|assistant|>',  # Phi-3
+            '\n\n\n',  # Phi-3.5
         }
         completion = CompletionText(stop_phrases)
 
@@ -333,6 +338,7 @@ class Generator:
                     pllm.interrupt()
                 elif message['command'] == Commands.PROCESS:
                     prompt[0] = message['text']
+
         Thread(target=event_manager).start()
 
         try:
@@ -486,10 +492,10 @@ class Window:
 
 
 class VerticalBar:
-    def __init__(self, window: Window, title: str, color: list = [0]):
+    def __init__(self, window: Window, title: str, color: Optional[Sequence[int]] = None):
         self.window = window
         self.title = title
-        self.color = color
+        self.color = color if color is not None else [0]
         self.prev = None
 
     def set_title(self, title: str):
@@ -509,11 +515,15 @@ class VerticalBar:
 
 
 class HorizontalBar:
-    def __init__(self, window: Window, title: str, color: list = [0]):
+    def __init__(self, window: Window, title: str, color: Optional[Sequence[int]] = None):
         self.window = window
         self.title = title
-        self.color = color
+        self.display_title = None
+        self.color = color if color is not None else [0]
         self.prev = None
+
+    def set_title(self, title: str):
+        self.display_title = title
 
     def update(self, value, text=''):
         current = (round(value * (self.window.width - 4)), text)
@@ -521,9 +531,13 @@ class HorizontalBar:
         display1 = '▌' * current[0]
 
         if self.prev != current:
+            title = self.title
+            if self.display_title is not None and len(self.display_title) + len(text) + 4 < self.window.width:
+                title = self.display_title
+
             self.prev = current
             self.window.box()
-            self.window.write(1, 2, self.title.ljust(12) + text.rjust(self.window.width - 16))
+            self.window.write(1, 2, title + text.rjust(self.window.width - len(title) - 4))
             self.window.write(2, 2, Window.color(self.color), display0)
             for i in range(3, self.window.height - 1):
                 self.window.write(i, 2, Window.color(self.color), display1)
@@ -552,9 +566,9 @@ class Display:
 
         self.prompt_text = [
             'Loading...',
-            'Say `Jarvis`',
+            'Say `{}`'.format(config['display_keyword']),
             'Ask a Question',
-            'Say `Jarvis` to Interrupt'
+            'Say `{}` to Interrupt'.format(config['display_keyword'])
         ]
 
         self.title_text = [
@@ -564,6 +578,15 @@ class Display:
             '░▀░░░▀▀▀░▀▀▀░▀▀▀░░▀░░▀▀▀░▀▀▀░▀▀▀░▀▀▀░',
             ''
         ]
+
+        self.display_width = None
+        self.display_height = None
+        self.title = None
+        self.prompt = None
+        self.widgets = {}
+
+        self.should_close = None
+        self.processes = None
 
     def set_display_size(self, height, width):
         self.display_width = width
@@ -686,6 +709,8 @@ class Display:
                 if name in self.widgets:
                     text = message['text']
                     bar = max(0, min(1, message['bar']))
+                    if 'title' in message:
+                        self.widgets[name].set_title(message['title'])
                     self.widgets[name].update(bar, text)
             elif message['command'] == Commands.MODEL_NAME:
                 if 'pcm_out' in self.widgets:
@@ -704,9 +729,9 @@ class Display:
         def compute_amplitude(samples, sample_max=32768, scale=1.0):
             rms = math.sqrt(sum([(x / sample_max) ** 2 for x in samples]) / len(samples))
             dbfs = 20 * math.log10(max(rms, 1e-9))
-            dbfs = min(0, dbfs)
-            dbfs = max(0, dbfs + 40)
-            return min(1, (dbfs / 40) * scale)
+            dbfs = min(0., dbfs)
+            dbfs = max(0., dbfs + 40)
+            return min(1., (dbfs / 40) * scale)
 
         if len(self.samples_in) > 0:
             volume_in = compute_amplitude(self.samples_in)
@@ -739,18 +764,24 @@ class Display:
         Window.present()
 
     @staticmethod
-    def run_command(command):
-        val = subprocess.run(['powershell', '-Command', command], capture_output=True).stdout.decode("ascii")
+    def run_command(command) -> Optional[float]:
+        val = subprocess.run(
+            ['powershell', '-Command', command],
+            capture_output=True,
+            check=False).stdout.decode("ascii")
         try:
             return float(val.strip().replace(',', '.'))
-        except Exception:
+        except FloatingPointError:
             return None
 
     @staticmethod
     def worker_cpu(queue: Queue, should_close, pids: list):
         def handler(_, __) -> None:
             pass
+
         signal.signal(signal.SIGINT, handler)
+
+        title = cpuinfo.get_cpu_info()['brand_raw']
 
         try:
             while not should_close.is_set():
@@ -758,6 +789,7 @@ class Display:
                 queue.put({
                     'command': Commands.USAGE,
                     'name': 'CPU',
+                    'title': title,
                     'text': f"{math.ceil(cpu_usage)}%",
                     'bar': (cpu_usage / 100)
                 })
@@ -768,6 +800,7 @@ class Display:
     def worker_gpu(queue: Queue, should_close, pids: list):
         def handler(_, __) -> None:
             pass
+
         signal.signal(signal.SIGINT, handler)
 
         if not sys.platform.lower().startswith('win'):
@@ -781,7 +814,7 @@ class Display:
             while not should_close.is_set():
                 gpu_usage = Display.run_command(gpu_usage_cmd)
                 if gpu_usage is not None:
-                    gpu_usage = max(0, min(100, gpu_usage))
+                    gpu_usage = max(0., min(100., gpu_usage))
                     queue.put({
                         'command': Commands.USAGE,
                         'name': 'GPU',
@@ -795,6 +828,7 @@ class Display:
     def worker_ram(queue: Queue, should_close, pids: list):
         def handler(_, __) -> None:
             pass
+
         signal.signal(signal.SIGINT, handler)
 
         try:
@@ -813,90 +847,30 @@ class Display:
             sys.stderr.write(str(e))
 
 
-def main(config):
-    stop = [False]
-    queue = Queue()
-    display = Display(queue, config)
-
-    terminal_width, terminal_height = os.get_terminal_size()
-    terminal_width = min(terminal_width, 120)
-    terminal_height = min(terminal_height, 30)
-    display.set_display_size(terminal_height, terminal_width)
-
-    def handler(_, __) -> None:
-        stop[0] = True
-    signal.signal(signal.SIGINT, handler)
-
-    if not sys.platform.lower().startswith('win'):
-        def resize_handler(_, __):
-            terminal_width, terminal_height = os.get_terminal_size()
-            terminal_width = min(terminal_width, 120)
-            terminal_height = min(terminal_height, 30)
-            display.set_display_size(terminal_height, terminal_width)
-        signal.signal(signal.SIGWINCH, resize_handler)
-
-    pllm_connection, pllm_process = Generator.create_worker(config)
-    orca_connection, orca_process = Synthesizer.create_worker(config)
-
-    display.start([os.getpid(), pllm_process.pid, orca_process.pid])
-    display.tick()
-
-    if 'keyword_model_path' not in config:
-        porcupine = pvporcupine.create(
-            access_key=config['access_key'],
-            keywords=['jarvis'],
-            sensitivities=[config['porcupine_sensitivity']])
-    else:
-        porcupine = pvporcupine.create(
-            access_key=config['access_key'],
-            keyword_paths=[config['keyword_model_path']],
-            sensitivities=[config['porcupine_sensitivity']])
-
-    cheetah = pvcheetah.create(
-        access_key=config['access_key'],
-        endpoint_duration_sec=config['cheetah_endpoint_duration_sec'],
-        enable_automatic_punctuation=True)
-
-    pv_recorder = PvRecorder(frame_length=porcupine.frame_length)
-    pv_speaker = PvSpeaker(sample_rate=int(orca_connection.recv()), bits_per_sample=16, buffer_size_secs=1)
-
-    speaker = Speaker(queue, pv_speaker, config['orca_warmup_sec'])
-    synthesizer = Synthesizer(queue, speaker, orca_connection, orca_process)
-    generator = Generator(queue, synthesizer, pllm_connection, pllm_process)
-    listener = Listener(queue, generator, porcupine, cheetah)
-    recorder = Recorder(queue, listener, pv_recorder)
-
-    queue.put({'command': Commands.TEXT_STATE, 'state': 1})
-    display.tick()
-
-    try:
-        while not stop[0]:
-            if not pllm_process.is_alive() or not orca_process.is_alive():
-                break
-
-            recorder.tick()
-            generator.tick()
-            synthesizer.tick()
-            speaker.tick()
-            display.tick()
-    finally:
-        display.close()
-        recorder.close()
-        listener.close()
-        generator.close()
-        synthesizer.close()
-        speaker.close()
-
-        for child in active_children():
-            child.kill()
-
-        porcupine.delete()
-        cheetah.delete()
-        pv_recorder.delete()
-        pv_speaker.delete()
+REQUIRED_ARGS = [
+    'access_key',
+    'picollm_model_path'
+]
+DEFAULT_ARGS = {
+    'access_key': '',
+    'picollm_model_path': '',
+    'cheetah_endpoint_duration_sec': 1,
+    'picollm_device': 'best',
+    'picollm_completion_token_limit': 256,
+    'picollm_presence_penalty': 0,
+    'picollm_frequency_penalty': 0,
+    'picollm_temperature': 0,
+    'picollm_top_p': 1,
+    'picollm_system_prompt': None,
+    'orca_warmup_sec': 0,
+    'orca_speech_rate': 1.0,
+    'porcupine_sensitivity': 0.5,
+    'display_keyword': 'Jarvis',
+    'short_answers': False
+}
 
 
-if __name__ == '__main__':
+def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
         '--config',
@@ -968,6 +942,9 @@ if __name__ == '__main__':
         '--porcupine_sensitivity',
         type=float,
         help="Sensitivity for detecting keywords.")
+    parser.add_argument(
+        '--display_keyword',
+        help="Display name for the keyword. If not set, `Jarvis` will be used.")
     parser.add_argument('--short_answers', action='store_true')
     args = parser.parse_args()
 
@@ -976,35 +953,12 @@ if __name__ == '__main__':
     else:
         config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.json')
 
+    config = {}
     if os.path.exists(config_path):
-        with open(config_path, 'r') as fd:
+        with open(config_path, 'r', encoding='utf-8') as fd:
             config = json.load(fd)
     elif args.config is not None:
-        print(parser.error(f'File {config_path} does not exist'))
-        exit(1)
-    else:
-        config = {}
-
-    REQUIRED_ARGS = [
-        'access_key',
-        'picollm_model_path'
-    ]
-    DEFAULT_ARGS = {
-        'access_key': '',
-        'picollm_model_path': '',
-        'cheetah_endpoint_duration_sec': 1,
-        'picollm_device': 'best',
-        'picollm_completion_token_limit': 256,
-        'picollm_presence_penalty': 0,
-        'picollm_frequency_penalty': 0,
-        'picollm_temperature': 0,
-        'picollm_top_p': 1,
-        'picollm_system_prompt': None,
-        'orca_warmup_sec': 0,
-        'orca_speech_rate': 1.0,
-        'porcupine_sensitivity': 0.5,
-        'short_answers': False
-    }
+        parser.error(f'File {config_path} does not exist')
 
     for key in chain(REQUIRED_ARGS, DEFAULT_ARGS):
         arg = getattr(args, key)
@@ -1013,11 +967,95 @@ if __name__ == '__main__':
 
     missing = [f'--{arg}' for arg in REQUIRED_ARGS if arg not in config]
     if len(missing) > 0:
-        print(parser.error('the following arguments are required: ' + ', '.join(missing)))
-        exit(1)
+        parser.error('the following arguments are required: ' + ', '.join(missing))
 
-    for key in DEFAULT_ARGS:
+    for key, value in DEFAULT_ARGS.items():
         if key not in config:
-            config[key] = DEFAULT_ARGS[key]
+            config[key] = value
 
-    main(config)
+    stop = [False]
+    queue = Queue()
+    display = Display(queue, config)
+
+    terminal_width, terminal_height = os.get_terminal_size()
+    terminal_width = min(terminal_width, 120)
+    terminal_height = min(terminal_height, 30)
+    display.set_display_size(terminal_height, terminal_width)
+
+    def handler(_, __) -> None:
+        stop[0] = True
+
+    signal.signal(signal.SIGINT, handler)
+
+    if not sys.platform.lower().startswith('win'):
+        def resize_handler(_, __):
+            tw, th = os.get_terminal_size()
+            tw = min(tw, 120)
+            th = min(th, 30)
+            display.set_display_size(th, tw)
+
+        signal.signal(signal.SIGWINCH, resize_handler)
+
+    pllm_connection, pllm_process = Generator.create_worker(config)
+    orca_connection, orca_process = Synthesizer.create_worker(config)
+
+    display.start([os.getpid(), pllm_process.pid, orca_process.pid])
+    display.tick()
+
+    if 'keyword_model_path' not in config:
+        porcupine = pvporcupine.create(
+            access_key=config['access_key'],
+            keywords=['jarvis'],
+            sensitivities=[config['porcupine_sensitivity']])
+    else:
+        porcupine = pvporcupine.create(
+            access_key=config['access_key'],
+            keyword_paths=[config['keyword_model_path']],
+            sensitivities=[config['porcupine_sensitivity']])
+
+    cheetah = pvcheetah.create(
+        access_key=config['access_key'],
+        endpoint_duration_sec=config['cheetah_endpoint_duration_sec'],
+        enable_automatic_punctuation=True)
+
+    pv_recorder = PvRecorder(frame_length=porcupine.frame_length)
+    pv_speaker = PvSpeaker(sample_rate=int(orca_connection.recv()), bits_per_sample=16, buffer_size_secs=1)
+
+    speaker = Speaker(queue, pv_speaker, config['orca_warmup_sec'])
+    synthesizer = Synthesizer(queue, speaker, orca_connection, orca_process)
+    generator = Generator(queue, synthesizer, pllm_connection, pllm_process)
+    listener = Listener(queue, generator, porcupine, cheetah)
+    recorder = Recorder(queue, listener, pv_recorder)
+
+    queue.put({'command': Commands.TEXT_STATE, 'state': 1})
+    display.tick()
+
+    try:
+        while not stop[0]:
+            if not pllm_process.is_alive() or not orca_process.is_alive():
+                break
+
+            recorder.tick()
+            generator.tick()
+            synthesizer.tick()
+            speaker.tick()
+            display.tick()
+    finally:
+        display.close()
+        recorder.close()
+        listener.close()
+        generator.close()
+        synthesizer.close()
+        speaker.close()
+
+        for child in active_children():
+            child.kill()
+
+        porcupine.delete()
+        cheetah.delete()
+        pv_recorder.delete()
+        pv_speaker.delete()
+
+
+if __name__ == '__main__':
+    main()

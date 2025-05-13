@@ -5,10 +5,11 @@ import sys
 import time
 from argparse import ArgumentParser
 from itertools import chain
-from multiprocessing import Event, Pipe, Process, Queue, active_children
+from multiprocessing import Pipe, Process, Queue, active_children
+# noinspection PyProtectedMember
 from multiprocessing.connection import Connection
 from threading import Thread
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Set
 
 
 import picollm
@@ -81,7 +82,7 @@ class TPSProfiler(object):
 
 
 class CompletionText(object):
-    def __init__(self, stop_phrases: list) -> None:
+    def __init__(self, stop_phrases: Set[str]) -> None:
         self.stop_phrases = stop_phrases
         self.start: int = 0
         self.text: str = ''
@@ -127,7 +128,7 @@ class Speaker:
         self.started = False
         self.speaking = False
         self.flushing = False
-        self.pcmBuffer = []
+        self.pcm_buffer = []
         self.future = None
 
     def close(self):
@@ -138,7 +139,7 @@ class Speaker:
 
     def process(self, pcm: Optional[Sequence[int]]):
         if self.started and pcm is not None:
-            self.pcmBuffer.extend(pcm)
+            self.pcm_buffer.extend(pcm)
 
     def flush(self):
         self.flushing = True
@@ -148,7 +149,7 @@ class Speaker:
         if self.speaking:
             self.speaking = False
             self.flushing = False
-            self.pcmBuffer.clear()
+            self.pcm_buffer.clear()
             self.speaker.stop()
 
     def tick(self):
@@ -157,14 +158,14 @@ class Speaker:
             self.speaker.stop()
             ppn_prompt = self.config['ppn_prompt']
             print(f'$ Say {ppn_prompt} ...', flush=True)
-        if not self.speaking and len(self.pcmBuffer) > self.orca_warmup:
+        if not self.speaking and len(self.pcm_buffer) > self.orca_warmup:
             self.speaking = True
             self.speaker.start()
-        if self.speaking and len(self.pcmBuffer) > 0:
-            written = self.speaker.write(self.pcmBuffer)
+        if self.speaking and len(self.pcm_buffer) > 0:
+            written = self.speaker.write(self.pcm_buffer)
             if written > 0:
-                del self.pcmBuffer[:written]
-        elif self.speaking and self.flushing and len(self.pcmBuffer) == 0:
+                del self.pcm_buffer[:written]
+        elif self.speaking and self.flushing and len(self.pcm_buffer) == 0:
             self.started = False
             self.speaking = False
             self.flushing = False
@@ -519,82 +520,30 @@ class Recorder:
         self.listener.process(pcm)
 
 
-def main(config):
-    stop = [False]
-
-    def handler(_, __) -> None:
-        stop[0] = True
-    signal.signal(signal.SIGINT, handler)
-
-    pllm_connection, pllm_process = Generator.create_worker(config)
-    orca_connection, orca_process = Synthesizer.create_worker(config)
-
-    if 'keyword_model_path' not in config:
-        porcupine = pvporcupine.create(
-            access_key=config['access_key'],
-            keywords=['picovoice'],
-            sensitivities=[config['porcupine_sensitivity']])
-        config['ppn_prompt'] = '`Picovoice`'
-    else:
-        porcupine = pvporcupine.create(
-            access_key=config['access_key'],
-            keyword_paths=[config['keyword_model_path']],
-            sensitivities=[config['porcupine_sensitivity']])
-        config['ppn_prompt'] = 'the wake word'
-
-    print(f"→ Porcupine v{porcupine.version}")
-
-    cheetah = pvcheetah.create(
-        access_key=config['access_key'],
-        endpoint_duration_sec=config['cheetah_endpoint_duration_sec'],
-        enable_automatic_punctuation=True)
-
-    print(f"→ Cheetah v{cheetah.version}")
-
-    pv_recorder = PvRecorder(frame_length=porcupine.frame_length)
-    pv_speaker = PvSpeaker(sample_rate=int(orca_connection.recv()), bits_per_sample=16, buffer_size_secs=1)
-
-    pllm_info = pllm_connection.recv()
-    print(f"→ picoLLM v{pllm_info['version']} <{pllm_info['model']}>")
-
-    orca_info = orca_connection.recv()
-    print(f"→ Orca v{orca_info['version']}")
-
-    speaker = Speaker(pv_speaker, config)
-    synthesizer = Synthesizer(speaker, orca_connection, orca_process, config)
-    generator = Generator(synthesizer, pllm_connection, pllm_process, config)
-    listener = Listener(generator, porcupine, cheetah, config)
-    recorder = Recorder(listener, pv_recorder)
-
-    ppn_prompt = config['ppn_prompt']
-    print(f'$ Say {ppn_prompt} ...', flush=True)
-
-    try:
-        while not stop[0]:
-            if not pllm_process.is_alive() or not orca_process.is_alive():
-                break
-
-            recorder.tick()
-            generator.tick()
-            synthesizer.tick()
-            speaker.tick()
-    finally:
-        recorder.close()
-        listener.close()
-        generator.close()
-        synthesizer.close()
-        speaker.close()
-
-        for child in active_children():
-            child.kill()
-
-        porcupine.delete()
-        cheetah.delete()
-        pv_recorder.delete()
-        pv_speaker.delete()
+REQUIRED_ARGS = [
+    'access_key',
+    'picollm_model_path'
+]
+DEFAULT_ARGS = {
+    'access_key': '',
+    'picollm_model_path': '',
+    'cheetah_endpoint_duration_sec': 1,
+    'picollm_device': 'best',
+    'picollm_completion_token_limit': 256,
+    'picollm_presence_penalty': 0,
+    'picollm_frequency_penalty': 0,
+    'picollm_temperature': 0,
+    'picollm_top_p': 1,
+    'picollm_system_prompt': None,
+    'orca_warmup_sec': 0,
+    'orca_speech_rate': 1.0,
+    'porcupine_sensitivity': 0.5,
+    'short_answers': False,
+    'profile': False
+}
 
 
-if __name__ == '__main__':
+def main():
     parser = ArgumentParser()
     parser.add_argument(
         '--config',
@@ -679,32 +628,9 @@ if __name__ == '__main__':
         with open(config_path, 'r') as fd:
             config = json.load(fd)
     elif args.config is not None:
-        print(parser.error(f'File {config_path} does not exist'))
-        exit(1)
+        parser.error(f'File {config_path} does not exist')
     else:
         config = {}
-
-    REQUIRED_ARGS = [
-        'access_key',
-        'picollm_model_path'
-    ]
-    DEFAULT_ARGS = {
-        'access_key': '',
-        'picollm_model_path': '',
-        'cheetah_endpoint_duration_sec': 1,
-        'picollm_device': 'best',
-        'picollm_completion_token_limit': 256,
-        'picollm_presence_penalty': 0,
-        'picollm_frequency_penalty': 0,
-        'picollm_temperature': 0,
-        'picollm_top_p': 1,
-        'picollm_system_prompt': None,
-        'orca_warmup_sec': 0,
-        'orca_speech_rate': 1.0,
-        'porcupine_sensitivity': 0.5,
-        'short_answers': False,
-        'profile': False
-    }
 
     for key in chain(REQUIRED_ARGS, DEFAULT_ARGS):
         arg = getattr(args, key)
@@ -713,11 +639,85 @@ if __name__ == '__main__':
 
     missing = [f'--{arg}' for arg in REQUIRED_ARGS if arg not in config]
     if len(missing) > 0:
-        print(parser.error('the following arguments are required: ' + ', '.join(missing)))
-        exit(1)
+        parser.error('the following arguments are required: ' + ', '.join(missing))
 
     for key in DEFAULT_ARGS:
         if key not in config:
             config[key] = DEFAULT_ARGS[key]
 
-    main(config)
+    stop = [False]
+
+    def handler(_, __) -> None:
+        stop[0] = True
+    signal.signal(signal.SIGINT, handler)
+
+    pllm_connection, pllm_process = Generator.create_worker(config)
+    orca_connection, orca_process = Synthesizer.create_worker(config)
+
+    if 'keyword_model_path' not in config:
+        porcupine = pvporcupine.create(
+            access_key=config['access_key'],
+            keywords=['picovoice'],
+            sensitivities=[config['porcupine_sensitivity']])
+        config['ppn_prompt'] = '`Picovoice`'
+    else:
+        porcupine = pvporcupine.create(
+            access_key=config['access_key'],
+            keyword_paths=[config['keyword_model_path']],
+            sensitivities=[config['porcupine_sensitivity']])
+        config['ppn_prompt'] = 'the wake word'
+
+    print(f"→ Porcupine v{porcupine.version}")
+
+    cheetah = pvcheetah.create(
+        access_key=config['access_key'],
+        endpoint_duration_sec=config['cheetah_endpoint_duration_sec'],
+        enable_automatic_punctuation=True)
+
+    print(f"→ Cheetah v{cheetah.version}")
+
+    pv_recorder = PvRecorder(frame_length=porcupine.frame_length)
+    pv_speaker = PvSpeaker(sample_rate=int(orca_connection.recv()), bits_per_sample=16, buffer_size_secs=1)
+
+    pllm_info = pllm_connection.recv()
+    print(f"→ picoLLM v{pllm_info['version']} <{pllm_info['model']}>")
+
+    orca_info = orca_connection.recv()
+    print(f"→ Orca v{orca_info['version']}")
+
+    speaker = Speaker(pv_speaker, config)
+    synthesizer = Synthesizer(speaker, orca_connection, orca_process, config)
+    generator = Generator(synthesizer, pllm_connection, pllm_process, config)
+    listener = Listener(generator, porcupine, cheetah, config)
+    recorder = Recorder(listener, pv_recorder)
+
+    ppn_prompt = config['ppn_prompt']
+    print(f'$ Say {ppn_prompt} ...', flush=True)
+
+    try:
+        while not stop[0]:
+            if not pllm_process.is_alive() or not orca_process.is_alive():
+                break
+
+            recorder.tick()
+            generator.tick()
+            synthesizer.tick()
+            speaker.tick()
+    finally:
+        recorder.close()
+        listener.close()
+        generator.close()
+        synthesizer.close()
+        speaker.close()
+
+        for child in active_children():
+            child.kill()
+
+        porcupine.delete()
+        cheetah.delete()
+        pv_recorder.delete()
+        pv_speaker.delete()
+
+
+if __name__ == '__main__':
+    main()

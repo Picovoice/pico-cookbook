@@ -5,3 +5,4 @@ pvporcupine==3.0.5
 pvrecorder==1.2.5
 pvspeaker==1.0.5
 psutil==6.1.1
+py-cpuinfo==9.0.0
