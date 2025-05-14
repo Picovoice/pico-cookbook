@@ -11,6 +11,8 @@
 		02A1194B268D39A700A2AC99 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02A1194A268D39A700A2AC99 /* ContentView.swift */; };
 		02A1194D268D39AB00A2AC99 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 02A1194C268D39AB00A2AC99 /* Assets.xcassets */; };
 		02A1195F268D3FD600A2AC99 /* ViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02A1195E268D3FD600A2AC99 /* ViewModel.swift */; };
+		02B5889E2DD41233007E7026 /* TPSProfiler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02B5889D2DD41233007E7026 /* TPSProfiler.swift */; };
+		02B5889F2DD41233007E7026 /* RTFProfiler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02B5889C2DD41233007E7026 /* RTFProfiler.swift */; };
 		34C504D02D271C5E0003405B /* ios_voice_processor in Frameworks */ = {isa = PBXBuildFile; productRef = 34C504CF2D271C5E0003405B /* ios_voice_processor */; };
 		34C504D32D271E4B0003405B /* ios_voice_processor in Frameworks */ = {isa = PBXBuildFile; productRef = 34C504D22D271E4B0003405B /* ios_voice_processor */; };
 		34C504D62D2728300003405B /* Porcupine in Frameworks */ = {isa = PBXBuildFile; productRef = 34C504D52D2728300003405B /* Porcupine */; };
@@ -32,6 +34,8 @@
 		02A1194C268D39AB00A2AC99 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		02A11951268D39AB00A2AC99 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		02A1195E268D3FD600A2AC99 /* ViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModel.swift; sourceTree = "<group>"; };
+		02B5889C2DD41233007E7026 /* RTFProfiler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RTFProfiler.swift; sourceTree = "<group>"; };
+		02B5889D2DD41233007E7026 /* TPSProfiler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TPSProfiler.swift; sourceTree = "<group>"; };
 		C789D24A2BEA8E5D005FDB10 /* LoadModelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadModelView.swift; sourceTree = "<group>"; };
 		C789D24C2BEA8EAE005FDB10 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		C789D2502BEAD752005FDB10 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
@@ -76,6 +80,8 @@
 		02A11947268D39A700A2AC99 /* LLMVoiceAssistantDemo */ = {
 			isa = PBXGroup;
 			children = (
+				02B5889C2DD41233007E7026 /* RTFProfiler.swift */,
+				02B5889D2DD41233007E7026 /* TPSProfiler.swift */,
 				C7E87DC02C07C65C00C32367 /* resources */,
 				02A11948268D39A700A2AC99 /* LLMVoiceAssistantDemoApp.swift */,
 				02A1194A268D39A700A2AC99 /* ContentView.swift */,
@@ -178,6 +184,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				C789D24D2BEA8EAE005FDB10 /* ChatView.swift in Sources */,
+				02B5889E2DD41233007E7026 /* TPSProfiler.swift in Sources */,
+				02B5889F2DD41233007E7026 /* RTFProfiler.swift in Sources */,
 				C789D24B2BEA8E5D005FDB10 /* LoadModelView.swift in Sources */,
 				02A1194B268D39A700A2AC99 /* ContentView.swift in Sources */,
 				C789D2512BEAD752005FDB10 /* Constants.swift in Sources */,
@@ -315,7 +323,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = EU9HUJJU2X;
+				DEVELOPMENT_TEAM = 65723695GD;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = LLMVoiceAssistantDemo/Info.plist;
@@ -338,7 +346,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = EU9HUJJU2X;
+				DEVELOPMENT_TEAM = 65723695GD;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = LLMVoiceAssistantDemo/Info.plist;

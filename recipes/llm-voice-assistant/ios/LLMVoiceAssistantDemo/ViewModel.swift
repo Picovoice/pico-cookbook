@@ -1,5 +1,5 @@
 //
-//  Copyright 2024 Picovoice Inc.
+//  Copyright 2024-2025 Picovoice Inc.
 //  You may not use this file except in compliance with the license. A copy of the license is located in the "LICENSE"
 //  file accompanying this source.
 //  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
@@ -33,6 +33,8 @@ class ViewModel: ObservableObject {
 
     private var picollm: PicoLLM?
     private var dialog: PicoLLMDialog?
+
+    private let picoLLMProfiler = TPSProfiler()
 
     private var chatState: ChatState = .WAKEWORD
 
@@ -193,6 +195,9 @@ You can download directly to your device or airdrop from a Mac.
 
     private func streamCallback(completion: String) {
         DispatchQueue.main.async { [self] in
+
+            picoLLMProfiler.tock()
+
             if self.stopPhrases.contains(completion) || chatState != .GENERATE {
                 return
             }
@@ -223,6 +228,7 @@ You can download directly to your device or airdrop from a Mac.
                     streamCallback: streamCallback)
 
                 try dialog!.addLLMResponse(content: result.completion)
+                print(String(format: "TPS: %.2f", picoLLMProfiler.tps()))
 
                 DispatchQueue.main.async { [self] in
                     if result.endpoint == .interrupted {
@@ -251,6 +257,7 @@ You can download directly to your device or airdrop from a Mac.
             do {
                 audioStream!.resetAudioPlayer()
                 let orcaStream = try self.orca!.streamOpen()
+                let orcaProfiler = RTFProfiler(sampleRate: self.orca!.sampleRate!)
 
                 var warmup = true
                 var warmupBuffer: [Int16] = []
@@ -268,7 +275,9 @@ You can download directly to your device or airdrop from a Mac.
                             completionArray.removeFirst()
                         }
 
+                        orcaProfiler.tick()
                         let pcm = try orcaStream.synthesize(text: token)
+                        orcaProfiler.tock(pcm: pcm)
                         if pcm != nil {
                             if warmup {
                                 warmupBuffer.append(contentsOf: pcm!)
@@ -288,10 +297,13 @@ You can download directly to your device or airdrop from a Mac.
                     try audioStream!.playStreamPCM(warmupBuffer)
                 }
 
+                orcaProfiler.tick()
                 let pcm = try orcaStream.flush()
+                orcaProfiler.tock(pcm: pcm)
                 if pcm != nil {
                     try audioStream!.playStreamPCM(pcm!)
                 }
+                print(String(format: "RTF: %.2f", orcaProfiler.rtf()))
                 orcaStream.close()
             } catch {
                 DispatchQueue.main.async { [self] in
