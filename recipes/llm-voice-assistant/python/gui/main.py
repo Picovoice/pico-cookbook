@@ -1018,8 +1018,13 @@ def main() -> None:
         endpoint_duration_sec=config['cheetah_endpoint_duration_sec'],
         enable_automatic_punctuation=True)
 
-    pv_recorder = PvRecorder(frame_length=porcupine.frame_length)
-    pv_speaker = PvSpeaker(sample_rate=int(orca_connection.recv()), bits_per_sample=16, buffer_size_secs=1)
+    try:
+        pv_recorder = PvRecorder(frame_length=porcupine.frame_length)
+        pv_speaker = PvSpeaker(sample_rate=int(orca_connection.recv()), bits_per_sample=16, buffer_size_secs=1)
+    except EOFError:
+        for child in active_children():
+            child.kill()
+        exit(1)
 
     speaker = Speaker(queue, pv_speaker, config['orca_warmup_sec'])
     synthesizer = Synthesizer(queue, speaker, orca_connection, orca_process)

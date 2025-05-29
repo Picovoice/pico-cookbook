@@ -624,13 +624,12 @@ def main():
     else:
         config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.json')
 
+    config = {}
     if os.path.exists(config_path):
-        with open(config_path, 'r') as fd:
+        with open(config_path, 'r', encoding='utf-8') as fd:
             config = json.load(fd)
     elif args.config is not None:
         parser.error(f'File {config_path} does not exist')
-    else:
-        config = {}
 
     for key in chain(REQUIRED_ARGS, DEFAULT_ARGS):
         arg = getattr(args, key)
@@ -641,9 +640,9 @@ def main():
     if len(missing) > 0:
         parser.error('the following arguments are required: ' + ', '.join(missing))
 
-    for key in DEFAULT_ARGS:
+    for key, value in DEFAULT_ARGS.items():
         if key not in config:
-            config[key] = DEFAULT_ARGS[key]
+            config[key] = value
 
     stop = [False]
 
@@ -676,14 +675,19 @@ def main():
 
     print(f"→ Cheetah v{cheetah.version}")
 
-    pv_recorder = PvRecorder(frame_length=porcupine.frame_length)
-    pv_speaker = PvSpeaker(sample_rate=int(orca_connection.recv()), bits_per_sample=16, buffer_size_secs=1)
+    try:
+        pv_recorder = PvRecorder(frame_length=porcupine.frame_length)
+        pv_speaker = PvSpeaker(sample_rate=int(orca_connection.recv()), bits_per_sample=16, buffer_size_secs=1)
 
-    pllm_info = pllm_connection.recv()
-    print(f"→ picoLLM v{pllm_info['version']} <{pllm_info['model']}>")
+        pllm_info = pllm_connection.recv()
+        print(f"→ picoLLM v{pllm_info['version']} <{pllm_info['model']}>")
 
-    orca_info = orca_connection.recv()
-    print(f"→ Orca v{orca_info['version']}")
+        orca_info = orca_connection.recv()
+        print(f"→ Orca v{orca_info['version']}")
+    except EOFError:
+        for child in active_children():
+            child.kill()
+        exit(1)
 
     speaker = Speaker(pv_speaker, config)
     synthesizer = Synthesizer(speaker, orca_connection, orca_process, config)
