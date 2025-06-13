@@ -79,10 +79,10 @@
   resolved "https://registry.yarnpkg.com/@picovoice/cheetah-node/-/cheetah-node-2.1.2.tgz#d7b56e5a58b3216fb017209eddbd313f4597e295"
   integrity sha512-rlxylRLC9tTLOJ0yelXwQfl3XhsqNMP5k9D/q4QcKOw1szvmnU5zEFLEMRDzT0nOlKKVLYh42ewIwpK+JwvmAA==
 
-"@picovoice/orca-node@^1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@picovoice/orca-node/-/orca-node-1.1.0.tgz#2077907e5aa10b9b283b11140d411c71e3860e92"
-  integrity sha512-kEcyaD+i5mT6wMqMJk8bcbLVlRKYCDyekwQ4QbHaKGr6MoegEOlVKuw3wwD3mdRyPzDxFjCRwpb//RvOiN82hg==
+"@picovoice/orca-node@^1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@picovoice/orca-node/-/orca-node-1.2.0.tgz#0307ff2e5fab6659fa8bdf89ccd7d7088de3bae3"
+  integrity sha512-KQOAgMhy7XTjgYyyPsB2X+BlaMUrVCh/M8Rt9uEwuYoAx5gkj1kc8e2yhLqsBHM9XPPO8Spn+f7X5EAtP7Le4w==
 
 "@picovoice/picollm-node@1.3.1":
   version "1.3.1"
