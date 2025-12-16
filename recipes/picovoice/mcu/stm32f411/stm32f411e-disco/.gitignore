@@ -1,0 +1,12 @@
+.settings/
+*.launch
+Release_*
+Middlewares/ST/STM32_Audio/Addons/PDM/Lib/
+Middlewares/ST/STM32_Audio/Addons/PDM/Inc/
+
+Inc/picovoice.h
+Inc/pv_rhino_mcu.h
+Inc/pv_porcupine_mcu.h
+
+Lib/*
+!Lib/.gitkeep
