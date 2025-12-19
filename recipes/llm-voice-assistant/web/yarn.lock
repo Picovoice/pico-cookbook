@@ -899,33 +899,33 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@picovoice/cheetah-web@^2.1.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-web/-/cheetah-web-2.1.0.tgz#d75e579460ca7d3b308ff4d56c82b0171f19ff30"
-  integrity sha512-LMJC8wRu6vakDdzuL9flWtgmrYk/6fodBwX18cNSqmXgRaVYNn7/jjW+N7XgA5UQrbGLcNBipIdsEBPivuzCBA==
+"@picovoice/cheetah-web@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-web/-/cheetah-web-3.0.0.tgz#c6d143ffaf459b4f262cbf141eae009333f6655b"
+  integrity sha512-7Cazk4hdqB2SnHEbaeAl6uZqjj7THh6jMPxHOLi8l5QSjVrZ7/FdeoN+ZhSiY51a3YHdwOO7HJYPGj7RdHoD4Q==
   dependencies:
     "@picovoice/web-utils" "=1.4.3"
 
-"@picovoice/orca-web@^1.2.1":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@picovoice/orca-web/-/orca-web-1.2.1.tgz#cea3e78c9d3e17623d838c7ecf62518c408764fb"
-  integrity sha512-RGlhLAWeP/OmG9RHC9gfRMCnuV6XDDJGPhMMXaUC34oWnlIH//jVtjk4Fr0SKQARY532D9Mw18pPWGUPmnzBGQ==
+"@picovoice/orca-web@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@picovoice/orca-web/-/orca-web-2.0.0.tgz#03431127d8942827ae49c3cc4f2777e7adcf82eb"
+  integrity sha512-GntE2vTni6ZT7zhl3uqPKmiljPcP6VPFqJficiiZ068oKP3nyYL/Vwx4RgOCqtOaRi51Pgp1l22pzNmBQks2hA==
   dependencies:
     "@picovoice/web-utils" "=1.4.3"
 
-"@picovoice/picollm-web@~1.3.1":
-  version "1.3.1"
-  resolved "https://registry.yarnpkg.com/@picovoice/picollm-web/-/picollm-web-1.3.1.tgz#4d3169338fe63a0452fbf3d96005fc04b3373649"
-  integrity sha512-DBjQcko4nTeUGXuLjwv39TaGSE9R6IWOrrF64Z0NWEeMODxgrEQcC4vfV9ibjUDjDz7Q3cz25PueJKPbr1N3Gg==
+"@picovoice/picollm-web@~2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@picovoice/picollm-web/-/picollm-web-2.0.0.tgz#ab6325f04402efbdff3ce15e5a7fb519eeb6cb09"
+  integrity sha512-37EJOgy8DUHGq7TsDdEYLIrNSGLYNr3Wup2ORIAb22mI8BQjojhBBRTu/UVFfjQ5+zStRTVwtkwp95JKS0jHOg==
   dependencies:
     "@picovoice/web-utils" "~1.4.3"
 
-"@picovoice/porcupine-web@^3.0.3":
-  version "3.0.3"
-  resolved "https://registry.yarnpkg.com/@picovoice/porcupine-web/-/porcupine-web-3.0.3.tgz#c89a53653fa4331bcd30911f4c1fe68b6c040a56"
-  integrity sha512-xVFR0TO0FwM/pumxMxevP550yj9JFlmJuaFgT0CHXjtsInqBrBTZHdJDoj8f5qTHZ4khffh1lW4kiPYf2g8dBQ==
+"@picovoice/porcupine-web@^4.0.0":
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/@picovoice/porcupine-web/-/porcupine-web-4.0.0.tgz#33946e43a48db84a8c27d6fd4b61a747304af085"
+  integrity sha512-YqXBp6R9od6NTgcm80UyyB71c4eBArxD3BtX1SKQC4/xAvThM2VgwtPj4J7gvjl9yqqlcr+0Mg3T4lbKIOziTw==
   dependencies:
-    "@picovoice/web-utils" "=1.3.1"
+    "@picovoice/web-utils" "=1.4.3"
 
 "@picovoice/web-utils@=1.3.1":
   version "1.3.1"
