@@ -391,7 +391,7 @@
 			repositoryURL = "https://github.com/picovoice/porcupine";
 			requirement = {
 				kind = exactVersion;
-				version = 3.0.4;
+				version = 4.0.0;
 			};
 		};
 		34C504CC2D2719A30003405B /* XCRemoteSwiftPackageReference "orca" */ = {
@@ -399,7 +399,7 @@
 			repositoryURL = "https://github.com/picovoice/orca";
 			requirement = {
 				kind = exactVersion;
-				version = 1.2.0;
+				version = 2.0.0;
 			};
 		};
 		34C504CD2D271A440003405B /* XCRemoteSwiftPackageReference "cheetah" */ = {
@@ -407,7 +407,7 @@
 			repositoryURL = "https://github.com/picovoice/cheetah";
 			requirement = {
 				kind = exactVersion;
-				version = 2.1.0;
+				version = 3.0.0;
 			};
 		};
 		34C504CE2D271C5E0003405B /* XCRemoteSwiftPackageReference "ios-voice-processor" */ = {
@@ -431,7 +431,7 @@
 			repositoryURL = "https://github.com/picovoice/picollm";
 			requirement = {
 				kind = exactVersion;
-				version = 1.3.1;
+				version = 2.0.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
