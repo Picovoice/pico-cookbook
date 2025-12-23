@@ -1,16 +1,18 @@
-addstr
 addch
+addstr
 appendleft
 Colour
 Compat
 dbfs
 dotdotdot
+dotnet
 dtype
 endoftext
 endwin
 getmaxyx
 getpid
 iife
+libpv
 llmvoiceassistant
 logcat
 logit
@@ -42,4 +44,3 @@ tock
 WAKEWORD
 xcodeproj
 xcworkspace
-dotnet
