@@ -48,6 +48,18 @@
     "**/main_layout.xml",
 
     // python
-    "**/__pycache__/**"
+    "**/__pycache__/**",
+
+    // mcu
+    "**/mcu/**/*.ld",
+    "**/mcu/**/*.s",
+    "**/mcu/**/*_HAL_Driver/**/*",
+    "**/mcu/**/Drivers/BSP/**/*",
+    "**/mcu/**/Drivers/CMSIS/**/*",
+    "**/mcu/**/stm32*",
+    "**/mcu/**/syscalls.c",
+    "**/mcu/**/system*",
+    "**/mcu/generate_pv_params_file.py",
+    "**/mcu/**/pv_params.h",
   ]
 }

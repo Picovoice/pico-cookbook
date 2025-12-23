@@ -60,8 +60,8 @@ def generate_pv_params(ppn_repo_dir, rhn_repo_dir, model_files, header_file_fold
 
             for language, ppn_rhn_models in model_files.items():
                 if language == "en":
-                    ppn_dir = os.path.join(ppn_repo_dir, f"resources/keyword_files/cortexm")
-                    rhn_dir = os.path.join(rhn_repo_dir, f"resources/contexts/cortexm")
+                    ppn_dir = os.path.join(ppn_repo_dir, "resources/keyword_files/cortexm")
+                    rhn_dir = os.path.join(rhn_repo_dir, "resources/contexts/cortexm")
                 else:
                     ppn_dir = os.path.join(ppn_repo_dir, f"resources/keyword_files_{language}/cortexm")
                     rhn_dir = os.path.join(rhn_repo_dir, f"resources/contexts_{language}/cortexm")
