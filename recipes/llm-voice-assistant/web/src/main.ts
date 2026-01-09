@@ -93,7 +93,7 @@ const init = async (
     accessKey,
     {
       publicPath: "models/orca_params.pv"
-    });
+    }, {});
 
   const dialog = pllm.getDialog();
   const stream = await orca.streamOpen();
