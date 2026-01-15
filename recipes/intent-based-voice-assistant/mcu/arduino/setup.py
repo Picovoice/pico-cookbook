@@ -67,7 +67,7 @@ def generate_package(
                 porcupine_repo,
                 rhino_repo,
                 lang,
-                f"{project_folder}/examples/PicovoiceExample")
+                f"{project_folder}/examples/IntentBasedVoiceAssistant")
 
             command = f"find '{project_folder}' -type f -exec sed -i 's/{{LANGUAGE_KEYWORD}}/{keyword}/g' {{}} \\;"
             _, err = subprocess.Popen(
