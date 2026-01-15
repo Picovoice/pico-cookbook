@@ -51,8 +51,61 @@ LANGUAGE_CODE_TO_NAME = {
     "zh": "mandarin",
 }
 
+MODELS = {
+    "de": {"wake_word": "hey computer", "context": "beleuchtung"},
+    "en": {"wake_word": "picovoice", "context": "smart_lighting"},
+    "es": {"wake_word": "hola computadora", "context": "iluminación_inteligente"},
+    "fr": {"wake_word": "bonjour ordinateur", "context": "éclairage_intelligent"},
+    "it": {"wake_word": "ciao computer", "context": "illuminazione"},
+    "ja": {"wake_word": "こんにちは コンピューター", "context": "sumāto_shōmei"},
+    "ko": {"wake_word": "안녕 컴퓨터", "context": "seumateu_jomyeong"},
+    "pt": {"wake_word": "olá computador", "context": "luz_inteligente"},
+    "zh": {"wake_word": "你好电脑", "context": "simple_context_zh"},
+}
 
-def generate_pv_params(ppn_repo_dir, rhn_repo_dir, model_files, header_file_folders):
+INCLUDE_FOLDERS = [
+    "stm32f411/stm32f411e-disco/Inc/",
+]
+
+
+def generate_pv_params_single_lang(
+        ppn_repo_dir,
+        rhn_repo_dir,
+        language,
+        header_file_path):
+    ppn_rhn_models = MODELS[language]
+
+    header_file = os.path.join(os.path.dirname(__file__), header_file_path, "pv_params.h")
+    with open(header_file, "w") as f_out:
+        f_out.write(HEADER)
+
+        if language == "en":
+            ppn_dir = os.path.join(ppn_repo_dir, "resources/keyword_files/cortexm")
+            rhn_dir = os.path.join(rhn_repo_dir, "resources/contexts/cortexm")
+        else:
+            ppn_dir = os.path.join(ppn_repo_dir, f"resources/keyword_files_{language}/cortexm")
+            rhn_dir = os.path.join(rhn_repo_dir, f"resources/contexts_{language}/cortexm")
+
+        keyword_file_path = os.path.join(ppn_dir, ppn_rhn_models["wake_word"] + "_cortexm.ppn")
+        ppn_c_array = ppn_to_c_array(keyword_file_path)
+        f_out.write("// wake-word = %s \n" % ppn_rhn_models["wake_word"])
+        f_out.write("static const uint8_t KEYWORD_ARRAY[] = {\n")
+        f_out.write("\n".join(ppn_c_array))
+        f_out.write("};\n\n")
+
+        context_file_path = os.path.join(rhn_dir, ppn_rhn_models["context"] + "_cortexm.rhn")
+        ppn_c_array = ppn_to_c_array(context_file_path)
+        f_out.write("// context = %s \n" % ppn_rhn_models["context"])
+        f_out.write("static const uint8_t CONTEXT_ARRAY[] = {\n")
+        f_out.write("\n".join(ppn_c_array))
+        f_out.write("};\n")
+
+        f_out.write(FOOTER)
+
+    return ppn_rhn_models["wake_word"], ppn_rhn_models["context"]
+
+
+def generate_pv_params_multi_lang(ppn_repo_dir, rhn_repo_dir, model_files, header_file_folders):
     for header_file_path in header_file_folders:
         header_file = os.path.join(os.path.dirname(__file__), header_file_path, "pv_params.h")
         with open(header_file, "w") as f_out:
@@ -127,23 +180,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    models = {
-        "de": {"wake_word": "hey computer", "context": "beleuchtung"},
-        "en": {"wake_word": "picovoice", "context": "smart_lighting"},
-        "es": {"wake_word": "hola computadora", "context": "iluminación_inteligente"},
-        "fr": {"wake_word": "bonjour ordinateur", "context": "éclairage_intelligent"},
-        "it": {"wake_word": "ciao computer", "context": "illuminazione"},
-        "ja": {"wake_word": "こんにちは コンピューター", "context": "sumāto_shōmei"},
-        "ko": {"wake_word": "안녕 컴퓨터", "context": "seumateu_jomyeong"},
-        "pt": {"wake_word": "olá computador", "context": "luz_inteligente"},
-        "zh": {"wake_word": "你好电脑", "context": "simple_context_zh"},
-    }
-    include_folders = [
-        "stm32f411/stm32f411e-disco/Inc/",
-    ]
-
-    generate_pv_params(
+    generate_pv_params_multi_lang(
         args.porcupine_repo,
         args.rhino_repo,
-        models,
-        include_folders)
+        MODELS,
+        INCLUDE_FOLDERS)
