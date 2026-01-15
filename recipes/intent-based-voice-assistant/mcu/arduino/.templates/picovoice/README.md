@@ -1,6 +1,6 @@
 # Porcupine Wake Word Engine + Rhino Speech-To-Intent Engine Demo for Arduino ({LANGUAGE} language)
 
-This package contains a demo project with examples for Arduino using Porcupine wake word engine in conjuction with Rhino Speech-to-Intent Engine.
+This package contains a demo project with examples for Arduino using Porcupine Wake Word Engine in conjuction with Rhino Speech-to-Intent Engine.
 
 ## Compatibility
 
