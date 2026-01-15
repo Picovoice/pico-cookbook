@@ -73,34 +73,37 @@ def generate_pv_params_single_lang(
         rhn_repo_dir,
         language,
         header_file_path):
-        header_file = os.path.join(os.path.dirname(__file__), header_file_path, "pv_params.h")
-        with open(header_file, "w") as f_out:
-            f_out.write(HEADER)
+    ppn_rhn_models = MODELS[language]
 
-            ppn_rhn_models = MODELS[language]
+    header_file = os.path.join(os.path.dirname(__file__), header_file_path, "pv_params.h")
+    with open(header_file, "w") as f_out:
+        f_out.write(HEADER)
 
-            if language == "en":
-                ppn_dir = os.path.join(ppn_repo_dir, "resources/keyword_files/cortexm")
-                rhn_dir = os.path.join(rhn_repo_dir, "resources/contexts/cortexm")
-            else:
-                ppn_dir = os.path.join(ppn_repo_dir, f"resources/keyword_files_{language}/cortexm")
-                rhn_dir = os.path.join(rhn_repo_dir, f"resources/contexts_{language}/cortexm")
 
-            keyword_file_path = os.path.join(ppn_dir, ppn_rhn_models["wake_word"] + "_cortexm.ppn")
-            ppn_c_array = ppn_to_c_array(keyword_file_path)
-            f_out.write("// wake-word = %s \n" % ppn_rhn_models["wake_word"])
-            f_out.write("static const uint8_t KEYWORD_ARRAY[] = {\n")
-            f_out.write("\n".join(ppn_c_array))
-            f_out.write("};\n\n")
+        if language == "en":
+            ppn_dir = os.path.join(ppn_repo_dir, "resources/keyword_files/cortexm")
+            rhn_dir = os.path.join(rhn_repo_dir, "resources/contexts/cortexm")
+        else:
+            ppn_dir = os.path.join(ppn_repo_dir, f"resources/keyword_files_{language}/cortexm")
+            rhn_dir = os.path.join(rhn_repo_dir, f"resources/contexts_{language}/cortexm")
 
-            context_file_path = os.path.join(rhn_dir, ppn_rhn_models["context"] + "_cortexm.rhn")
-            ppn_c_array = ppn_to_c_array(context_file_path)
-            f_out.write("// context = %s \n" % ppn_rhn_models["context"])
-            f_out.write("static const uint8_t CONTEXT_ARRAY[] = {\n")
-            f_out.write("\n".join(ppn_c_array))
-            f_out.write("};\n")
+        keyword_file_path = os.path.join(ppn_dir, ppn_rhn_models["wake_word"] + "_cortexm.ppn")
+        ppn_c_array = ppn_to_c_array(keyword_file_path)
+        f_out.write("// wake-word = %s \n" % ppn_rhn_models["wake_word"])
+        f_out.write("static const uint8_t KEYWORD_ARRAY[] = {\n")
+        f_out.write("\n".join(ppn_c_array))
+        f_out.write("};\n\n")
 
-            f_out.write(FOOTER)
+        context_file_path = os.path.join(rhn_dir, ppn_rhn_models["context"] + "_cortexm.rhn")
+        ppn_c_array = ppn_to_c_array(context_file_path)
+        f_out.write("// context = %s \n" % ppn_rhn_models["context"])
+        f_out.write("static const uint8_t CONTEXT_ARRAY[] = {\n")
+        f_out.write("\n".join(ppn_c_array))
+        f_out.write("};\n")
+
+        f_out.write(FOOTER)
+
+    return ppn_rhn_models["wake_word"], ppn_rhn_models["context"]
 
 
 def generate_pv_params_multi_lang(ppn_repo_dir, rhn_repo_dir, model_files, header_file_folders):

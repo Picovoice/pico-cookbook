@@ -201,7 +201,7 @@ void setup() {
         Serial.println(pv_status_to_string(status));
         error_handler();
     }
-    Serial.println("Wake word: 'hey computer'");
+    Serial.println("Wake word: '{LANGUAGE_KEYWORD}'");
     Serial.println(rhino_context);
 }
 

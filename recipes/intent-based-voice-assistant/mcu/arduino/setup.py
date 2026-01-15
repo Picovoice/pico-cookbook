@@ -63,11 +63,19 @@ def generate_package(
             if err.decode("utf-8") != "" and "error" in err.decode("utf-8"):
                 raise Exception(f'Failed to generate package: {err.decode("utf-8")}')
 
-            generate_pv_params_single_lang(
+            keyword, model = generate_pv_params_single_lang(
                 porcupine_repo,
                 rhino_repo,
                 lang,
                 f"{project_folder}/examples/PicovoiceExample")
+
+            command = f"find '{project_folder}' -type f -exec sed -i 's/{{LANGUAGE_KEYWORD}}/{keyword}/g' {{}} \\;"
+            _, err = subprocess.Popen(
+                command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE
+            ).communicate()
+            if err.decode("utf-8") != "" and "error" in err.decode("utf-8"):
+                raise Exception(f'Failed to generate package: {err.decode("utf-8")}')
+
 
 
 def main():
