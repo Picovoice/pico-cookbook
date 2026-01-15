@@ -79,7 +79,6 @@ def generate_pv_params_single_lang(
     with open(header_file, "w") as f_out:
         f_out.write(HEADER)
 
-
         if language == "en":
             ppn_dir = os.path.join(ppn_repo_dir, "resources/keyword_files/cortexm")
             rhn_dir = os.path.join(rhn_repo_dir, "resources/contexts/cortexm")

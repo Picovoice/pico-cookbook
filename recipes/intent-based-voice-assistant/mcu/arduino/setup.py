@@ -10,7 +10,7 @@ import tempfile
 from typing import Dict, Any, Sequence
 
 sys.path.append("..")
-from generate_pv_params_file import generate_pv_params_single_lang
+from generate_pv_params_file import generate_pv_params_single_lang  # noqa: E402
 
 LANGUAGE_CODE_TO_NAME = {
     "de": "german",
@@ -38,7 +38,8 @@ def generate_package(
             if not os.path.isdir(project_folder):
                 os.mkdir(project_folder)
             shutil.copytree(src, project_folder, dirs_exist_ok=True)
-            command = f"find '{project_folder}' -type f -exec sed -i 's/{{LANGUAGE}}/{lang_name.capitalize()}/g' {{}} \\;"
+            command = f"find '{project_folder}' -type f -exec sed -i " + \
+                f"'s/{{LANGUAGE}}/{lang_name.capitalize()}/g' {{}} \\;"
             _, err = subprocess.Popen(
                 command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE
             ).communicate()
@@ -50,13 +51,15 @@ def generate_package(
             ).communicate()
             if err.decode("utf-8") != "" and "error" in err.decode("utf-8"):
                 raise Exception(f'Failed to generate package: {err.decode("utf-8")}')
-            command = f"mv {project_folder}/src/{product.capitalize()}_LANG.cpp {project_folder}/src/{product.capitalize()}_{lang.upper()}.cpp"
+            command = f"mv {project_folder}/src/{product.capitalize()}_LANG.cpp " + \
+                f"{project_folder}/src/{product.capitalize()}_{lang.upper()}.cpp"
             _, err = subprocess.Popen(
                 command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE
             ).communicate()
             if err.decode("utf-8") != "" and "error" in err.decode("utf-8"):
                 raise Exception(f'Failed to generate package: {err.decode("utf-8")}')
-            command = f"mv {project_folder}/src/{product.capitalize()}_LANG.h {project_folder}/src/{product.capitalize()}_{lang.upper()}.h"
+            command = f"mv {project_folder}/src/{product.capitalize()}_LANG.h " + \
+                f"{project_folder}/src/{product.capitalize()}_{lang.upper()}.h"
             _, err = subprocess.Popen(
                 command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE
             ).communicate()
@@ -75,7 +78,6 @@ def generate_package(
             ).communicate()
             if err.decode("utf-8") != "" and "error" in err.decode("utf-8"):
                 raise Exception(f'Failed to generate package: {err.decode("utf-8")}')
-
 
 
 def main():
