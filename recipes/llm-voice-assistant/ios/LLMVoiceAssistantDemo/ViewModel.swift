@@ -99,7 +99,7 @@ You can download directly to your device or airdrop from a Mac.
                 cheetah = try Cheetah(accessKey: ACCESS_KEY, modelPath: cheetahModelPath)
 
                 setStatusText("Loading picoLLM...")
-                picollm = try PicoLLM(accessKey: ACCESS_KEY, modelPath: selectedModelUrl!.path, device: "cpu")
+                picollm = try PicoLLM(accessKey: ACCESS_KEY, modelPath: selectedModelUrl!.path)
                 dialog = try picollm!.getDialog()
 
                 setStatusText("Loading Orca...")
