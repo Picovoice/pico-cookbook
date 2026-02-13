@@ -8,12 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="picollm" Version="2.0.0" />
-    <PackageReference Include="Picovoice.Cheetah" Version="3.0.0" />
-    <PackageReference Include="Picovoice.Orca" Version="2.0.0" />
-    <PackageReference Include="Porcupine" Version="4.0.1" />
-    <PackageReference Include="pvrecorder" Version="1.2.10" />
-    <PackageReference Include="pvspeaker" Version="1.0.2" />
+    <PackageReference Include="PicoLLM" Version="2.0.1" />
+    <PackageReference Include="Picovoice.Cheetah" Version="3.0.1" />
+    <PackageReference Include="Picovoice.Orca" Version="2.0.1" />
+    <PackageReference Include="Porcupine" Version="4.0.2" />
+    <PackageReference Include="PvRecorder" Version="1.2.13" />
+    <PackageReference Include="PvSpeaker" Version="1.0.2" />
   </ItemGroup>
 
 </Project>
