@@ -1,0 +1,54 @@
+name: Python Demos
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/python-demos.yml'
+      - 'recipes/**/*.py'
+      - 'recipes/**/requirements.txt'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/python-demos.yml'
+      - 'recipes/**/*.py'
+      - 'recipes/**/requirements.txt'
+
+# TODO: add self-hosted platforms?
+jobs:
+  build-github-hosted:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        device: [ cpu:1, cpu ]
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        python-version: [ '3.11' ]
+        recipe: [ 'llm-voice-assistant/python/cli' ]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Pre-build dependencies
+      run: python -m pip install --upgrade pip
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    # TODO: does this repo have access to this secret?
+    - name: Download resource files
+      working-directory: recipes/${{ matrix.recipe }}
+      run: curl http://${{secrets.PV_CICD_RES_SERVER_AUTHORITY}}/github/picollm/res/phi2-290.pllm/05-f5a103d/phi2-290.pllm -o phi2-290.pllm
+
+    - name: Test
+      working-directory: recipes/${{ matrix.recipe }}
+      run: >
+        python main.py
+        --access_key ${{secrets.PV_VALID_ACCESS_KEY}}
+        --picollm_model_path phi2-290.pllm
