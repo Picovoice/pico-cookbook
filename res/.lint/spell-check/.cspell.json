@@ -49,6 +49,7 @@
 
     // python
     "**/__pycache__/**",
+    "**/requirements.txt",
 
     // mcu
     "**/mcu/**/*.ld",
