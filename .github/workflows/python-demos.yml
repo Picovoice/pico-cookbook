@@ -54,6 +54,12 @@ jobs:
         .venv\Scripts\activate
         echo PATH=$PATH >> $GITHUB_ENV
 
+    - name: Pre-build dependencies
+      run: python3 -m pip install --upgrade pip
+
+    - name: Install dependencies
+      run: python3 -m pip install -r ${{ matrix.recipe }}/requirements.txt
+
     - name: Download resource files
       run: curl http://${{secrets.PV_CICD_RES_SERVER_AUTHORITY}}/github/picollm/res/phi2-290.pllm/05-f5a103d/phi2-290.pllm -o phi2-290.pllm
 
