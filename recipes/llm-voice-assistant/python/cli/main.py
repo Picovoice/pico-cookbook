@@ -542,7 +542,6 @@ DEFAULT_ARGS = {
     'profile': False
 }
 
-
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
 
@@ -724,6 +723,10 @@ def main():
         pv_recorder.delete()
         pv_speaker.delete()
 
-
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception:
+        for child in active_children():
+            child.kill()
+        raise
