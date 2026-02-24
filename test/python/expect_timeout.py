@@ -1,6 +1,6 @@
 import subprocess, sys
 
-EXPECTED_TIMEOUT_S = 10
+EXPECTED_TIMEOUT_S = 25
 SUCCESS = 0
 ERROR = 1
 TIMEOUT_RETURN_CODE = 142
@@ -14,7 +14,7 @@ try:
     exit(TIMEOUT_RETURN_CODE)
 except subprocess.TimeoutExpired:
     print("Timeout expired successfully")
-    exit(SUCCESS)
+    exit(proc.returncode)
 except Exception as e:
     print(f"Failed with: {e}")
     exit(ERROR)

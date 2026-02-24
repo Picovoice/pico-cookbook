@@ -544,6 +544,8 @@ DEFAULT_ARGS = {
 
 
 def main():
+    sys.stdout.reconfigure(encoding='utf-8')
+
     parser = ArgumentParser()
     parser.add_argument(
         '--config',
