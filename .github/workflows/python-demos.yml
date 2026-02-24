@@ -15,22 +15,28 @@ on:
       - 'recipes/**/*.py'
       - 'recipes/**/requirements.txt'
 
-# TODO: add self-hosted platforms?
 jobs:
-  build-github-hosted:
-    runs-on: ${{ matrix.os }}
+  build-self-hosted:
+    runs-on: ${{ matrix.machine }}
 
     defaults:
       run:
         working-directory: ./test/python
 
     strategy:
+      fail-fast: false
       matrix:
         device: [ cpu ]
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        machine: [ rpi4-32, rpi4-64, rpi5-32, rpi5-64, pv-linux, pv-ios, pv-windows, pv-windows-arm64 ]
         python-version: [ '3.11' ]
         recipe: [ 'llm-voice-assistant/python/cli' ]
-
+        include:
+          - device: gpu
+            machine: pv-linux
+          - device: gpu
+            machine: pv-windows
+          - device: gpu
+            machine: pv-windows-igpu
     steps:
     - uses: actions/checkout@v3
 
@@ -40,14 +46,14 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Setup Python virtualenv (*nix)
-      if: ${{ matrix.os != 'windows-latest' }}
+      if: ${{ matrix.machine != 'pv-windows' && matrix.machine != 'pv-windows-igpu' && matrix.machine != 'pv-windows-arm64' }}
       run: |
         python3 -m venv .venv
         . .venv/bin/activate
         echo PATH=$PATH >> $GITHUB_ENV
 
     - name: Setup Python virtualenv (windows)
-      if: ${{ matrix.os == 'windows-latest' }}
+      if: ${{ matrix.machine == 'pv-windows' || matrix.machine == 'pv-windows-igpu' || matrix.machine == 'pv-windows-arm64' }}
       run: |
         python3 -m venv .venv --symlinks
         .venv\Scripts\activate
