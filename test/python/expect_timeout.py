@@ -1,5 +1,8 @@
 import subprocess, sys
 
+from pvrecorder import PvRecorder
+from pvspeaker import PvSpeaker
+
 EXPECTED_TIMEOUT_S = 20
 SUCCESS = 0
 ERROR = 1
@@ -9,15 +12,15 @@ command = [sys.executable, f"../../{sys.argv[1]}/main.py"] + sys.argv[2:]
 proc = subprocess.Popen(command)
 
 try:
-    pv_recorder = PvRecorder(frame_length=porcupine.frame_length)
+    pv_recorder = PvRecorder(frame_length=1024)
 except RuntimeError:
     print("This platform doesn't support PvRecorder")
     exit(SUCCESS)
 
 try:
-    pv_speaker = PvSpeaker(sample_rate=int(orca_connection.recv()), bits_per_sample=16, buffer_size_secs=1)
+    pv_speaker = PvSpeaker(sample_rate=8000, bits_per_sample=16, buffer_size_secs=1)
 except RuntimeError:
-    print("")
+    print("This platform doesn't support PvSpeaker")
     exit(SUCCESS)
 
 try:
