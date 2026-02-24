@@ -20,6 +20,10 @@ jobs:
   build-github-hosted:
     runs-on: ${{ matrix.os }}
 
+    defaults:
+      run:
+        working-directory: ./test/python
+
     strategy:
       matrix:
         device: [ cpu:1, cpu ]
@@ -35,20 +39,27 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Pre-build dependencies
-      run: python -m pip install --upgrade pip
+    - name: Setup Python virtualenv (*nix)
+      if: ${{ matrix.machine != 'pv-windows' && matrix.machine != 'pv-windows-igpu' && matrix.machine != 'pv-windows-arm64' }}
+      run: |
+        python3 -m venv .venv
+        . .venv/bin/activate
+        echo PATH=$PATH >> $GITHUB_ENV
 
-    - name: Install dependencies
-      run: pip install -r requirements.txt
+    - name: Setup Python virtualenv (windows)
+      if: ${{ matrix.machine == 'pv-windows' || matrix.machine == 'pv-windows-igpu' || matrix.machine == 'pv-windows-arm64' }}
+      run: |
+        python3 -m venv .venv --symlinks
+        .venv\Scripts\activate
+        echo PATH=$PATH >> $GITHUB_ENV
 
     # TODO: does this repo have access to this secret?
     - name: Download resource files
-      working-directory: recipes/${{ matrix.recipe }}
       run: curl http://${{secrets.PV_CICD_RES_SERVER_AUTHORITY}}/github/picollm/res/phi2-290.pllm/05-f5a103d/phi2-290.pllm -o phi2-290.pllm
 
-    - name: Test
-      working-directory: recipes/${{ matrix.recipe }}
-      run: >
-        python main.py
-        --access_key ${{secrets.PV_VALID_ACCESS_KEY}}
-        --picollm_model_path phi2-290.pllm
+    - name: Test demo timeout
+      run: |
+        python3 expect_timeout.py
+          recipes/${{ matrix.recipe }}
+          --access_key ${{secrets.PV_VALID_ACCESS_KEY}}
+          --picollm_model_path phi2-290.pllm
