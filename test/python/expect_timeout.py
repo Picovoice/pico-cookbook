@@ -8,9 +8,6 @@ SUCCESS = 0
 ERROR = 1
 TIMEOUT_RETURN_CODE = 142
 
-command = [sys.executable, f"../../{sys.argv[1]}/main.py"] + sys.argv[2:]
-proc = subprocess.Popen(command)
-
 try:
     pv_recorder = PvRecorder(frame_length=1024)
 except RuntimeError:
@@ -22,6 +19,9 @@ try:
 except RuntimeError:
     print("This platform doesn't support PvSpeaker")
     exit(SUCCESS)
+
+command = [sys.executable, f"../../{sys.argv[1]}/main.py"] + sys.argv[2:]
+proc = subprocess.Popen(command)
 
 try:
     proc.wait(timeout=EXPECTED_TIMEOUT_S)
