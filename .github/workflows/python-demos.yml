@@ -26,7 +26,7 @@ jobs:
 
     strategy:
       matrix:
-        device: [ cpu:1, cpu ]
+        device: [ cpu ]
         os: [ ubuntu-latest, windows-latest, macos-latest ]
         python-version: [ '3.11' ]
         recipe: [ 'llm-voice-assistant/python/cli' ]
@@ -40,20 +40,19 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Setup Python virtualenv (*nix)
-      if: ${{ matrix.machine != 'pv-windows' && matrix.machine != 'pv-windows-igpu' && matrix.machine != 'pv-windows-arm64' }}
+      if: ${{ matrix.machine != 'windows-latest' }}
       run: |
         python3 -m venv .venv
         . .venv/bin/activate
         echo PATH=$PATH >> $GITHUB_ENV
 
     - name: Setup Python virtualenv (windows)
-      if: ${{ matrix.machine == 'pv-windows' || matrix.machine == 'pv-windows-igpu' || matrix.machine == 'pv-windows-arm64' }}
+      if: ${{ matrix.machine == 'windows-latest' }}
       run: |
         python3 -m venv .venv --symlinks
         .venv\Scripts\activate
         echo PATH=$PATH >> $GITHUB_ENV
 
-    # TODO: does this repo have access to this secret?
     - name: Download resource files
       run: curl http://${{secrets.PV_CICD_RES_SERVER_AUTHORITY}}/github/picollm/res/phi2-290.pllm/05-f5a103d/phi2-290.pllm -o phi2-290.pllm
 
