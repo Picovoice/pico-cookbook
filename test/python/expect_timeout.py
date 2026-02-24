@@ -12,4 +12,3 @@ try:
     exit(SUCCESS)
 except subprocess.TimeoutExpired:
     exit(TIMEOUT_RETURN_CODE)
-
