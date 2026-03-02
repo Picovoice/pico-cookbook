@@ -20,11 +20,10 @@ def main():
     leopard = pvleopard.create(access_key=args.access_key)
 
     _ = orca.synthesize_to_file(text=PROMPT, output_path=PATH)
-    _, words = leopard.process_file(PATH)
-    result_text = " ".join([w.word for w in words])
+    transcript, _ = leopard.process_file(PATH)
 
-    if result_text != PROMPT:
-        raise RuntimeError(f"Unexpected result: {result_text} (expected: {PROMPT})")
+    if transcript != PROMPT:
+        raise RuntimeError(f"Unexpected result: {transcript} (expected: {PROMPT})")
 
     print("Orca and Leopard work together properly")
 
