@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 import pvorca
 import pvleopard
 
-PROMPT = 'hello my name is'
+PROMPT = 'Hello my name is'
 PATH = './hello_my_name_is.wav'
 
 def main():
