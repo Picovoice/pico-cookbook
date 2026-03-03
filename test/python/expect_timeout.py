@@ -7,7 +7,7 @@ EXPECTED_TIMEOUT_S = 20
 SUCCESS = 0
 ERROR = 1
 ERROR_EXITED_BEFORE_TIMEOUT = 2
-
+ERROR_UNSUPPORTED_PLATFORM = 3
 
 def main():
     command = [sys.executable, f"../../{sys.argv[1]}/main.py"] + sys.argv[2:]
@@ -16,14 +16,14 @@ def main():
     try:
         _ = PvRecorder(frame_length=1024)
     except RuntimeError:
-        print("This platform doesn't support PvRecorder")
-        exit(SUCCESS)
+        print("This device doesn't support PvRecorder")
+        exit(ERROR_UNSUPPORTED_PLATFORM)
 
     try:
         _ = PvSpeaker(sample_rate=8000, bits_per_sample=16, buffer_size_secs=1)
     except RuntimeError:
-        print("This platform doesn't support PvSpeaker")
-        exit(SUCCESS)
+        print("This device doesn't support PvSpeaker")
+        exit(ERROR_UNSUPPORTED_PLATFORM)
 
     try:
         proc.wait(timeout=EXPECTED_TIMEOUT_S)
