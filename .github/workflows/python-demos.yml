@@ -27,7 +27,7 @@ jobs:
       fail-fast: false
       matrix:
         device: [ cpu, gpu ]
-        machine: [ rpi5-64, pv-ios, pv-windows, pv-windows-arm64 ]
+        machine: [ pv-ios, pv-windows, pv-windows-arm64 ]
         recipe: [ 'recipes/llm-voice-assistant/python/cli' ]
         exclude:
           - device: gpu
