@@ -1,0 +1,66 @@
+name: Python Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/python-tests.yml'
+      - 'test/python/*.py'
+      - 'test/python/requirements.txt'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/python-tests.yml'
+      - 'test/python/*.py'
+      - 'test/python/requirements.txt'
+
+defaults:
+  run:
+    working-directory: test/python
+
+jobs:
+  build-self-hosted:
+    runs-on: ${{ matrix.machine }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [ cpu, gpu ]
+        machine: [ rpi4-32, rpi4-64, rpi5-32, rpi5-64, pv-linux, pv-ios, pv-windows, pv-windows-arm64 ]
+        exclude:
+          - device: gpu
+            machine: rpi4-32
+          - device: gpu
+            machine: rpi4-64
+          - device: gpu
+            machine: rpi5-32
+          - device: gpu
+            machine: rpi5-64
+          - device: gpu
+            machine: pv-ios
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Python virtualenv (*nix)
+      if: ${{ matrix.machine != 'pv-windows' && matrix.machine != 'pv-windows-igpu' && matrix.machine != 'pv-windows-arm64' }}
+      run: |
+        python3 -m venv .venv
+        . .venv/bin/activate
+        echo PATH=$PATH >> $GITHUB_ENV
+
+    - name: Setup Python virtualenv (windows)
+      if: ${{ matrix.machine == 'pv-windows' || matrix.machine == 'pv-windows-igpu' || matrix.machine == 'pv-windows-arm64' }}
+      run: |
+        python3 -m venv .venv --symlinks
+        .venv\Scripts\activate
+        echo PATH=$PATH >> $GITHUB_ENV
+
+    - name: Pre-build dependencies
+      run: python3 -m pip install --upgrade pip
+
+    - name: Install dependencies
+      run: python3 -m pip install -r requirements.txt
+
+    - name: Test multiple products
+      run: python3 run_multiple_products.py --access_key ${{ secrets.PV_VALID_ACCESS_KEY }}

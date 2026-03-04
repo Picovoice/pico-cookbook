@@ -544,6 +544,8 @@ DEFAULT_ARGS = {
 
 
 def main():
+    sys.stdout.reconfigure(encoding='utf-8')
+
     parser = ArgumentParser()
     parser.add_argument(
         '--config',
@@ -724,4 +726,9 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception:
+        for child in active_children():
+            child.kill()
+        raise

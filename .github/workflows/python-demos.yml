@@ -1,0 +1,70 @@
+name: Python Demos
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/python-demos.yml'
+      - 'recipes/**/*.py'
+      - 'recipes/**/requirements.txt'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/python-demos.yml'
+      - 'recipes/**/*.py'
+      - 'recipes/**/requirements.txt'
+
+defaults:
+  run:
+    working-directory: test/python
+
+jobs:
+  build-self-hosted:
+    runs-on: ${{ matrix.machine }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [ cpu, gpu ]
+        machine: [ pv-ios, pv-windows, pv-windows-arm64 ]
+        recipe: [ 'recipes/llm-voice-assistant/python/cli' ]
+        exclude:
+          - device: gpu
+            machine: rpi4-32
+          - device: gpu
+            machine: rpi4-64
+          - device: gpu
+            machine: rpi5-32
+          - device: gpu
+            machine: rpi5-64
+          - device: gpu
+            machine: pv-ios
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Python virtualenv (*nix)
+      if: ${{ matrix.machine != 'pv-windows' && matrix.machine != 'pv-windows-igpu' && matrix.machine != 'pv-windows-arm64' }}
+      run: |
+        python3 -m venv .venv
+        . .venv/bin/activate
+        echo PATH=$PATH >> $GITHUB_ENV
+
+    - name: Setup Python virtualenv (windows)
+      if: ${{ matrix.machine == 'pv-windows' || matrix.machine == 'pv-windows-igpu' || matrix.machine == 'pv-windows-arm64' }}
+      run: |
+        python3 -m venv .venv --symlinks
+        .venv\Scripts\activate
+        echo PATH=$PATH >> $GITHUB_ENV
+
+    - name: Pre-build dependencies
+      run: python3 -m pip install --upgrade pip
+
+    - name: Install dependencies
+      run: python3 -m pip install -r ../../${{ matrix.recipe }}/requirements.txt
+
+    - name: Download resource files
+      run: curl http://${{secrets.PV_CICD_RES_SERVER_AUTHORITY}}/github/picollm/res/phi2-290.pllm/05-f5a103d/phi2-290.pllm -o phi2-290.pllm
+
+    - name: Test demo timeout
+      run: python3 expect_timeout.py ${{ matrix.recipe }} --access_key ${{secrets.PV_VALID_ACCESS_KEY}} --picollm_model_path phi2-290.pllm
