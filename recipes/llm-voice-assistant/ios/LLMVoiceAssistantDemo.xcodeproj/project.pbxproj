@@ -407,7 +407,7 @@
 			repositoryURL = "https://github.com/picovoice/cheetah";
 			requirement = {
 				kind = exactVersion;
-				version = 3.0.0;
+				version = 4.0.0;
 			};
 		};
 		34C504CE2D271C5E0003405B /* XCRemoteSwiftPackageReference "ios-voice-processor" */ = {
