@@ -4,7 +4,7 @@ from threading import Thread
 
 import pvporcupine
 from pveagle import (
-    create_profiler,
+    EagleProfile,
     create_recognizer
 )
 from pvrecorder import PvRecorder
@@ -99,7 +99,8 @@ def main() -> None:
     eagle_threshold = args.eagle_threshold
     eagle_window_sec = args.eagle_window_sec
 
-    speaker_profile = Profile.load(eagle_speaker_profile_path)
+    with open(eagle_speaker_profile_path, "rb") as f:
+        speaker_profile = EagleProfile.from_bytes(f.read())
 
     porcupine = pvporcupine.create(
         access_key=access_key,
@@ -111,7 +112,7 @@ def main() -> None:
     recorder = PvRecorder(frame_length=porcupine.frame_length)
     recorder.start()
 
-    eagle_window_sample = max(int(eagle_window_sec * recorder.sample_rate), eagle.min_length)
+    eagle_window_sample = max(int(eagle_window_sec * recorder.sample_rate), eagle.min_process_samples)
     pcm_window = list()
 
     animation = FeedbackAnimation()
@@ -126,7 +127,7 @@ def main() -> None:
 
             wake_word_detected = porcupine.process(pcm) == 0
             if wake_word_detected:
-                speaker_similarity = eagle.process(pcm_window, profiles=[speaker_profile])
+                speaker_similarity = eagle.process(pcm_window, speaker_profiles=[speaker_profile])
 
                 animation.wake_word_detected = True
                 animation.speaker_verified = speaker_similarity is not None and speaker_similarity[0] > eagle_threshold
