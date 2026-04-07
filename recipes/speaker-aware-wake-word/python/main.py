@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 from argparse import ArgumentParser
 from threading import Lock, Thread
@@ -21,12 +22,12 @@ class FeedbackAnimation(Thread):
 
         self._speakers = speakers + ["unknown"]
         self._speaker_states: Dict[str, Optional[float]] = {
-            speaker: None for speaker in speakers + ["unknown"]
+            speaker: None for speaker in self._speakers
         }
         self._last_detected_speaker: Optional[str] = None
         self._last_detection_time: float = 0.0
 
-        self._num_lines = 1 + len(speakers)
+        self._num_lines = 1 + len(self._speakers)
 
     def run(self):
         frames = [" .  ", " .. ", " ...", "  ..", "   .", "    "]
@@ -51,28 +52,29 @@ class FeedbackAnimation(Thread):
                 speaker_states = dict(self._speaker_states)
 
             if first_frame:
-                print()
-                for _ in self._speakers:
-                    print()
+                sys.stdout.write("\n" * self._num_lines)
                 first_frame = False
-            else:
-                print(f"\033[{self._num_lines}F", end="")
 
-            print(f"\033[2K\033[1G🎤 {frames[i % len(frames)]}")
+            sys.stdout.write(f"\033[{self._num_lines}F")
+
+            sys.stdout.write(f"\033[2K\r🎤 {frames[i % len(frames)]}\n")
             for speaker in self._speakers:
                 similarity = speaker_states[speaker]
                 if similarity is None:
-                    print(f"\033[2K\033[1G  {speaker}")
+                    sys.stdout.write(f"\033[2K\r  {speaker}\n")
                 else:
-                    print(f"\033[2K\033[1G✅ {speaker} ({similarity:.2f})")
+                    sys.stdout.write(f"\033[2K\r✅ {speaker} ({similarity:.2f})\n")
+
+            sys.stdout.flush()
 
             i += 1
             time.sleep(0.1)
 
-        print(f"\033[{self._num_lines}F", end="")
+        sys.stdout.write(f"\033[{self._num_lines}F")
         for _ in range(self._num_lines):
-            print("\033[2K\033[1G")
-        print(f"\033[{self._num_lines}F", end="", flush=True)
+            sys.stdout.write("\033[2K\r\n")
+        sys.stdout.write(f"\033[{self._num_lines}F")
+        sys.stdout.flush()
 
     def detect(self, speaker: str, speaker_similarity: float) -> None:
         with self._lock:
@@ -177,7 +179,8 @@ def main() -> None:
                     speaker = 'unknown'
                     similarity = 0
 
-                animation.detect(speaker=speaker if similarity > eagle_threshold else 'unknown', speaker_similarity=similarity)
+                animation.detect(speaker=speaker if similarity > eagle_threshold else 'unknown',
+                                 speaker_similarity=similarity)
     except KeyboardInterrupt:
         pass
     finally:
