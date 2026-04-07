@@ -1,7 +1,8 @@
 import os
 import time
 from argparse import ArgumentParser
-from threading import Thread
+from threading import Lock, Thread
+from typing import Dict, List, Optional
 
 import pvporcupine
 from pveagle import (
@@ -12,47 +13,82 @@ from pvrecorder import PvRecorder
 
 
 class FeedbackAnimation(Thread):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, speakers: List[str]):
+        super().__init__(daemon=True)
 
-        self._stop: bool = False
-        self.wake_word_detected: bool = False
-        self.speaker = None
-        self.speaker_similarity: float = 0.
+        self._stop = False
+        self._lock = Lock()
+
+        self._speakers = speakers + ["unknown"]
+        self._speaker_states: Dict[str, Optional[float]] = {
+            speaker: None for speaker in speakers + ["unknown"]
+        }
+        self._last_detected_speaker: Optional[str] = None
+        self._last_detection_time: float = 0.0
+
+        self._num_lines = 1 + len(speakers)
 
     def run(self):
         frames = [" .  ", " .. ", " ...", "  ..", "   .", "    "]
         i = 0
+        first_frame = True
 
-        while not self._stop:
-            if self._stop:
-                break
+        while True:
+            now = time.time()
 
-            if not self.wake_word_detected:
-                print(
-                    f'\033[2K\033[1G\r🎤 Say the wake word {frames[i % len(frames)]}',
-                    end='',
-                    flush=True)
-                i += 1
-                time.sleep(0.1)
+            with self._lock:
+                if self._stop:
+                    break
+
+                if (
+                        self._last_detected_speaker is not None and
+                        now - self._last_detection_time >= 1.0
+                ):
+                    self._speaker_states[self._last_detected_speaker] = None
+                    self._last_detected_speaker = None
+                    self._last_detection_time = 0.0
+
+                speaker_states = dict(self._speaker_states)
+
+            if first_frame:
+                print()
+                for _ in self._speakers:
+                    print()
+                first_frame = False
             else:
-                print(
-                    f'\033[2K\033[1G\r {self.speaker} ({self.speaker_similarity:.2f})',
-                    end='',
-                    flush=True)
-                self.wake_word_detected = False
-                self.speaker = None
-                self.speaker_similarity = 0.
-                i = 0
-                time.sleep(.5)
+                print(f"\033[{self._num_lines}F", end="")
 
-        self._stop = False
+            print(f"\033[2K\033[1G🎤 {frames[i % len(frames)]}")
+            for speaker in self._speakers:
+                similarity = speaker_states[speaker]
+                if similarity is None:
+                    print(f"\033[2K\033[1G  {speaker}")
+                else:
+                    print(f"\033[2K\033[1G✅ {speaker} ({similarity:.2f})")
 
-    def stop(self):
-        self._stop = True
-        while self._stop:
-            pass
-        print('\033[2K\033[1G\r', end='', flush=True)
+            i += 1
+            time.sleep(0.1)
+
+        print(f"\033[{self._num_lines}F", end="")
+        for _ in range(self._num_lines):
+            print("\033[2K\033[1G")
+        print(f"\033[{self._num_lines}F", end="", flush=True)
+
+    def detect(self, speaker: str, speaker_similarity: float) -> None:
+        with self._lock:
+            if speaker not in self._speaker_states:
+                return
+
+            if self._last_detected_speaker is not None:
+                self._speaker_states[self._last_detected_speaker] = None
+
+            self._speaker_states[speaker] = speaker_similarity
+            self._last_detected_speaker = speaker
+            self._last_detection_time = time.time()
+
+    def stop(self) -> None:
+        with self._lock:
+            self._stop = True
 
 
 def main() -> None:
@@ -121,7 +157,7 @@ def main() -> None:
     eagle_window_sample = max(int(eagle_window_sec * recorder.sample_rate), eagle.min_process_samples)
     pcm_window = list()
 
-    animation = FeedbackAnimation()
+    animation = FeedbackAnimation(speakers)
     animation.start()
 
     try:
@@ -141,9 +177,7 @@ def main() -> None:
                     speaker = 'unknown'
                     similarity = 0
 
-                animation.wake_word_detected = True
-                animation.speaker = speaker if similarity > eagle_threshold else 'unknown'
-                animation.speaker_similarity = similarity
+                animation.detect(speaker=speaker if similarity > eagle_threshold else 'unknown', speaker_similarity=similarity)
     except KeyboardInterrupt:
         pass
     finally:
