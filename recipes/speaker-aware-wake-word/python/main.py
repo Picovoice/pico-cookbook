@@ -61,9 +61,9 @@ class FeedbackAnimation(Thread):
             for speaker in self._speakers:
                 similarity = speaker_states[speaker]
                 if similarity is None:
-                    sys.stdout.write(f"\033[2K\r  {speaker}\n")
+                    sys.stdout.write(f"\033[2K\r -  {speaker}\n")
                 else:
-                    sys.stdout.write(f"\033[2K\r✅ {speaker} ({similarity:.2f})\n")
+                    sys.stdout.write(f"\033[2K\r ✓  {speaker} ({similarity:.2f})\n")
 
             sys.stdout.flush()
 
