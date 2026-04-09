@@ -1,0 +1,5 @@
+pvcheetah~=4.0.0
+pvorca~=3.0.0
+pvrecorder~=1.2.7
+pvspeaker~=1.0.5
+pvzebra~=1.0.0
