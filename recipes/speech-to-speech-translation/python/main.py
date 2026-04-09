@@ -206,7 +206,7 @@ def main() -> None:
                 mic_thread.join()
                 print(
                     f"[WARN]️ Cannot translate from `{source_language.value}` to `{target_language.value}`. "
-                    "Supported source languages are " +
+                    "Supported source languages are "
                     ', '.join(f"`{x.value}`" for x in LanguagePairs.supported_source_languages(target_language)))
                 return print_async(lambda: text, end="\r\033[K")
 
