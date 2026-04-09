@@ -112,7 +112,7 @@ def main() -> None:
             sensitivities=[porcupine_sensitivity])
         print(f"[OK] Porcupine Wake Word[V{porcupine.version}]")
 
-        eagle = create_recognizer(access_key=access_key)
+        eagle = create_recognizer(access_key=access_key, voice_threshold=.0)
         print(f"[OK] Eagle Speaker Recognition[V{eagle.version}]")
 
         recorder = PvRecorder(frame_length=porcupine.frame_length)
