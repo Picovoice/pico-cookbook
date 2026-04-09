@@ -7,7 +7,7 @@ import pvporcupine
 from pvrecorder import PvRecorder
 
 
-class FeedbackAnimation(Thread):
+class Animation(Thread):
     def __init__(self):
         super().__init__()
 
@@ -60,6 +60,11 @@ def main() -> None:
         '--eagle_speaker_profile_path',
         required=True,
         help="Absolute path to the Eagle's speaker profile file")
+    parser.add_argument(
+        '--eagle_min_enrollment_chunks',
+        type=int,
+        default=4,
+        help="Minimum number of enrollment speech chunks")
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -67,48 +72,66 @@ def main() -> None:
     porcupine_keyword_path = args.porcupine_keyword_path
     porcupine_sensitivity = args.porcupine_sensitivity
     eagle_speaker_profile_path = args.eagle_speaker_profile_path
+    eagle_min_enrollment_chunks = args.eagle_min_enrollment_chunks
 
-    eagle = pveagle.create_profiler(access_key=access_key, min_enrollment_chunks=4)
-
-    porcupine = pvporcupine.create(
-        access_key=access_key,
-        model_path=porcupine_model_path,
-        keyword_paths=[porcupine_keyword_path],
-        sensitivities=[porcupine_sensitivity])
-
-    recorder = PvRecorder(frame_length=porcupine.frame_length)
-
-    enrollment_animation = FeedbackAnimation()
-
-    enroll_percentage = 0.0
-    enrollment_animation.start()
+    eagle = None
+    porcupine = None
+    recorder = None
+    progress = 0.0
+    animation = None
 
     try:
-        while enroll_percentage < 100.0:
-            enroll_pcm = list()
+        eagle = pveagle.create_profiler(
+            access_key=access_key,
+            min_enrollment_chunks=eagle_min_enrollment_chunks)
+        print(f"[OK] Eagle Speaker Recognition[V{eagle.version}]")
+
+        porcupine = pvporcupine.create(
+            access_key=access_key,
+            model_path=porcupine_model_path,
+            keyword_paths=[porcupine_keyword_path],
+            sensitivities=[porcupine_sensitivity])
+        print(f"[OK] Porcupine Wake Word[V{porcupine.version}]")
+
+        recorder = PvRecorder(frame_length=porcupine.frame_length)
+
+        animation = Animation()
+
+        animation.start()
+
+        while progress < 100.0:
+            pcm = list()
             recorder.start()
             wake_word_detected = False
             while not wake_word_detected:
                 frame = recorder.read()
-                enroll_pcm.extend(frame)
+                pcm.extend(frame)
                 wake_word_detected = porcupine.process(frame) == 0
             recorder.stop()
 
-            for i in range(len(enroll_pcm) // eagle.frame_length):
-                enroll_percentage = eagle.enroll(enroll_pcm[i * eagle.frame_length:(i + 1) * eagle.frame_length])
-            enrollment_animation.progress = int(enroll_percentage)
+            for i in range(len(pcm) // eagle.frame_length):
+                progress = eagle.enroll(pcm[i * eagle.frame_length:(i + 1) * eagle.frame_length])
+            animation.progress = int(progress)
     except KeyboardInterrupt:
         pass
     finally:
-        enrollment_animation.stop()
-        recorder.stop()
-        recorder.delete()
-        porcupine.delete()
-        if enroll_percentage == 100.:
+        if animation is not None:
+            animation.stop()
+
+        if progress == 100.:
             with open(eagle_speaker_profile_path, 'wb') as f:
                 f.write(eagle.export().to_bytes())
-            print('Speaker profile is saved to %s' % eagle_speaker_profile_path)
-        eagle.delete()
+            print(f'Speaker profile is saved to `{eagle_speaker_profile_path}`')
+
+        if recorder is not None:
+            recorder.stop()
+            recorder.delete()
+
+        if porcupine is not None:
+            porcupine.delete()
+
+        if eagle is not None:
+            eagle.delete()
 
 
 if __name__ == '__main__':

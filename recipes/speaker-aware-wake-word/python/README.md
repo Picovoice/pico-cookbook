@@ -52,15 +52,15 @@ train a wake word model on [Picovoice Console](https://console.picovoice.ai/) in
 ```console
 python enroll.py \
 --access_key ${ACCESS_KEY} \
---wake_word_path ${WAKE_WORD_PATH} \
---speaker_profile_path ${SPEAKER_PROFILE_PATH}
+--porcupine_keyword_path ${PORCUPINE_KEYWORD_PATH} \
+--eagle_speaker_profile_path ${EAGLE_SPEAKER_PROFILE_PATH}
 ```
 
-### 5. Run the Demo
+### 6. Run the Demo
 
 ```console
 python main.py \
 --access_key ${ACCESS_KEY} \
---wake_word_path ${WAKE_WORD_PATH} \
---speaker_profile_paths ${SPEAKER_PROFILE_PATH_ONE} ${SPEAKER_PROFILE_PATH_TWO} ...
+--porcupine_keyword_path ${PORCUPINE_KEYWORD_PATH} \
+--eagle_speaker_profile_paths ${EAGLE_SPEAKER_PROFILE_PATH_A} ${EAGLE_SPEAKER_PROFILE_PATH_B} ...
 ```
