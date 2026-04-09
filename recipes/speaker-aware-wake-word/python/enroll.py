@@ -23,7 +23,7 @@ class Animation(Thread):
                 break
 
             print(
-                f'\033[2K\033[1G\r[{self.progress:3d}%] 🎤 Say the wake word {frames[i % len(frames)]}',
+                f'\033[2K\033[1G\r[{self.progress:3d}%] Say the wake word {frames[i % len(frames)]}',
                 end='',
                 flush=True)
             i += 1

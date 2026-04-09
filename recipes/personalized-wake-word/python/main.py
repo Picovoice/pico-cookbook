@@ -10,7 +10,7 @@ from pveagle import (
 from pvrecorder import PvRecorder
 
 
-class FeedbackAnimation(Thread):
+class Animation(Thread):
     def __init__(self):
         super().__init__()
 
@@ -29,21 +29,21 @@ class FeedbackAnimation(Thread):
 
             if not self.wake_word_detected:
                 print(
-                    f'\033[2K\033[1G\r🎤 Say the wake word {frames[i % len(frames)]}',
+                    f'\033[2K\033[1G\rSay the wake word {frames[i % len(frames)]}',
                     end='',
                     flush=True)
                 i += 1
                 time.sleep(0.1)
             else:
                 print(
-                    f'\033[2K\033[1G\r {"✅" if self.speaker_verified else "❌"} ({self.speaker_similarity:.2f})',
+                    f'\033[2K\033[1G\r {"Y" if self.speaker_verified else "N"} ({self.speaker_similarity:.2f})',
                     end='',
                     flush=True)
                 self.wake_word_detected = False
                 self.speaker_verified = False
                 self.speaker_similarity = 0.
                 i = 0
-                time.sleep(.5)
+                time.sleep(1.)
 
         self._stop = False
 
@@ -86,9 +86,6 @@ def main() -> None:
         type=float,
         default=2.,
         help="The length of audio window Eagle looks back after wake word detection.")
-    parser.add_argument(
-        '--xray_folder',
-        help='')
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -107,7 +104,10 @@ def main() -> None:
         model_path=porcupine_model_path,
         keyword_paths=[porcupine_keyword_path],
         sensitivities=[porcupine_sensitivity])
+    print(f"[OK] Porcupine Wake Word[V{porcupine.version}]")
+
     eagle = create_recognizer(access_key=access_key)
+    print(f"[OK] Eagle Speaker Recognition[V{eagle.version}]")
 
     recorder = PvRecorder(frame_length=porcupine.frame_length)
     recorder.start()
@@ -115,7 +115,7 @@ def main() -> None:
     eagle_window_sample = max(int(eagle_window_sec * recorder.sample_rate), eagle.min_process_samples)
     pcm_window = list()
 
-    animation = FeedbackAnimation()
+    animation = Animation()
     animation.start()
 
     try:
