@@ -2,8 +2,15 @@ import os
 import sys
 import time
 from argparse import ArgumentParser
-from threading import Lock, Thread
-from typing import Dict, List, Optional
+from threading import (
+    Lock,
+    Thread
+)
+from typing import (
+    Dict,
+    Optional,
+    Sequence
+)
 
 import pvporcupine
 from pveagle import (
@@ -13,14 +20,14 @@ from pveagle import (
 from pvrecorder import PvRecorder
 
 
-class FeedbackAnimation(Thread):
-    def __init__(self, speakers: List[str]):
+class Animation(Thread):
+    def __init__(self, speakers: Sequence[str]):
         super().__init__(daemon=True)
 
         self._stop = False
         self._lock = Lock()
 
-        self._speakers = speakers + ["unknown"]
+        self._speakers = list(speakers) + ["unknown"]
         self._speaker_states: Dict[str, Optional[float]] = {
             speaker: None for speaker in self._speakers
         }
@@ -57,7 +64,7 @@ class FeedbackAnimation(Thread):
 
             sys.stdout.write(f"\033[{self._num_lines}F")
 
-            sys.stdout.write(f"\033[2K\r🎤 {frames[i % len(frames)]}\n")
+            sys.stdout.write(f"\033[2K\rSay the wake word {frames[i % len(frames)]}\n")
             for speaker in self._speakers:
                 similarity = speaker_states[speaker]
                 if similarity is None:
@@ -119,16 +126,13 @@ def main() -> None:
     parser.add_argument(
         '--eagle_threshold',
         type=float,
-        default=0.4,
+        default=0.5,
         help="Eagle's recognition threshold [0.0-1.0]")
     parser.add_argument(
         '--eagle_window_sec',
         type=float,
         default=1.,
         help="The length of audio window Eagle looks back after wake word detection.")
-    parser.add_argument(
-        '--xray_folder',
-        help='')
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -146,23 +150,31 @@ def main() -> None:
 
     speakers = [os.path.basename(x).rsplit('.', maxsplit=1)[0] for x in eagle_speaker_profile_paths]
 
-    porcupine = pvporcupine.create(
-        access_key=access_key,
-        model_path=porcupine_model_path,
-        keyword_paths=[porcupine_keyword_path],
-        sensitivities=[porcupine_sensitivity])
-    eagle = create_recognizer(access_key=access_key)
-
-    recorder = PvRecorder(frame_length=porcupine.frame_length)
-    recorder.start()
-
-    eagle_window_sample = max(int(eagle_window_sec * recorder.sample_rate), eagle.min_process_samples)
-    pcm_window = list()
-
-    animation = FeedbackAnimation(speakers)
-    animation.start()
+    porcupine = None
+    eagle = None
+    recorder = None
+    animation = None
 
     try:
+        porcupine = pvporcupine.create(
+            access_key=access_key,
+            model_path=porcupine_model_path,
+            keyword_paths=[porcupine_keyword_path],
+            sensitivities=[porcupine_sensitivity])
+        print(f"[OK] Porcupine Wake Word[V{porcupine.version}]")
+
+        eagle = create_recognizer(access_key=access_key)
+        print(f"[OK] Eagle Speaker Recognition[V{eagle.version}]")
+
+        recorder = PvRecorder(frame_length=porcupine.frame_length)
+        recorder.start()
+
+        eagle_window_sample = max(int(eagle_window_sec * recorder.sample_rate), eagle.min_process_samples)
+        pcm_window = list()
+
+        animation = Animation(speakers)
+        animation.start()
+
         while True:
             pcm = recorder.read()
 
@@ -177,18 +189,26 @@ def main() -> None:
                     speaker, similarity = max(zip(speakers, speaker_similarities), key=lambda x: x[1])
                 else:
                     speaker = 'unknown'
-                    similarity = 0
+                    similarity = 1.
 
-                animation.detect(speaker=speaker if similarity > eagle_threshold else 'unknown',
-                                 speaker_similarity=similarity)
+                animation.detect(
+                    speaker=speaker if similarity > eagle_threshold else 'unknown',
+                    speaker_similarity=similarity)
     except KeyboardInterrupt:
         pass
     finally:
-        animation.stop()
-        recorder.stop()
-        recorder.delete()
-        eagle.delete()
-        porcupine.delete()
+        if animation is not None:
+            animation.stop()
+
+        if recorder is not None:
+            recorder.stop()
+            recorder.delete()
+
+        if eagle is not None:
+            eagle.delete()
+
+        if porcupine is not None:
+            porcupine.delete()
 
 
 if __name__ == '__main__':

@@ -84,7 +84,7 @@ def main() -> None:
     parser.add_argument(
         '--eagle_window_sec',
         type=float,
-        default=2.,
+        default=1.,
         help="The length of audio window Eagle looks back after wake word detection.")
     args = parser.parse_args()
 
@@ -96,29 +96,34 @@ def main() -> None:
     eagle_threshold = args.eagle_threshold
     eagle_window_sec = args.eagle_window_sec
 
-    with open(eagle_speaker_profile_path, "rb") as f:
-        speaker_profile = EagleProfile.from_bytes(f.read())
-
-    porcupine = pvporcupine.create(
-        access_key=access_key,
-        model_path=porcupine_model_path,
-        keyword_paths=[porcupine_keyword_path],
-        sensitivities=[porcupine_sensitivity])
-    print(f"[OK] Porcupine Wake Word[V{porcupine.version}]")
-
-    eagle = create_recognizer(access_key=access_key)
-    print(f"[OK] Eagle Speaker Recognition[V{eagle.version}]")
-
-    recorder = PvRecorder(frame_length=porcupine.frame_length)
-    recorder.start()
-
-    eagle_window_sample = max(int(eagle_window_sec * recorder.sample_rate), eagle.min_process_samples)
-    pcm_window = list()
-
-    animation = Animation()
-    animation.start()
+    porcupine = None
+    eagle = None
+    recorder = None
+    animation = None
 
     try:
+        with open(eagle_speaker_profile_path, "rb") as f:
+            speaker_profile = EagleProfile.from_bytes(f.read())
+
+        porcupine = pvporcupine.create(
+            access_key=access_key,
+            model_path=porcupine_model_path,
+            keyword_paths=[porcupine_keyword_path],
+            sensitivities=[porcupine_sensitivity])
+        print(f"[OK] Porcupine Wake Word[V{porcupine.version}]")
+
+        eagle = create_recognizer(access_key=access_key)
+        print(f"[OK] Eagle Speaker Recognition[V{eagle.version}]")
+
+        recorder = PvRecorder(frame_length=porcupine.frame_length)
+        recorder.start()
+
+        eagle_window_sample = max(int(eagle_window_sec * recorder.sample_rate), eagle.min_process_samples)
+        pcm_window = list()
+
+        animation = Animation()
+        animation.start()
+
         while True:
             pcm = recorder.read()
 
@@ -135,11 +140,18 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
-        animation.stop()
-        recorder.stop()
-        recorder.delete()
-        eagle.delete()
-        porcupine.delete()
+        if animation is not None:
+            animation.stop()
+
+        if recorder is not None:
+            recorder.stop()
+            recorder.delete()
+
+        if eagle is not None:
+            eagle.delete()
+
+        if porcupine is not None:
+            porcupine.delete()
 
 
 if __name__ == '__main__':
