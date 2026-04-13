@@ -61,6 +61,9 @@ python setup.py
 python main.py --access_key ${ACCESS_KEY} --language_pair ${LANGUAGE_PAIR}
 ```
 
+`${LANGUAGE_PAIR}` is the tuple of languages used in the conversation. e.g., `es-en` means the first person is speaking
+Spanish and the second person is speaking `English`.
+
 ### 6. View All Options
 
 ```console
