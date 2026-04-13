@@ -58,11 +58,15 @@ def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1) -> Tuple[
         sys.stdout.write("\033[?25l")
         sys.stdout.flush()
 
+        residue = 0
+
         while not stop_event.is_set():
             text = get_text()
             dots = dots_list[i]
+            sys.stdout.write(f"\r{' ' * residue}")
             sys.stdout.write(f"\r{text}{dots}")
             sys.stdout.flush()
+            residue = len(text) + len(dots)
 
             i = (i + 1) % len(dots_list)
             sleep(refresh_sec)
@@ -184,7 +188,8 @@ def main() -> None:
 
             def get_text() -> str:
                 with text_lock:
-                    return f"HUMAN[{languages[index].upper()}] {text}"
+                    display_text = "(listening)" if text == "" else text
+                    return f"HUMAN[{languages[index].upper()}] {display_text}"
 
             text_event, text_thread = print_async(get_text)
 
