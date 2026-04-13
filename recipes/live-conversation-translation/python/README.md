@@ -1,5 +1,8 @@
 # Live Conversation Translation in Python
 
+Two-way real-time speech translation powered by on-device AI. Have live conversations across languages, with each person
+speaking naturally in their own language and hearing the other translated in real time.
+
 ## Compatibility
 
 - Runs on Linux (x86_64), macOS (arm64, x86_64), Windows (arm64, x86_64), and Raspberry Pi (5, 4, and 3).

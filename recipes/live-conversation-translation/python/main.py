@@ -122,7 +122,7 @@ def main() -> None:
         nargs=2,
         choices=['female', 'male'],
         default=['male', 'male'],
-        help="Speakers' genders for Streaming Text-to-Speech, in `--language_pair` order.")
+        help="Gender of Speakers for Streaming Text-to-Speech, in `--language_pair` order.")
     args = parser.parse_args()
 
     access_key = args.access_key

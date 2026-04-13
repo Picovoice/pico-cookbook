@@ -1,6 +1,7 @@
 # Speech-to-Speech Translation
 
-Real-time speech-to-speech translation powered by on-device AI.
+Real-time speech-to-speech translation powered by on-device AI. Speak in one language and hear it translated in real
+time into another.
 
 ## Components
 

@@ -1,5 +1,8 @@
 # Speech-to-Speech Translation in Python
 
+Real-time speech-to-speech translation powered by on-device AI. Speak in one language and hear it translated in real
+time into another.
+
 ## Compatibility
 
 - Runs on Linux (x86_64), macOS (arm64, x86_64), Windows (arm64, x86_64), and Raspberry Pi (5, 4, and 3).
