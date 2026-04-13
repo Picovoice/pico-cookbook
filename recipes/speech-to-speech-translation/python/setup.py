@@ -43,8 +43,24 @@ def clone_repo(animal: str, major: str, minor: str) -> None:
                 f"v{major}.{minor}",
                 "--depth",
                 "1",
+                "--filter=blob:none",
+                "--sparse",
                 f"https://github.com/Picovoice/{animal}.git",
-                os.path.join(os.path.dirname(__file__), animal),
+                folder,
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                folder,
+                "sparse-checkout",
+                "set",
+                "lib/common",
             ],
             check=True,
             stdout=subprocess.DEVNULL,
