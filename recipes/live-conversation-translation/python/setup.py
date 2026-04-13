@@ -54,7 +54,7 @@ def clone_repo(animal: str, major: str, minor: str) -> None:
         stop_event.set()
         thread.join()
 
-    sys.stdout.write(f"\rCloned {animal.capitalize()}'s GitHub repository.{" " * 20}\n")
+    sys.stdout.write(f"\rCloned {animal.capitalize()}'s GitHub repository.{' ' * 20}\n")
     sys.stdout.flush()
 
 
