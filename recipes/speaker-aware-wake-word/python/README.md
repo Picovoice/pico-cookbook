@@ -58,6 +58,11 @@ python enroll.py \
 --eagle_speaker_profile_path ${EAGLE_SPEAKER_PROFILE_PATH}
 ```
 
+Where:
+- `${ACCESS_KEY}` is your private AccessKey from Picovoice Console
+- `${PORCUPINE_KEYWORD_PATH}` is the path to the Porcupine wake word file trained in Picovoice Console.
+- `${EAGLE_SPEAKER_PROFILE_PATH}` is the path to the enrolled user's Eagle speaker profile file, produced by the enrollment process.
+
 ### 6. Run the Demo
 
 ```console

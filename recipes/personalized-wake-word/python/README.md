@@ -1,6 +1,6 @@
 # Personalized Wake Word in Python
 
-Personalize wake word detection, powered by on-device voice AI.
+Personalized wake word detection that activates only for the enrolled speaker, powered by on-device voice AI.
 
 ## Compatibility
 
@@ -57,6 +57,11 @@ python enroll.py \
 --porcupine_keyword_path ${PORCUPINE_KEYWORD_PATH} \
 --eagle_speaker_profile_path ${EAGLE_SPEAKER_PROFILE_PATH}
 ```
+
+Where:
+- `${ACCESS_KEY}` is your private AccessKey from Picovoice Console
+- `${PORCUPINE_KEYWORD_PATH}` is the path to the Porcupine wake word file trained in Picovoice Console.
+- `${EAGLE_SPEAKER_PROFILE_PATH}` is the path to the enrolled user's Eagle speaker profile file, produced by the enrollment process.
 
 ### 6. Run the Demo
 

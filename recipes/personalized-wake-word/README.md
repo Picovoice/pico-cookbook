@@ -1,6 +1,6 @@
 # Personalized Wake Word
 
-Personalize wake word detection, powered by on-device voice AI.
+Personalized wake word detection that activates only for the enrolled speaker, powered by on-device voice AI.
 
 ## Components
 
