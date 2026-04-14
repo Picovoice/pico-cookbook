@@ -2,6 +2,7 @@ import time
 from argparse import ArgumentParser
 from threading import (
     Event,
+    Lock,
     Thread
 )
 
@@ -18,34 +19,46 @@ class Animation(Thread):
         super().__init__()
 
         self.stop_event = Event()
-        self.wake_word_detected = False
-        self.speaker_verified = False
-        self.speaker_similarity = 0.
+        self._lock = Lock()
+
+        self._is_detected = False
+        self._is_verified = False
+        self._similarity = 0.
 
     def run(self):
         frames = [" .  ", " .. ", " ...", "  ..", "   .", "    "]
         i = 0
 
         while not self.stop_event.is_set():
-            if not self.wake_word_detected:
+            if not self._is_detected:
                 print(
                     f'\033[2K\033[1G\rSay the wake word {frames[i % len(frames)]}',
                     end='',
                     flush=True)
+
                 i += 1
                 time.sleep(0.1)
             else:
                 print(
-                    f'\033[2K\033[1G\r {"Y" if self.speaker_verified else "N"} ({self.speaker_similarity:.2f})',
+                    f'\033[2K\033[1G\r {"Y" if self._is_verified else "N"} ({self._similarity:.2f})',
                     end='',
                     flush=True)
-                self.wake_word_detected = False
-                self.speaker_verified = False
-                self.speaker_similarity = 0.
+
+                with self._lock:
+                    self._is_detected = False
+                    self._is_verified = False
+                    self._similarity = 0.
+
                 i = 0
                 time.sleep(1.)
 
         print('\033[2K\033[1G\r', end='', flush=True)
+
+    def update(self, is_verified: bool, similarity: float) -> None:
+        with self._lock:
+            self._is_detected = True
+            self._is_verified = is_verified
+            self._similarity = similarity
 
 
 def main() -> None:
@@ -75,11 +88,6 @@ def main() -> None:
         type=float,
         default=0.75,
         help="Eagle's recognition threshold [0.0-1.0]")
-    parser.add_argument(
-        '--eagle_window_sec',
-        type=float,
-        default=1.,
-        help="The length of audio window Eagle looks back after wake word detection.")
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -88,7 +96,6 @@ def main() -> None:
     porcupine_sensitivity = args.porcupine_sensitivity
     eagle_speaker_profile_path = args.eagle_speaker_profile_path
     eagle_threshold = args.eagle_threshold
-    eagle_window_sec = args.eagle_window_sec
 
     porcupine = None
     eagle = None
@@ -112,25 +119,24 @@ def main() -> None:
         recorder = PvRecorder(frame_length=porcupine.frame_length)
         recorder.start()
 
-        eagle_window_sample = max(int(eagle_window_sec * recorder.sample_rate), eagle.min_process_samples)
-        pcm_window = list()
+        pcm = list()
 
         animation = Animation()
         animation.start()
 
         while True:
-            pcm = recorder.read()
+            frame = recorder.read()
 
-            pcm_window.extend(pcm)
-            pcm_window = pcm_window[-eagle_window_sample:]
+            pcm.extend(frame)
+            pcm = pcm[-eagle.min_process_samples:]
 
-            wake_word_detected = porcupine.process(pcm) == 0
-            if wake_word_detected:
-                speaker_similarity = eagle.process(pcm_window, speaker_profiles=[speaker_profile])
+            is_detected = porcupine.process(frame) == 0
+            if is_detected:
+                speaker_similarity = eagle.process(pcm, speaker_profiles=[speaker_profile])
 
-                animation.wake_word_detected = True
-                animation.speaker_verified = speaker_similarity is not None and speaker_similarity[0] > eagle_threshold
-                animation.speaker_similarity = speaker_similarity[0] if speaker_similarity is not None else 0
+                animation.update(
+                    is_verified=speaker_similarity is not None and speaker_similarity[0] > eagle_threshold,
+                    similarity=speaker_similarity[0] if speaker_similarity is not None else 0.)
     except KeyboardInterrupt:
         pass
     finally:
