@@ -46,10 +46,7 @@ class Animation(Thread):
             now = time.time()
 
             with self._lock:
-                if (
-                        self._last_detected_speaker is not None and
-                        now - self._last_detection_time >= 1.0
-                ):
+                if self._last_detected_speaker is not None and now - self._last_detection_time >= 1.0:
                     self._speaker_states[self._last_detected_speaker] = None
                     self._last_detected_speaker = None
                     self._last_detection_time = 0.0
