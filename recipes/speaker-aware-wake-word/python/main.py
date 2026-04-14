@@ -3,6 +3,7 @@ import sys
 import time
 from argparse import ArgumentParser
 from threading import (
+    Event,
     Lock,
     Thread
 )
@@ -24,7 +25,7 @@ class Animation(Thread):
     def __init__(self, speakers: Sequence[str]):
         super().__init__(daemon=True)
 
-        self._stop = False
+        self.stop_event = Event()
         self._lock = Lock()
 
         self._speakers = list(speakers) + ["unknown"]
@@ -41,13 +42,10 @@ class Animation(Thread):
         i = 0
         first_frame = True
 
-        while True:
+        while not self.stop_event.is_set():
             now = time.time()
 
             with self._lock:
-                if self._stop:
-                    break
-
                 if (
                         self._last_detected_speaker is not None and
                         now - self._last_detection_time >= 1.0
@@ -94,10 +92,6 @@ class Animation(Thread):
             self._speaker_states[speaker] = speaker_similarity
             self._last_detected_speaker = speaker
             self._last_detection_time = time.time()
-
-    def stop(self) -> None:
-        with self._lock:
-            self._stop = True
 
 
 def main() -> None:
@@ -193,12 +187,12 @@ def main() -> None:
 
                 animation.detect(
                     speaker=speaker if similarity > eagle_threshold else 'unknown',
-                    speaker_similarity=similarity)
+                    speaker_similarity=similarity if similarity > eagle_threshold else (1 - similarity))
     except KeyboardInterrupt:
         pass
     finally:
         if animation is not None:
-            animation.stop()
+            animation.stop_event.set()
             animation.join()
 
         if recorder is not None:
