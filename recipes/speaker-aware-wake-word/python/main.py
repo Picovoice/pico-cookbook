@@ -28,7 +28,7 @@ class Animation(Thread):
         self.stop_event = Event()
         self._lock = Lock()
 
-        self._speakers = list(speakers) + ["unknown"]
+        self._speakers = speakers
         self._speaker_states: Dict[str, Optional[float]] = {
             speaker: None for speaker in self._speakers
         }
@@ -78,15 +78,12 @@ class Animation(Thread):
         sys.stdout.write(f"\033[{self._num_lines}F")
         sys.stdout.flush()
 
-    def detect(self, speaker: str, speaker_similarity: float) -> None:
+    def update(self, speaker: str, similarity: float) -> None:
         with self._lock:
-            if speaker not in self._speaker_states:
-                return
-
             if self._last_detected_speaker is not None:
                 self._speaker_states[self._last_detected_speaker] = None
 
-            self._speaker_states[speaker] = speaker_similarity
+            self._speaker_states[speaker] = similarity
             self._last_detected_speaker = speaker
             self._last_detection_time = time.time()
 
@@ -119,11 +116,6 @@ def main() -> None:
         type=float,
         default=0.5,
         help="Eagle's recognition threshold [0.0-1.0]")
-    parser.add_argument(
-        '--eagle_window_sec',
-        type=float,
-        default=1.,
-        help="The length of audio window Eagle looks back after wake word detection.")
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -132,14 +124,13 @@ def main() -> None:
     porcupine_sensitivity = args.porcupine_sensitivity
     eagle_speaker_profile_paths = args.eagle_speaker_profile_paths
     eagle_threshold = args.eagle_threshold
-    eagle_window_sec = args.eagle_window_sec
 
     speaker_profiles = list()
     for path in eagle_speaker_profile_paths:
         with open(path, 'rb') as f:
             speaker_profiles.append(EagleProfile.from_bytes(f.read()))
 
-    speakers = [os.path.basename(x).rsplit('.', maxsplit=1)[0] for x in eagle_speaker_profile_paths]
+    speakers = [os.path.basename(x).rsplit('.', maxsplit=1)[0] for x in eagle_speaker_profile_paths] + ["unknown"]
 
     porcupine = None
     eagle = None
@@ -160,31 +151,30 @@ def main() -> None:
         recorder = PvRecorder(frame_length=porcupine.frame_length)
         recorder.start()
 
-        eagle_window_sample = max(int(eagle_window_sec * recorder.sample_rate), eagle.min_process_samples)
-        pcm_window = list()
+        pcm = list()
 
         animation = Animation(speakers)
         animation.start()
 
         while True:
-            pcm = recorder.read()
+            frame = recorder.read()
 
-            pcm_window.extend(pcm)
-            pcm_window = pcm_window[-eagle_window_sample:]
+            pcm.extend(frame)
+            pcm = pcm[-eagle.min_process_samples:]
 
-            wake_word_detected = porcupine.process(pcm) == 0
-            if wake_word_detected:
-                speaker_similarities = eagle.process(pcm_window, speaker_profiles=speaker_profiles)
-
-                if speaker_similarities is not None:
-                    speaker, similarity = max(zip(speakers, speaker_similarities), key=lambda x: x[1])
+            is_detected = porcupine.process(frame) == 0
+            if is_detected:
+                similarities = eagle.process(pcm, speaker_profiles=speaker_profiles)
+                if similarities is not None:
+                    speaker, similarity = max(zip(speakers, similarities), key=lambda x: x[1])
+                    if similarity < eagle_threshold:
+                        speaker = 'unknown'
+                        similarity = 1. - similarity
                 else:
                     speaker = 'unknown'
                     similarity = 1.
 
-                animation.detect(
-                    speaker=speaker if similarity > eagle_threshold else 'unknown',
-                    speaker_similarity=similarity if similarity > eagle_threshold else (1 - similarity))
+                animation.update(speaker=speaker, similarity=similarity)
     except KeyboardInterrupt:
         pass
     finally:
