@@ -1,6 +1,9 @@
 import time
 from argparse import ArgumentParser
-from threading import Thread
+from threading import (
+    Event,
+    Thread
+)
 
 import pveagle
 import pvporcupine
@@ -11,17 +14,14 @@ class Animation(Thread):
     def __init__(self):
         super().__init__()
 
-        self._stop: bool = False
-        self.progress: int = 0
+        self.stop_event = Event()
+        self.progress = 0
 
     def run(self):
         frames = [" .  ", " .. ", " ...", "  ..", "   .", "    "]
+
         i = 0
-
-        while not self._stop:
-            if self._stop:
-                break
-
+        while not self.stop_event.is_set():
             print(
                 f'\033[2K\033[1G\r[{self.progress:3d}%] Say the wake word {frames[i % len(frames)]}',
                 end='',
@@ -29,12 +29,6 @@ class Animation(Thread):
             i += 1
             time.sleep(0.1)
 
-        self._stop = False
-
-    def stop(self):
-        self._stop = True
-        while self._stop:
-            pass
         print('\033[2K\033[1G\r', end='', flush=True)
 
 
@@ -83,7 +77,8 @@ def main() -> None:
     try:
         eagle = pveagle.create_profiler(
             access_key=access_key,
-            min_enrollment_chunks=eagle_min_enrollment_chunks)
+            min_enrollment_chunks=eagle_min_enrollment_chunks,
+            voice_threshold=0.)
         print(f"[OK] Eagle Speaker Recognition[V{eagle.version}]")
 
         porcupine = pvporcupine.create(
@@ -94,29 +89,29 @@ def main() -> None:
         print(f"[OK] Porcupine Wake Word[V{porcupine.version}]")
 
         recorder = PvRecorder(frame_length=porcupine.frame_length)
+        recorder.start()
 
         animation = Animation()
-
         animation.start()
 
         while progress < 100.0:
             pcm = list()
-            recorder.start()
-            wake_word_detected = False
-            while not wake_word_detected:
+            is_detected = False
+            while not is_detected:
                 frame = recorder.read()
                 pcm.extend(frame)
-                wake_word_detected = porcupine.process(frame) == 0
-            recorder.stop()
+                is_detected = porcupine.process(frame) == 0
 
             for i in range(len(pcm) // eagle.frame_length):
                 progress = eagle.enroll(pcm[i * eagle.frame_length:(i + 1) * eagle.frame_length])
             animation.progress = int(progress)
+            pcm.clear()
     except KeyboardInterrupt:
         pass
     finally:
         if animation is not None:
-            animation.stop()
+            animation.stop_event.set()
+            animation.join()
 
         if progress == 100.:
             with open(eagle_speaker_profile_path, 'wb') as f:

@@ -199,6 +199,7 @@ def main() -> None:
     finally:
         if animation is not None:
             animation.stop()
+            animation.join()
 
         if recorder is not None:
             recorder.stop()
