@@ -28,64 +28,47 @@ class Animation(Thread):
         self.stop_event = Event()
         self._lock = Lock()
 
-        self._speakers = speakers
-        self._speaker_states: Dict[str, Optional[float]] = {
-            speaker: None for speaker in self._speakers
-        }
-        self._last_detected_speaker: Optional[str] = None
-        self._last_detection_time: float = 0.0
+        self._similarities: Dict[str, Optional[float]] = {x: None for x in speakers}
+        self._tick = 0.0
 
-        self._num_lines = 1 + len(self._speakers)
+    def run(self) -> None:
+        sys.stdout.write("\n" * (1 + len(self._similarities)))
 
-    def run(self):
         frames = [" .  ", " .. ", " ...", "  ..", "   .", "    "]
         i = 0
-        first_frame = True
 
         while not self.stop_event.is_set():
-            now = time.time()
-
             with self._lock:
-                if self._last_detected_speaker is not None and now - self._last_detection_time >= 1.0:
-                    self._speaker_states[self._last_detected_speaker] = None
-                    self._last_detected_speaker = None
-                    self._last_detection_time = 0.0
+                if any(x is not None for x in self._similarities.values()) and (time.time() - self._tick >= 1.0):
+                    self._similarities = {x: None for x in self._similarities.keys()}
+                    self._tick = 0.0
 
-                speaker_states = dict(self._speaker_states)
+                similarities = dict(self._similarities)
 
-            if first_frame:
-                sys.stdout.write("\n" * self._num_lines)
-                first_frame = False
-
-            sys.stdout.write(f"\033[{self._num_lines}F")
+            sys.stdout.write(f"\033[{1 + len(similarities)}F")
 
             sys.stdout.write(f"\033[2K\rSay the wake word {frames[i % len(frames)]}\n")
-            for speaker in self._speakers:
-                similarity = speaker_states[speaker]
+            for speaker, similarity in self._similarities.items():
                 if similarity is None:
                     sys.stdout.write(f"\033[2K\r -  {speaker}\n")
                 else:
                     sys.stdout.write(f"\033[2K\r ✓  {speaker} ({similarity:.2f})\n")
-
             sys.stdout.flush()
 
             i += 1
             time.sleep(0.1)
 
-        sys.stdout.write(f"\033[{self._num_lines}F")
-        for _ in range(self._num_lines):
+        sys.stdout.write(f"\033[{1 + len(similarities)}F")
+        for _ in range(1 + len(similarities)):
             sys.stdout.write("\033[2K\r\n")
-        sys.stdout.write(f"\033[{self._num_lines}F")
+        sys.stdout.write(f"\033[{1 + len(similarities)}F")
         sys.stdout.flush()
 
     def update(self, speaker: str, similarity: float) -> None:
         with self._lock:
-            if self._last_detected_speaker is not None:
-                self._speaker_states[self._last_detected_speaker] = None
-
-            self._speaker_states[speaker] = similarity
-            self._last_detected_speaker = speaker
-            self._last_detection_time = time.time()
+            self._similarities = {x: None for x in self._similarities.keys()}
+            self._similarities[speaker] = similarity
+            self._tick = time.time()
 
 
 def main() -> None:
