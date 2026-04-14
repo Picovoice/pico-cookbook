@@ -75,18 +75,18 @@ def main() -> None:
     animation = None
 
     try:
-        eagle = pveagle.create_profiler(
-            access_key=access_key,
-            min_enrollment_chunks=eagle_min_enrollment_chunks,
-            voice_threshold=0.)
-        print(f"[OK] Eagle Speaker Recognition[V{eagle.version}]")
-
         porcupine = pvporcupine.create(
             access_key=access_key,
             model_path=porcupine_model_path,
             keyword_paths=[porcupine_keyword_path],
             sensitivities=[porcupine_sensitivity])
         print(f"[OK] Porcupine Wake Word[V{porcupine.version}]")
+
+        eagle = pveagle.create_profiler(
+            access_key=access_key,
+            min_enrollment_chunks=eagle_min_enrollment_chunks,
+            voice_threshold=0.1)
+        print(f"[OK] Eagle Speaker Recognition[V{eagle.version}]")
 
         recorder = PvRecorder(frame_length=porcupine.frame_length)
         recorder.start()
