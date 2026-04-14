@@ -46,6 +46,10 @@
     // android
     "**/AndroidManifest.xml",
     "**/main_layout.xml",
+    "**/libs.versions.toml",
+    "**/activity_main.xml",
+    "**/settings.gradle",
+    "**/backup_rules.xml",
 
     // python
     "**/__pycache__/**",
