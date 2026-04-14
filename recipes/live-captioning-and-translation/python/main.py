@@ -12,10 +12,11 @@ from typing import (
     Callable,
     Tuple
 )
-
+import wave
 import pvcheetah
 import pvzebra
 from pvrecorder import PvRecorder
+from pvspeaker import PvSpeaker
 
 
 class LanguagePairs(Enum):
@@ -164,8 +165,99 @@ def main_microphone(
             recorder.delete()
 
 
-def main_file() -> None:
-    pass
+def main_file(
+        access_key: str,
+        source_language: str,
+        target_language: str,
+        wave_path: str,
+        endpoint_duration_sec: float,
+        disable_automatic_punctuation: bool,
+        disable_text_normalization: bool
+) -> None:
+    with wave.open(wave_path, "rb") as f:
+        assert f.getnchannels() == 1
+        assert f.getsampwidth() == 2
+        assert f.getframerate() == 16000
+        assert f.getcomptype() == 'NONE'
+        num_frames = f.getnframes()
+        audio = f.readframes(num_frames)
+
+    speaker = None
+    cheetah = None
+    zebra = None
+
+    try:
+        cheetah_model_path = os.path.join(
+            os.path.dirname(__file__),
+            'cheetah/lib/common',
+            'cheetah_params.pv' if source_language == 'en' else f'cheetah_params_{source_language}.pv')
+        cheetah = pvcheetah.create(
+            access_key=access_key,
+            model_path=cheetah_model_path,
+            endpoint_duration_sec=endpoint_duration_sec,
+            enable_automatic_punctuation=not disable_automatic_punctuation,
+            enable_text_normalization=not disable_text_normalization)
+        print(f"[OK] Cheetah Streaming Speech-to-Text[V{cheetah.version}][{source_language.upper()}]")
+
+        if source_language != target_language:
+            zebra_model_path = os.path.join(
+                os.path.dirname(__file__),
+                'zebra/lib/common',
+                f'zebra_params_{source_language}_{target_language}.pv')
+            zebra = pvzebra.create(access_key=access_key, model_path=zebra_model_path)
+            print(f"[OK] Zebra Translation[V{zebra.version}][{source_language.upper()} → {target_language.upper()}]")
+
+        speaker = PvSpeaker(sample_rate=cheetah.sample_rate, bits_per_sample=16)
+        speaker.start()
+
+        print()
+
+        text = ""
+        text_lock = Lock()
+
+        def get_text():
+            with text_lock:
+                display_text = "(listening)" if text == "" else text
+                return f"[{source_language.upper()}] {display_text}"
+
+        text_event, text_thread = print_async(get_text)
+
+        while True:
+            partial, is_endpoint = cheetah.process(recorder.read())
+            with text_lock:
+                text += partial
+            if is_endpoint:
+                remainder = cheetah.flush()
+                with text_lock:
+                    text += remainder
+                if len(text) > 0:
+                    text_event.set()
+                    text_thread.join()
+
+                    if target_language != source_language:
+                        print(f"[{target_language.upper()}] {zebra.translate(text)}")
+
+                    print()
+                    text = ""
+                    text_event, text_thread = print_async(get_text)
+
+                    recorder.start()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        # Make the cursor visible again.
+        sys.stdout.write("\033[?25h")
+        sys.stdout.flush()
+
+        if zebra is not None:
+            zebra.delete()
+
+        if cheetah is not None:
+            cheetah.delete()
+
+        if speaker is not None:
+            speaker.stop()
+            speaker.delete()
 
 
 def main() -> None:
@@ -180,7 +272,7 @@ def main() -> None:
         choices=[x.value for x in LanguagePairs],
         help='Translation language pair.')
     parser.add_argument(
-        '--audio-path',
+        '--wave-path',
         help='')
     parser.add_argument(
         '--endpoint_duration_sec',
@@ -195,20 +287,14 @@ def main() -> None:
         '--disable_text_normalization',
         action='store_true',
         help='Disable text normalization in Streaming Speech-to-Text.')
-    parser.add_argument(
-        '--gender',
-        choices=['female', 'male'],
-        default='male',
-        help='Voice gender to use for translated speech output.')
     args = parser.parse_args()
 
     access_key = args.access_key
     language_pair = LanguagePairs(args.language_pair)
-    audio_path = args.audio_path
+    wave_path = args.wave_path
     endpoint_duration_sec = args.endpoint_duration_sec
     disable_automatic_punctuation = args.disable_automatic_punctuation
     disable_text_normalization = args.disable_text_normalization
-    gender = args.gender
 
     source_language, target_language = [x for x in language_pair.value.split('-')]
 
@@ -217,7 +303,7 @@ def main() -> None:
     else:
         print(f"Translating from `{source_language}` to `{target_language}`.")
 
-    if audio_path is None:
+    if wave_path is None:
         main_microphone(
             access_key=access_key,
             source_language=source_language,
@@ -226,7 +312,14 @@ def main() -> None:
             disable_automatic_punctuation=disable_automatic_punctuation,
             disable_text_normalization=disable_text_normalization)
     else:
-        main_file()
+        main_file(
+            access_key=access_key,
+            source_language=source_language,
+            target_language=target_language,
+            wave_path=wave_path,
+            endpoint_duration_sec=endpoint_duration_sec,
+            disable_automatic_punctuation=disable_automatic_punctuation,
+            disable_text_normalization=disable_text_normalization)
 
 
 if __name__ == '__main__':
