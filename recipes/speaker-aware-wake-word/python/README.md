@@ -1,5 +1,7 @@
 # # Speaker-Aware Wake Word in Python
 
+Detect wake words and recognize who said them, powered by on-device voice AI.
+
 ## Compatibility
 
 - Runs on Linux (x86_64), macOS (arm64, x86_64), Windows (arm64, x86_64), and Raspberry Pi (5, 4, and 3).

@@ -1,5 +1,7 @@
 # Personalized Wake Word in Python
 
+Personalize wake word detection, powered by on-device voice AI.
+
 ## Compatibility
 
 - Runs on Linux (x86_64), macOS (arm64, x86_64), Windows (arm64, x86_64), and Raspberry Pi (5, 4, and 3).
