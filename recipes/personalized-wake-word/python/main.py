@@ -1,6 +1,9 @@
 import time
 from argparse import ArgumentParser
-from threading import Thread
+from threading import (
+    Event,
+    Thread
+)
 
 import pvporcupine
 from pveagle import (
@@ -14,19 +17,16 @@ class Animation(Thread):
     def __init__(self):
         super().__init__()
 
-        self._stop: bool = False
-        self.wake_word_detected: bool = False
-        self.speaker_verified: bool = False
-        self.speaker_similarity: float = 0.
+        self.stop_event = Event()
+        self.wake_word_detected = False
+        self.speaker_verified = False
+        self.speaker_similarity = 0.
 
     def run(self):
         frames = [" .  ", " .. ", " ...", "  ..", "   .", "    "]
         i = 0
 
-        while not self._stop:
-            if self._stop:
-                break
-
+        while not self.stop_event.is_set():
             if not self.wake_word_detected:
                 print(
                     f'\033[2K\033[1G\rSay the wake word {frames[i % len(frames)]}',
@@ -45,12 +45,6 @@ class Animation(Thread):
                 i = 0
                 time.sleep(1.)
 
-        self._stop = False
-
-    def stop(self):
-        self._stop = True
-        while self._stop:
-            pass
         print('\033[2K\033[1G\r', end='', flush=True)
 
 
@@ -141,7 +135,8 @@ def main() -> None:
         pass
     finally:
         if animation is not None:
-            animation.stop()
+            animation.stop_event.set()
+            animation.join()
 
         if recorder is not None:
             recorder.stop()
