@@ -73,7 +73,8 @@ public class MainActivity extends AppCompatActivity {
     private enum State {
         LISTENING_SOURCE,
         LISTENING_TARGET,
-        OTHER
+        OTHER,
+        ERROR
     }
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -166,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setError(String text) {
-        currentState = State.OTHER;
+        currentState = State.ERROR;
         mainHandler.post(() -> {
             setStatus("Error");
             sendText(text);
@@ -235,6 +236,7 @@ public class MainActivity extends AppCompatActivity {
                     .build(getApplicationContext());
         } catch (CheetahException e) {
             setError(e.getMessage());
+            return;
         }
 
         setStatus(String.format("Loading Cheetah %s", targetLanguage));
@@ -248,6 +250,7 @@ public class MainActivity extends AppCompatActivity {
                     .build(getApplicationContext());
         } catch (CheetahException e) {
             setError(e.getMessage());
+            return;
         }
 
         setStatus(String.format("Loading Zebra %s-%s", sourceLanguage, targetLanguage));
@@ -260,6 +263,7 @@ public class MainActivity extends AppCompatActivity {
                     .build(getApplicationContext());
         } catch (ZebraException e) {
             setError(e.getMessage());
+            return;
         }
 
         setStatus(String.format("Loading Zebra %s-%s", targetLanguage, sourceLanguage));
@@ -272,6 +276,7 @@ public class MainActivity extends AppCompatActivity {
                     .build(getApplicationContext());
         } catch (ZebraException e) {
             setError(e.getMessage());
+            return;
         }
 
         setStatus(String.format("Loading Orca %s", sourceLanguage));
@@ -284,6 +289,7 @@ public class MainActivity extends AppCompatActivity {
                     .build(getApplicationContext());
         } catch (OrcaException e) {
             setError(e.getMessage());
+            return;
         }
 
         setStatus(String.format("Loading Orca %s", targetLanguage));
@@ -296,6 +302,7 @@ public class MainActivity extends AppCompatActivity {
                     .build(getApplicationContext());
         } catch (OrcaException e) {
             setError(e.getMessage());
+            return;
         }
     }
 
@@ -314,6 +321,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void start() {
+        if (currentState == State.ERROR) {
+            return;
+        }
+
         if (voiceProcessor.hasRecordAudioPermission(this)) {
             try {
                 voiceProcessor.start(cheetah0.getFrameLength(), cheetah0.getSampleRate());
@@ -339,16 +350,28 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startListeningSource() {
+        if (currentState == State.ERROR) {
+            return;
+        }
+
         setStatus(String.format("Listening for %s", sourceLanguage));
         currentState = State.LISTENING_SOURCE;
     }
 
     private void startListeningTarget() {
+        if (currentState == State.ERROR) {
+            return;
+        }
+
         setStatus(String.format("Listening for %s", targetLanguage));
         currentState = State.LISTENING_TARGET;
     }
 
     private void listenSource(short[] frame) {
+        if (currentState == State.ERROR) {
+            return;
+        }
+
         try {
             CheetahTranscript transcript = cheetah0.process(frame);
             currentTranscript += transcript.getTranscript();
@@ -370,6 +393,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void listenTarget(short[] frame) {
+        if (currentState == State.ERROR) {
+            return;
+        }
+
         try {
             CheetahTranscript transcript = cheetah1.process(frame);
             currentTranscript += transcript.getTranscript();
@@ -391,6 +418,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startTranslatingSource() {
+        if (currentState == State.ERROR) {
+            return;
+        }
+
         setStatus(String.format("Translating to %s", targetLanguage));
         currentState = State.OTHER;
 
@@ -411,6 +442,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startTranslatingTarget() {
+        if (currentState == State.ERROR) {
+            return;
+        }
+
         setStatus(String.format("Translating to %s", sourceLanguage));
         currentState = State.OTHER;
 
@@ -431,6 +466,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startSpeakingTarget(String text) {
+        if (currentState == State.ERROR) {
+            return;
+        }
+
         setStatus(String.format("Synthesizing %s speech", targetLanguage));
         currentState = State.OTHER;
 
@@ -450,6 +489,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startSpeakingSource(String text) {
+        if (currentState == State.ERROR) {
+            return;
+        }
+
         setStatus(String.format("Synthesizing %s speech", sourceLanguage));
         currentState = State.OTHER;
 

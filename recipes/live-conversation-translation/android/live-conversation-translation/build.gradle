@@ -1,5 +1,21 @@
-plugins {
-    alias(libs.plugins.android.application)
+apply plugin: 'com.android.application'
+
+Properties properties = new Properties()
+if (rootProject.file("local.properties").exists()) {
+    properties.load(rootProject.file("local.properties").newDataInputStream())
+
+    if (project.hasProperty("storePassword")) {
+        properties.put("storePassword", project.getProperty("storePassword"))
+    }
+    if (project.hasProperty("storeFile")) {
+        properties.put("storeFile", project.getProperty("storeFile"))
+    }
+    if (project.hasProperty("keyAlias")) {
+        properties.put("keyAlias", project.getProperty("keyAlias"))
+    }
+    if (project.hasProperty("keyPassword")) {
+        properties.put("keyPassword", project.getProperty("keyPassword"))
+    }
 }
 
 android {
@@ -8,35 +24,45 @@ android {
 
     defaultConfig {
         applicationId "ai.picovoice.liveconversationtranslation"
-        minSdk 30
-        targetSdk 36
+        minSdkVersion 26
+        targetSdkVersion defaultTargetSdkVersion
         versionCode 1
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
-
+    signingConfigs {
+        release {
+            storePassword properties.getProperty("storePassword")
+            storeFile file(properties.getProperty("storeFile", ".dummy.jks"))
+            keyAlias properties.getProperty("keyAlias")
+            keyPassword properties.getProperty("keyPassword")
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    lint {
+        abortOnError false
     }
 }
 
 dependencies {
-
     implementation libs.appcompat
     implementation libs.material
     implementation libs.activity
     implementation libs.constraintlayout
-    testImplementation libs.junit
-    androidTestImplementation libs.ext.junit
-    androidTestImplementation libs.espresso.core
 
     implementation 'ai.picovoice:android-voice-processor:1.0.2'
     implementation 'ai.picovoice:cheetah-android:4.0.1'
