@@ -1,5 +1,7 @@
+import array
 import os
 import sys
+import wave
 from argparse import ArgumentParser
 from enum import Enum
 from threading import (
@@ -12,7 +14,7 @@ from typing import (
     Callable,
     Tuple
 )
-import wave
+
 import pvcheetah
 import pvzebra
 from pvrecorder import PvRecorder
@@ -180,7 +182,9 @@ def main_file(
         assert f.getframerate() == 16000
         assert f.getcomptype() == 'NONE'
         num_frames = f.getnframes()
-        audio = f.readframes(num_frames)
+        audio_bytes = f.readframes(num_frames)
+        audio = array.array("h")
+        audio.frombytes(audio_bytes)
 
     speaker = None
     cheetah = None
@@ -217,13 +221,12 @@ def main_file(
 
         def get_text():
             with text_lock:
-                display_text = "(listening)" if text == "" else text
-                return f"[{source_language.upper()}] {display_text}"
+                return f"[{source_language.upper()}] {text}"
 
         text_event, text_thread = print_async(get_text)
 
-        while True:
-            partial, is_endpoint = cheetah.process(recorder.read())
+        for i in range(len(audio) // cheetah.frame_length):
+            partial, is_endpoint = cheetah.process(audio[i * cheetah.frame_length:(i + 1) * cheetah.frame_length])
             with text_lock:
                 text += partial
             if is_endpoint:
@@ -240,8 +243,6 @@ def main_file(
                     print()
                     text = ""
                     text_event, text_thread = print_async(get_text)
-
-                    recorder.start()
     except KeyboardInterrupt:
         pass
     finally:
@@ -272,7 +273,7 @@ def main() -> None:
         choices=[x.value for x in LanguagePairs],
         help='Translation language pair.')
     parser.add_argument(
-        '--wave-path',
+        '--wave_path',
         help='')
     parser.add_argument(
         '--endpoint_duration_sec',
