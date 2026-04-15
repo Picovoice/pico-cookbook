@@ -1,5 +1,10 @@
 package ai.picovoice.liveconversationtranslation;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
+import android.media.AudioFormat;
+import android.media.AudioTrack;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -16,8 +21,10 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -31,6 +38,12 @@ import ai.picovoice.android.voiceprocessor.VoiceProcessorException;
 import ai.picovoice.cheetah.Cheetah;
 import ai.picovoice.cheetah.CheetahException;
 import ai.picovoice.cheetah.CheetahTranscript;
+import ai.picovoice.orca.Orca;
+import ai.picovoice.orca.OrcaAudio;
+import ai.picovoice.orca.OrcaException;
+import ai.picovoice.orca.OrcaSynthesizeParams;
+import ai.picovoice.zebra.Zebra;
+import ai.picovoice.zebra.ZebraException;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -57,6 +70,12 @@ public class MainActivity extends AppCompatActivity {
         "it-es"
     };
 
+    private enum State {
+        LISTENING_SOURCE,
+        LISTENING_TARGET,
+        OTHER
+    }
+
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private final ExecutorService engineExecutor = Executors.newSingleThreadExecutor();
@@ -79,7 +98,20 @@ public class MainActivity extends AppCompatActivity {
 
     private int chatLastNewline = 0;
 
+    private String sourceLanguage;
+
+    private String targetLanguage;
+
+    private final VoiceProcessor voiceProcessor = VoiceProcessor.getInstance();
     private Cheetah cheetah0;
+    private Cheetah cheetah1;
+    private Zebra zebra0;
+    private Zebra zebra1;
+    private Orca orca0;
+    private Orca orca1;
+
+    private State currentState = State.OTHER;
+    private String currentTranscript = "";
 
     private void sendText(String text) {
         mainHandler.post(() -> {
@@ -134,6 +166,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setError(String text) {
+        currentState = State.OTHER;
         mainHandler.post(() -> {
             setStatus("Error");
             sendText(text);
@@ -171,27 +204,302 @@ public class MainActivity extends AppCompatActivity {
 
         languagePairView.setOnItemClickListener((parent, view, position, id) -> {
             String[] pair = languagePairs[position].split("-");
+            sourceLanguage = pair[0];
+            targetLanguage = pair[1];
 
             selectLanguageLayout.setVisibility(View.GONE);
             chatLayout.setVisibility(View.VISIBLE);
-            mainHandler.post(() -> chatText.setText(""));
+
+            voiceProcessor.addFrameListener(this::frameListener);
+
+            voiceProcessor.addErrorListener(error -> {
+                setError(error.getMessage());
+            });
 
             engineExecutor.submit(() -> {
-                setStatus(String.format("Loading Cheetah %s", pair[0]));
-
-                try {
-                    String model_path = String.format("cheetah_params_%s.pv", pair[0]);
-                    cheetah0 = new Cheetah.Builder()
-                            .setAccessKey(ACCESS_KEY)
-                            .setModelPath(model_path)
-                            .setEnableAutomaticPunctuation(true)
-                            .build(getApplicationContext());
-                } catch (CheetahException e) {
-                    setError(e.getMessage());
-                }
-
-                setStatus("Listening for ...");
+                initEngines();
+                start();
             });
         });
+    }
+
+    private void initEngines() {
+        setStatus(String.format("Loading Cheetah %s", sourceLanguage));
+
+        try {
+            String model_path = String.format("cheetah_params_%s.pv", sourceLanguage);
+            cheetah0 = new Cheetah.Builder()
+                    .setAccessKey(ACCESS_KEY)
+                    .setModelPath(model_path)
+                    .setEnableAutomaticPunctuation(true)
+                    .build(getApplicationContext());
+        } catch (CheetahException e) {
+            setError(e.getMessage());
+        }
+
+        setStatus(String.format("Loading Cheetah %s", targetLanguage));
+
+        try {
+            String model_path = String.format("cheetah_params_%s.pv", targetLanguage);
+            cheetah1 = new Cheetah.Builder()
+                    .setAccessKey(ACCESS_KEY)
+                    .setModelPath(model_path)
+                    .setEnableAutomaticPunctuation(true)
+                    .build(getApplicationContext());
+        } catch (CheetahException e) {
+            setError(e.getMessage());
+        }
+
+        setStatus(String.format("Loading Zebra %s-%s", sourceLanguage, targetLanguage));
+
+        try {
+            String model_path = String.format("zebra_params_%s_%s.pv", sourceLanguage, targetLanguage);
+            zebra0 = new Zebra.Builder()
+                    .setAccessKey(ACCESS_KEY)
+                    .setModelPath(model_path)
+                    .build(getApplicationContext());
+        } catch (ZebraException e) {
+            setError(e.getMessage());
+        }
+
+        setStatus(String.format("Loading Zebra %s-%s", targetLanguage, sourceLanguage));
+
+        try {
+            String model_path = String.format("zebra_params_%s_%s.pv", targetLanguage, sourceLanguage);
+            zebra1 = new Zebra.Builder()
+                    .setAccessKey(ACCESS_KEY)
+                    .setModelPath(model_path)
+                    .build(getApplicationContext());
+        } catch (ZebraException e) {
+            setError(e.getMessage());
+        }
+
+        setStatus(String.format("Loading Orca %s", sourceLanguage));
+
+        try {
+            String model_path = String.format("orca_params_%s_female.pv", sourceLanguage);
+            orca0 = new Orca.Builder()
+                    .setAccessKey(ACCESS_KEY)
+                    .setModelPath(model_path)
+                    .build(getApplicationContext());
+        } catch (OrcaException e) {
+            setError(e.getMessage());
+        }
+
+        setStatus(String.format("Loading Orca %s", targetLanguage));
+
+        try {
+            String model_path = String.format("orca_params_%s_female.pv", targetLanguage);
+            orca1 = new Orca.Builder()
+                    .setAccessKey(ACCESS_KEY)
+                    .setModelPath(model_path)
+                    .build(getApplicationContext());
+        } catch (OrcaException e) {
+            setError(e.getMessage());
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            @NonNull String[] permissions,
+            @NonNull int[] grantResults
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (grantResults.length == 0 || grantResults[0] == PackageManager.PERMISSION_DENIED) {
+            setError("Recording permission not granted");
+        } else {
+            start();
+        }
+    }
+
+    private void start() {
+        if (voiceProcessor.hasRecordAudioPermission(this)) {
+            try {
+                voiceProcessor.start(cheetah0.getFrameLength(), cheetah0.getSampleRate());
+            } catch (VoiceProcessorException e) {
+                setError(e.getMessage());
+            }
+        } else {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.RECORD_AUDIO},
+                    0);
+        }
+
+        startListeningSource();
+    }
+
+    private void frameListener(short[] frame) {
+        if (currentState == State.LISTENING_SOURCE) {
+            listenSource(frame);
+        } else if (currentState == State.LISTENING_TARGET) {
+            listenTarget(frame);
+        }
+    }
+
+    private void startListeningSource() {
+        setStatus(String.format("Listening for %s", sourceLanguage));
+        currentState = State.LISTENING_SOURCE;
+    }
+
+    private void startListeningTarget() {
+        setStatus(String.format("Listening for %s", targetLanguage));
+        currentState = State.LISTENING_TARGET;
+    }
+
+    private void listenSource(short[] frame) {
+        try {
+            CheetahTranscript transcript = cheetah0.process(frame);
+            currentTranscript += transcript.getTranscript();
+            sendText(transcript.getTranscript());
+
+            if (transcript.getIsEndpoint()) {
+                CheetahTranscript flush = cheetah0.flush();
+                currentTranscript += flush.getTranscript();
+                sendText(flush.getTranscript());
+                if (!currentTranscript.isEmpty()) {
+                    sendNewline(false, true);
+
+                    startTranslatingSource();
+                }
+            }
+        } catch (CheetahException e) {
+            setError(e.getMessage());
+        }
+    }
+
+    private void listenTarget(short[] frame) {
+        try {
+            CheetahTranscript transcript = cheetah1.process(frame);
+            currentTranscript += transcript.getTranscript();
+            sendText(transcript.getTranscript());
+
+            if (transcript.getIsEndpoint()) {
+                CheetahTranscript flush = cheetah1.flush();
+                currentTranscript += flush.getTranscript();
+                sendText(flush.getTranscript());
+                if (!currentTranscript.isEmpty()) {
+                    sendNewline(true, true);
+
+                    startTranslatingTarget();
+                }
+            }
+        } catch (CheetahException e) {
+            setError(e.getMessage());
+        }
+    }
+
+    private void startTranslatingSource() {
+        setStatus(String.format("Translating to %s", targetLanguage));
+        currentState = State.OTHER;
+
+        String transcript = currentTranscript;
+        currentTranscript = "";
+
+        engineExecutor.submit(() -> {
+            try {
+                String translation = zebra0.translate(transcript);
+                sendText(translation);
+                sendNewline(true, false);
+
+                startSpeakingTarget(translation);
+            } catch (ZebraException e) {
+                setError(e.getMessage());
+            }
+        });
+    }
+
+    private void startTranslatingTarget() {
+        setStatus(String.format("Translating to %s", sourceLanguage));
+        currentState = State.OTHER;
+
+        String transcript = currentTranscript;
+        currentTranscript = "";
+
+        engineExecutor.submit(() -> {
+            try {
+                String translation = zebra1.translate(transcript);
+                sendText(translation);
+                sendNewline(false, false);
+
+                startSpeakingSource(translation);
+            } catch (ZebraException e) {
+                setError(e.getMessage());
+            }
+        });
+    }
+
+    private void startSpeakingTarget(String text) {
+        setStatus(String.format("Synthesizing %s speech", targetLanguage));
+        currentState = State.OTHER;
+
+        try {
+            OrcaSynthesizeParams params = new OrcaSynthesizeParams.Builder()
+                    .build();
+            OrcaAudio audio = orca1.synthesize(text, params);
+
+            setStatus(String.format("Speaking in %s", targetLanguage));
+
+            playAudio(audio);
+
+            startListeningTarget();
+        } catch (OrcaException e) {
+            setError(e.getMessage());
+        }
+    }
+
+    private void startSpeakingSource(String text) {
+        setStatus(String.format("Synthesizing %s speech", sourceLanguage));
+        currentState = State.OTHER;
+
+        try {
+            OrcaSynthesizeParams params = new OrcaSynthesizeParams.Builder()
+                    .build();
+            OrcaAudio audio = orca0.synthesize(text, params);
+
+            setStatus(String.format("Speaking in %s", sourceLanguage));
+
+            playAudio(audio);
+
+            startListeningSource();
+        } catch (OrcaException e) {
+            setError(e.getMessage());
+        }
+    }
+
+    private void playAudio(OrcaAudio audio) {
+        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build();
+
+        AudioFormat audioFormat = new AudioFormat.Builder()
+                .setSampleRate(orca0.getSampleRate())
+                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                .build();
+
+        AudioTrack ttsOutput = new AudioTrack(
+                audioAttributes,
+                audioFormat,
+                AudioTrack.getMinBufferSize(
+                        orca0.getSampleRate(),
+                        AudioFormat.CHANNEL_OUT_MONO,
+                        AudioFormat.ENCODING_PCM_16BIT),
+                AudioTrack.MODE_STREAM,
+                0);
+
+        ttsOutput.play();
+
+        short[] pcm = audio.getPcm();
+        ttsOutput.write(pcm, 0, pcm.length);
+
+        if (ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
+            ttsOutput.flush();
+            ttsOutput.stop();
+        }
+
+        ttsOutput.release();
     }
 }
