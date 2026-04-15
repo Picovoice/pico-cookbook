@@ -128,7 +128,6 @@ def main_microphone(
         source_language: str,
         target_language: str,
         endpoint_duration_sec: float,
-        disable_automatic_punctuation: bool,
         disable_text_normalization: bool,
 ) -> None:
     recorder = None
@@ -144,7 +143,7 @@ def main_microphone(
             access_key=access_key,
             model_path=cheetah_model_path,
             endpoint_duration_sec=endpoint_duration_sec,
-            enable_automatic_punctuation=not disable_automatic_punctuation,
+            enable_automatic_punctuation=True,
             enable_text_normalization=not disable_text_normalization)
         print(f"[OK] Cheetah Streaming Speech-to-Text[V{cheetah.version}][{source_language.upper()}]")
 
@@ -215,7 +214,6 @@ def main_file(
         target_language: str,
         wave_path: str,
         endpoint_duration_sec: float,
-        disable_automatic_punctuation: bool,
         disable_text_normalization: bool
 ) -> None:
     with wave.open(wave_path, "rb") as f:
@@ -241,7 +239,7 @@ def main_file(
             access_key=access_key,
             model_path=cheetah_model_path,
             endpoint_duration_sec=endpoint_duration_sec,
-            enable_automatic_punctuation=not disable_automatic_punctuation,
+            enable_automatic_punctuation=True,
             enable_text_normalization=not disable_text_normalization)
         print(f"[OK] Cheetah Streaming Speech-to-Text[V{cheetah.version}][{source_language.upper()}]")
 
@@ -315,9 +313,6 @@ def main_file(
                 print()
                 text = tail
                 text_event, text_thread = print_async(get_text)
-            elif len(text) >= zebra.max_character_limit:
-                pass
-
     except KeyboardInterrupt:
         pass
     finally:
@@ -356,10 +351,6 @@ def main() -> None:
         default=.25,
         help='Duration of silence in seconds required to detect the end of an utterance.')
     parser.add_argument(
-        '--disable_automatic_punctuation',
-        action='store_true',
-        help='Disable automatic punctuation in Streaming Speech-to-Text.')
-    parser.add_argument(
         '--disable_text_normalization',
         action='store_true',
         help='Disable text normalization in Streaming Speech-to-Text.')
@@ -369,7 +360,6 @@ def main() -> None:
     language_pair = LanguagePairs(args.language_pair)
     wave_path = args.wave_path
     endpoint_duration_sec = args.endpoint_duration_sec
-    disable_automatic_punctuation = args.disable_automatic_punctuation
     disable_text_normalization = args.disable_text_normalization
 
     source_language, target_language = [x for x in language_pair.value.split('-')]
@@ -385,7 +375,6 @@ def main() -> None:
             source_language=source_language,
             target_language=target_language,
             endpoint_duration_sec=endpoint_duration_sec,
-            disable_automatic_punctuation=disable_automatic_punctuation,
             disable_text_normalization=disable_text_normalization)
     else:
         main_file(
@@ -394,7 +383,6 @@ def main() -> None:
             target_language=target_language,
             wave_path=wave_path,
             endpoint_duration_sec=endpoint_duration_sec,
-            disable_automatic_punctuation=disable_automatic_punctuation,
             disable_text_normalization=disable_text_normalization)
 
 
