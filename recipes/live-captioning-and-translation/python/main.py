@@ -350,7 +350,7 @@ def main() -> None:
     parser.add_argument(
         '--endpoint_duration_sec',
         type=float,
-        default=.25,
+        default=None,
         help='Duration of silence, in seconds, required to detect the end of an utterance.')
     parser.add_argument(
         '--disable_text_normalization',
@@ -363,6 +363,12 @@ def main() -> None:
     wav_path = args.wav_path
     endpoint_duration_sec = args.endpoint_duration_sec
     disable_text_normalization = args.disable_text_normalization
+
+    if endpoint_duration_sec is None:
+        if wav_path is None:
+            endpoint_duration_sec = 1.
+        else:
+            endpoint_duration_sec = .25
 
     source_language, target_language = language_pair.value.split('-')
 
