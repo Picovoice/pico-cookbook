@@ -62,3 +62,7 @@ python main.py --access_key ${ACCESS_KEY}
 ```console
 python main.py --help
 ```
+
+```console
+yt-dlp -x --audio-format wav --postprocessor-args "-ac 1 -ar 16000 -sample_fmt s16" -o ${WAV_PATH} "${YOUTUBE_URL}"
+```

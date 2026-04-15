@@ -1,5 +1,7 @@
 import array
 import os
+import re
+import shutil
 import sys
 import wave
 from argparse import ArgumentParser
@@ -57,27 +59,53 @@ def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str 
     def run() -> None:
         dots_list = [" .  ", " .. ", " ...", "  ..", "   .", "    "]
         i = 0
+        residue = 0
 
-        # Hide the cursor.
         sys.stdout.write("\033[?25l")
         sys.stdout.flush()
 
-        residue = 0
+        try:
+            while not stop_event.is_set():
+                text = get_text()
+                dots = dots_list[i]
 
-        while not stop_event.is_set():
+                width = shutil.get_terminal_size(fallback=(80, 24)).columns
+                max_text_len = max(0, width - len(dots))
+
+                if len(text) > max_text_len:
+                    if max_text_len >= 3:
+                        text = text[:max_text_len - 3] + "..."
+                    else:
+                        text = text[:max_text_len]
+
+                output = f"{text}{dots}"
+
+                sys.stdout.write(f"\r{' ' * residue}")
+                sys.stdout.write(f"\r{output}")
+                sys.stdout.flush()
+
+                residue = len(output)
+                i = (i + 1) % len(dots_list)
+                sleep(refresh_sec)
+
             text = get_text()
-            dots = dots_list[i]
+            width = shutil.get_terminal_size(fallback=(80, 24)).columns
+            max_text_len = max(0, width - 4)
+
+            if len(text) > max_text_len:
+                if max_text_len >= 3:
+                    text = text[:max_text_len - 3] + "..."
+                else:
+                    text = text[:max_text_len]
+
+            output = f"{text}    "
             sys.stdout.write(f"\r{' ' * residue}")
-            sys.stdout.write(f"\r{text}{dots}")
+            sys.stdout.write(f"\r{output}{end}")
             sys.stdout.flush()
-            residue = len(text) + len(dots)
 
-            i = (i + 1) % len(dots_list)
-            sleep(refresh_sec)
-
-        text = get_text()
-        sys.stdout.write(f"\r{text}    {end}")
-        sys.stdout.flush()
+        finally:
+            sys.stdout.write("\033[?25h")
+            sys.stdout.flush()
 
     thread = Thread(target=run, daemon=True)
     thread.start()
@@ -260,6 +288,25 @@ def main_file(
                     print()
                     text = ""
                     text_event, text_thread = print_async(get_text)
+            elif bool(re.search(r'[.!?](?:\s|$)', text)):
+                match = re.match(r'^((?:.*?[.!?](?:\s+|$))+)?(.*)$', text, re.DOTALL)
+                full_sentences = (match.group(1) or '').strip()
+                tail = match.group(2).strip()
+
+                text = full_sentences + " " * len(tail)
+                sleep(.1)
+                text_event.set()
+                text_thread.join()
+
+                if target_language != source_language:
+                    print(f"[{target_language.upper()}] {zebra.translate(full_sentences)}")
+
+                print()
+                text = tail
+                text_event, text_thread = print_async(get_text)
+            elif len(text) >= zebra.max_character_limit:
+                pass
+
     except KeyboardInterrupt:
         pass
     finally:
@@ -295,7 +342,7 @@ def main() -> None:
     parser.add_argument(
         '--endpoint_duration_sec',
         type=float,
-        default=1.0,
+        default=.25,
         help='Duration of silence in seconds required to detect the end of an utterance.')
     parser.add_argument(
         '--disable_automatic_punctuation',
