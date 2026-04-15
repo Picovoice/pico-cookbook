@@ -166,6 +166,21 @@ const init = async (
   return startListening;
 };
 
+const release = async () => {
+  WebVoiceProcessor.reset();
+  object!.audio.clear();
+
+  object!.cheetah0.release();
+  object!.cheetah1.release();
+  object!.zebra0.release();
+  object!.zebra1.release();
+  object!.orca0.release();
+  object!.orca1.release();
+
+  object = null;
+}
+
 export default {
-  init
+  init,
+  release
 };
