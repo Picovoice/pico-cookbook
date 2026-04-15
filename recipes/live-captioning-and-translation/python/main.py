@@ -336,20 +336,22 @@ def main() -> None:
     parser.add_argument(
         '--access_key',
         required=True,
-        help='AccessKey obtained from Picovoice Console (https://console.picovoice.ai/)')
+        help='AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).')
     parser.add_argument(
         '--language_pair',
         required=True,
         choices=[x.value for x in LanguagePairs],
-        help='Translation language pair.')
+        help='Source-target language pair. Use the same source and target language to transcribe only, '
+             'or different languages to transcribe and translate (for example: `en-en`, `en-fr`, `de-it`).')
     parser.add_argument(
-        '--wave_path',
-        help='')
+        '--wav_path',
+        help='Path to a 16 kHz, 16-bit, mono, uncompressed WAV file to process. '
+             'If omitted, audio is captured from the default microphone.')
     parser.add_argument(
         '--endpoint_duration_sec',
         type=float,
         default=.25,
-        help='Duration of silence in seconds required to detect the end of an utterance.')
+        help='Duration of silence, in seconds, required to detect the end of an utterance.')
     parser.add_argument(
         '--disable_text_normalization',
         action='store_true',
@@ -358,18 +360,18 @@ def main() -> None:
 
     access_key = args.access_key
     language_pair = LanguagePairs(args.language_pair)
-    wave_path = args.wave_path
+    wav_path = args.wav_path
     endpoint_duration_sec = args.endpoint_duration_sec
     disable_text_normalization = args.disable_text_normalization
 
-    source_language, target_language = [x for x in language_pair.value.split('-')]
+    source_language, target_language = language_pair.value.split('-')
 
     if source_language == target_language:
         print(f"Transcribing `{source_language}`.")
     else:
         print(f"Translating from `{source_language}` to `{target_language}`.")
 
-    if wave_path is None:
+    if wav_path is None:
         main_microphone(
             access_key=access_key,
             source_language=source_language,
@@ -381,7 +383,7 @@ def main() -> None:
             access_key=access_key,
             source_language=source_language,
             target_language=target_language,
-            wave_path=wave_path,
+            wave_path=wav_path,
             endpoint_duration_sec=endpoint_duration_sec,
             disable_text_normalization=disable_text_normalization)
 
