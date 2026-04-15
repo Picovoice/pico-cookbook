@@ -9,7 +9,10 @@ from threading import (
     Lock,
     Thread
 )
-from time import sleep
+from time import (
+    sleep,
+    time
+)
 from typing import (
     Callable,
     Tuple
@@ -225,10 +228,24 @@ def main_file(
 
         text_event, text_thread = print_async(get_text)
 
+        playback_start_sec = time()
+        played_samples = 0
+
         for i in range(len(audio) // cheetah.frame_length):
-            partial, is_endpoint = cheetah.process(audio[i * cheetah.frame_length:(i + 1) * cheetah.frame_length])
+            frame = audio[i * cheetah.frame_length:(i + 1) * cheetah.frame_length]
+
+            partial, is_endpoint = cheetah.process(frame)
+            speaker.write(frame)
+
+            played_samples += len(frame)
+            playback_time_sec = played_samples / cheetah.sample_rate
+            delay_sec = playback_start_sec + playback_time_sec - time()
+            if delay_sec > 0:
+                sleep(delay_sec)
+
             with text_lock:
                 text += partial
+
             if is_endpoint:
                 remainder = cheetah.flush()
                 with text_lock:
