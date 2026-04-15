@@ -33,14 +33,14 @@ class Actions(Enum):
 
     def __str__(self) -> str:
         return {
-            self.GREET: "👋 Greet",
-            self.CONNECT_CALL: "👍 Connect Call",
-            self.DECLINE_CALL: "👎 Decline Call",
-            self.ASK_FOR_DETAILS: "❓ Ask for Details",
-            self.ASK_TO_TEXT: "💬 Ask to Text",
-            self.ASK_TO_EMAIL: "📧 Ask to Email",
-            self.ASK_TO_CALL_BACK: "📞 Ask to Call Back",
-            self.BLOCK_CALLER: "🚫 Block Caller",
+            self.GREET: "Greet",
+            self.CONNECT_CALL: "Connect Call",
+            self.DECLINE_CALL: "Decline Call",
+            self.ASK_FOR_DETAILS: "Ask for Details",
+            self.ASK_TO_TEXT: "Ask to Text",
+            self.ASK_TO_EMAIL: "Ask to Email",
+            self.ASK_TO_CALL_BACK: "Ask to Call Back",
+            self.BLOCK_CALLER: "Block Caller",
         }[self]
 
     def prompt(self, username: str) -> str:
@@ -149,10 +149,19 @@ class PicoOut(Thread):
 
 def main() -> None:
     parser = ArgumentParser()
-    parser.add_argument("--access-key", required=True)
-    parser.add_argument("--username", default="the recipient")
-    parser.add_argument("--username-pronunciation", nargs='+')
-    parser.add_argument("--endpoint-duration-sec", type=float, default=1.0)
+    parser.add_argument(
+        "--access-key",
+        required=True)
+    parser.add_argument(
+        "--username",
+        default="the recipient")
+    parser.add_argument(
+        "--username-pronunciation",
+        nargs='+')
+    parser.add_argument(
+        "--endpoint-duration-sec",
+        type=float,
+        default=1.0)
     args = parser.parse_args()
 
     access_key = args.access_key
