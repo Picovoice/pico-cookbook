@@ -131,6 +131,7 @@
     </label>
     <input type="text" id="accessKey" name="accessKey"/>
     <br/>
+    Select language pair:
     <select name="languagePair" id="languagePair">
       <option value="de-en">de-en</option>
       <option value="de-es">de-es</option>
@@ -151,10 +152,14 @@
       <option value="it-en">it-en</option>
       <option value="it-es">it-es</option>
     </select>
+    <br>
     <button id="init" disabled>Init Live Conversation Translation</button>
   </div>
 
   <div id="chatBlock">
+    <div id="changeLanguage">
+      Change language pair:
+    </div>
     <div class="dialogArea">
       <div class="result-container">
         <pre id="result"></pre>

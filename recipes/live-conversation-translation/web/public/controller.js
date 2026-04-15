@@ -13,6 +13,7 @@ window.onload = () => {
 
   const accessKey = document.getElementById("accessKey");
   const languagePair = document.getElementById("languagePair");
+  const changeLanguage = document.getElementById("changeLanguage");
   const message = document.getElementById("message");
   const result = document.getElementById("result");
 
@@ -114,6 +115,25 @@ window.onload = () => {
     }
   };
 
+  const onChangeLanguage = async () => {
+    const pair = languagePair.value.split("-");
+    languagePair.disabled = true;
+    status.innerText = "Loading"
+
+    await Picovoice.release();
+    result.innerHTML = "";
+
+    const start = await Picovoice.init(
+      accessKey.value,
+      pair[0],
+      pair[1],
+      sendState
+    );
+
+    await start();
+    languagePair.disabled = false;
+  };
+
   initButton.onclick = async () => {
     initButton.disabled = true;
     status.innerText = "Loading"
@@ -131,6 +151,8 @@ window.onload = () => {
       initBlock.style.display = 'none';
       chatBlock.style.display = 'flex';
       status.innerText = "Loading complete.";
+      changeLanguage.appendChild(languagePair);
+      languagePair.addEventListener("change", onChangeLanguage);
 
       await start();
     } catch (e) {
