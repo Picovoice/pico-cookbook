@@ -37,4 +37,7 @@ dependencies {
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
+
+    implementation 'ai.picovoice:android-voice-processor:1.0.2'
+    implementation 'ai.picovoice:cheetah-android:4.0.1'
 }

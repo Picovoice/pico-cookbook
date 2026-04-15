@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
         LLM_TTS
     }
 
-    private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
+    private static final String ACCESS_KEY = "BOg+STYA2kGwVqCAYvxAN9E0Yw/JDY8pUSqKiLijsH12e0FJU9DHqA==";
 
     private static final String STT_MODEL_FILE = "cheetah_params.pv";
 
