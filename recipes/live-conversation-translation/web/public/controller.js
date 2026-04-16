@@ -110,8 +110,10 @@ window.onload = () => {
       state.upperElem.removeChild(animationElement);
       state.lowerElem.appendChild(animationElement);
     } else if (mode === "translation") {
-      state.lowerTextElem.innerText = text;
-      state.lowerElem.removeChild(animationElement);
+      state.lowerTextElem.innerText += text;
+      if (text == "") {
+        state.lowerElem.removeChild(animationElement);
+      }
     }
   };
 

@@ -53,7 +53,6 @@ const init = async (
     sendState("prompt", `Translating to ${language}`);
     sendState("translate", "");
     const translation = await zebra.translate(transcript);
-    sendState("translation", translation);
     object!.translation = translation;
   };
 
@@ -64,11 +63,28 @@ const init = async (
     sendState("prompt", `Synthesizing ${language} speech`)
     const translation = object!.translation;
     const synthesis = await orca.synthesize(translation, {});
+    const alignments = synthesis.alignments;
 
     sendState("prompt", `Speaking in ${language}`)
     object!.audio.stream(synthesis.pcm);
     object!.audio.play();
+
+    for (let alignment of alignments) {
+      const index = alignments.indexOf(alignment);
+      let word = alignment.word;
+      if (index < alignments.length - 1 &&
+          !(/[.,:;!?]/.test(alignments[index + 1].word))
+      ) {
+        word += " ";
+      }
+
+      setTimeout(() => {
+        sendState("translation", word);
+      }, alignment.startSec * 1000);
+    }
+
     await object!.audio.waitPlayback();
+    sendState("translation", "");
   };
 
   const switchModes = async () => {
@@ -99,6 +115,11 @@ const init = async (
     {
       publicPath: `models/cheetah_params_${sourceLanguage}.pv`,
       customWritePath: `cheetah_${sourceLanguage}`
+    },
+    {
+      endpointDurationSec: 1.0,
+      enableAutomaticPunctuation: true,
+      enableTextNormalization: true
     }
   );
 
@@ -109,6 +130,11 @@ const init = async (
     {
       publicPath: `models/cheetah_params_${targetLanguage}.pv`,
       customWritePath: `cheetah_${targetLanguage}`
+    },
+    {
+      endpointDurationSec: 1.0,
+      enableAutomaticPunctuation: true,
+      enableTextNormalization: true
     }
   );
 
@@ -134,7 +160,7 @@ const init = async (
   const orca0 = await OrcaWorker.create(
     accessKey,
     {
-      publicPath: `models/orca_params_${sourceLanguage}_female.pv`,
+      publicPath: `models/orca_params_${sourceLanguage}_male.pv`,
       customWritePath: `orca_${sourceLanguage}`
     },
     {}
@@ -144,7 +170,7 @@ const init = async (
   const orca1 = await OrcaWorker.create(
     accessKey,
     {
-      publicPath: `models/orca_params_${targetLanguage}_female.pv`,
+      publicPath: `models/orca_params_${targetLanguage}_male.pv`,
       customWritePath: `orca_${targetLanguage}`
     },
     {}
