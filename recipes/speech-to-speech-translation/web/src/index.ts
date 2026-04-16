@@ -1,4 +1,10 @@
-import { BatScores, BatWorker } from '@picovoice/bat-web';
+import {
+  BatScores,
+  BatLanguages,
+  batLanguageToString,
+  batLanguageFromString,
+  BatWorker
+} from '@picovoice/bat-web';
 import { CheetahTranscript, CheetahWorker } from '@picovoice/cheetah-web';
 import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 import { ZebraWorker } from '@picovoice/zebra-web';
@@ -64,16 +70,25 @@ const init = async (
   targetLanguage: string,
   sendState: (mode: string, text: string) => void,
 ): Promise<() => Promise<void>> => {
-
-  sourceLanguage = null;
-
   if (sourceLanguage === null) {
     const scoresCallback = (
       scores: BatScores | null,
     ): void => {
-      console.log(scores);
       if (scores !== null) {
-        sourceLanguage = 'en';
+        let maxLanguage = BatLanguages.UNKNOWN;
+        let maxLanguageScore = 0.0;
+
+        for (const [lang, score] of Object.entries(scores)) {
+          console.log(lang, score);
+          if (score > maxLanguageScore) {
+            maxLanguage = Number(lang) as BatLanguages;
+            maxLanguageScore = score;
+          }
+        }
+
+        if ((maxLanguage !== BatLanguages.UNKNOWN) && (maxLanguageScore > 0.75)) {
+          sourceLanguage = batLanguageToString(maxLanguage);
+        }
       }
     }
 
