@@ -7,22 +7,32 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:id="@+id/selectLanguageLayout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Select Language Pair"
+            android:textAlignment="center"
+            android:textSize="28sp" />
 
         <ListView
             android:id="@+id/languagePair"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/chatLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:visibility="invisible">
+        android:visibility="gone"
+        tools:visibility="invisible">
 
         <androidx.constraintlayout.widget.Guideline
             android:id="@+id/guidelineHorizontal"
@@ -40,46 +50,48 @@
 
         <ScrollView
             android:id="@+id/chatScrollView"
-            android:layout_height="0dp"
             android:layout_width="0dp"
+            android:layout_height="0dp"
             android:layout_marginStart="24dp"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="60dp"
             android:layout_marginEnd="24dp"
+            android:background="@drawable/chat_text_background"
+            android:gravity="center"
             android:paddingTop="8dp"
             android:paddingBottom="35dp"
-            android:gravity="center"
-            android:background="@drawable/chat_text_background"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/statusContainer"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toTopOf="@+id/statusContainer">
-        <TextView
-            android:id="@+id/chatText"
-            android:layout_height="wrap_content"
-            android:layout_width="match_parent"
-            android:textSize="18sp"
-            android:padding="10dp"
-            android:text=""
-            app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"/>
+            app:layout_constraintTop_toTopOf="parent">
+
+            <TextView
+                android:id="@+id/chatText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="10dp"
+                android:text=""
+                android:textSize="18sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
         </ScrollView>
 
         <LinearLayout
             android:id="@+id/statusContainer"
             android:layout_width="match_parent"
             android:layout_height="150dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="@+id/chatScrollView"
-            app:layout_constraintEnd_toEndOf="@+id/chatScrollView"
+            android:gravity="center"
             android:orientation="horizontal"
-            android:gravity="center">
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="@+id/chatScrollView"
+            app:layout_constraintStart_toStartOf="@+id/chatScrollView">
+
             <ProgressBar
                 android:id="@+id/statusProgress"
-                android:indeterminateTint="@color/colorPrimary"
                 android:layout_width="50dp"
                 android:layout_height="50dp"
-                android:layout_marginEnd="10dp"/>
+                android:layout_marginEnd="10dp"
+                android:indeterminateTint="@color/colorPrimary" />
 
             <TextView
                 android:id="@+id/statusText"
@@ -87,9 +99,17 @@
                 android:layout_height="wrap_content"
                 android:text=""
                 android:textSize="20sp"
-                app:layout_constraintStart_toEndOf="@+id/statusProgress"
-                app:layout_constraintBottom_toTopOf="@+id/guidelineHorizontal" />
+                app:layout_constraintBottom_toTopOf="@+id/guidelineHorizontal"
+                app:layout_constraintStart_toEndOf="@+id/statusProgress" />
         </LinearLayout>
+
+        <Button
+            android:id="@+id/changeLanguageButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Change Language Pair"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

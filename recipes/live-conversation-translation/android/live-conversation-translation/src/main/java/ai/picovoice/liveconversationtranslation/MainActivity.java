@@ -15,6 +15,8 @@ import android.text.style.AlignmentSpan;
 import android.text.style.ForegroundColorSpan;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
@@ -81,11 +83,13 @@ public class MainActivity extends AppCompatActivity {
 
     private final ExecutorService engineExecutor = Executors.newSingleThreadExecutor();
 
-    private ConstraintLayout selectLanguageLayout;
+    private LinearLayout selectLanguageLayout;
 
     private ConstraintLayout chatLayout;
 
     private ListView languagePairView;
+
+    private Button changeLanguageButton;
 
     private TextView statusText;
 
@@ -115,20 +119,22 @@ public class MainActivity extends AppCompatActivity {
     private String currentTranscript = "";
 
     private void sendText(String text) {
-        mainHandler.post(() -> {
-            int start = chatTextBuilder.length();
-            int end = start + text.length();
-            int spanColour = ContextCompat.getColor(this, R.color.colorPrimary);
-            chatTextBuilder.append(text);
+        if (!text.isEmpty()) {
+            mainHandler.post(() -> {
+                int start = chatTextBuilder.length();
+                int end = start + text.length();
+                int spanColour = ContextCompat.getColor(this, R.color.colorPrimary);
+                chatTextBuilder.append(text);
 
-            chatTextBuilder.setSpan(
-                    new ForegroundColorSpan(spanColour),
-                    start,
-                    end,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            chatText.setText(chatTextBuilder);
-            chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
-        });
+                chatTextBuilder.setSpan(
+                        new ForegroundColorSpan(spanColour),
+                        start,
+                        end,
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                chatText.setText(chatTextBuilder);
+                chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+            });
+        }
     }
 
     private void sendNewline(boolean alignRight, Boolean recolor) {
@@ -190,13 +196,14 @@ public class MainActivity extends AppCompatActivity {
         selectLanguageLayout = findViewById(R.id.selectLanguageLayout);
         chatLayout = findViewById(R.id.chatLayout);
         languagePairView = findViewById(R.id.languagePair);
+        changeLanguageButton = findViewById(R.id.changeLanguageButton);
         statusText = findViewById(R.id.statusText);
         statusProgress = findViewById(R.id.statusProgress);
         chatText = findViewById(R.id.chatText);
         chatTextScrollView = findViewById(R.id.chatScrollView);
         chatTextBuilder = new SpannableStringBuilder();
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 this,
                 android.R.layout.simple_list_item_1,
                 languagePairs
@@ -210,6 +217,7 @@ public class MainActivity extends AppCompatActivity {
 
             selectLanguageLayout.setVisibility(View.GONE);
             chatLayout.setVisibility(View.VISIBLE);
+            changeLanguageButton.setEnabled(false);
 
             voiceProcessor.addFrameListener(this::frameListener);
 
@@ -220,7 +228,36 @@ public class MainActivity extends AppCompatActivity {
             engineExecutor.submit(() -> {
                 initEngines();
                 start();
+                changeLanguageButton.setEnabled(true);
             });
+        });
+
+        changeLanguageButton.setOnClickListener(view -> {
+            mainHandler.post(() -> chatText.setText(""));
+            currentState = State.OTHER;
+            currentTranscript = "";
+            chatTextBuilder.clear();
+            chatTextBuilder.clearSpans();
+            chatLastNewline = 0;
+            sourceLanguage = null;
+            targetLanguage = null;
+
+            cheetah0.delete();
+            cheetah1.delete();
+            zebra0.delete();
+            zebra1.delete();
+            orca0.delete();
+            orca1.delete();
+
+            try {
+                voiceProcessor.stop();
+            } catch (VoiceProcessorException e) {
+                setError(e.getMessage());
+                return;
+            }
+
+            selectLanguageLayout.setVisibility(View.VISIBLE);
+            chatLayout.setVisibility(View.GONE);
         });
     }
 
@@ -302,7 +339,6 @@ public class MainActivity extends AppCompatActivity {
                     .build(getApplicationContext());
         } catch (OrcaException e) {
             setError(e.getMessage());
-            return;
         }
     }
 
