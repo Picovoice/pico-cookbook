@@ -4,6 +4,7 @@
 .venv
 *.log
 *.pllm
+bat
 cheetah
 dist/
 node_modules
