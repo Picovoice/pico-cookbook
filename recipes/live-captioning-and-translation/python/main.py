@@ -313,6 +313,16 @@ def main_file(
                 print()
                 text = tail
                 text_event, text_thread = print_async(get_text)
+
+        remainder = cheetah.flush()
+        with text_lock:
+            text += remainder
+        if len(text) > 0:
+            text_event.set()
+            text_thread.join()
+
+            if target_language != source_language:
+                print(f"[{target_language.upper()}] {zebra.translate(text)}")
     except KeyboardInterrupt:
         pass
     finally:
