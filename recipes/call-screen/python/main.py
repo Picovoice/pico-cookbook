@@ -231,6 +231,7 @@ def main() -> None:
 
             print()
 
+            print("Enter a number to select a call-assist action:")
             for x in Actions:
                 print(f"{x.value}. {str(x)}")
 

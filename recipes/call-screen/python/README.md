@@ -58,11 +58,16 @@ For example:
 python main.py --access_key ${ACCESS_KEY} --username Alireza
 ```
 
-You can also provide `--username_pronunciation` to control how the name is spoken by Orca.
+You can also provide `--username_pronunciation` to control how the name is spoken by
+[Orca Streaming Text-to-Speech](https://picovoice.ai/platform/orca/).
 
 ```console
 python main.py --access_key ${ACCESS_KEY} --username Alireza --username_pronunciation AE L IY R EH Z AA
 ```
+
+You can find information about custom pronunciation and related phonemes on
+[Orca's documentation](https://picovoice.ai/docs/orca/#custom-pronunciation).
+
 
 ### 5. View All Options
 
