@@ -1,7 +1,9 @@
 package ai.picovoice.liveconversationtranslation;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.drawable.Drawable;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioTrack;
@@ -14,8 +16,10 @@ import android.text.SpannableStringBuilder;
 import android.text.style.AlignmentSpan;
 import android.text.style.ForegroundColorSpan;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.GridView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
@@ -24,6 +28,7 @@ import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
@@ -31,6 +36,8 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -72,6 +79,15 @@ public class MainActivity extends AppCompatActivity {
         "it-es"
     };
 
+    private static final String[] dots = {
+        " .  ",
+        " .. ",
+        " ...",
+        "  ..",
+        "   .",
+        "    "
+    };
+
     private enum State {
         LISTENING_SOURCE,
         LISTENING_TARGET,
@@ -87,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
 
     private ConstraintLayout chatLayout;
 
-    private ListView languagePairView;
+    private GridView languagePairView;
 
     private Button changeLanguageButton;
 
@@ -99,9 +115,11 @@ public class MainActivity extends AppCompatActivity {
 
     private ScrollView chatTextScrollView;
 
-    private SpannableStringBuilder chatTextBuilder;
+    private SpannableStringBuilder chatTextBuilder = null;
 
     private int chatLastNewline = 0;
+
+    private int dotIndex = 0;
 
     private String sourceLanguage;
 
@@ -118,6 +136,33 @@ public class MainActivity extends AppCompatActivity {
     private State currentState = State.OTHER;
     private String currentTranscript = "";
 
+    private void renderText() {
+        if (currentState == State.ERROR) {
+            return;
+        }
+
+        mainHandler.post(() -> {
+            if (chatTextBuilder != null) {
+                if (currentState != State.OTHER) {
+                    int start = chatTextBuilder.length();
+                    chatTextBuilder.append(dots[dotIndex]);
+                    chatText.setText(chatTextBuilder);
+                    chatTextBuilder.delete(start, start + dots[dotIndex].length());
+                    chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+                } else {
+                    chatText.setText(chatTextBuilder);
+                    chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+                }
+            }
+        });
+    }
+
+    private void animateDots() {
+        renderText();
+        dotIndex = (dotIndex + 1) % dots.length;
+        mainHandler.postDelayed(this::animateDots, 100);
+    }
+
     private void sendText(String text) {
         if (!text.isEmpty()) {
             mainHandler.post(() -> {
@@ -131,8 +176,7 @@ public class MainActivity extends AppCompatActivity {
                         start,
                         end,
                         Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                chatText.setText(chatTextBuilder);
-                chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+                renderText();
             });
         }
     }
@@ -161,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
                         Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
 
-            chatText.setText(chatTextBuilder);
+            renderText();
         });
     }
 
@@ -203,12 +247,31 @@ public class MainActivity extends AppCompatActivity {
         chatTextScrollView = findViewById(R.id.chatScrollView);
         chatTextBuilder = new SpannableStringBuilder();
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
                 this,
                 android.R.layout.simple_list_item_1,
                 languagePairs
-        );
+        ) {
+            @NotNull
+            @Override
+            public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+
+                Drawable drawable = ContextCompat.getDrawable(getApplicationContext(), R.drawable.rounded);
+                view.setBackground(drawable);
+                view.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+
+                if (view instanceof TextView) {
+                    int textColor = ContextCompat.getColor(getApplicationContext(), R.color.design_default_color_background);
+                    ((TextView) view).setTextColor(textColor);
+                }
+
+                return view;
+            }
+        };
         languagePairView.setAdapter(adapter);
+
+        animateDots();
 
         languagePairView.setOnItemClickListener((parent, view, position, id) -> {
             String[] pair = languagePairs[position].split("-");
@@ -228,7 +291,10 @@ public class MainActivity extends AppCompatActivity {
             engineExecutor.submit(() -> {
                 initEngines();
                 start();
-                changeLanguageButton.setEnabled(true);
+                mainHandler.post(() -> {
+                    changeLanguageButton.setEnabled(true);
+                    changeLanguageButton.invalidate();
+                });
             });
         });
 

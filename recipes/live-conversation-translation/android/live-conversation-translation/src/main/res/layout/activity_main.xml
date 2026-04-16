@@ -5,6 +5,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:textAlignment="center"
     tools:context=".MainActivity">
 
     <LinearLayout
@@ -17,14 +18,19 @@
             android:id="@+id/textView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:layout_marginBottom="32dp"
             android:text="Select Language Pair"
             android:textAlignment="center"
             android:textSize="28sp" />
 
-        <ListView
+        <GridView
             android:id="@+id/languagePair"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent"
+            android:layout_marginLeft="70dp"
+            android:layout_marginRight="70dp"
+            android:numColumns="3" />
     </LinearLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout

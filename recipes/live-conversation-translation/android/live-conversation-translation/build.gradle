@@ -24,7 +24,7 @@ android {
 
     defaultConfig {
         applicationId "ai.picovoice.liveconversationtranslation"
-        minSdkVersion 26
+        minSdkVersion 30
         targetSdkVersion defaultTargetSdkVersion
         versionCode 1
         versionName "1.0"
