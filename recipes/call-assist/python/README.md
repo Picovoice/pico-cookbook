@@ -42,7 +42,11 @@ On Windows:
 pip install -r requirements.txt
 ```
 
-### 4. Run the Demo
+### 4. Download the LLM
+
+Download `gemma-3-270m-it-424.pllm` from [Picovoice Console](https://console.picovoice.ai/).
+
+### 5. Run the Demo
 
 ```console
 python main.py --access_key ${ACCESS_KEY}
