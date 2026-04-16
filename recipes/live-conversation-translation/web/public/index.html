@@ -16,11 +16,23 @@
       font-size: 16px;
     }
 
+    #initBlock > * {
+      margin: 0.1em;
+    }
+
+    #init {
+      margin-top: 0.5em;
+    }
+
+    #changeLanguage {
+      margin-bottom: 0.5em;
+    }
+
     #chatBlock {
       display: none;
       align-items: center;
       flex-flow: column;
-      height: 100%;
+      height: calc(100% - 1em);
       font-size: 14px;
       min-width: 780px;
     }
@@ -131,7 +143,9 @@
     </label>
     <input type="text" id="accessKey" name="accessKey"/>
     <br/>
-    Select language pair:
+    <label for="languagePair">
+      Select language pair:
+    </label>
     <select name="languagePair" id="languagePair">
       <option value="de-en">de-en</option>
       <option value="de-es">de-es</option>
@@ -158,7 +172,9 @@
 
   <div id="chatBlock">
     <div id="changeLanguage">
-      Change language pair:
+      <label for="languagePair">
+        Change language pair:
+      </label>
     </div>
     <div class="dialogArea">
       <div class="result-container">

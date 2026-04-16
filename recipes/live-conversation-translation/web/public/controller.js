@@ -116,22 +116,29 @@ window.onload = () => {
   };
 
   const onChangeLanguage = async () => {
-    const pair = languagePair.value.split("-");
     languagePair.disabled = true;
     status.innerText = "Loading"
+    startDot();
 
-    await Picovoice.release();
-    result.innerHTML = "";
+    try {
+      const pair = languagePair.value.split("-");
+      await Picovoice.release();
+      result.innerHTML = "";
 
-    const start = await Picovoice.init(
-      accessKey.value,
-      pair[0],
-      pair[1],
-      sendState
-    );
+      const start = await Picovoice.init(
+        accessKey.value,
+        pair[0],
+        pair[1],
+        sendState
+      );
 
-    await start();
-    languagePair.disabled = false;
+      await start();
+    } catch (e) {
+      writeError(e.message);
+    } finally {
+      languagePair.disabled = false;
+      stopDot();
+    }
   };
 
   initButton.onclick = async () => {
