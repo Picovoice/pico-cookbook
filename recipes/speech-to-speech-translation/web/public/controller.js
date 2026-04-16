@@ -13,6 +13,7 @@ window.onload = () => {
 
   const accessKey = document.getElementById("accessKey");
   const languagePair = document.getElementById("languagePair");
+  const targetLanguage = document.getElementById("targetLanguage");
   const changeLanguage = document.getElementById("changeLanguage");
   const message = document.getElementById("message");
   const result = document.getElementById("result");
@@ -149,19 +150,27 @@ window.onload = () => {
     startDot();
 
     try {
-      const pair = languagePair.value.split("-");
+      let source = null;
+      let target = null;
+      if (languagePair.value !== "none") {
+        const pair = languagePair.value.split("-");
+        source = pair[0];
+        target = pair[1];
+      } else {
+        target = targetLanguage.value;
+      }
 
       const start = await Picovoice.init(
         accessKey.value,
-        pair[0],
-        pair[1],
+        source,
+        target,
         sendState
       );
       initBlock.style.display = 'none';
       chatBlock.style.display = 'flex';
       status.innerText = "Loading complete.";
-      changeLanguage.appendChild(languagePair);
-      languagePair.addEventListener("change", onChangeLanguage);
+      // changeLanguage.appendChild(languagePair);
+      // languagePair.addEventListener("change", onChangeLanguage);
 
       await start();
     } catch (e) {
@@ -171,9 +180,26 @@ window.onload = () => {
     }
   };
 
-  accessKey.onchange = () => {
-    if (accessKey.value.length > 0) {
+  const enableInitButton = () => {
+    if ((accessKey.value.length > 0) &&
+        ((languagePair.value !== "none") || (targetLanguage.value !== "none"))) {
       initButton.disabled = false;
+    } else {
+      initButton.disabled = true;
     }
+  }
+
+  accessKey.onchange = () => {
+    enableInitButton();
+  }
+
+  languagePair.onchange = () => {
+    targetLanguage.value = 'none';
+    enableInitButton();
+  }
+
+  targetLanguage.onchange = () => {
+    languagePair.value = 'none';
+    enableInitButton();
   }
 };
