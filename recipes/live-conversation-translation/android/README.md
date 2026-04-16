@@ -32,6 +32,6 @@ python setup.py
 
 1. Open the `live-conversation-translation` project in Android Studio.
 
-2. Copy your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable in [MainActivity.java](recipes/live-conversation-translation/android/live-conversation-translation/src/main/java/ai/picovoice/liveconversationtranslation/MainActivity.java).
+2. Copy your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable in [MainActivity.java](live-conversation-translation/src/main/java/ai/picovoice/liveconversationtranslation/MainActivity.java).
 
 3. Connect a device or launch an Android simulator.
