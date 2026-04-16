@@ -120,7 +120,7 @@ window.onload = () => {
   const onChangeLanguage = async () => {
     languagePair.disabled = true;
     status.innerText = "Loading"
-    sendState("status", "Loading...");
+    sendState("prompt", "Loading...");
     startDot();
 
     try {
