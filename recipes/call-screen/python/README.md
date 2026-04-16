@@ -50,6 +50,20 @@ pip install -r requirements.txt
 python main.py --access_key ${ACCESS_KEY}
 ```
 
+Use `--username` to set the name of the person receiving the call.
+
+For example:
+
+```console
+python main.py --access_key ${ACCESS_KEY} --username Alireza
+```
+
+You can also provide `--username_pronunciation` to control how the name is spoken by Orca.
+
+```console
+python main.py --access_key ${ACCESS_KEY} --username Alireza --username_pronunciation AE L IY R EH Z AA
+```
+
 ### 5. View All Options
 
 ```console
