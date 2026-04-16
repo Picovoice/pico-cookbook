@@ -291,6 +291,24 @@ def main() -> None:
             text_event.set()
             text_thread.join()
 
+            dialog = picollm.GemmaChatDialog()
+            print(dialog)
+
+            dialog.add_human_request(f"The caller said:\n{text}\n\nWho is calling?")
+
+            print(dialog.prompt())
+            completion = llm.generate(
+                prompt=dialog.prompt(),
+                completion_token_limit=25,
+                # stop_phrases={',', '\n', 'Transcript:'},
+                # presence_penalty=1.,
+                # frequency_penalty=1.,
+                # temperature=0.
+            )
+            print(completion)
+            topic = completion.completion.strip()
+            print(topic)
+
             print()
 
             print("Enter a number to select a call-assist action:")
