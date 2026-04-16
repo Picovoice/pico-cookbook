@@ -27,6 +27,10 @@ const init = async (
 
   let mode: boolean = false;
   const startListening = async () => {
+    if (object === null) {
+      return;
+    }
+
     const language = mode ? targetLanguage : sourceLanguage;
     const side = mode ? "left" : "right";
     const cheetah = mode ? object!.cheetah1 : object!.cheetah0;
@@ -37,12 +41,20 @@ const init = async (
   };
 
   const stopListening = async () => {
+    if (object === null) {
+      return;
+    }
+
     const cheetah = mode ? object!.cheetah1: object!.cheetah0;
 
     await WebVoiceProcessor.unsubscribe(cheetah);
   };
 
   const startTranslating = async () => {
+    if (object === null) {
+      return;
+    }
+
     const language = mode ? sourceLanguage : targetLanguage;
     const side = mode ? "left" : "right";
     const zebra = mode ? object!.zebra1 : object!.zebra0;
@@ -57,6 +69,10 @@ const init = async (
   };
 
   const startSpeaking = async () => {
+    if (object === null) {
+      return;
+    }
+
     const language = mode ? sourceLanguage : targetLanguage;
     const orca = mode ? object!.orca0 : object!.orca1;
 
@@ -94,6 +110,10 @@ const init = async (
   const transcriptCallback = async (
     transcript: CheetahTranscript
   ): Promise<void> => {
+    if (object === null) {
+      return;
+    }
+
     if (transcript.transcript.length > 0) {
       sendState("transcript", transcript.transcript);
       object!.transcript += transcript.transcript;
@@ -193,17 +213,19 @@ const init = async (
 };
 
 const release = async () => {
-  WebVoiceProcessor.reset();
-  object!.audio.clear();
+  if (object !== null) {
+    WebVoiceProcessor.reset();
+    object!.audio.clear();
 
-  object!.cheetah0.release();
-  object!.cheetah1.release();
-  object!.zebra0.release();
-  object!.zebra1.release();
-  object!.orca0.release();
-  object!.orca1.release();
+    object!.cheetah0.release();
+    object!.cheetah1.release();
+    object!.zebra0.release();
+    object!.zebra1.release();
+    object!.orca0.release();
+    object!.orca1.release();
 
-  object = null;
+    object = null;
+  }
 }
 
 export default {

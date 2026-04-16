@@ -120,6 +120,7 @@ window.onload = () => {
   const onChangeLanguage = async () => {
     languagePair.disabled = true;
     status.innerText = "Loading"
+    sendState("status", "Loading...");
     startDot();
 
     try {
@@ -133,6 +134,8 @@ window.onload = () => {
         pair[1],
         sendState
       );
+
+      status.innerText = "Loading complete.";
 
       await start();
     } catch (e) {
@@ -157,6 +160,7 @@ window.onload = () => {
         pair[1],
         sendState
       );
+
       initBlock.style.display = 'none';
       chatBlock.style.display = 'flex';
       status.innerText = "Loading complete.";
