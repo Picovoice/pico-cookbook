@@ -17,7 +17,7 @@ from typing import (
     Sequence,
     Tuple
 )
-
+import picollm
 import pvcheetah
 import pvorca
 from pvorca import Orca
@@ -166,6 +166,10 @@ def main() -> None:
         required=True,
         help="AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).")
     parser.add_argument(
+        '--picollm_model_path',
+        required=True,
+        help='Absolute path to the file containing LLM parameters (`.pllm`).')
+    parser.add_argument(
         "--username",
         default="the recipient",
         help="Name of the person receiving the call. Used in the spoken prompts.")
@@ -179,18 +183,31 @@ def main() -> None:
         type=float,
         default=1.0,
         help="Duration of silence, in seconds, required to detect the end of the caller's utterance.")
+    parser.add_argument(
+        '--picollm_device',
+        help="String representation of the device (e.g., CPU or GPU) to use for inference. If set to `best`, picoLLM "
+             "picks the most suitable device. If set to `gpu`, the engine uses the first available GPU device. To "
+             "select a specific GPU device, set this argument to `gpu:${GPU_INDEX}`, where `${GPU_INDEX}` is the index "
+             "of the target GPU. If set to `cpu`, the engine will run on the CPU with the default number of threads. "
+             "To specify the number of threads, set this argument to `cpu:${NUM_THREADS}`, where `${NUM_THREADS}` is "
+             "the desired number of threads.")
+    parser.add_argument('--picollm_library_path')
     args = parser.parse_args()
 
     access_key = args.access_key
+    picollm_model_path = args.picollm_model_path
     username = args.username
     username_pronunciation = args.username_pronunciation
     endpoint_duration_sec = args.endpoint_duration_sec
+    picollm_device = args.picollm_device
+    picollm_library_path = args.picollm_library_path
 
     username_orca = username
     if username_pronunciation is not None:
         username_orca = f"{{{username}|{' '.join(username_pronunciation)}}}"
 
     cheetah = None
+    llm = None
     orca = None
     recorder = None
     speaker = None
@@ -204,6 +221,13 @@ def main() -> None:
             enable_automatic_punctuation=True,
             enable_text_normalization=True)
         print(f"[OK] Cheetah Streaming Speech-to-Text[V{cheetah.version}]")
+
+        llm = picollm.create(
+            access_key="3JMq23JToNI11NcraaRoT7MWw9jyL2TvGWl/Rio4Bl1yUjTVSG8GBA==",
+            model_path=picollm_model_path,
+            device=picollm_device,
+            library_path=picollm_library_path)
+        print(f"[OK] picoLLM Inference[V{llm.version}]")
 
         orca = pvorca.create(access_key=access_key)
         print(f"[OK] Orca Streaming Text-to-Speech[V{orca.version}]")
@@ -298,6 +322,9 @@ def main() -> None:
 
         if orca is not None:
             orca.delete()
+
+        if llm is not None:
+            llm.release()
 
         if cheetah is not None:
             cheetah.delete()
