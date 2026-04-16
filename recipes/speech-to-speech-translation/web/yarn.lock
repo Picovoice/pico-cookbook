@@ -899,10 +899,17 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@picovoice/cheetah-web@^4.0.0":
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-web/-/cheetah-web-4.0.0.tgz#9758f259bd2d6014ad90353e2771d7694fa9bb69"
-  integrity sha512-mzvBH1yasHB+NhQN9Craol+WhOuMUSygrIGrbypklTIGA3DNQ+r8di0V4pH1nizVsvxJzmweer9mbUwpafypIg==
+"@picovoice/bat-web@^1.0.0":
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/@picovoice/bat-web/-/bat-web-1.0.1.tgz#788314c4ec3d1a3bfe6e990416e673e0e9eed50e"
+  integrity sha512-AnE3/Is9dAXEvy7QPzi5kSYrVg5QyEm7IHY0K8iQTFJNiTY9LN03zJ51dH5TZr5zFB8wKMcAfmOKFGP4PGGSjw==
+  dependencies:
+    "@picovoice/web-utils" "=1.4.3"
+
+"@picovoice/cheetah-web@^4.0.1":
+  version "4.0.1"
+  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-web/-/cheetah-web-4.0.1.tgz#d8598f65dfdf035d644de2bf9f3cbb83e731b629"
+  integrity sha512-I+orgjyQPVdOM3M97EQuiJMNpv8JgiaPktJh82FCcMMb5bFlsa1b0LCZxL59IEbcih7zbK6ix43CwyQS+0OqQg==
   dependencies:
     "@picovoice/web-utils" "=1.4.3"
 

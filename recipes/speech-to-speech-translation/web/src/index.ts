@@ -1,3 +1,4 @@
+import { BatScores, BatWorker } from '@picovoice/bat-web';
 import { CheetahTranscript, CheetahWorker } from '@picovoice/cheetah-web';
 import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 import { ZebraWorker } from '@picovoice/zebra-web';
@@ -6,30 +7,104 @@ import { AudioStream } from './audio_stream';
 
 type PvObject = {
   audio: AudioStream,
-  cheetah0: CheetahWorker,
-  cheetah1: CheetahWorker,
-  zebra0: ZebraWorker,
-  zebra1: ZebraWorker,
-  orca0: OrcaWorker,
-  orca1: OrcaWorker,
+  cheetah: CheetahWorker,
+  zebra: ZebraWorker,
+  orca: OrcaWorker,
   transcript: string,
   translation: string,
 };
 
 let object: PvObject | null = null;
 
+var cheetahPcmBuffer = new Int16Array();
+const BufferedCheetahEngine = {
+  onmessage: function(e: any) {
+    switch (e.data.command) {
+        case 'process':
+            var tempPcmBuffer = new Int16Array(cheetahPcmBuffer.length + e.data.inputFrame.length);
+            tempPcmBuffer.set(cheetahPcmBuffer);
+            tempPcmBuffer.set(e.data.inputFrame, cheetahPcmBuffer.length);
+            cheetahPcmBuffer = tempPcmBuffer
+
+            if (object !== null) {
+              while (cheetahPcmBuffer.length >= object!.cheetah.frameLength) {
+                object!.cheetah.process(cheetahPcmBuffer.slice(0, object!.cheetah.frameLength));
+                cheetahPcmBuffer = cheetahPcmBuffer.slice(object!.cheetah.frameLength)
+              }
+            }
+            break;
+    }
+  }
+}
+
+let bat: BatWorker | null = null;
+
+var batPcmBuffer = new Int16Array();
+const BufferedBatEngine = {
+  onmessage: function(e: any) {
+    switch (e.data.command) {
+        case 'process':
+            var tempPcmBuffer = new Int16Array(batPcmBuffer.length + e.data.inputFrame.length);
+            tempPcmBuffer.set(batPcmBuffer);
+            tempPcmBuffer.set(e.data.inputFrame, batPcmBuffer.length);
+            batPcmBuffer = tempPcmBuffer
+
+            if (bat !== null && batPcmBuffer.length >= bat!.frameLength) {
+              bat!.process(batPcmBuffer.slice(0, bat!.frameLength));
+              batPcmBuffer = batPcmBuffer.slice(bat!.frameLength)
+            }
+            break;
+    }
+  }
+}
+
 const init = async (
   accessKey: string,
-  sourceLanguage: string,
+  sourceLanguage: string | null,
   targetLanguage: string,
   sendState: (mode: string, text: string) => void,
 ): Promise<() => Promise<void>> => {
 
-  let mode: boolean = false;
+  sourceLanguage = null;
+
+  if (sourceLanguage === null) {
+    const scoresCallback = (
+      scores: BatScores | null,
+    ): void => {
+      console.log(scores);
+      if (scores !== null) {
+        sourceLanguage = 'en';
+      }
+    }
+
+    sendState("status", `Loading bat`);
+    bat = await BatWorker.create(
+      accessKey,
+      scoresCallback,
+      {
+        publicPath: "models/bat_params.pv",
+        forceWrite: true
+      }
+    );
+
+    await WebVoiceProcessor.subscribe(BufferedCheetahEngine);
+    await WebVoiceProcessor.subscribe(BufferedBatEngine);
+    sendState("status", `Detecting language`);
+
+    while (sourceLanguage === null) {
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+  if (bat !== null) {
+    await WebVoiceProcessor.unsubscribe(bat);
+    bat.release();
+    bat = null;
+  }
+
   const startListening = async () => {
-    const language = mode ? targetLanguage : sourceLanguage;
-    const side = mode ? "left" : "right";
-    const cheetah = mode ? object!.cheetah1 : object!.cheetah0;
+    const language = sourceLanguage;
+    const side = "right";
+    const cheetah = BufferedCheetahEngine;
 
     await WebVoiceProcessor.subscribe(cheetah);
     sendState("prompt", `Listening for ${language}`);
@@ -37,15 +112,15 @@ const init = async (
   };
 
   const stopListening = async () => {
-    const cheetah = mode ? object!.cheetah1: object!.cheetah0;
+    const cheetah = BufferedCheetahEngine;
 
     await WebVoiceProcessor.unsubscribe(cheetah);
   };
 
   const startTranslating = async () => {
-    const language = mode ? sourceLanguage : targetLanguage;
-    const side = mode ? "left" : "right";
-    const zebra = mode ? object!.zebra1 : object!.zebra0;
+    const language = targetLanguage;
+    const side = "right";
+    const zebra = object!.zebra;
 
     const transcript = object!.transcript;
     object!.transcript = "";
@@ -57,8 +132,8 @@ const init = async (
   };
 
   const startSpeaking = async () => {
-    const language = mode ? sourceLanguage : targetLanguage;
-    const orca = mode ? object!.orca0 : object!.orca1;
+    const language = targetLanguage;
+    const orca = object!.orca;
 
     sendState("prompt", `Synthesizing ${language} speech`)
     const translation = object!.translation;
@@ -87,10 +162,6 @@ const init = async (
     sendState("translation", "");
   };
 
-  const switchModes = async () => {
-    mode = !mode;
-  }
-
   const transcriptCallback = async (
     transcript: CheetahTranscript
   ): Promise<void> => {
@@ -99,17 +170,24 @@ const init = async (
       object!.transcript += transcript.transcript;
     }
 
-    if (transcript.isEndpoint && object!.transcript.length > 0) {
+    if (transcript.isEndpoint) {
+      sendState("transcript", ' ');
+      object!.transcript += ' '
+
+      const cheetah = object!.cheetah;
+      cheetah.flush();
+    }
+
+    if (transcript.isFlushed && object!.transcript.length > 0) {
       await stopListening();
       await startTranslating();
       await startSpeaking();
-      await switchModes();
       await startListening();
     }
   }
 
   sendState("status", `Loading cheetah_${sourceLanguage}`);
-  const cheetah0 = await CheetahWorker.create(
+  const cheetah = await CheetahWorker.create(
     accessKey,
     transcriptCallback,
     {
@@ -123,23 +201,8 @@ const init = async (
     }
   );
 
-  sendState("status", `Loading cheetah_${targetLanguage}`);
-  const cheetah1 = await CheetahWorker.create(
-    accessKey,
-    transcriptCallback,
-    {
-      publicPath: `models/cheetah_params_${targetLanguage}.pv`,
-      customWritePath: `cheetah_${targetLanguage}`
-    },
-    {
-      endpointDurationSec: 1.0,
-      enableAutomaticPunctuation: true,
-      enableTextNormalization: true
-    }
-  );
-
   sendState("status", `Loading zebra_${sourceLanguage}_${targetLanguage}`);
-  const zebra0 = await ZebraWorker.create(
+  const zebra = await ZebraWorker.create(
     accessKey,
     {
       publicPath: `models/zebra_params_${sourceLanguage}_${targetLanguage}.pv`,
@@ -147,27 +210,8 @@ const init = async (
     }
   );
 
-  sendState("status", `Loading zebra_${targetLanguage}_${sourceLanguage}`);
-  const zebra1 = await ZebraWorker.create(
-    accessKey,
-    {
-      publicPath: `models/zebra_params_${targetLanguage}_${sourceLanguage}.pv`,
-      customWritePath: `zebra_${targetLanguage}_${sourceLanguage}`
-    }
-  );
-
-  sendState("status", `Loading orca_${sourceLanguage}`);
-  const orca0 = await OrcaWorker.create(
-    accessKey,
-    {
-      publicPath: `models/orca_params_${sourceLanguage}_male.pv`,
-      customWritePath: `orca_${sourceLanguage}`
-    },
-    {}
-  )
-
   sendState("status", `Loading orca_${targetLanguage}`);
-  const orca1 = await OrcaWorker.create(
+  const orca = await OrcaWorker.create(
     accessKey,
     {
       publicPath: `models/orca_params_${targetLanguage}_male.pv`,
@@ -175,16 +219,13 @@ const init = async (
     },
     {}
   )
-  const audio = new AudioStream(orca0.sampleRate);
+  const audio = new AudioStream(orca.sampleRate);
 
   object = {
     audio: audio,
-    cheetah0: cheetah0,
-    cheetah1: cheetah1,
-    zebra0: zebra0,
-    zebra1: zebra1,
-    orca0: orca0,
-    orca1: orca1,
+    cheetah: cheetah,
+    zebra: zebra,
+    orca: orca,
     transcript: "",
     translation: "",
   };
@@ -195,13 +236,9 @@ const init = async (
 const release = async () => {
   WebVoiceProcessor.reset();
   object!.audio.clear();
-
-  object!.cheetah0.release();
-  object!.cheetah1.release();
-  object!.zebra0.release();
-  object!.zebra1.release();
-  object!.orca0.release();
-  object!.orca1.release();
+  object!.cheetah.release();
+  object!.zebra.release();
+  object!.orca.release();
 
   object = null;
 }
