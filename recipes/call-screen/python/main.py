@@ -1,24 +1,27 @@
 import string
+import sys
 from argparse import ArgumentParser
-from collections import deque
 from enum import Enum
 from threading import (
-    Condition,
+    Event,
+    Lock,
     Thread
 )
 from time import (
     monotonic,
     sleep
 )
-from typing import Sequence
+from typing import (
+    Callable,
+    Sequence,
+    Tuple
+)
 
 import pvcheetah
 import pvorca
 from pvorca import Orca
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
-
-GREETING = "Hi, {username} can't answer right now. Please say your name and why you're calling."
 
 
 class Actions(Enum):
@@ -68,100 +71,76 @@ class Actions(Enum):
         }[self]
 
 
-class PicoOut(Thread):
-    def __init__(
-            self,
-            refresh_sec: float = 0.1
-    ) -> None:
-        super().__init__(daemon=True)
+def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str = '\n') -> Tuple[Event, Thread]:
+    stop_event = Event()
 
-        self._refresh_sec = refresh_sec
-        self._cv = Condition()
-        self._queue = deque()
-        self._stop_flag = False
+    def run() -> None:
+        dots_list = [" .  ", " .. ", " ...", "  ..", "   .", "    "]
+        i = 0
 
-    def stop(self) -> None:
-        with self._cv:
-            self._stop_flag = True
-            self._cv.notify_all()
+        # Hide the cursor.
+        sys.stdout.write("\033[?25l")
+        sys.stdout.flush()
 
-    def run(self) -> None:
-        while True:
-            with self._cv:
-                while not self._queue and not self._stop_flag:
-                    self._cv.wait()
+        residue = 0
 
-                if self._stop_flag:
-                    return
+        while not stop_event.is_set():
+            text = get_text()
+            dots = dots_list[i]
+            sys.stdout.write(f"\r{' ' * residue}")
+            sys.stdout.write(f"\r{text}{dots}")
+            sys.stdout.flush()
+            residue = len(text) + len(dots)
 
-                word_alignments = self._queue.popleft()
+            i = (i + 1) % len(dots_list)
+            sleep(refresh_sec)
 
-            self._play_orca(word_alignments)
+        text = get_text()
+        sys.stdout.write(f"\r{text}    {end}")
+        sys.stdout.flush()
 
-    def follow_orca(self, word_alignments: Sequence[Orca.WordAlignment]) -> None:
-        with self._cv:
-            if self._stop_flag:
-                return
-            self._queue.append(word_alignments)
-            self._cv.notify()
+    thread = Thread(target=run, daemon=True)
+    thread.start()
+    return stop_event, thread
 
-    def _play_orca(self, word_alignments: Sequence[Orca.WordAlignment]) -> None:
-        punctuations = string.punctuation
-        start = monotonic()
 
-        for i, alignment in enumerate(word_alignments):
-            with self._cv:
-                if self._stop_flag:
-                    return
+def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str], None]) -> Thread:
+    def run() -> None:
+        start_sec = monotonic()
 
-            delay_sec = alignment.start_sec - (monotonic() - start)
-            if delay_sec > 0:
-                slept = 0.0
-                while slept < delay_sec:
-                    with self._cv:
-                        if self._stop_flag:
-                            return
+        for i, x in enumerate(alignments):
+            delay = float(x.start_sec) - (monotonic() - start_sec)
+            if delay > 0:
+                sleep(delay)
 
-                    chunk = min(self._refresh_sec, delay_sec - slept)
-                    sleep(chunk)
-                    slept += chunk
+            suffix = ' ' if i < (len(alignments) - 1) and (alignments[i + 1].word not in string.punctuation) else ''
+            on_tick(x.word + suffix)
 
-            with self._cv:
-                if self._stop_flag:
-                    return
-
-            print(
-                alignment.word,
-                end="" if (i == (len(word_alignments) - 1) or word_alignments[i + 1].word in punctuations) else " ",
-                flush=True)
-
-        print()
-
-    @staticmethod
-    def follow_cheetah(text: str, flushed: bool = False) -> None:
-        print(text, flush=True, end='\n' if flushed else '')
-
-    @staticmethod
-    def display_options() -> None:
-        for x in Actions:
-            print(f"{x.value}. {str(x)}")
+    thread = Thread(target=run, daemon=True)
+    thread.start()
+    return thread
 
 
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
-        "--access-key",
-        required=True)
+        "--access_key",
+        required=True,
+        help="AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).")
     parser.add_argument(
         "--username",
-        default="the recipient")
+        default="the recipient",
+        help="Name of the person receiving the call. Used in the spoken prompts.")
     parser.add_argument(
-        "--username-pronunciation",
-        nargs='+')
+        "--username_pronunciation",
+        nargs='+',
+        help="Optional pronunciation of the username as a sequence of phonemes for Orca. "
+             "If provided, it is used instead of the plain username when synthesizing prompts.")
     parser.add_argument(
-        "--endpoint-duration-sec",
+        "--endpoint_duration_sec",
         type=float,
-        default=1.0)
+        default=1.0,
+        help="Duration of silence, in seconds, required to detect the end of the caller's utterance.")
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -173,61 +152,116 @@ def main() -> None:
     if username_pronunciation is not None:
         username_orca = f"{{{username}|{' '.join(username_pronunciation)}}}"
 
-    po = PicoOut()
-    po.start()
-
-    cheetah = pvcheetah.create(
-        access_key=access_key,
-        endpoint_duration_sec=endpoint_duration_sec,
-        enable_automatic_punctuation=True)
-
-    orca = pvorca.create(access_key=access_key)
-
-    recorder = PvRecorder(frame_length=cheetah.frame_length)
-
-    speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16)
-    speaker.start()
+    cheetah = None
+    orca = None
+    recorder = None
+    speaker = None
 
     action = Actions.GREET
 
     try:
+        cheetah = pvcheetah.create(
+            access_key=access_key,
+            endpoint_duration_sec=endpoint_duration_sec,
+            enable_automatic_punctuation=True,
+            enable_text_normalization=True)
+        print(f"[OK] Cheetah Streaming Speech-to-Text[V{cheetah.version}]")
+
+        orca = pvorca.create(access_key=access_key)
+        print(f"[OK] Orca Streaming Text-to-Speech[V{orca.version}]")
+
+        recorder = PvRecorder(frame_length=cheetah.frame_length)
+
+        speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16)
+        speaker.start()
+
+        print()
+
         while True:
             pcm, word_alignments = orca.synthesize(action.prompt(username_orca))
-            po.follow_orca(word_alignments)
+
+            utterance = ""
+            utterance_lock = Lock()
+
+            def get_utterance() -> str:
+                with utterance_lock:
+                    return f"[AI] {utterance}"
+
+            def update_utterance(chunk: str) -> None:
+                nonlocal utterance
+                with utterance_lock:
+                    utterance += chunk
+
+            utterance_event, utterance_thread = print_async(get_utterance)
+
+            timer_thread = time_async(alignments=word_alignments, on_tick=update_utterance)
 
             speaker.flush(pcm)
+            timer_thread.join()
+            utterance_event.set()
+            utterance_thread.join()
 
             if action.is_terminal():
                 break
+
+            text = ""
+            text_lock = Lock()
+
+            def get_text():
+                with text_lock:
+                    display_text = "(listening)" if text == "" else text
+                    return f"[CALLER] {display_text}"
+
+            text_event, text_thread = print_async(get_text)
 
             recorder.start()
             is_endpoint = False
             while not is_endpoint:
                 partial, is_endpoint = cheetah.process(recorder.read())
-                po.follow_cheetah(partial)
+                with text_lock:
+                    text += partial
             recorder.stop()
-            tail = cheetah.flush()
-            po.follow_cheetah(tail, flushed=True)
+            remainder = cheetah.flush()
+            with text_lock:
+                text += remainder
 
-            po.display_options()
+            recorder.stop()
+            text_event.set()
+            text_thread.join()
+
+            print()
+
+            for x in Actions:
+                print(f"{x.value}. {str(x)}")
 
             while True:
                 try:
-                    action = Actions(int(input(">")))
+                    action = Actions(int(input("> ")))
                     break
                 except ValueError:
                     pass
+
+            print()
     except KeyboardInterrupt:
         pass
     finally:
-        speaker.stop()
-        speaker.delete()
-        recorder.stop()
-        recorder.delete()
-        orca.delete()
-        cheetah.delete()
-        po.stop()
-        po.join()
+        # Make the cursor visible again.
+        sys.stdout.write("\033[?25h")
+        sys.stdout.flush()
+
+        if speaker is not None:
+            speaker.stop()
+            speaker.delete()
+
+        if recorder is not None:
+            recorder.stop()
+            recorder.delete()
+
+        if orca is not None:
+            orca.delete()
+
+        if cheetah is not None:
+            cheetah.delete()
 
 
 if __name__ == "__main__":
