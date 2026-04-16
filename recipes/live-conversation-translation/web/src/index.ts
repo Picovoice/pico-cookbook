@@ -119,7 +119,12 @@ const init = async (
       object!.transcript += transcript.transcript;
     }
 
-    if (transcript.isEndpoint && object!.transcript.length > 0) {
+    if (transcript.isEndpoint) {
+      const cheetah = mode ? object!.cheetah1 : object!.cheetah0;
+      cheetah.flush();
+    }
+
+    if (transcript.isFlushed && object!.transcript.length > 0) {
       await stopListening();
       await startTranslating();
       await startSpeaking();

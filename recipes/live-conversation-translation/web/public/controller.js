@@ -180,4 +180,8 @@ window.onload = () => {
       initButton.disabled = false;
     }
   }
+
+  if (accessKey.value.length > 0) {
+    initButton.disabled = false;
+  }
 };
