@@ -9,6 +9,7 @@ dotnet
 dtype
 endoftext
 endwin
+frombytes
 getmaxyx
 getpid
 iife
