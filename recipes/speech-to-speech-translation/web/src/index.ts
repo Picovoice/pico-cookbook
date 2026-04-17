@@ -159,7 +159,7 @@ const init = async (
     sendState("detecting", "");
 
     while (sourceLanguage === null) {
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 250));
     }
   }
   if (bat !== null) {
