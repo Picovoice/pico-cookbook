@@ -143,28 +143,26 @@
     </label>
     <input type="text" id="accessKey" name="accessKey"/>
     <br/>
-    <label for="languagePair">
-      Select language pair:
+    <label for="sourceLanguage">
+      Select source language:
     </label>
-    <select name="languagePair" id="languagePair">
-      <option value="de-en">de-en</option>
-      <option value="de-es">de-es</option>
-      <option value="de-fr">de-fr</option>
-      <option value="de-it">de-it</option>
-      <option value="en-de">en-de</option>
-      <option value="en-es">en-es</option>
-      <option value="en-fr">en-fr</option>
-      <option value="en-it">en-it</option>
-      <option value="es-de">es-de</option>
-      <option value="es-en">es-en</option>
-      <option value="es-fr">es-fr</option>
-      <option value="es-it">es-it</option>
-      <option value="fr-de">fr-de</option>
-      <option value="fr-en">fr-en</option>
-      <option value="fr-es">fr-es</option>
-      <option value="it-de">it-de</option>
-      <option value="it-en">it-en</option>
-      <option value="it-es">it-es</option>
+    <select name="sourceLanguage" id="sourceLanguage">
+      <option value="de">de</option>
+      <option value="en">en</option>
+      <option value="es">es</option>
+      <option value="fr">fr</option>
+      <option value="it">it</option>
+    </select>
+    <br>
+    <label for="targetLanguage">
+      Select target language:
+    </label>
+    <select name="targetLanguage" id="targetLanguage">
+      <option value="de">de</option>
+      <option value="en">en</option>
+      <option value="es">es</option>
+      <option value="fr">fr</option>
+      <option value="it">it</option>
     </select>
     <br>
     <button id="init" disabled>Init Live Conversation Translation</button>
@@ -172,9 +170,7 @@
 
   <div id="chatBlock">
     <div id="changeLanguage">
-      <label for="languagePair">
-        Change language pair:
-      </label>
+      <button id="changeLanguageButton">Change Languages</button>
     </div>
     <div class="dialogArea">
       <div class="result-container">
