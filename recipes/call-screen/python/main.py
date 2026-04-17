@@ -51,12 +51,12 @@ class Actions(Enum):
         return {
             self.GREET: "Hi, {username} can't answer right now. Please say your name and why you're calling.",
             self.CONNECT_CALL: "Okay, one moment while I connect you.",
-            self.DECLINE_CALL: "Sorry, {username} is unavailable right now.",
+            self.DECLINE_CALL: "Sorry, {username} is unavailable right now. Goodbye!",
             self.ASK_FOR_DETAILS: "Can you briefly say what this is regarding?",
-            self.ASK_TO_TEXT: "{username} can't talk right now. Please send a text message instead.",
-            self.ASK_TO_EMAIL: "Please send the details by email. Thank you.",
-            self.ASK_TO_CALL_BACK: "{username} can't take your call right now. Please call back later.",
-            self.BLOCK_CALLER: "This number is not accepting calls.",
+            self.ASK_TO_TEXT: "{username} can't talk right now. Please send a text message instead. Goodbye!",
+            self.ASK_TO_EMAIL: "Please send the details by email. Thank you. Goodbye!",
+            self.ASK_TO_CALL_BACK: "{username} can't take your call right now. Please call back later. Goodbye!",
+            self.BLOCK_CALLER: "This number is not accepting calls. Goodbye!",
         }[self].format(username=username)
 
     def is_terminal(self) -> bool:
