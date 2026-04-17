@@ -1,5 +1,5 @@
 {
-  "name": "live-conversation-translation",
+  "name": "speech-to-speech-translation",
   "version": "1.0.0",
   "description": "",
   "entry": "src/index.ts",
