@@ -163,44 +163,6 @@ window.onload = () => {
 
   };
 
-  const langaugePairs = {
-    automatic: [
-      'de',
-      'en',
-      'es',
-      'fr',
-      'it',
-    ],
-    de: [
-      'en',
-      'es',
-      'fr',
-      'it',
-    ],
-    en: [
-      'de',
-      'es',
-      'fr',
-      'it',
-    ],
-    es: [
-      'de',
-      'en',
-      'fr',
-      'it',
-    ],
-    fr: [
-      'de',
-      'en',
-      'es',
-    ],
-    it: [
-      'de',
-      'en',
-      'es',
-    ]
-  };
-
   const enableInitButton = () => {
     if ((accessKey.value.length > 0)) {
       initButton.disabled = false;
@@ -215,10 +177,10 @@ window.onload = () => {
 
   sourceLanguage.onchange = () => {
     Array.from(targetLanguage.options).forEach((option) => {
-      option.disabled = !langaugePairs[sourceLanguage.value].includes(option.value);
+      option.disabled = !Picovoice.LANGUAGE_PAIRS[sourceLanguage.value].includes(option.value);
 
       if ((targetLanguage.value === option.value) && (option.disabled === true)) {
-        targetLanguage.value = langaugePairs[sourceLanguage.value][0];
+        targetLanguage.value = Picovoice.LANGUAGE_PAIRS[sourceLanguage.value][0];
       }
     });
   }
