@@ -4,6 +4,44 @@ import { ZebraWorker } from '@picovoice/zebra-web';
 import { OrcaWorker } from '@picovoice/orca-web';
 import { AudioStream } from './audio_stream';
 
+const LANGUAGE_PAIRS: any = {
+  automatic: [
+    'de',
+    'en',
+    'es',
+    'fr',
+    'it',
+  ],
+  de: [
+    'en',
+    'es',
+    'fr',
+    'it',
+  ],
+  en: [
+    'de',
+    'es',
+    'fr',
+    'it',
+  ],
+  es: [
+    'de',
+    'en',
+    'fr',
+    'it',
+  ],
+  fr: [
+    'de',
+    'en',
+    'es',
+  ],
+  it: [
+    'de',
+    'en',
+    'es',
+  ]
+};
+
 type PvObject = {
   audio: AudioStream,
   cheetah0: CheetahWorker,
@@ -235,5 +273,6 @@ const release = async () => {
 
 export default {
   init,
-  release
+  release,
+  LANGUAGE_PAIRS
 };

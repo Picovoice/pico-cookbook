@@ -12,8 +12,9 @@ window.onload = () => {
   const initButton = document.getElementById("init");
 
   const accessKey = document.getElementById("accessKey");
-  const languagePair = document.getElementById("languagePair");
-  const changeLanguage = document.getElementById("changeLanguage");
+  const sourceLanguage = document.getElementById("sourceLanguage");
+  const targetLanguage = document.getElementById("targetLanguage");
+  const changeLanguageButton = document.getElementById("changeLanguageButton");
   const message = document.getElementById("message");
   const result = document.getElementById("result");
 
@@ -117,57 +118,27 @@ window.onload = () => {
     }
   };
 
-  const onChangeLanguage = async () => {
-    languagePair.disabled = true;
-    status.innerText = "Loading"
-    sendState("prompt", "Loading...");
-    startDot();
-
-    try {
-      const pair = languagePair.value.split("-");
-      await Picovoice.release();
-      result.innerHTML = "";
-
-      const start = await Picovoice.init(
-        accessKey.value,
-        pair[0],
-        pair[1],
-        sendState
-      );
-
-      status.innerText = "Loading complete.";
-
-      await start();
-    } catch (e) {
-      writeError(e.message);
-    } finally {
-      languagePair.disabled = false;
-      stopDot();
-    }
-  };
-
   initButton.onclick = async () => {
     initButton.disabled = true;
     status.innerText = "Loading"
     startDot();
 
     try {
-      const pair = languagePair.value.split("-");
+      const source = sourceLanguage.value;
+      const target = targetLanguage.value;
 
       const start = await Picovoice.init(
         accessKey.value,
-        pair[0],
-        pair[1],
+        source,
+        target,
         sendState
       );
-
       initBlock.style.display = 'none';
       chatBlock.style.display = 'flex';
       status.innerText = "Loading complete.";
-      changeLanguage.appendChild(languagePair);
-      languagePair.addEventListener("change", onChangeLanguage);
 
       await start();
+      changeLanguageButton.disabled = false;
     } catch (e) {
       writeError(e.message);
     } finally {
@@ -175,13 +146,38 @@ window.onload = () => {
     }
   };
 
-  accessKey.onchange = () => {
-    if (accessKey.value.length > 0) {
+  changeLanguageButton.onclick = async () => {
+    await Picovoice.release();
+
+    result.innerHTML = "";
+
+    initBlock.style.display = 'block';
+    chatBlock.style.display = 'none';
+
+    initButton.disabled = false;
+    status.innerText = "Not loaded."
+
+  };
+
+  const enableInitButton = () => {
+    if ((accessKey.value.length > 0)) {
       initButton.disabled = false;
+    } else {
+      initButton.disabled = true;
     }
   }
 
-  if (accessKey.value.length > 0) {
-    initButton.disabled = false;
+  accessKey.onchange = () => {
+    enableInitButton();
+  }
+
+  sourceLanguage.onchange = () => {
+    Array.from(targetLanguage.options).forEach((option) => {
+      option.disabled = !Picovoice.LANGUAGE_PAIRS[sourceLanguage.value].includes(option.value);
+
+      if ((targetLanguage.value === option.value) && (option.disabled === true)) {
+        targetLanguage.value = Picovoice.LANGUAGE_PAIRS[sourceLanguage.value][0];
+      }
+    });
   }
 };
