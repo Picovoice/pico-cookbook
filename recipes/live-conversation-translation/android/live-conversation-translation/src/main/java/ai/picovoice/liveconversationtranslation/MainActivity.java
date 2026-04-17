@@ -55,6 +55,7 @@ import ai.picovoice.orca.Orca;
 import ai.picovoice.orca.OrcaAudio;
 import ai.picovoice.orca.OrcaException;
 import ai.picovoice.orca.OrcaSynthesizeParams;
+import ai.picovoice.orca.OrcaWord;
 import ai.picovoice.zebra.Zebra;
 import ai.picovoice.zebra.ZebraException;
 
@@ -619,8 +620,6 @@ public class MainActivity extends AppCompatActivity {
         engineExecutor.submit(() -> {
             try {
                 String translation = zebra0.translate(transcript);
-                sendText(translation);
-                sendNewline(true, false);
 
                 startSpeakingTarget(translation);
             } catch (ZebraException e) {
@@ -643,8 +642,6 @@ public class MainActivity extends AppCompatActivity {
         engineExecutor.submit(() -> {
             try {
                 String translation = zebra1.translate(transcript);
-                sendText(translation);
-                sendNewline(false, false);
 
                 startSpeakingSource(translation);
             } catch (ZebraException e) {
@@ -668,7 +665,7 @@ public class MainActivity extends AppCompatActivity {
 
             setStatus(String.format("Speaking in %s", targetLanguage));
 
-            playAudio(audio);
+            playAudio(audio, true);
 
             startListeningTarget();
         } catch (OrcaException e) {
@@ -691,7 +688,7 @@ public class MainActivity extends AppCompatActivity {
 
             setStatus(String.format("Speaking in %s", sourceLanguage));
 
-            playAudio(audio);
+            playAudio(audio, false);
 
             startListeningSource();
         } catch (OrcaException e) {
@@ -699,7 +696,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void playAudio(OrcaAudio audio) {
+    private void playAudio(OrcaAudio audio, boolean alignRight) {
         AudioAttributes audioAttributes = new AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -722,6 +719,24 @@ public class MainActivity extends AppCompatActivity {
                 0);
 
         ttsOutput.play();
+
+        OrcaWord[] words = audio.getWordArray();
+        for (int i = 0; i < words.length; i++) {
+            String suffix = "";
+            if (i < words.length - 1 && !words[i + 1].getWord().matches(".*\\p{Punct}.*")) {
+                suffix = " ";
+            }
+
+            String text = words[i].getWord() + suffix;
+
+            mainHandler.postDelayed(() -> {
+                sendText(text);
+            }, (long) (words[i].getStartSec() * 1000));
+        }
+
+        mainHandler.postDelayed(() -> {
+            sendNewline(alignRight, false);
+        }, (long) (words[words.length - 1].getEndSec() * 1000));
 
         short[] pcm = audio.getPcm();
         ttsOutput.write(pcm, 0, pcm.length);
