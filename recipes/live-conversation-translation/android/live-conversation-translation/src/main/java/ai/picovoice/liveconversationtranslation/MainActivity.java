@@ -15,8 +15,10 @@ import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.style.AlignmentSpan;
 import android.text.style.ForegroundColorSpan;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.GridView;
@@ -24,6 +26,7 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
@@ -39,6 +42,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -57,6 +61,15 @@ import ai.picovoice.zebra.ZebraException;
 public class MainActivity extends AppCompatActivity {
 
     private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
+
+    private static final String[] languages = {
+        "--",
+        "de",
+        "en",
+        "es",
+        "fr",
+        "it"
+    };
 
     private static final String[] languagePairs = {
         "de-en",
@@ -103,7 +116,11 @@ public class MainActivity extends AppCompatActivity {
 
     private ConstraintLayout chatLayout;
 
-    private GridView languagePairView;
+    private Spinner sourceLanguageSpinner;
+
+    private Spinner targetLanguageSpinner;
+
+    private Button startButton;
 
     private Button changeLanguageButton;
 
@@ -121,9 +138,9 @@ public class MainActivity extends AppCompatActivity {
 
     private int dotIndex = 0;
 
-    private String sourceLanguage;
+    private String sourceLanguage = null;
 
-    private String targetLanguage;
+    private String targetLanguage = null;
 
     private final VoiceProcessor voiceProcessor = VoiceProcessor.getInstance();
     private Cheetah cheetah0;
@@ -239,7 +256,9 @@ public class MainActivity extends AppCompatActivity {
 
         selectLanguageLayout = findViewById(R.id.selectLanguageLayout);
         chatLayout = findViewById(R.id.chatLayout);
-        languagePairView = findViewById(R.id.languagePair);
+        sourceLanguageSpinner = findViewById(R.id.sourceLanguage);
+        targetLanguageSpinner = findViewById(R.id.targetLanguage);
+        startButton = findViewById(R.id.startButton);
         changeLanguageButton = findViewById(R.id.changeLanguageButton);
         statusText = findViewById(R.id.statusText);
         statusProgress = findViewById(R.id.statusProgress);
@@ -247,37 +266,96 @@ public class MainActivity extends AppCompatActivity {
         chatTextScrollView = findViewById(R.id.chatScrollView);
         chatTextBuilder = new SpannableStringBuilder();
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+        targetLanguageSpinner.setEnabled(false);
+        targetLanguageSpinner.invalidate();
+        startButton.setEnabled(false);
+        startButton.invalidate();
+
+        ArrayAdapter<String> sourceLanguageAdapter = new ArrayAdapter<>(
                 this,
                 android.R.layout.simple_list_item_1,
-                languagePairs
+                languages
+        );
+        sourceLanguageSpinner.setAdapter(sourceLanguageAdapter);
+
+        ArrayAdapter<String> targetLanguageAdapter = new ArrayAdapter<String>(
+                this,
+                android.R.layout.simple_list_item_1,
+                languages
         ) {
-            @NotNull
             @Override
-            public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
-                View view = super.getView(position, convertView, parent);
+            public boolean isEnabled(int position) {
+                if (position > 0 && sourceLanguage != null) {
+                    String pair = String.format("%s-%s", sourceLanguage, languages[position]);
+                    return Arrays.asList(languagePairs).contains(pair);
+                } else {
+                    return false;
+                }
+            }
 
-                Drawable drawable = ContextCompat.getDrawable(getApplicationContext(), R.drawable.rounded);
-                view.setBackground(drawable);
-                view.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
-
-                if (view instanceof TextView) {
-                    int textColor = ContextCompat.getColor(getApplicationContext(), R.color.design_default_color_background);
-                    ((TextView) view).setTextColor(textColor);
+            @Override
+            public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                if (!this.isEnabled(position)) {
+                    TextView tv = new TextView(getContext());
+                    tv.setVisibility(View.GONE);
+                    tv.setHeight(0);
+                    return tv;
                 }
 
-                return view;
+                return super.getDropDownView(position, null, parent);
             }
         };
-        languagePairView.setAdapter(adapter);
+        targetLanguageSpinner.setAdapter(targetLanguageAdapter);
 
         animateDots();
 
-        languagePairView.setOnItemClickListener((parent, view, position, id) -> {
-            String[] pair = languagePairs[position].split("-");
-            sourceLanguage = pair[0];
-            targetLanguage = pair[1];
+        sourceLanguageSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                if (position > 0) {
+                    sourceLanguage = languages[position];
+                    targetLanguageSpinner.setSelection(0);
+                    targetLanguageSpinner.setEnabled(true);
+                    targetLanguageSpinner.invalidate();
+                } else {
+                    this.onNothingSelected(parentView);
+                }
 
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parentView) {
+                sourceLanguage = null;
+                targetLanguageSpinner.setSelection(0);
+                targetLanguageSpinner.setEnabled(false);
+                targetLanguageSpinner.invalidate();
+                startButton.setEnabled(false);
+                startButton.invalidate();
+            }
+        });
+
+        targetLanguageSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                if (position > 0) {
+                    targetLanguage = languages[position];
+                    startButton.setEnabled(true);
+                    startButton.invalidate();
+                } else {
+                    targetLanguage = null;
+                    startButton.setEnabled(false);
+                    startButton.invalidate();
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parentView) {
+                targetLanguage = null;
+            }
+
+        });
+
+        startButton.setOnClickListener(parent -> {
             selectLanguageLayout.setVisibility(View.GONE);
             chatLayout.setVisibility(View.VISIBLE);
             changeLanguageButton.setEnabled(false);
@@ -307,6 +385,14 @@ public class MainActivity extends AppCompatActivity {
             chatLastNewline = 0;
             sourceLanguage = null;
             targetLanguage = null;
+
+            sourceLanguageSpinner.setSelection(0);
+            targetLanguageSpinner.setSelection(0);
+            targetLanguageSpinner.setEnabled(false);
+            startButton.setEnabled(false);
+            sourceLanguageSpinner.invalidate();
+            targetLanguageSpinner.invalidate();
+            startButton.invalidate();
 
             cheetah0.delete();
             cheetah1.delete();
