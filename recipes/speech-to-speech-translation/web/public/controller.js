@@ -12,9 +12,9 @@ window.onload = () => {
   const initButton = document.getElementById("init");
 
   const accessKey = document.getElementById("accessKey");
-  const languagePair = document.getElementById("languagePair");
+  const sourceLanguage = document.getElementById("sourceLanguage");
   const targetLanguage = document.getElementById("targetLanguage");
-  const changeLanguage = document.getElementById("changeLanguage");
+  const changeLanguageButton = document.getElementById("changeLanguageButton");
   const message = document.getElementById("message");
   const result = document.getElementById("result");
 
@@ -115,32 +115,10 @@ window.onload = () => {
       if (text == "") {
         state.lowerElem.removeChild(animationElement);
       }
-    }
-  };
-
-  const onChangeLanguage = async () => {
-    languagePair.disabled = true;
-    status.innerText = "Loading"
-    startDot();
-
-    try {
-      const pair = languagePair.value.split("-");
-      await Picovoice.release();
-      result.innerHTML = "";
-
-      const start = await Picovoice.init(
-        accessKey.value,
-        pair[0],
-        pair[1],
-        sendState
-      );
-
-      await start();
-    } catch (e) {
-      writeError(e.message);
-    } finally {
-      languagePair.disabled = false;
-      stopDot();
+    } else if (mode === "detecting") {
+      initBlock.style.display = 'none';
+      chatBlock.style.display = 'flex';
+      changeLanguageButton.disabled = true;
     }
   };
 
@@ -150,15 +128,8 @@ window.onload = () => {
     startDot();
 
     try {
-      let source = null;
-      let target = null;
-      if (languagePair.value !== "none") {
-        const pair = languagePair.value.split("-");
-        source = pair[0];
-        target = pair[1];
-      } else {
-        target = targetLanguage.value;
-      }
+      const source = sourceLanguage.value;
+      const target = targetLanguage.value;
 
       const start = await Picovoice.init(
         accessKey.value,
@@ -169,10 +140,9 @@ window.onload = () => {
       initBlock.style.display = 'none';
       chatBlock.style.display = 'flex';
       status.innerText = "Loading complete.";
-      // changeLanguage.appendChild(languagePair);
-      // languagePair.addEventListener("change", onChangeLanguage);
 
       await start();
+      changeLanguageButton.disabled = false;
     } catch (e) {
       writeError(e.message);
     } finally {
@@ -180,9 +150,59 @@ window.onload = () => {
     }
   };
 
+  changeLanguageButton.onclick = async () => {
+    await Picovoice.release();
+
+    result.innerHTML = "";
+
+    initBlock.style.display = 'block';
+    chatBlock.style.display = 'none';
+
+    initButton.disabled = false;
+    status.innerText = "Not loaded."
+
+  };
+
+  const langaugePairs = {
+    automatic: [
+      'de',
+      'en',
+      'es',
+      'fr',
+      'it',
+    ],
+    de: [
+      'en',
+      'es',
+      'fr',
+      'it',
+    ],
+    en: [
+      'de',
+      'es',
+      'fr',
+      'it',
+    ],
+    es: [
+      'de',
+      'en',
+      'fr',
+      'it',
+    ],
+    fr: [
+      'de',
+      'en',
+      'es',
+    ],
+    it: [
+      'de',
+      'en',
+      'es',
+    ]
+  };
+
   const enableInitButton = () => {
-    if ((accessKey.value.length > 0) &&
-        ((languagePair.value !== "none") || (targetLanguage.value !== "none"))) {
+    if ((accessKey.value.length > 0)) {
       initButton.disabled = false;
     } else {
       initButton.disabled = true;
@@ -193,13 +213,13 @@ window.onload = () => {
     enableInitButton();
   }
 
-  languagePair.onchange = () => {
-    targetLanguage.value = 'none';
-    enableInitButton();
-  }
+  sourceLanguage.onchange = () => {
+    Array.from(targetLanguage.options).forEach((option) => {
+      option.disabled = !langaugePairs[sourceLanguage.value].includes(option.value);
 
-  targetLanguage.onchange = () => {
-    languagePair.value = 'none';
-    enableInitButton();
+      if ((targetLanguage.value === option.value) && (option.disabled === true)) {
+        targetLanguage.value = langaugePairs[sourceLanguage.value][0];
+      }
+    });
   }
 };
