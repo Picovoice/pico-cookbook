@@ -11,6 +11,44 @@ import { ZebraWorker } from '@picovoice/zebra-web';
 import { OrcaWorker } from '@picovoice/orca-web';
 import { AudioStream } from './audio_stream';
 
+const LANGUAGE_PAIRS: any = {
+  automatic: [
+    'de',
+    'en',
+    'es',
+    'fr',
+    'it',
+  ],
+  de: [
+    'en',
+    'es',
+    'fr',
+    'it',
+  ],
+  en: [
+    'de',
+    'es',
+    'fr',
+    'it',
+  ],
+  es: [
+    'de',
+    'en',
+    'fr',
+    'it',
+  ],
+  fr: [
+    'de',
+    'en',
+    'es',
+  ],
+  it: [
+    'de',
+    'en',
+    'es',
+  ]
+};
+
 type PvObject = {
   audio: AudioStream,
   cheetah: CheetahWorker,
@@ -90,7 +128,15 @@ const init = async (
         }
 
         if ((maxLanguage !== BatLanguages.UNKNOWN) && (maxLanguageScore > 0.75)) {
-          sourceLanguage = batLanguageToString(maxLanguage);
+          const detectedSourceLanguage = batLanguageToString(maxLanguage) || "";
+          sendState("prompt", `Detected "${detectedSourceLanguage}"`);
+
+          if (LANGUAGE_PAIRS[detectedSourceLanguage].includes(targetLanguage)) {
+            sourceLanguage = detectedSourceLanguage;
+          } else {
+            sendState("status", `Cannot translate from \`${detectedSourceLanguage}\` to \`${targetLanguage}\`.`);
+            sendState("prompt", `Cannot translate from \`${detectedSourceLanguage}\` to \`${targetLanguage}\`.`);
+          }
         }
       }
     }
@@ -121,8 +167,6 @@ const init = async (
     bat.release();
     bat = null;
   }
-
-  sendState("prompt", `Detected "${sourceLanguage}"`);
 
   const startListening = async () => {
     const language = sourceLanguage;
@@ -271,5 +315,6 @@ const release = async () => {
 
 export default {
   init,
-  release
+  release,
+  LANGUAGE_PAIRS
 };
