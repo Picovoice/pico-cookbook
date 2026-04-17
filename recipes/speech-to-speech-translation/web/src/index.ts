@@ -70,6 +70,10 @@ const init = async (
   targetLanguage: string,
   sendState: (mode: string, text: string) => void,
 ): Promise<() => Promise<void>> => {
+  if (sourceLanguage === "automatic") {
+    sourceLanguage = null;
+  }
+
   if (sourceLanguage === null) {
     const scoresCallback = (
       scores: BatScores | null,
@@ -79,7 +83,6 @@ const init = async (
         let maxLanguageScore = 0.0;
 
         for (const [lang, score] of Object.entries(scores)) {
-          console.log(lang, score);
           if (score > maxLanguageScore) {
             maxLanguage = Number(lang) as BatLanguages;
             maxLanguageScore = score;
@@ -105,6 +108,9 @@ const init = async (
     await WebVoiceProcessor.subscribe(BufferedCheetahEngine);
     await WebVoiceProcessor.subscribe(BufferedBatEngine);
     sendState("status", `Detecting language`);
+    sendState("prompt", `Detecting language`);
+    sendState("listen", "right");
+    sendState("detecting", "");
 
     while (sourceLanguage === null) {
       await new Promise(r => setTimeout(r, 1000));
@@ -115,6 +121,8 @@ const init = async (
     bat.release();
     bat = null;
   }
+
+  sendState("prompt", `Detected "${sourceLanguage}"`);
 
   const startListening = async () => {
     const language = sourceLanguage;
@@ -256,6 +264,9 @@ const release = async () => {
   object!.orca.release();
 
   object = null;
+
+  cheetahPcmBuffer = new Int16Array();
+  batPcmBuffer = new Int16Array();
 }
 
 export default {
