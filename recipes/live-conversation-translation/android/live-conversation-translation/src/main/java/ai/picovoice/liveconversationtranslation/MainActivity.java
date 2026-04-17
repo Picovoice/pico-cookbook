@@ -267,6 +267,7 @@ public class MainActivity extends AppCompatActivity {
         chatTextScrollView = findViewById(R.id.chatScrollView);
         chatTextBuilder = new SpannableStringBuilder();
 
+        voiceProcessor.addFrameListener(this::frameListener);
         targetLanguageSpinner.setEnabled(false);
         targetLanguageSpinner.invalidate();
         startButton.setEnabled(false);
@@ -360,8 +361,6 @@ public class MainActivity extends AppCompatActivity {
             selectLanguageLayout.setVisibility(View.GONE);
             chatLayout.setVisibility(View.VISIBLE);
             changeLanguageButton.setEnabled(false);
-
-            voiceProcessor.addFrameListener(this::frameListener);
 
             voiceProcessor.addErrorListener(error -> {
                 setError(error.getMessage());
