@@ -80,19 +80,19 @@ class Step(object):
         raise NotImplementedError()
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__}[{self._name}]"
+        return f"{self.__class__.__name__} << {self._name} >>"
 
     @classmethod
     def create(cls, step: Steps, **kwargs: Any) -> "Step":
         children = {
-            Steps.PORCUPINE: PorcupineStep,
-            Steps.RHINO: RhinoStep,
             Steps.CHEETAH: CheetahStep,
             Steps.ORCA: OrcaStep,
+            Steps.PORCUPINE: PorcupineStep,
+            Steps.RHINO: RhinoStep,
         }
 
         if step not in children:
-            raise ValueError(f"Cannot create a {cls.__name__} of type {step.value}")
+            raise ValueError(f"Cannot create a {cls.__name__} of type `{step.value}`")
 
         return children[step](**kwargs)
 
@@ -305,7 +305,7 @@ class Workflow(object):
         kwargs = dict()
 
         while True:
-            print(current)
+            print(self._steps[current])
             self._history.append(self._steps[current].run(**kwargs))
             future = self._next_step_fns[current](self._history)
             if future is None:
