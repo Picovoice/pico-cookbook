@@ -1,11 +1,14 @@
+from enum import Enum
 from typing import (
     Any,
     Callable,
+    Dict,
     Optional,
     Sequence,
+    Set,
     Tuple,
 )
-from enum import Enum
+
 from pvporcupine import Porcupine
 from pvrecorder import PvRecorder
 
@@ -60,7 +63,7 @@ class Step(object):
     ) -> None:
         self._name = name
 
-    def run(self) -> None:
+    def run(self) -> Optional[Dict[str, Any]]:
         raise NotImplementedError()
 
     def __str__(self) -> str:
@@ -116,13 +119,23 @@ class CheetahStep(Step):
 class Workflow(object):
     def __init__(
             self,
-            graph: Sequence[Tuple[Steps, ]],
+            steps: Dict[str, Tuple[Steps, Dict[str, Any]]],
+            next_step_fns: Dict[str, Callable[[Dict[str, Any]], str]],
+            start_step: str,
+            terminal_steps: Set[str],
             name: Optional[str] = None
     ) -> None:
+        self._steps = dict((k, Step.create(step=step, **kwargs)) for k, (step, kwargs) in steps.items())
+        self._next_step_fns = next_step_fns
+        self._start_step = start_step
+        self._terminal_steps = terminal_steps
         self._name = name
 
     def run(self) -> None:
-        pass
+        current = self._start_step
+
+        while current not in self._terminal_steps:
+            current = self._next_step_fns[current](self._steps[current].run())
 
     def __str__(self):
         return f"{self.__class__.__name__}{f"[{self._name}]" if self._name is not None else ""}"
