@@ -6,12 +6,12 @@ from typing import (
     Dict,
     Optional,
     Sequence,
-    Set,
     Tuple,
 )
 
-from pvporcupine import Porcupine
+import pvporcupine
 from pvrecorder import PvRecorder
+from pvspeaker import PvSpeaker
 
 
 class Recorder(object):
@@ -60,9 +60,15 @@ class Steps(Enum):
 class Step(object):
     def __init__(
             self,
-            name: str = None,
+            name: str,
+            access_key: str,
+            recorder: Optional[Recorder],
+            speaker: Optional[PvSpeaker],
     ) -> None:
         self._name = name
+        self._access_key = access_key
+        self._recorder = recorder
+        self._speaker = speaker
 
     def run(self) -> Optional[Dict[str, Any]]:
         raise NotImplementedError()
@@ -86,24 +92,40 @@ class PorcupineStep(Step):
     def __init__(
             self,
             name: str,
-            recorder: Recorder,
-            porcupine: Porcupine,
-            on_detection: Callable[[], None] = None,
+            recorder: Optional[Recorder],
+            speaker: Optional[PvSpeaker],
+            access_key: str,
+            keyword_path: str,
+            library_path: Optional[str] = None,
+            model_path: Optional[str] = None,
+            device: str = 'best',
+            sensitivity: float = 0.5
     ) -> None:
-        super().__init__(name=name)
+        super().__init__(
+            name=name,
+            access_key=access_key,
+            recorder=recorder,
+            speaker=speaker)
 
-        recorder.start()
         self._recorder = recorder
-        self._porcupine = porcupine
-        self._on_detection = on_detection
+
+        self._porcupine = pvporcupine.create(
+            access_key=access_key,
+            library_path=library_path,
+            model_path=model_path,
+            device=device,
+            keyword_paths=[keyword_path],
+            sensitivities=[sensitivity])
 
     def run(self) -> None:
-        is_detected = False
-        while not is_detected:
-            is_detected = self._porcupine.process(self._recorder.read(self._porcupine.frame_length)) == 0
+        self._recorder.start()
 
-        if self._on_detection is not None:
-            self._on_detection()
+        try:
+            is_detected = False
+            while not is_detected:
+                is_detected = self._porcupine.process(self._recorder.read(self._porcupine.frame_length)) == 0
+        finally:
+            self._recorder.stop()
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__}[{self._name}]"
@@ -121,22 +143,32 @@ class Workflow(object):
     def __init__(
             self,
             steps: Dict[str, Tuple[Steps, Optional[Dict[str, Any]]]],
-            next_step_fns: Dict[str, Callable[[Dict[str, Any]], str]],
+            next_step_fns: Dict[str, Callable[[Dict[str, Any]], Optional[str]]],
             start_step: str,
-            terminal_steps: Set[str],
             access_key: str,
             name: Optional[str] = None
     ) -> None:
-        self._steps = dict((k, Step.create(step=step, **kwargs)) for k, (step, kwargs) in steps.items())
+        self._recorder = Recorder(frame_length=160, device_index=-1)
+        self._speaker = PvSpeaker(sample_rate=22050, bits_per_sample=16)
+
+        self._steps = dict()
+        for name, (step, kwargs) in steps.items():
+            self._steps[name] = Step.create(
+                step=step,
+                name=name,
+                access_key=access_key,
+                recorder=self._recorder,
+                speaker=self._speaker,
+                **kwargs)
+
         self._next_step_fns = next_step_fns
         self._start_step = start_step
-        self._terminal_steps = terminal_steps
         self._name = name
 
     def run(self) -> None:
         current = self._start_step
 
-        while current not in self._terminal_steps:
+        while current is not None:
             current = self._next_step_fns[current](self._steps[current].run())
 
     def __str__(self):
@@ -149,21 +181,28 @@ def main() -> None:
         '--access_key',
         required=True,
         help='AccessKey obtained from Picovoice Console (https://console.picovoice.ai/)')
+    parser.add_argument(
+        '--keyword_path',
+        required=True,
+        help='')
     args = parser.parse_args()
 
     access_key = args.access_key
+    keyword_path = args.keyword_path
 
     workflow = Workflow(
         steps={
-            'wake': (Steps.PORCUPINE, None),
-            'sleep': (Steps.PORCUPINE, None)
+            'wake': (
+                Steps.PORCUPINE,
+                {
+                    'keyword_path': keyword_path,
+                }
+            ),
         },
         next_step_fns={
-            'wake': lambda x: 'sleep',
-            'sleep': lambda x: 'sleep'
+            'wake': lambda x: None,
         },
         start_step='wake',
-        terminal_steps=set(),
         access_key=access_key)
 
     workflow.run()
