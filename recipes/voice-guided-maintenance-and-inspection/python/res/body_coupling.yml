@@ -1,0 +1,40 @@
+context:
+  expressions:
+    reportBodyCondition:
+      - "body [is] $bodyCondition:bodyCondition"
+      - "trailer body [is] $bodyCondition:bodyCondition"
+      - "minor damage"
+      - "no body damage"
+
+    reportCouplingCondition:
+      - "coupling [is] $couplingCondition:couplingCondition"
+      - "trailer connection [is] $couplingCondition:couplingCondition"
+
+    reportNoiseOrVibration:
+      - "no abnormal noise"
+      - "no abnormal vibration"
+      - "abnormal noise"
+      - "abnormal vibration"
+      - "$issueSeverity:issueSeverity abnormal noise"
+      - "$issueSeverity:issueSeverity abnormal vibration"
+
+  slots:
+    bodyCondition:
+      - good
+      - normal
+      - damaged
+      - dented
+      - cracked
+
+    couplingCondition:
+      - secure
+      - loose
+      - damaged
+
+    issueSeverity:
+      - minor
+      - medium
+      - major
+      - critical
+
+  macros: {}

@@ -1,0 +1,24 @@
+context:
+  expressions:
+    recordServiceAction:
+      - "@serviceAction $serviceAction:serviceAction"
+      - "$serviceAction:serviceAction completed"
+      - "$serviceAction:serviceAction done"
+
+  slots:
+    serviceAction:
+      - oil changed
+      - filter replaced
+      - air filter replaced
+      - coolant topped up
+      - tire inflated
+      - lights repaired
+      - brake adjustment completed
+      - belt replaced
+
+  macros:
+    serviceAction:
+      - record service
+      - performed
+      - completed
+      - serviced

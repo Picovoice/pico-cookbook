@@ -1,0 +1,53 @@
+context:
+  expressions:
+    startMaintenanceInspection:
+      - "@startPm [on, for] (unit) $unitId:unitId"
+      - "@startPm [on, for] [truck, vehicle, trailer] $unitId:unitId"
+      - "@startPm [the] preventive maintenance [inspection] [on, for] (unit) $unitId:unitId"
+      - "@startPm [the] PM [inspection] [on, for] (unit) $unitId:unitId"
+
+    confirmAsset:
+      - "@confirm"
+      - "yes [that is correct]"
+      - "correct"
+
+    denyAsset:
+      - "@deny"
+      - "this is (unit) $unitId:unitId"
+      - "correct [the unit to] $unitId:unitId"
+
+  slots:
+    unitId:
+      - 1842
+      - 2047
+      - 318
+      - 721
+      - A12
+      - B07
+      - T14
+      - TR99
+
+  macros:
+    startPm:
+      - start maintenance
+      - start inspection
+      - start preventive maintenance
+      - start PM
+      - open maintenance
+      - open inspection
+      - begin maintenance
+      - begin inspection
+
+    confirm:
+      - confirm
+      - confirmed
+      - yes
+      - that's right
+      - that is right
+      - that is correct
+
+    deny:
+      - no
+      - incorrect
+      - that's wrong
+      - that is wrong

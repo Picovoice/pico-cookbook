@@ -1,0 +1,43 @@
+context:
+  expressions:
+    reportTireCondition:
+      - "$wheelPosition:wheelPosition tire [is] $tireCondition:tireCondition"
+      - "$wheelPosition:wheelPosition tire pressure [is] $tireCondition:tireCondition"
+      - "$wheelPosition:wheelPosition tread [is] $tireCondition:tireCondition"
+      - "all tires [are] good"
+      - "all tires [are] normal"
+
+    reportTireIssue:
+      - "$issueSeverity:issueSeverity low tire pressure"
+      - "$issueSeverity:issueSeverity tire wear"
+      - "$issueSeverity:issueSeverity tire damage"
+      - "record low tire pressure"
+      - "record tire wear"
+      - "record tire damage"
+
+  slots:
+    wheelPosition:
+      - front left
+      - front right
+      - rear left
+      - rear right
+      - left rear outer
+      - left rear inner
+      - right rear outer
+      - right rear inner
+
+    tireCondition:
+      - good
+      - normal
+      - low pressure
+      - worn
+      - damaged
+      - bald
+
+    issueSeverity:
+      - minor
+      - medium
+      - major
+      - critical
+
+  macros: {}

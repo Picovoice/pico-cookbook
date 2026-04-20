@@ -1,0 +1,34 @@
+context:
+  expressions:
+    reportParkingBrakeStatus:
+      - "parking brake [is] $binaryStatus:binaryStatus"
+      - "parking brake [is] not set"
+      - "parking brake [is] engaged"
+
+    reportEngineStatus:
+      - "engine [is] off"
+      - "engine [is] on"
+      - "engine off"
+      - "engine on"
+
+    reportHoodStatus:
+      - "hood [is] open"
+      - "hood [is] closed"
+      - "hood open"
+      - "hood closed"
+
+    reportSafetyReady:
+      - "safe to inspect"
+      - "ready"
+      - "ready to continue"
+
+  slots:
+    binaryStatus:
+      - okay
+      - good
+      - set
+      - engaged
+      - not set
+      - failed
+
+  macros: {}
