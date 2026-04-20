@@ -9,9 +9,12 @@ from typing import (
     Tuple,
 )
 
+import pvcheetah
 import pvporcupine
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
+import pvrhino
+import pvorca
 
 
 class Recorder(object):
@@ -54,7 +57,10 @@ class Recorder(object):
 
 
 class Steps(Enum):
+    CHEETAH = "Cheetah"
+    ORCA = "Orca"
     PORCUPINE = "Porcupine"
+    RHINO = "Rhino"
 
 
 class Step(object):
@@ -74,12 +80,14 @@ class Step(object):
         raise NotImplementedError()
 
     def __str__(self) -> str:
-        raise NotImplementedError()
+        return f"{self.__class__.__name__}[{self._name}]"
 
     @classmethod
     def create(cls, step: Steps, **kwargs: Any) -> "Step":
         children = {
             Steps.PORCUPINE: PorcupineStep,
+            Steps.RHINO: RhinoStep,
+            Steps.CHEETAH: CheetahStep,
         }
 
         if step not in children:
@@ -117,7 +125,7 @@ class PorcupineStep(Step):
             keyword_paths=[keyword_path],
             sensitivities=[sensitivity])
 
-    def run(self) -> None:
+    def run(self) -> Optional[Dict[str, Any]]:
         self._recorder.start()
 
         try:
@@ -127,16 +135,109 @@ class PorcupineStep(Step):
         finally:
             self._recorder.stop()
 
-    def __str__(self) -> str:
-        return f"{self.__class__.__name__}[{self._name}]"
-
 
 class RhinoStep(Step):
-    pass
+    def __init__(
+            self,
+            name: str,
+            recorder: Optional[Recorder],
+            speaker: Optional[PvSpeaker],
+            access_key: str,
+            context_path: str,
+            device: str = 'best',
+            library_path: Optional[str] = None,
+            model_path: Optional[str] = None,
+            sensitivity: float = 0.5,
+            endpoint_duration_sec: float = 1.,
+            require_endpoint: bool = True
+    ) -> None:
+        super().__init__(
+            name=name,
+            access_key=access_key,
+            recorder=recorder,
+            speaker=speaker)
+
+        self._rhino = pvrhino.create(
+            access_key=access_key,
+            context_path=context_path,
+            library_path=library_path,
+            model_path=model_path,
+            device=device,
+            sensitivity=sensitivity,
+            endpoint_duration_sec=endpoint_duration_sec,
+            require_endpoint=require_endpoint)
+
+    def run(self) -> Optional[Dict[str, Any]]:
+        pass
+
 
 
 class CheetahStep(Step):
-    pass
+    def __init__(
+            self,
+            name: str,
+            recorder: Optional[Recorder],
+            speaker: Optional[PvSpeaker],
+            access_key: str,
+            model_path: Optional[str] = None,
+            device: str = 'best',
+            library_path: Optional[str] = None,
+            endpoint_duration_sec: Optional[float] = None,
+            enable_automatic_punctuation: bool = False,
+            enable_text_normalization: bool = False
+    ) -> None:
+        super().__init__(
+            name=name,
+            access_key=access_key,
+            recorder=recorder,
+            speaker=speaker)
+
+        self._cheetah = pvcheetah.create(
+            access_key=access_key,
+            model_path=model_path,
+            device=device,
+            library_path=library_path,
+            endpoint_duration_sec=endpoint_duration_sec,
+            enable_automatic_punctuation=enable_automatic_punctuation,
+            enable_text_normalization=enable_text_normalization)
+
+    def run(self) -> Optional[Dict[str, Any]]:
+        try:
+            while True:
+                partial, is_endpoint = self._cheetah.process(self._recorder.read(self._cheetah.frame_length))
+                if is_endpoint:
+                    remainder = self._cheetah.flush()
+        except StopIteration:
+            reminder = self._cheetah.flush()
+        finally:
+            pass
+
+
+class OrcaStep(Step):
+    def __init__(
+            self,
+            name: str,
+            recorder: Optional[Recorder],
+            speaker: Optional[PvSpeaker],
+            access_key: str,
+            model_path: Optional[str] = None,
+            device: str = 'best',
+            library_path: Optional[str] = None
+    ) -> None:
+        super().__init__(
+            name=name,
+            access_key=access_key,
+            recorder=recorder,
+            speaker=speaker)
+
+        self._orca = pvorca.create(
+            access_key=access_key,
+            model_path=model_path,
+            device=device,
+            library_path=library_path)
+
+    def run(self) -> Optional[Dict[str, Any]]:
+        pass
 
 
 class Workflow(object):
