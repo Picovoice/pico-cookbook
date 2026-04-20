@@ -183,8 +183,8 @@ class CheetahStep(Step):
             device: str = 'best',
             library_path: Optional[str] = None,
             endpoint_duration_sec: Optional[float] = None,
-            enable_automatic_punctuation: bool = False,
-            enable_text_normalization: bool = False
+            enable_automatic_punctuation: bool = True,
+            enable_text_normalization: bool = True
     ) -> None:
         super().__init__(
             name=name,
@@ -202,15 +202,26 @@ class CheetahStep(Step):
             enable_text_normalization=enable_text_normalization)
 
     def run(self) -> Optional[Dict[str, Any]]:
+        self._recorder.start()
+        partials = list()
+
         try:
             while True:
                 partial, is_endpoint = self._cheetah.process(self._recorder.read(self._cheetah.frame_length))
+                partials.append(partial)
+                print(partial, end="", flush=True)
                 if is_endpoint:
                     remainder = self._cheetah.flush()
-        except StopIteration:
-            reminder = self._cheetah.flush()
+                    partials.append(remainder)
+                    print(remainder, end="\n", flush=True)
+        except KeyboardInterrupt:
+            remainder = self._cheetah.flush()
+            partials.append(remainder)
+            print(remainder, end="\n", flush=True)
         finally:
-            pass
+            self._recorder.stop()
+
+        return {"text": ''.join(partials)}
 
 
 class OrcaStep(Step):
@@ -286,7 +297,6 @@ class Workflow(object):
             else:
                 current, kwargs = future
 
-
     def __str__(self):
         return f"{self.__class__.__name__}{f"[{self._name}]" if self._name is not None else ""}"
 
@@ -319,11 +329,18 @@ def main() -> None:
                 {
 
                 }
+            ),
+            'note': (
+                Steps.CHEETAH,
+                {
+
+                }
             )
         },
         next_step_fns={
             'wake': lambda x: ('prompt', {'prompt': 'Hello, Wendy!'}),
-            'prompt': lambda x: None,
+            'prompt': lambda x: ('note', {}),
+            'note': lambda x: None,
         },
         start_step='wake',
         access_key=access_key)
