@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 from enum import Enum
 from typing import (
     Any,
@@ -59,7 +60,7 @@ class Steps(Enum):
 class Step(object):
     def __init__(
             self,
-            name: Optional[str] = None,
+            name: str = None,
     ) -> None:
         self._name = name
 
@@ -84,9 +85,9 @@ class Step(object):
 class PorcupineStep(Step):
     def __init__(
             self,
+            name: str,
             recorder: Recorder,
             porcupine: Porcupine,
-            name: Optional[str] = None,
             on_detection: Callable[[], None] = None,
     ) -> None:
         super().__init__(name=name)
@@ -105,7 +106,7 @@ class PorcupineStep(Step):
             self._on_detection()
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__}{f"[{self._name}]" if self._name is not None else ""}"
+        return f"{self.__class__.__name__}[{self._name}]"
 
 
 class RhinoStep(Step):
@@ -119,10 +120,11 @@ class CheetahStep(Step):
 class Workflow(object):
     def __init__(
             self,
-            steps: Dict[str, Tuple[Steps, Dict[str, Any]]],
+            steps: Dict[str, Tuple[Steps, Optional[Dict[str, Any]]]],
             next_step_fns: Dict[str, Callable[[Dict[str, Any]], str]],
             start_step: str,
             terminal_steps: Set[str],
+            access_key: str,
             name: Optional[str] = None
     ) -> None:
         self._steps = dict((k, Step.create(step=step, **kwargs)) for k, (step, kwargs) in steps.items())
@@ -142,7 +144,29 @@ class Workflow(object):
 
 
 def main() -> None:
-    pass
+    parser = ArgumentParser()
+    parser.add_argument(
+        '--access_key',
+        required=True,
+        help='AccessKey obtained from Picovoice Console (https://console.picovoice.ai/)')
+    args = parser.parse_args()
+
+    access_key = args.access_key
+
+    workflow = Workflow(
+        steps={
+            'wake': (Steps.PORCUPINE, None),
+            'sleep': (Steps.PORCUPINE, None)
+        },
+        next_step_fns={
+            'wake': lambda x: 'sleep',
+            'sleep': lambda x: 'sleep'
+        },
+        start_step='wake',
+        terminal_steps=set(),
+        access_key=access_key)
+
+    workflow.run()
 
 
 if __name__ == '__main__':
