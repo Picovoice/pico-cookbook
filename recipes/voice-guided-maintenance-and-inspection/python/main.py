@@ -169,7 +169,22 @@ class RhinoStep(Step):
             require_endpoint=require_endpoint)
 
     def run(self) -> Optional[Dict[str, Any]]:
-        pass
+        self._recorder.start()
+
+        try:
+            while not self._rhino.process(self._recorder.read(self._rhino.frame_length)):
+                pass
+
+            inference = self._rhino.get_inference()
+            print(inference)
+            return {
+                'is_understood': inference.is_understood,
+                'intent': inference.intent,
+                'slots': inference.slots,
+            }
+        finally:
+            self._rhino.reset()
+            self._recorder.stop()
 
 
 class CheetahStep(Step):
@@ -290,6 +305,7 @@ class Workflow(object):
         kwargs = dict()
 
         while True:
+            print(current)
             self._history.append(self._steps[current].run(**kwargs))
             future = self._next_step_fns[current](self._history)
             if future is None:
@@ -311,10 +327,15 @@ def main() -> None:
         '--keyword_path',
         required=True,
         help='')
+    parser.add_argument(
+        '--context_path',
+        required=True,
+        help='')
     args = parser.parse_args()
 
     access_key = args.access_key
     keyword_path = args.keyword_path
+    context_path = args.context_path
 
     workflow = Workflow(
         steps={
@@ -335,12 +356,19 @@ def main() -> None:
                 {
 
                 }
+            ),
+            'checklist': (
+                Steps.RHINO,
+                {
+                    'context_path': context_path,
+                }
             )
         },
         next_step_fns={
             'wake': lambda x: ('prompt', {'prompt': 'Hello, Wendy!'}),
             'prompt': lambda x: ('note', {}),
-            'note': lambda x: None,
+            'note': lambda x: ('checklist', {}),
+            'checklist': lambda x: None,
         },
         start_step='wake',
         access_key=access_key)

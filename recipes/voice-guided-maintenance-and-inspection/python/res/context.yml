@@ -1,0 +1,131 @@
+context:
+  expressions:
+    startMaintenanceInspection:
+      - "@startPm [on, for] (unit) $unitId:unitId"
+      - "@startPm [on, for] [truck, vehicle] $unitId:unitId"
+      - "@startPm [the] PM [inspection] [on, for] (unit) $unitId:unitId"
+
+    confirmAsset:
+      - "@confirm"
+      - "yes [that is correct]"
+      - "correct"
+
+    denyAsset:
+      - "@deny"
+      - "this is (unit) $unitId:unitId"
+      - "correct [the unit to] $unitId:unitId"
+
+    reportOilCondition:
+      - "[engine] oil [level] $fluidCondition:fluidCondition"
+      - "oil $fluidCondition:fluidCondition"
+
+    reportCoolantCondition:
+      - "coolant [level] $fluidCondition:fluidCondition"
+      - "coolant $fluidCondition:fluidCondition"
+
+    reportTireCondition:
+      - "$wheelPosition:wheelPosition tire [is] $tireCondition:tireCondition"
+      - "$wheelPosition:wheelPosition tire pressure [is] $tireCondition:tireCondition"
+      - "$wheelPosition:wheelPosition tread [is] $tireCondition:tireCondition"
+
+    setDisposition:
+      - "[mark, set] [the] vehicle [as] $disposition:disposition"
+      - "[mark, set] [the] unit [as] $disposition:disposition"
+      - "$disposition:disposition"
+
+    createFollowUp:
+      - "[create, add, record] [a] follow up [for] $followUpAction:followUpAction"
+      - "follow up [is] $followUpAction:followUpAction"
+      - "$followUpAction:followUpAction"
+
+    repeatStep:
+      - "@repeat"
+      - "say that again"
+      - "repeat [the] [step, question]"
+
+    goBack:
+      - "@goBack"
+      - "go back"
+      - "previous step"
+
+    cancelWorkflow:
+      - "@cancel"
+      - "cancel [the] [inspection, maintenance, workflow]"
+      - "stop [the] [inspection, maintenance, workflow]"
+
+  slots:
+    unitId:
+      - north hauler
+      - south hauler
+      - east carrier
+      - west carrier
+      - valley runner
+      - ridge runner
+
+    fluidCondition:
+      - normal
+      - low
+      - high
+      - empty
+
+    wheelPosition:
+      - front left
+      - front right
+      - rear left
+      - rear right
+
+    tireCondition:
+      - good
+      - normal
+      - low pressure
+      - worn
+      - damaged
+
+    disposition:
+      - passed
+      - service required
+      - out of service
+
+    followUpAction:
+      - schedule coolant check
+      - schedule tire replacement
+      - send to maintenance
+      - order parts
+      - escalate for repair
+
+  macros:
+    startPm:
+      - start maintenance
+      - start inspection
+      - start preventive maintenance
+      - start PM
+      - begin maintenance
+      - begin inspection
+
+    confirm:
+      - confirm
+      - confirmed
+      - yes
+      - that's right
+      - that is correct
+
+    deny:
+      - no
+      - incorrect
+      - that's wrong
+
+    repeat:
+      - repeat
+      - repeat step
+      - repeat question
+
+    goBack:
+      - go back
+      - previous
+      - previous step
+
+    cancel:
+      - cancel
+      - stop
+      - abort
+      - end workflow
