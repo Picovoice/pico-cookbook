@@ -10,11 +10,11 @@ from typing import (
 )
 
 import pvcheetah
+import pvorca
 import pvporcupine
+import pvrhino
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
-import pvrhino
-import pvorca
 
 
 class Recorder(object):
@@ -76,7 +76,7 @@ class Step(object):
         self._recorder = recorder
         self._speaker = speaker
 
-    def run(self) -> Optional[Dict[str, Any]]:
+    def run(self, **kwargs: Any) -> Optional[Dict[str, Any]]:
         raise NotImplementedError()
 
     def __str__(self) -> str:
@@ -88,6 +88,7 @@ class Step(object):
             Steps.PORCUPINE: PorcupineStep,
             Steps.RHINO: RhinoStep,
             Steps.CHEETAH: CheetahStep,
+            Steps.ORCA: OrcaStep,
         }
 
         if step not in children:
@@ -171,7 +172,6 @@ class RhinoStep(Step):
         pass
 
 
-
 class CheetahStep(Step):
     def __init__(
             self,
@@ -236,15 +236,21 @@ class OrcaStep(Step):
             device=device,
             library_path=library_path)
 
-    def run(self) -> Optional[Dict[str, Any]]:
-        pass
+    def run(self, prompt: str) -> Optional[Dict[str, Any]]:
+        self._speaker.start()
+
+        try:
+            pcm, alignment = self._orca.synthesize(text=prompt)
+            self._speaker.flush(pcm)
+        finally:
+            self._speaker.stop()
 
 
 class Workflow(object):
     def __init__(
             self,
             steps: Dict[str, Tuple[Steps, Optional[Dict[str, Any]]]],
-            next_step_fns: Dict[str, Callable[[Dict[str, Any]], Optional[str]]],
+            next_step_fns: Dict[str, Callable[[Sequence[Dict[str, Any]]], Optional[Tuple[str, Dict[str, Any]]]]],
             start_step: str,
             access_key: str,
             name: Optional[str] = None
@@ -266,11 +272,20 @@ class Workflow(object):
         self._start_step = start_step
         self._name = name
 
+        self._history = list()
+
     def run(self) -> None:
         current = self._start_step
+        kwargs = dict()
 
-        while current is not None:
-            current = self._next_step_fns[current](self._steps[current].run())
+        while True:
+            self._history.append(self._steps[current].run(**kwargs))
+            future = self._next_step_fns[current](self._history)
+            if future is None:
+                break
+            else:
+                current, kwargs = future
+
 
     def __str__(self):
         return f"{self.__class__.__name__}{f"[{self._name}]" if self._name is not None else ""}"
@@ -299,9 +314,16 @@ def main() -> None:
                     'keyword_path': keyword_path,
                 }
             ),
+            'prompt': (
+                Steps.ORCA,
+                {
+
+                }
+            )
         },
         next_step_fns={
-            'wake': lambda x: None,
+            'wake': lambda x: ('prompt', {'prompt': 'Hello, Wendy!'}),
+            'prompt': lambda x: None,
         },
         start_step='wake',
         access_key=access_key)
