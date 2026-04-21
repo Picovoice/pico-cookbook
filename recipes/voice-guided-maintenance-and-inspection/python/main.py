@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from dataclasses import dataclass
 from enum import Enum
 from typing import (
     Any,
@@ -8,7 +9,7 @@ from typing import (
     Tuple,
     Type
 )
-from dataclasses import dataclass
+
 import pvcheetah
 import pvorca
 import pvporcupine
@@ -289,6 +290,7 @@ class RhinoStep(Step):
     def delete(self) -> None:
         self._rhino.delete()
 
+
 @dataclass
 class Transition(object):
     outcome: Optional[Dict[str, Any]] = None
@@ -336,13 +338,80 @@ class IdentifyUnitRecordState(State):
     def run(self) -> Transition:
         inference = self._step.run()
 
-        return Transition(outcome=inference)
+        return Transition(outcome=inference, next_state=CheckOilPromptState.__name__)
+
+
+class CheckOilPromptState(State):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(step=step)
+
+    def run(self, prompt: Optional[str] = None) -> Transition:
+        if prompt is None:
+            prompt = "What's the oil level?"
+        self._step.run(prompt=prompt)
+
+        return Transition(next_state=CheckOilRecordState.__name__)
+
+
+class CheckOilRecordState(State):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(step=step)
+
+    def run(self) -> Transition:
+        inference = self._step.run()
+
+        return Transition(outcome=inference, next_state=CheckCoolantPromptState.__name__)
+
+
+class CheckCoolantPromptState(State):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(step=step)
+
+    def run(self, prompt: Optional[str] = None) -> Transition:
+        if prompt is None:
+            prompt = "What's the coolant level?"
+        self._step.run(prompt=prompt)
+
+        return Transition(next_state=CheckCoolantRecordState.__name__)
+
+
+class CheckCoolantRecordState(State):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(step=step)
+
+    def run(self) -> Transition:
+        inference = self._step.run()
+
+        return Transition(outcome=inference, next_state=FinalNotePromptState.__name__)
+
+
+class FinalNotePromptState(State):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(step=step)
+
+    def run(self, prompt: Optional[str] = None) -> Transition:
+        if prompt is None:
+            prompt = "Any final notes?"
+        self._step.run(prompt=prompt)
+
+        return Transition(next_state=CheckCoolantRecordState.__name__)
+
+
+class FinalNoteRecordState(State):
+    def __init__(self, step: CheetahStep) -> None:
+        super().__init__(step=step)
+
+    def run(self, prompt: Optional[str] = None) -> Transition:
+        transcription = self._step.run()
+
+        return Transition(outcome=transcription, next_state=None)
+
 
 class Workflow(object):
     def __init__(
             self,
             steps: Dict[str, Tuple[Steps, Optional[Dict[str, Any]]]],
-            states: Dict[str, Tuple[Type[State], str]],
+            states: Dict[str, Tuple[Type[State], Optional[str]]],
             start_state: str,
             access_key: str,
             name: Optional[str] = None
@@ -422,12 +491,18 @@ def main() -> None:
             'Standby': (Steps.PORCUPINE, {'keyword_path': keyword_path}),
             'PromptUser': (Steps.ORCA, None),
             'RecordUser': (Steps.RHINO, {'context_path': context_path}),
-            'AppendNote': (Steps.CHEETAH, None)
+            'TranscribeUser': (Steps.CHEETAH, None)
         },
         states={
             StandbyState.__name__: (StandbyState, 'Standby'),
             IdentifyUnitPromptState.__name__: (IdentifyUnitPromptState, 'PromptUser'),
             IdentifyUnitRecordState.__name__: (IdentifyUnitRecordState, 'RecordUser'),
+            CheckOilPromptState.__name__: (CheckOilPromptState, 'PromptUser'),
+            CheckOilRecordState.__name__: (CheckOilRecordState, 'RecordUser'),
+            CheckCoolantPromptState.__name__: (CheckCoolantPromptState, 'PromptUser'),
+            CheckCoolantRecordState.__name__: (CheckCoolantRecordState, 'RecordUser'),
+            FinalNotePromptState.__name__: (FinalNotePromptState, 'PromptUser'),
+            FinalNoteRecordState.__name__: (FinalNoteRecordState, 'TranscribeUser'),
         },
         start_state=StandbyState.__name__,
         access_key=access_key)
