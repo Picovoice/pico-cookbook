@@ -184,9 +184,9 @@ class OrcaStep(Step):
             library_path=library_path)
 
     def run(self, prompt: str) -> Optional[Dict[str, Any]]:
-        self._speaker.start()
-
         try:
+            self._speaker.start()
+
             pcm, alignment = self._orca.synthesize(text=prompt)
             self._speaker.flush(pcm)
         finally:
@@ -226,9 +226,9 @@ class PorcupineStep(Step):
             sensitivities=[sensitivity])
 
     def run(self) -> Optional[Dict[str, Any]]:
-        self._recorder.start()
-
         try:
+            self._recorder.start()
+
             is_detected = False
             while not is_detected:
                 is_detected = self._porcupine.process(self._recorder.read(self._porcupine.frame_length)) == 0
@@ -271,14 +271,12 @@ class RhinoStep(Step):
             require_endpoint=require_endpoint)
 
     def run(self) -> Optional[Dict[str, Any]]:
-        self._recorder.start()
-
         try:
+            self._recorder.start()
+
             while not self._rhino.process(self._recorder.read(self._rhino.frame_length)):
                 pass
-
             inference = self._rhino.get_inference()
-            print(inference)
             return {
                 'is_understood': inference.is_understood,
                 'intent': inference.intent,
