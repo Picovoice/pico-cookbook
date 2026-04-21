@@ -11,6 +11,7 @@ from typing import (
 )
 
 import pvcheetah
+import pvkoala
 import pvorca
 import pvporcupine
 import pvrhino
@@ -21,10 +22,11 @@ from pvspeaker import PvSpeaker
 class Recorder(object):
     def __init__(
             self,
-            frame_length: int = 512,
+            access_key: str,
             device_index: int = -1
     ) -> None:
-        self._recorder = PvRecorder(frame_length=frame_length, device_index=device_index)
+        self._koala = pvkoala.create(access_key=access_key)
+        self._recorder = PvRecorder(frame_length=self._koala.frame_length, device_index=device_index)
         self._buffer = list()
 
     def start(self) -> None:
@@ -32,6 +34,7 @@ class Recorder(object):
 
     def stop(self) -> None:
         self._recorder.stop()
+        self._koala.reset()
 
     def read(self, n: int) -> Sequence[int]:
         res = list()
@@ -42,7 +45,7 @@ class Recorder(object):
             self._buffer = self._buffer[num_from_buffer:]
 
         while len(res) < n:
-            frame = self._recorder.read()
+            frame = self._koala.process(self._recorder.read())
 
             remaining = n - len(res)
             if len(frame) <= remaining:
@@ -55,6 +58,7 @@ class Recorder(object):
 
     def delete(self) -> None:
         self._recorder.delete()
+        self._koala.delete()
 
 
 class Steps(Enum):
@@ -309,6 +313,66 @@ class State(object):
         return self.__class__.__name__
 
 
+class Workflow(object):
+    def __init__(
+            self,
+            steps: Dict[str, Tuple[Steps, Optional[Dict[str, Any]]]],
+            states: Dict[str, Tuple[Type[State], Optional[str]]],
+            start_state: str,
+            access_key: str,
+            name: Optional[str] = None
+    ) -> None:
+        self._recorder = Recorder(access_key=access_key, device_index=-1)
+        self._speaker = PvSpeaker(sample_rate=22050, bits_per_sample=16)
+
+        self._steps = dict()
+        for name, (step, kwargs) in steps.items():
+            self._steps[name] = Step.create(
+                step=step,
+                name=name,
+                recorder=self._recorder,
+                speaker=self._speaker,
+                access_key=access_key,
+                **kwargs if kwargs is not None else dict())
+
+        self._states = dict()
+        for name, (state_class, step_name) in states.items():
+            self._states[name] = state_class(self._steps[step_name])
+
+        self._start_state = self._states[start_state]
+        self._name = name
+
+        self._history = list()
+
+    def run(self) -> None:
+        current = self._start_state
+        kwargs = dict()
+
+        while current is not None:
+            print(current)
+            transition = current.run(**kwargs)
+            self._history.append(transition.outcome)
+            print(transition.outcome)
+            current = self._states[transition.next_state] if transition.next_state is not None else None
+            kwargs = transition.next_state_kwargs if transition.next_state_kwargs is not None else dict()
+
+    def reset(self) -> None:
+        self._history = list()
+
+    def delete(self) -> None:
+        self._recorder.stop()
+        self._recorder.delete()
+
+        self._speaker.stop()
+        self._speaker.delete()
+
+        for step in self._steps.values():
+            step.delete()
+
+    def __str__(self):
+        return f"{self.__class__.__name__}{f"[{self._name}]" if self._name is not None else ""}"
+
+
 class StandbyState(State):
     def __init__(self, step: PorcupineStep) -> None:
         super().__init__(step=step)
@@ -420,66 +484,6 @@ class FinalNoteRecordState(State):
         transcription = self._step.run()
 
         return Transition(outcome=transcription, next_state=None)
-
-
-class Workflow(object):
-    def __init__(
-            self,
-            steps: Dict[str, Tuple[Steps, Optional[Dict[str, Any]]]],
-            states: Dict[str, Tuple[Type[State], Optional[str]]],
-            start_state: str,
-            access_key: str,
-            name: Optional[str] = None
-    ) -> None:
-        self._recorder = Recorder(frame_length=160, device_index=-1)
-        self._speaker = PvSpeaker(sample_rate=22050, bits_per_sample=16)
-
-        self._steps = dict()
-        for name, (step, kwargs) in steps.items():
-            self._steps[name] = Step.create(
-                step=step,
-                name=name,
-                recorder=self._recorder,
-                speaker=self._speaker,
-                access_key=access_key,
-                **kwargs if kwargs is not None else dict())
-
-        self._states = dict()
-        for name, (state_class, step_name) in states.items():
-            self._states[name] = state_class(self._steps[step_name])
-
-        self._start_state = self._states[start_state]
-        self._name = name
-
-        self._history = list()
-
-    def run(self) -> None:
-        current = self._start_state
-        kwargs = dict()
-
-        while current is not None:
-            print(current)
-            transition = current.run(**kwargs)
-            self._history.append(transition.outcome)
-            print(transition.outcome)
-            current = self._states[transition.next_state] if transition.next_state is not None else None
-            kwargs = transition.next_state_kwargs if transition.next_state_kwargs is not None else dict()
-
-    def reset(self) -> None:
-        self._history = list()
-
-    def delete(self) -> None:
-        self._recorder.stop()
-        self._recorder.delete()
-
-        self._speaker.stop()
-        self._speaker.delete()
-
-        for step in self._steps.values():
-            step.delete()
-
-    def __str__(self):
-        return f"{self.__class__.__name__}{f"[{self._name}]" if self._name is not None else ""}"
 
 
 def main() -> None:
