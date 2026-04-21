@@ -2,11 +2,11 @@ from argparse import ArgumentParser
 from enum import Enum
 from typing import (
     Any,
-    Callable,
     Dict,
     Optional,
     Sequence,
     Tuple,
+    Type
 )
 
 import pvcheetah
@@ -290,13 +290,74 @@ class RhinoStep(Step):
         self._rhino.delete()
 
 
+class State(object):
+    def __init__(
+            self,
+            step: Optional[Step] = None
+    ) -> None:
+        self._step = step
+
+    def run(
+            self,
+            **kwargs: Any
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[str, Optional[Dict[str, Any]]]]]:
+        raise NotImplementedError()
+
+    def __str__(self) -> str:
+        return self.__class__.__name__
+
+
+class StandbyState(State):
+    def __init__(
+            self,
+            step: PorcupineStep
+    ) -> None:
+        super().__init__(step=step)
+
+    def run(
+            self
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[str, Optional[Dict[str, Any]]]]]:
+        self._step.run()
+
+        return None, (IdentifyUnitPromptState.__name__, None)
+
+
+class IdentifyUnitPromptState(State):
+    def __init__(
+            self,
+            step: OrcaStep,
+    ) -> None:
+        super().__init__(step=step)
+
+    def run(
+            self,
+            prompt: Optional[str] = None,
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[str, Optional[Dict[str, Any]]]]]:
+        self._step.run()
+
+        return None, (IdentifyUnitRecordState.__name__, None)
+
+
+class IdentifyUnitRecordState(State):
+    def __init__(
+            self,
+            step: RhinoStep
+    ) -> None:
+        super().__init__(step=step)
+
+    def run(
+            self
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[str, Optional[Dict[str, Any]]]]]:
+        inference = self._step.run()
+
+        return inference, None
+
 class Workflow(object):
     def __init__(
             self,
             steps: Dict[str, Tuple[Steps, Optional[Dict[str, Any]]]],
-            next_step_fns: Dict[
-                str, Callable[[Sequence[Dict[str, Any]]], Optional[Tuple[str, Optional[Dict[str, Any]]]]]],
-            start_step: str,
+            states: Dict[str, Tuple[Type[State], str]],
+            start_state: str,
             access_key: str,
             name: Optional[str] = None
     ) -> None:
@@ -313,24 +374,25 @@ class Workflow(object):
                 access_key=access_key,
                 **kwargs if kwargs is not None else dict())
 
-        self._next_step_fns = next_step_fns
-        self._start_step = start_step
+        self._states = dict()
+        for name, (state_class, step_name) in states.items():
+            self._states[name] = state_class(self._steps[step_name])
+
+        self._start_state = self._states[start_state]
         self._name = name
 
         self._history = list()
 
     def run(self) -> None:
-        current = self._start_step
+        current = self._start_state
         kwargs = dict()
 
-        while True:
-            print(self._steps[current])
-            self._history.append(self._steps[current].run(**kwargs))
-            future = self._next_step_fns[current](self._history)
-            if future is None:
-                break
-            else:
-                current, kwargs = future
+        while current is not None:
+            print(current)
+            sideeffect, (next_state, kwargs) = current.run(**kwargs)
+            self._history.append(sideeffect)
+            current = self._states[next_state] if next_state is not None else None
+            kwargs = kwargs if kwargs is not None else dict()
 
     def reset(self) -> None:
         self._history = list()
@@ -388,13 +450,12 @@ def main() -> None:
             'RecordUser': (Steps.RHINO, {'context_path': context_path}),
             'AppendNote': (Steps.CHEETAH, None)
         },
-        next_step_fns={
-            'Standby': lambda _: ('PromptUser', {'prompt': "Sure. What's' the unit ID?"}),
-            'PromptUser': next_step_prompt_user,
-            'RecordUser': next_step_record_user,
-            'AppendNote': next_step_append_note,
+        states={
+            StandbyState.__name__: (StandbyState, 'Standby'),
+            IdentifyUnitPromptState.__name__: (IdentifyUnitPromptState, 'PromptUser'),
+            IdentifyUnitRecordState.__name__: (IdentifyUnitRecordState, 'RecordUser'),
         },
-        start_step='Standby',
+        start_state=StandbyState.__name__,
         access_key=access_key)
 
     workflow.run()
