@@ -333,7 +333,9 @@ class IdentifyUnitPromptState(State):
             self,
             prompt: Optional[str] = None,
     ) -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[str, Optional[Dict[str, Any]]]]]:
-        self._step.run()
+        if prompt is None:
+            prompt = "What's the unit ID?"
+        self._step.run(prompt=prompt)
 
         return None, (IdentifyUnitRecordState.__name__, None)
 
@@ -387,12 +389,15 @@ class Workflow(object):
         current = self._start_state
         kwargs = dict()
 
-        while current is not None:
+        while True:
             print(current)
-            sideeffect, (next_state, kwargs) = current.run(**kwargs)
+            sideeffect, future = current.run(**kwargs)
             self._history.append(sideeffect)
-            current = self._states[next_state] if next_state is not None else None
-            kwargs = kwargs if kwargs is not None else dict()
+            if future is not None:
+                current = self._states[future[0]]
+                kwargs = future[1] if future[1] is not None else dict()
+            else:
+                break
 
     def reset(self) -> None:
         self._history = list()
@@ -409,18 +414,6 @@ class Workflow(object):
 
     def __str__(self):
         return f"{self.__class__.__name__}{f"[{self._name}]" if self._name is not None else ""}"
-
-
-def next_step_prompt_user(history: Sequence[Dict[str, Any]]) -> Optional[Tuple[str, Optional[Dict[str, Any]]]]:
-    pass
-
-
-def next_step_record_user(history: Sequence[Dict[str, Any]]) -> Optional[Tuple[str, Optional[Dict[str, Any]]]]:
-    pass
-
-
-def next_step_append_note(history: Sequence[Dict[str, Any]]) -> Optional[Tuple[str, Optional[Dict[str, Any]]]]:
-    pass
 
 
 def main() -> None:
