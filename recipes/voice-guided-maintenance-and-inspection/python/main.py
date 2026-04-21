@@ -294,7 +294,8 @@ class Workflow(object):
     def __init__(
             self,
             steps: Dict[str, Tuple[Steps, Optional[Dict[str, Any]]]],
-            next_step_fns: Dict[str, Callable[[Sequence[Dict[str, Any]]], Optional[Tuple[str, Dict[str, Any]]]]],
+            next_step_fns: Dict[
+                str, Callable[[Sequence[Dict[str, Any]]], Optional[Tuple[str, Optional[Dict[str, Any]]]]]],
             start_step: str,
             access_key: str,
             name: Optional[str] = None
@@ -348,6 +349,14 @@ class Workflow(object):
         return f"{self.__class__.__name__}{f"[{self._name}]" if self._name is not None else ""}"
 
 
+def next_step_identify_unit_answer(history: Sequence[Dict[str, Any]]) -> Optional[Tuple[str, Optional[Dict[str, Any]]]]:
+    inference = history[-1]
+    if not inference['is_understood'] or inference['intent'] != 'startMaintenanceInspection':
+        return 'IdentifyUnitPrompt', None
+    else:
+        return 'EngineOilCheckPrompt', None
+
+
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
@@ -370,32 +379,24 @@ def main() -> None:
 
     workflow = Workflow(
         steps={
-            'wake': (
-                Steps.PORCUPINE,
-                {
-                    'keyword_path': keyword_path,
-                }
-            ),
-            'prompt': (
-                Steps.ORCA,
-                {
-
-                }
-            ),
-            'note': (
-                Steps.CHEETAH,
-                {
-
-                }
-            ),
-            'checklist': (
-                Steps.RHINO,
-                {
-                    'context_path': context_path,
-                }
-            )
+            'StartInspection': (Steps.PORCUPINE, {'keyword_path': keyword_path}),
+            'IdentifyUnitPrompt': (Steps.ORCA, None),
+            'IdentifyUnitAnswer': (Steps.RHINO, {'context_path': context_path}),
+            'EngineOilCheckPrompt': (Steps.ORCA, None),
+            'EngineOilCheckAnswer': (Steps.RHINO, None),
+            'EngineCoolantCheckPrompt': (Steps.ORCA, None),
+            'EngineCoolantCheckAnswer': (Steps.RHINO, None),
+            'VehicleStatusDeclarationPrompt': (Steps.ORCA, None),
+            'VehicleStatusDeclarationAnswer': (Steps.RHINO, None),
+            'FollowupRecommendationPrompt': (Steps.ORCA, None),
+            'FollowupRecommendationAnswer': (Steps.RHINO, None),
+            'ClosingNotePrompt': (Steps.ORCA, None),
+            'ClosingNoteDictation': (Steps.CHEETAH, None)
         },
         next_step_fns={
+            'StartInspection': lambda _: ('IdentifyUnitPrompt', None),
+            'IdentifyUnitPrompt': lambda _: ('IdentifyUnitAnswer', None),
+            'IdentifyUnitAnswer': lambda x: ('IdentifyUnitAnswer', None),
             'wake': lambda x: ('prompt', {'prompt': 'Hello, Wendy!'}),
             'prompt': lambda x: ('note', {}),
             'note': lambda x: ('checklist', {}),

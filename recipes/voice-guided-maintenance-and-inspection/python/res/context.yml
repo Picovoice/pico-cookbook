@@ -4,16 +4,21 @@ context:
       - "@startPm [on, for] (unit) $unitId:unitId"
       - "@startPm [on, for] [truck, vehicle] $unitId:unitId"
       - "@startPm [the] PM [inspection] [on, for] (unit) $unitId:unitId"
+      - "@startPm $unitId:unitId"
+      - "@startPm [for] $unitId:unitId"
 
     confirmAsset:
       - "@confirm"
       - "yes [that is correct]"
       - "correct"
+      - "yes"
+      - "right"
 
     denyAsset:
       - "@deny"
       - "this is (unit) $unitId:unitId"
       - "correct [the unit to] $unitId:unitId"
+      - "$unitId:unitId"
 
     reportOilCondition:
       - "[engine] oil [level] $fluidCondition:fluidCondition"
@@ -31,6 +36,7 @@ context:
     setDisposition:
       - "[mark, set] [the] vehicle [as] $disposition:disposition"
       - "[mark, set] [the] unit [as] $disposition:disposition"
+      - "[vehicle is] $disposition:disposition"
       - "$disposition:disposition"
 
     createFollowUp:
@@ -105,12 +111,13 @@ context:
     confirm:
       - confirm
       - confirmed
-      - yes
+      - "yes"
       - that's right
       - that is correct
+      - right
 
     deny:
-      - no
+      - "no"
       - incorrect
       - that's wrong
 
