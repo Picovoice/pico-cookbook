@@ -20,7 +20,7 @@ from pvspeaker import PvSpeaker
 class Recorder(object):
     def __init__(
             self,
-            frame_length: int = 160,
+            frame_length: int = 512,
             device_index: int = -1
     ) -> None:
         self._recorder = PvRecorder(frame_length=frame_length, device_index=device_index)
@@ -79,11 +79,11 @@ class Step(object):
     def run(self, **kwargs: Any) -> Optional[Dict[str, Any]]:
         raise NotImplementedError()
 
-    def __str__(self) -> str:
-        return f"{self.__class__.__name__} << {self._name} >>"
-
     def delete(self) -> None:
         raise NotImplementedError()
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__} << {self._name} >>"
 
     @classmethod
     def create(cls, step: Steps, **kwargs: Any) -> "Step":
@@ -100,6 +100,97 @@ class Step(object):
         return children[step](**kwargs)
 
 
+class CheetahStep(Step):
+    def __init__(
+            self,
+            name: str,
+            recorder: Optional[Recorder],
+            speaker: Optional[PvSpeaker],
+            access_key: str,
+            model_path: Optional[str] = None,
+            device: str = 'best',
+            library_path: Optional[str] = None,
+            endpoint_duration_sec: Optional[float] = None,
+            enable_automatic_punctuation: bool = True,
+            enable_text_normalization: bool = True
+    ) -> None:
+        super().__init__(
+            name=name,
+            access_key=access_key,
+            recorder=recorder,
+            speaker=speaker)
+
+        self._cheetah = pvcheetah.create(
+            access_key=access_key,
+            model_path=model_path,
+            device=device,
+            library_path=library_path,
+            endpoint_duration_sec=endpoint_duration_sec,
+            enable_automatic_punctuation=enable_automatic_punctuation,
+            enable_text_normalization=enable_text_normalization)
+
+    def run(self) -> Optional[Dict[str, Any]]:
+        self._recorder.start()
+        partials = list()
+
+        try:
+            while True:
+                partial, is_endpoint = self._cheetah.process(self._recorder.read(self._cheetah.frame_length))
+                partials.append(partial)
+                print(partial, end="", flush=True)
+                if is_endpoint:
+                    remainder = self._cheetah.flush()
+                    partials.append(remainder)
+                    print(remainder, end="\n", flush=True)
+        except KeyboardInterrupt:
+            remainder = self._cheetah.flush()
+            partials.append(remainder)
+            print(remainder, end="\n", flush=True)
+        finally:
+            self._recorder.stop()
+
+        return {"text": ''.join(partials)}
+
+    def delete(self) -> None:
+        self._cheetah.delete()
+
+
+class OrcaStep(Step):
+    def __init__(
+            self,
+            name: str,
+            recorder: Optional[Recorder],
+            speaker: Optional[PvSpeaker],
+            access_key: str,
+            model_path: Optional[str] = None,
+            device: str = 'best',
+            library_path: Optional[str] = None
+    ) -> None:
+        super().__init__(
+            name=name,
+            access_key=access_key,
+            recorder=recorder,
+            speaker=speaker)
+
+        self._orca = pvorca.create(
+            access_key=access_key,
+            model_path=model_path,
+            device=device,
+            library_path=library_path)
+
+    def run(self, prompt: str) -> Optional[Dict[str, Any]]:
+        self._speaker.start()
+
+        try:
+            pcm, alignment = self._orca.synthesize(text=prompt)
+            self._speaker.flush(pcm)
+        finally:
+            self._speaker.stop()
+
+    def delete(self) -> None:
+        self._orca.delete()
+
+        
 class PorcupineStep(Step):
     def __init__(
             self,
@@ -196,97 +287,6 @@ class RhinoStep(Step):
         self._rhino.delete()
 
 
-class CheetahStep(Step):
-    def __init__(
-            self,
-            name: str,
-            recorder: Optional[Recorder],
-            speaker: Optional[PvSpeaker],
-            access_key: str,
-            model_path: Optional[str] = None,
-            device: str = 'best',
-            library_path: Optional[str] = None,
-            endpoint_duration_sec: Optional[float] = None,
-            enable_automatic_punctuation: bool = True,
-            enable_text_normalization: bool = True
-    ) -> None:
-        super().__init__(
-            name=name,
-            access_key=access_key,
-            recorder=recorder,
-            speaker=speaker)
-
-        self._cheetah = pvcheetah.create(
-            access_key=access_key,
-            model_path=model_path,
-            device=device,
-            library_path=library_path,
-            endpoint_duration_sec=endpoint_duration_sec,
-            enable_automatic_punctuation=enable_automatic_punctuation,
-            enable_text_normalization=enable_text_normalization)
-
-    def run(self) -> Optional[Dict[str, Any]]:
-        self._recorder.start()
-        partials = list()
-
-        try:
-            while True:
-                partial, is_endpoint = self._cheetah.process(self._recorder.read(self._cheetah.frame_length))
-                partials.append(partial)
-                print(partial, end="", flush=True)
-                if is_endpoint:
-                    remainder = self._cheetah.flush()
-                    partials.append(remainder)
-                    print(remainder, end="\n", flush=True)
-        except KeyboardInterrupt:
-            remainder = self._cheetah.flush()
-            partials.append(remainder)
-            print(remainder, end="\n", flush=True)
-        finally:
-            self._recorder.stop()
-
-        return {"text": ''.join(partials)}
-
-    def delete(self) -> None:
-        self._cheetah.delete()
-
-
-class OrcaStep(Step):
-    def __init__(
-            self,
-            name: str,
-            recorder: Optional[Recorder],
-            speaker: Optional[PvSpeaker],
-            access_key: str,
-            model_path: Optional[str] = None,
-            device: str = 'best',
-            library_path: Optional[str] = None
-    ) -> None:
-        super().__init__(
-            name=name,
-            access_key=access_key,
-            recorder=recorder,
-            speaker=speaker)
-
-        self._orca = pvorca.create(
-            access_key=access_key,
-            model_path=model_path,
-            device=device,
-            library_path=library_path)
-
-    def run(self, prompt: str) -> Optional[Dict[str, Any]]:
-        self._speaker.start()
-
-        try:
-            pcm, alignment = self._orca.synthesize(text=prompt)
-            self._speaker.flush(pcm)
-        finally:
-            self._speaker.stop()
-
-    def delete(self) -> None:
-        self._orca.delete()
-
-
 class Workflow(object):
     def __init__(
             self,
@@ -334,6 +334,12 @@ class Workflow(object):
     def delete(self) -> None:
         for step in self._steps.values():
             step.delete()
+
+        self._recorder.stop()
+        self._recorder.delete()
+
+        self._speaker.stop()
+        self._speaker.delete()
 
 
 def main() -> None:
