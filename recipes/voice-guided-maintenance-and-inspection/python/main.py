@@ -349,12 +349,16 @@ class Workflow(object):
         return f"{self.__class__.__name__}{f"[{self._name}]" if self._name is not None else ""}"
 
 
-def next_step_identify_unit_answer(history: Sequence[Dict[str, Any]]) -> Optional[Tuple[str, Optional[Dict[str, Any]]]]:
-    inference = history[-1]
-    if not inference['is_understood'] or inference['intent'] != 'startMaintenanceInspection':
-        return 'IdentifyUnitPrompt', None
-    else:
-        return 'EngineOilCheckPrompt', None
+def next_step_prompt_user(history: Sequence[Dict[str, Any]]) -> Optional[Tuple[str, Optional[Dict[str, Any]]]]:
+    pass
+
+
+def next_step_record_user(history: Sequence[Dict[str, Any]]) -> Optional[Tuple[str, Optional[Dict[str, Any]]]]:
+    pass
+
+
+def next_step_append_note(history: Sequence[Dict[str, Any]]) -> Optional[Tuple[str, Optional[Dict[str, Any]]]]:
+    pass
 
 
 def main() -> None:
@@ -379,30 +383,18 @@ def main() -> None:
 
     workflow = Workflow(
         steps={
-            'StartInspection': (Steps.PORCUPINE, {'keyword_path': keyword_path}),
-            'IdentifyUnitPrompt': (Steps.ORCA, None),
-            'IdentifyUnitAnswer': (Steps.RHINO, {'context_path': context_path}),
-            'EngineOilCheckPrompt': (Steps.ORCA, None),
-            'EngineOilCheckAnswer': (Steps.RHINO, None),
-            'EngineCoolantCheckPrompt': (Steps.ORCA, None),
-            'EngineCoolantCheckAnswer': (Steps.RHINO, None),
-            'VehicleStatusDeclarationPrompt': (Steps.ORCA, None),
-            'VehicleStatusDeclarationAnswer': (Steps.RHINO, None),
-            'FollowupRecommendationPrompt': (Steps.ORCA, None),
-            'FollowupRecommendationAnswer': (Steps.RHINO, None),
-            'ClosingNotePrompt': (Steps.ORCA, None),
-            'ClosingNoteDictation': (Steps.CHEETAH, None)
+            'Standby': (Steps.PORCUPINE, {'keyword_path': keyword_path}),
+            'PromptUser': (Steps.ORCA, None),
+            'RecordUser': (Steps.RHINO, {'context_path': context_path}),
+            'AppendNote': (Steps.CHEETAH, None)
         },
         next_step_fns={
-            'StartInspection': lambda _: ('IdentifyUnitPrompt', None),
-            'IdentifyUnitPrompt': lambda _: ('IdentifyUnitAnswer', None),
-            'IdentifyUnitAnswer': lambda x: ('IdentifyUnitAnswer', None),
-            'wake': lambda x: ('prompt', {'prompt': 'Hello, Wendy!'}),
-            'prompt': lambda x: ('note', {}),
-            'note': lambda x: ('checklist', {}),
-            'checklist': lambda x: None,
+            'Standby': lambda _: ('PromptUser', {'prompt': "Sure. What's' the unit ID?"}),
+            'PromptUser': next_step_prompt_user,
+            'RecordUser': next_step_record_user,
+            'AppendNote': next_step_append_note,
         },
-        start_step='wake',
+        start_step='Standby',
         access_key=access_key)
 
     workflow.run()
