@@ -338,7 +338,12 @@ class IdentifyUnitRecordState(State):
     def run(self) -> Transition:
         inference = self._step.run()
 
-        return Transition(outcome=inference, next_state=CheckOilPromptState.__name__)
+        if not inference['is_understood'] or inference['intent'] != 'identifyUnit':
+            return Transition(
+                next_state=IdentifyUnitPromptState.__name__,
+                next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the unit ID again?"})
+        else:
+            return Transition(outcome=inference, next_state=CheckOilPromptState.__name__)
 
 
 class CheckOilPromptState(State):
@@ -360,7 +365,12 @@ class CheckOilRecordState(State):
     def run(self) -> Transition:
         inference = self._step.run()
 
-        return Transition(outcome=inference, next_state=CheckCoolantPromptState.__name__)
+        if not inference['is_understood'] or inference['intent'] != 'reportFluidCondition':
+            return Transition(
+                next_state=CheckOilPromptState.__name__,
+                next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the oil level again?"})
+        else:
+            return Transition(outcome=inference, next_state=CheckCoolantPromptState.__name__)
 
 
 class CheckCoolantPromptState(State):
@@ -382,7 +392,12 @@ class CheckCoolantRecordState(State):
     def run(self) -> Transition:
         inference = self._step.run()
 
-        return Transition(outcome=inference, next_state=FinalNotePromptState.__name__)
+        if not inference['is_understood'] or inference['intent'] != 'reportFluidCondition':
+            return Transition(
+                next_state=CheckCoolantPromptState.__name__,
+                next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the coolant level again?"})
+        else:
+            return Transition(outcome=inference, next_state=FinalNotePromptState.__name__)
 
 
 class FinalNotePromptState(State):
@@ -394,7 +409,7 @@ class FinalNotePromptState(State):
             prompt = "Any final notes?"
         self._step.run(prompt=prompt)
 
-        return Transition(next_state=CheckCoolantRecordState.__name__)
+        return Transition(next_state=FinalNoteRecordState.__name__)
 
 
 class FinalNoteRecordState(State):
@@ -446,6 +461,7 @@ class Workflow(object):
             print(current)
             transition = current.run(**kwargs)
             self._history.append(transition.outcome)
+            print(transition.outcome)
             current = self._states[transition.next_state] if transition.next_state is not None else None
             kwargs = transition.next_state_kwargs if transition.next_state_kwargs is not None else dict()
 
