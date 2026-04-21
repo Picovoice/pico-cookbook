@@ -307,10 +307,10 @@ class Workflow(object):
             self._steps[name] = Step.create(
                 step=step,
                 name=name,
-                access_key=access_key,
                 recorder=self._recorder,
                 speaker=self._speaker,
-                **kwargs)
+                access_key=access_key,
+                **kwargs if kwargs is not None else dict())
 
         self._next_step_fns = next_step_fns
         self._start_step = start_step
@@ -331,18 +331,21 @@ class Workflow(object):
             else:
                 current, kwargs = future
 
-    def __str__(self):
-        return f"{self.__class__.__name__}{f"[{self._name}]" if self._name is not None else ""}"
+    def reset(self) -> None:
+        self._history = list()
 
     def delete(self) -> None:
-        for step in self._steps.values():
-            step.delete()
-
         self._recorder.stop()
         self._recorder.delete()
 
         self._speaker.stop()
         self._speaker.delete()
+
+        for step in self._steps.values():
+            step.delete()
+
+    def __str__(self):
+        return f"{self.__class__.__name__}{f"[{self._name}]" if self._name is not None else ""}"
 
 
 def main() -> None:
