@@ -8,7 +8,7 @@ from typing import (
     Tuple,
     Type
 )
-
+from dataclasses import dataclass
 import pvcheetah
 import pvorca
 import pvporcupine
@@ -289,18 +289,18 @@ class RhinoStep(Step):
     def delete(self) -> None:
         self._rhino.delete()
 
+@dataclass
+class Transition(object):
+    outcome: Optional[Dict[str, Any]] = None
+    next_state: Optional[str] = None
+    next_state_kwargs: Optional[Dict[str, Any]] = None
+
 
 class State(object):
-    def __init__(
-            self,
-            step: Optional[Step] = None
-    ) -> None:
+    def __init__(self, step: Optional[Step] = None) -> None:
         self._step = step
 
-    def run(
-            self,
-            **kwargs: Any
-    ) -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[str, Optional[Dict[str, Any]]]]]:
+    def run(self, **kwargs: Any) -> Transition:
         raise NotImplementedError()
 
     def __str__(self) -> str:
@@ -308,51 +308,35 @@ class State(object):
 
 
 class StandbyState(State):
-    def __init__(
-            self,
-            step: PorcupineStep
-    ) -> None:
+    def __init__(self, step: PorcupineStep) -> None:
         super().__init__(step=step)
 
-    def run(
-            self
-    ) -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[str, Optional[Dict[str, Any]]]]]:
+    def run(self) -> Transition:
         self._step.run()
 
-        return None, (IdentifyUnitPromptState.__name__, None)
+        return Transition(next_state=IdentifyUnitPromptState.__name__)
 
 
 class IdentifyUnitPromptState(State):
-    def __init__(
-            self,
-            step: OrcaStep,
-    ) -> None:
+    def __init__(self, step: OrcaStep) -> None:
         super().__init__(step=step)
 
-    def run(
-            self,
-            prompt: Optional[str] = None,
-    ) -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[str, Optional[Dict[str, Any]]]]]:
+    def run(self, prompt: Optional[str] = None) -> Transition:
         if prompt is None:
             prompt = "What's the unit ID?"
         self._step.run(prompt=prompt)
 
-        return None, (IdentifyUnitRecordState.__name__, None)
+        return Transition(next_state=IdentifyUnitRecordState.__name__)
 
 
 class IdentifyUnitRecordState(State):
-    def __init__(
-            self,
-            step: RhinoStep
-    ) -> None:
+    def __init__(self, step: RhinoStep) -> None:
         super().__init__(step=step)
 
-    def run(
-            self
-    ) -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[str, Optional[Dict[str, Any]]]]]:
+    def run(self) -> Transition:
         inference = self._step.run()
 
-        return inference, None
+        return Transition(outcome=inference)
 
 class Workflow(object):
     def __init__(
@@ -389,15 +373,12 @@ class Workflow(object):
         current = self._start_state
         kwargs = dict()
 
-        while True:
+        while current is not None:
             print(current)
-            sideeffect, future = current.run(**kwargs)
-            self._history.append(sideeffect)
-            if future is not None:
-                current = self._states[future[0]]
-                kwargs = future[1] if future[1] is not None else dict()
-            else:
-                break
+            transition = current.run(**kwargs)
+            self._history.append(transition.outcome)
+            current = self._states[transition.next_state] if transition.next_state is not None else None
+            kwargs = transition.next_state_kwargs if transition.next_state_kwargs is not None else dict()
 
     def reset(self) -> None:
         self._history = list()
