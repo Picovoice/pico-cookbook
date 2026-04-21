@@ -82,6 +82,9 @@ class Step(object):
     def __str__(self) -> str:
         return f"{self.__class__.__name__} << {self._name} >>"
 
+    def delete(self) -> None:
+        raise NotImplementedError()
+
     @classmethod
     def create(cls, step: Steps, **kwargs: Any) -> "Step":
         children = {
@@ -136,6 +139,9 @@ class PorcupineStep(Step):
         finally:
             self._recorder.stop()
 
+    def delete(self) -> None:
+        self._porcupine.delete()
+
 
 class RhinoStep(Step):
     def __init__(
@@ -185,6 +191,9 @@ class RhinoStep(Step):
         finally:
             self._rhino.reset()
             self._recorder.stop()
+
+    def delete(self) -> None:
+        self._rhino.delete()
 
 
 class CheetahStep(Step):
@@ -238,6 +247,9 @@ class CheetahStep(Step):
 
         return {"text": ''.join(partials)}
 
+    def delete(self) -> None:
+        self._cheetah.delete()
+
 
 class OrcaStep(Step):
     def __init__(
@@ -270,6 +282,9 @@ class OrcaStep(Step):
             self._speaker.flush(pcm)
         finally:
             self._speaker.stop()
+
+    def delete(self) -> None:
+        self._orca.delete()
 
 
 class Workflow(object):
@@ -315,6 +330,10 @@ class Workflow(object):
 
     def __str__(self):
         return f"{self.__class__.__name__}{f"[{self._name}]" if self._name is not None else ""}"
+
+    def delete(self) -> None:
+        for step in self._steps.values():
+            step.delete()
 
 
 def main() -> None:
@@ -374,6 +393,7 @@ def main() -> None:
         access_key=access_key)
 
     workflow.run()
+    workflow.delete()
 
 
 if __name__ == '__main__':
