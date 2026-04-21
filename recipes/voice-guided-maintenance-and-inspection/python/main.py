@@ -68,8 +68,8 @@ class Step(object):
             self,
             name: str,
             access_key: str,
-            recorder: Optional[Recorder],
-            speaker: Optional[PvSpeaker],
+            recorder: Recorder,
+            speaker: PvSpeaker,
     ) -> None:
         self._name = name
         self._access_key = access_key
@@ -104,13 +104,13 @@ class CheetahStep(Step):
     def __init__(
             self,
             name: str,
-            recorder: Optional[Recorder],
-            speaker: Optional[PvSpeaker],
+            recorder: Recorder,
+            speaker: PvSpeaker,
             access_key: str,
             model_path: Optional[str] = None,
             device: str = 'best',
             library_path: Optional[str] = None,
-            endpoint_duration_sec: Optional[float] = None,
+            endpoint_duration_sec: Optional[float] = 2.,
             enable_automatic_punctuation: bool = True,
             enable_text_normalization: bool = True
     ) -> None:
@@ -130,18 +130,21 @@ class CheetahStep(Step):
             enable_text_normalization=enable_text_normalization)
 
     def run(self) -> Optional[Dict[str, Any]]:
-        self._recorder.start()
         partials = list()
 
         try:
+            self._recorder.start()
+
             while True:
                 partial, is_endpoint = self._cheetah.process(self._recorder.read(self._cheetah.frame_length))
                 partials.append(partial)
                 print(partial, end="", flush=True)
+
                 if is_endpoint:
                     remainder = self._cheetah.flush()
                     partials.append(remainder)
                     print(remainder, end="\n", flush=True)
+                    break
         except KeyboardInterrupt:
             remainder = self._cheetah.flush()
             partials.append(remainder)
@@ -149,7 +152,9 @@ class CheetahStep(Step):
         finally:
             self._recorder.stop()
 
-        return {"text": ''.join(partials)}
+        return {
+            "text": ''.join(partials)
+        }
 
     def delete(self) -> None:
         self._cheetah.delete()
@@ -159,8 +164,8 @@ class OrcaStep(Step):
     def __init__(
             self,
             name: str,
-            recorder: Optional[Recorder],
-            speaker: Optional[PvSpeaker],
+            recorder: Recorder,
+            speaker: PvSpeaker,
             access_key: str,
             model_path: Optional[str] = None,
             device: str = 'best',
@@ -190,13 +195,13 @@ class OrcaStep(Step):
     def delete(self) -> None:
         self._orca.delete()
 
-        
+
 class PorcupineStep(Step):
     def __init__(
             self,
             name: str,
-            recorder: Optional[Recorder],
-            speaker: Optional[PvSpeaker],
+            recorder: Recorder,
+            speaker: PvSpeaker,
             access_key: str,
             keyword_path: str,
             library_path: Optional[str] = None,
@@ -238,8 +243,8 @@ class RhinoStep(Step):
     def __init__(
             self,
             name: str,
-            recorder: Optional[Recorder],
-            speaker: Optional[PvSpeaker],
+            recorder: Recorder,
+            speaker: PvSpeaker,
             access_key: str,
             context_path: str,
             device: str = 'best',
