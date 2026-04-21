@@ -19,14 +19,10 @@ from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
 
 
-class Recorder(object):
-    def __init__(
-            self,
-            access_key: str,
-            device_index: int = -1
-    ) -> None:
+class AINoiseSuppressedRecorder(object):
+    def __init__(self, access_key: str) -> None:
         self._koala = pvkoala.create(access_key=access_key)
-        self._recorder = PvRecorder(frame_length=self._koala.frame_length, device_index=device_index)
+        self._recorder = PvRecorder(frame_length=self._koala.frame_length)
         self._buffer = list()
 
     def start(self) -> None:
@@ -39,7 +35,7 @@ class Recorder(object):
     def read(self, n: int) -> Sequence[int]:
         res = list()
 
-        if self._buffer:
+        if len(self._buffer) > 0:
             num_from_buffer = min(n, len(self._buffer))
             res.extend(self._buffer[:num_from_buffer])
             self._buffer = self._buffer[num_from_buffer:]
@@ -71,12 +67,10 @@ class Steps(Enum):
 class Step(object):
     def __init__(
             self,
-            name: str,
             access_key: str,
-            recorder: Recorder,
+            recorder: AINoiseSuppressedRecorder,
             speaker: PvSpeaker,
     ) -> None:
-        self._name = name
         self._access_key = access_key
         self._recorder = recorder
         self._speaker = speaker
@@ -88,7 +82,7 @@ class Step(object):
         raise NotImplementedError()
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__} << {self._name} >>"
+        return self.__class__.__name__
 
     @classmethod
     def create(cls, step: Steps, **kwargs: Any) -> "Step":
@@ -100,7 +94,7 @@ class Step(object):
         }
 
         if step not in children:
-            raise ValueError(f"Cannot create a {cls.__name__} of type `{step.value}`")
+            raise ValueError(f"Cannot create a {cls.__name__} of type `{step.value}`.")
 
         return children[step](**kwargs)
 
@@ -108,10 +102,9 @@ class Step(object):
 class CheetahStep(Step):
     def __init__(
             self,
-            name: str,
-            recorder: Recorder,
-            speaker: PvSpeaker,
             access_key: str,
+            recorder: AINoiseSuppressedRecorder,
+            speaker: PvSpeaker,
             model_path: Optional[str] = None,
             device: str = 'best',
             library_path: Optional[str] = None,
@@ -120,7 +113,6 @@ class CheetahStep(Step):
             enable_text_normalization: bool = True
     ) -> None:
         super().__init__(
-            name=name,
             access_key=access_key,
             recorder=recorder,
             speaker=speaker)
@@ -168,16 +160,14 @@ class CheetahStep(Step):
 class OrcaStep(Step):
     def __init__(
             self,
-            name: str,
-            recorder: Recorder,
-            speaker: PvSpeaker,
             access_key: str,
+            recorder: AINoiseSuppressedRecorder,
+            speaker: PvSpeaker,
             model_path: Optional[str] = None,
             device: str = 'best',
             library_path: Optional[str] = None
     ) -> None:
         super().__init__(
-            name=name,
             access_key=access_key,
             recorder=recorder,
             speaker=speaker)
@@ -204,10 +194,9 @@ class OrcaStep(Step):
 class PorcupineStep(Step):
     def __init__(
             self,
-            name: str,
-            recorder: Recorder,
-            speaker: PvSpeaker,
             access_key: str,
+            recorder: AINoiseSuppressedRecorder,
+            speaker: PvSpeaker,
             keyword_path: str,
             library_path: Optional[str] = None,
             model_path: Optional[str] = None,
@@ -215,7 +204,6 @@ class PorcupineStep(Step):
             sensitivity: float = 0.5
     ) -> None:
         super().__init__(
-            name=name,
             access_key=access_key,
             recorder=recorder,
             speaker=speaker)
@@ -247,10 +235,9 @@ class PorcupineStep(Step):
 class RhinoStep(Step):
     def __init__(
             self,
-            name: str,
-            recorder: Recorder,
-            speaker: PvSpeaker,
             access_key: str,
+            recorder: AINoiseSuppressedRecorder,
+            speaker: PvSpeaker,
             context_path: str,
             device: str = 'best',
             library_path: Optional[str] = None,
@@ -260,7 +247,6 @@ class RhinoStep(Step):
             require_endpoint: bool = True
     ) -> None:
         super().__init__(
-            name=name,
             access_key=access_key,
             recorder=recorder,
             speaker=speaker)
@@ -322,7 +308,7 @@ class Workflow(object):
             access_key: str,
             name: Optional[str] = None
     ) -> None:
-        self._recorder = Recorder(access_key=access_key, device_index=-1)
+        self._recorder = AINoiseSuppressedRecorder(access_key=access_key)
         self._speaker = PvSpeaker(sample_rate=22050, bits_per_sample=16)
 
         self._steps = dict()
