@@ -1,7 +1,7 @@
 # Voice Guided Maintenance & Inspection in Python
 
-Run a hands-free vehicle inspection workflow with Wake Word activation, Speech-to-Intent for structured inspection
-steps, Streaming Speech-to-Text for final notes, and Text-to-Speech for user prompting.
+Hands-free inspections with guided voice prompts, structured inspection workflows, complex slot extraction, and
+free-form voice notes. Powered by on-device voice AI.
 
 ## Compatibility
 
