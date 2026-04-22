@@ -672,7 +672,7 @@ class RecipieStandbyState(RecipieState):
 
         event, thread = print_async(get_text=get_text)
         self._step.run()
-        text = "Detected wake word. Starting inspection workflow..."
+        text = "Detected wake word. Starting inspection..."
         sleep(.1)
         event.set()
         thread.join()
@@ -694,9 +694,9 @@ class RecipieIdentifyUnitReportState(RecipieReportState):
             step=step,
             listening_prompt="Listening for unit ID",
             expected_intent='identifyUnit',
-            success_prompt=lambda x: f"{x['slots']['unitId']}",
+            success_prompt=lambda x: f"Unit ID is {x['slots']['unitId']}.",
             success_next_state=RecipieStates.CHECK_OIL_PROMPT,
-            failure_prompt=lambda x: "Failed to capture unit ID. Retrying.",
+            failure_prompt=lambda x: "Failed to capture unit ID. Retrying...",
             failure_next_state=RecipieStates.IDENTIFY_UNIT_PROMPT,
             failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the unit ID again?"})
 
@@ -715,9 +715,9 @@ class RecipieCheckOilReportState(RecipieReportState):
             step=step,
             listening_prompt="Listening for Oil Status",
             expected_intent='reportFluidCondition',
-            success_prompt=lambda x: f"{x['slots']['fluidCondition']}",
+            success_prompt=lambda x: f"Oil level is {x['slots']['fluidCondition']}.",
             success_next_state=RecipieStates.CHECK_COOLANT_PROMPT,
-            failure_prompt=lambda x: "Failed to capture oil condition. Retrying.",
+            failure_prompt=lambda x: "Failed to capture oil condition. Retrying...",
             failure_next_state=RecipieStates.CHECK_OIL_PROMPT,
             failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the oil level again?"})
 
@@ -736,9 +736,9 @@ class RecipieCheckCoolantReportState(RecipieReportState):
             step=step,
             listening_prompt="Listening for coolant Status",
             expected_intent='reportFluidCondition',
-            success_prompt=lambda x: f"{x['slots']['fluidCondition']}",
+            success_prompt=lambda x: f"Coolant level is {x['slots']['fluidCondition']}.",
             success_next_state=RecipieStates.FINAL_NOTE_PROMPT,
-            failure_prompt=lambda x: "Failed to capture coolant condition. Retrying.",
+            failure_prompt=lambda x: "Failed to capture coolant condition. Retrying...",
             failure_next_state=RecipieStates.CHECK_COOLANT_PROMPT,
             failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the coolant level again?"})
 
@@ -747,7 +747,7 @@ class RecipieFinalNotePromptState(RecipiePromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
-            prompt="Any final notes?",
+            prompt="Please provide final notes.",
             next_state=RecipieStates.FINAL_NOTE_REPORT)
 
 
@@ -782,8 +782,7 @@ class RecipieFinalNoteRecordState(RecipieState):
         text_event.set()
         text_thread.join()
 
-        return Transition(outcome=transcription,
-                          next_state=RecipieStates.REPORT_COMPILATION)
+        return Transition(outcome=transcription, next_state=RecipieStates.REPORT_COMPILATION)
 
 
 class RecipieReportCompilationState(RecipieState):
@@ -795,16 +794,17 @@ class RecipieReportCompilationState(RecipieState):
             outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
             **kwargs: Any
     ) -> Transition:
-        print("Inspection Report")
+        print("\n\nInspection Report:")
         for state, outcome in outcomes:
-            if state == RecipieStates.IDENTIFY_UNIT_REPORT and outcome['is_understood'] and outcome['intent'] == 'identifyUnit':
-                print(f"Unit ID: {outcome['slots']['unitId']}")
-            elif state == RecipieStates.CHECK_OIL_REPORT and outcome['is_understood'] and outcome[
-                'intent'] == 'reportFluidCondition':
-                print(f"Oil: {outcome['slots']['fluidCondition']}")
-            elif state == RecipieStates.CHECK_COOLANT_REPORT and outcome['is_understood'] and outcome[
-                'intent'] == 'reportFluidCondition':
-                print(f"Coolant: {outcome['slots']['fluidCondition']}")
+            if state == RecipieStates.IDENTIFY_UNIT_REPORT:
+                if outcome['is_understood'] and outcome['intent'] == 'identifyUnit':
+                    print(f"Unit ID: {outcome['slots']['unitId']}")
+            elif state == RecipieStates.CHECK_OIL_REPORT:
+                if outcome['is_understood'] and outcome['intent'] == 'reportFluidCondition':
+                    print(f"Oil: {outcome['slots']['fluidCondition']}")
+            elif state == RecipieStates.CHECK_COOLANT_REPORT:
+                if outcome['is_understood'] and outcome['intent'] == 'reportFluidCondition':
+                    print(f"Coolant: {outcome['slots']['fluidCondition']}")
             elif state == RecipieStates.FINAL_NOTE_REPORT:
                 print(f"Note: {outcome['text']}")
         return Transition()
