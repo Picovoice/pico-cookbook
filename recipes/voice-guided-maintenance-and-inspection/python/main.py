@@ -4,6 +4,7 @@ from enum import Enum
 from typing import (
     Any,
     Dict,
+    List,
     Optional,
     Sequence,
     Tuple,
@@ -239,11 +240,11 @@ class RhinoStep(Step):
             recorder: AINoiseSuppressedRecorder,
             speaker: PvSpeaker,
             context_path: str,
-            device: str = 'best',
             library_path: Optional[str] = None,
             model_path: Optional[str] = None,
+            device: str = 'best',
             sensitivity: float = 0.5,
-            endpoint_duration_sec: float = 1.,
+            endpoint_duration_sec: float = .5,
             require_endpoint: bool = True
     ) -> None:
         super().__init__(
@@ -302,11 +303,11 @@ class State(object):
 class Workflow(object):
     def __init__(
             self,
+            access_key: str,
             steps: Dict[str, Tuple[Steps, Optional[Dict[str, Any]]]],
             states: Dict[str, Tuple[Type[State], Optional[str]]],
             start_state: str,
-            access_key: str,
-            name: Optional[str] = None
+            start_state_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         self._recorder = AINoiseSuppressedRecorder(access_key=access_key)
         self._speaker = PvSpeaker(sample_rate=22050, bits_per_sample=16)
@@ -322,28 +323,28 @@ class Workflow(object):
                 **kwargs if kwargs is not None else dict())
 
         self._states = dict()
-        for name, (state_class, step_name) in states.items():
-            self._states[name] = state_class(self._steps[step_name])
+        for state_name, (state_class, step_name) in states.items():
+            self._states[state_name] = state_class(self._steps[step_name])
 
         self._start_state = self._states[start_state]
-        self._name = name
+        self._start_state_kwargs = start_state_kwargs if start_state_kwargs is not None else dict()
 
-        self._history = list()
+        self._outcomes: List[Tuple[str, Optional[Dict[str, Any]]]] = list()
 
     def run(self) -> None:
-        current = self._start_state
-        kwargs = dict()
+        current_state = self._start_state
+        current_state_kwargs = self._start_state_kwargs
 
-        while current is not None:
-            print(current)
-            transition = current.run(**kwargs)
-            self._history.append(transition.outcome)
+        while current_state is not None:
+            print(current_state)
+            transition = current_state.run(**current_state_kwargs)
+            self._outcomes.append((current_state.__class__.__name__, transition))
             print(transition.outcome)
-            current = self._states[transition.next_state] if transition.next_state is not None else None
-            kwargs = transition.next_state_kwargs if transition.next_state_kwargs is not None else dict()
+            current_state = self._states[transition.next_state] if transition.next_state is not None else None
+            current_state_kwargs = transition.next_state_kwargs if transition.next_state_kwargs is not None else dict()
 
     def reset(self) -> None:
-        self._history = list()
+        self._outcomes = list()
 
     def delete(self) -> None:
         self._recorder.stop()
@@ -355,8 +356,8 @@ class Workflow(object):
         for step in self._steps.values():
             step.delete()
 
-    def __str__(self):
-        return f"{self.__class__.__name__}{f"[{self._name}]" if self._name is not None else ""}"
+    def __str__(self) -> str:
+        return self.__class__.__name__
 
 
 class StandbyState(State):
