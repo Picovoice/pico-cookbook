@@ -44,28 +44,29 @@ class AINoiseSuppressedRecorder(object):
         self._recorder.start()
 
     def stop(self) -> None:
+        self._buffer.clear()
         self._recorder.stop()
         self._koala.reset()
 
-    def read(self, n: int) -> Sequence[int]:
-        res = list()
+    def read(self, num_samples: int) -> Sequence[int]:
+        pcm = list()
 
         if len(self._buffer) > 0:
-            num_from_buffer = min(n, len(self._buffer))
-            res.extend(self._buffer[:num_from_buffer])
+            num_from_buffer = min(num_samples, len(self._buffer))
+            pcm.extend(self._buffer[:num_from_buffer])
             self._buffer = self._buffer[num_from_buffer:]
 
-        while len(res) < n:
+        while len(pcm) < num_samples:
             frame = self._koala.process(self._recorder.read())
 
-            remaining = n - len(res)
+            remaining = num_samples - len(pcm)
             if len(frame) <= remaining:
-                res.extend(frame)
+                pcm.extend(frame)
             else:
-                res.extend(frame[:remaining])
+                pcm.extend(frame[:remaining])
                 self._buffer.extend(frame[remaining:])
 
-        return res
+        return pcm
 
     def delete(self) -> None:
         self._recorder.delete()
@@ -659,6 +660,7 @@ class ReportState(VoiceGuidedMaintenanceAndInspectionState):
 
             return Transition(outcome=inference, next_state=self._success_next_state)
 
+
 class IdentifyUnitReportState(ReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
@@ -753,7 +755,8 @@ class FinalNoteRecordState(VoiceGuidedMaintenanceAndInspectionState):
         text_event.set()
         text_thread.join()
 
-        return Transition(outcome=transcription, next_state=VoiceGuidedMaintenanceAndInspectionStates.REPORT_COMPILATION)
+        return Transition(outcome=transcription,
+                          next_state=VoiceGuidedMaintenanceAndInspectionStates.REPORT_COMPILATION)
 
 
 class ReportCompilationState(VoiceGuidedMaintenanceAndInspectionState):
