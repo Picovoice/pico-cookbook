@@ -545,16 +545,34 @@ class IdentifyUnitPromptState(PromptState):
             next_state=IdentifyUnitReportState.__name__)
 
 
-class IdentifyUnitReportState(State):
-    def __init__(self, step: RhinoStep) -> None:
+class ReportState(State):
+    def __init__(
+            self,
+            step: RhinoStep,
+            listening_prompt: str,
+            expected_intent: str,
+            success_prompt: Callable[[Dict[str, Any]], str],
+            success_next_state: str,
+            failure_prompt: Callable[[Dict[str, Any]], str],
+            failure_next_state: str,
+            failure_next_state_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> None:
         super().__init__(step=step)
+
+        self._listening_prompt = listening_prompt
+        self._expected_intent = expected_intent
+        self._success_prompt = success_prompt
+        self._success_next_state = success_next_state
+        self._failure_prompt = failure_prompt
+        self._failure_next_state = failure_next_state
+        self._failure_next_state_kwargs = failure_next_state_kwargs
 
     def run(
             self,
             outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
             **kwargs: Any
     ) -> Transition:
-        text = "Listening for unit ID"
+        text = self._listening_prompt
 
         def get_text() -> str:
             return text
@@ -562,22 +580,34 @@ class IdentifyUnitReportState(State):
         event, thread = print_async(get_text=get_text)
         inference = self._step.run()
 
-        if not inference['is_understood'] or inference['intent'] != 'identifyUnit':
-            text = f"Failed to capture unit ID. Retrying."
+        if not inference['is_understood'] or inference['intent'] != self._expected_intent:
+            text = self._failure_prompt(inference)
             sleep(.1)
             event.set()
             thread.join()
 
             return Transition(
-                next_state=IdentifyUnitPromptState.__name__,
-                next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the unit ID again?"})
+                next_state=self._failure_next_state,
+                next_state_kwargs=self._failure_next_state_kwargs)
         else:
-            text = f"{inference['slots']['unitId']}"
+            text = self._success_prompt(inference)
             sleep(.1)
             event.set()
             thread.join()
 
-            return Transition(outcome=inference, next_state=CheckOilPromptState.__name__)
+            return Transition(outcome=inference, next_state=self._success_next_state)
+
+class IdentifyUnitReportState(ReportState):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for unit ID",
+            expected_intent='identifyUnit',
+            success_prompt=lambda x: f"{x['slots']['unitId']}",
+            success_next_state=CheckOilPromptState.__name__,
+            failure_prompt=lambda x: "Failed to capture unit ID. Retrying.",
+            failure_next_state=IdentifyUnitPromptState.__name__,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the unit ID again?"})
 
 
 class CheckOilPromptState(PromptState):
