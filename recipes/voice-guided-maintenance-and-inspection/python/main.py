@@ -340,7 +340,7 @@ class Workflow(object):
         while current_state is not None:
             print(current_state)
             transition = current_state.run(outcomes=self._outcomes, **current_state_kwargs)
-            self._outcomes.append((current_state.__class__.__name__, transition))
+            self._outcomes.append((current_state.__class__.__name__, transition.outcome))
             print(transition.outcome)
             current_state = self._states[transition.next_state] if transition.next_state is not None else None
             current_state_kwargs = transition.next_state_kwargs if transition.next_state_kwargs is not None else dict()
