@@ -493,9 +493,12 @@ class StandbyState(State):
         return Transition(next_state=IdentifyUnitPromptState.__name__)
 
 
-class IdentifyUnitPromptState(State):
-    def __init__(self, step: OrcaStep) -> None:
+class PromptState(State):
+    def __init__(self, step: OrcaStep, prompt: str, next_state: str) -> None:
         super().__init__(step=step)
+
+        self._prompt = prompt
+        self._next_state = next_state
 
     def run(
             self,
@@ -503,7 +506,7 @@ class IdentifyUnitPromptState(State):
             prompt: Optional[str] = None
     ) -> Transition:
         if prompt is None:
-            prompt = "What's the unit ID?"
+            prompt = self._prompt
 
         utterance = ""
         utterance_lock = Lock()
@@ -526,12 +529,20 @@ class IdentifyUnitPromptState(State):
             timer_thread = time_async(alignments=alignments, on_tick=update_utterance)
 
         self._step.run(prompt=prompt, on_synthesis=on_synthesis)
+        # noinspection PyUnresolvedReferences
         timer_thread.join()
         utterance_event.set()
         utterance_thread.join()
 
+        return Transition(next_state=self._next_state)
 
-        return Transition(next_state=IdentifyUnitReportState.__name__)
+
+class IdentifyUnitPromptState(PromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="What's the unit ID?",
+            next_state=IdentifyUnitReportState.__name__)
 
 
 class IdentifyUnitReportState(State):
@@ -553,20 +564,12 @@ class IdentifyUnitReportState(State):
             return Transition(outcome=inference, next_state=CheckOilPromptState.__name__)
 
 
-class CheckOilPromptState(State):
+class CheckOilPromptState(PromptState):
     def __init__(self, step: OrcaStep) -> None:
-        super().__init__(step=step)
-
-    def run(
-            self,
-            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
-            prompt: Optional[str] = None
-    ) -> Transition:
-        if prompt is None:
-            prompt = "What's the oil level?"
-        self._step.run(prompt=prompt)
-
-        return Transition(next_state=CheckOilReportState.__name__)
+        super().__init__(
+            step=step,
+            prompt="What's the oil level?",
+            next_state=CheckOilReportState.__name__)
 
 
 class CheckOilReportState(State):
@@ -588,20 +591,12 @@ class CheckOilReportState(State):
             return Transition(outcome=inference, next_state=CheckCoolantPromptState.__name__)
 
 
-class CheckCoolantPromptState(State):
+class CheckCoolantPromptState(PromptState):
     def __init__(self, step: OrcaStep) -> None:
-        super().__init__(step=step)
-
-    def run(
-            self,
-            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
-            prompt: Optional[str] = None
-    ) -> Transition:
-        if prompt is None:
-            prompt = "What's the coolant level?"
-        self._step.run(prompt=prompt)
-
-        return Transition(next_state=CheckCoolantReportState.__name__)
+        super().__init__(
+            step=step,
+            prompt="What's the coolant level?",
+            next_state=CheckCoolantReportState.__name__)
 
 
 class CheckCoolantReportState(State):
@@ -623,20 +618,12 @@ class CheckCoolantReportState(State):
             return Transition(outcome=inference, next_state=FinalNotePromptState.__name__)
 
 
-class FinalNotePromptState(State):
+class FinalNotePromptState(PromptState):
     def __init__(self, step: OrcaStep) -> None:
-        super().__init__(step=step)
-
-    def run(
-            self,
-            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
-            prompt: Optional[str] = None
-    ) -> Transition:
-        if prompt is None:
-            prompt = "Any final notes?"
-        self._step.run(prompt=prompt)
-
-        return Transition(next_state=FinalNoteRecordState.__name__)
+        super().__init__(
+            step=step,
+            prompt="Any final notes?",
+            next_state=FinalNoteRecordState.__name__)
 
 
 class FinalNoteRecordState(State):
