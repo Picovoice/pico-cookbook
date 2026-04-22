@@ -326,7 +326,7 @@ class Workflow(object):
 
         self._states = dict()
         for state_name, (state_class, step_name) in states.items():
-            self._states[state_name] = state_class(self._steps[step_name])
+            self._states[state_name] = state_class(self._steps[step_name]) if step_name is not None else state_class()
         print(sorted(self._states.keys()))
         self._start_state = self._states[start_state]
         self._start_state_kwargs = start_state_kwargs if start_state_kwargs is not None else dict()
