@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from threading import (
     Event,
+    Lock,
     Thread
 )
 from time import (
@@ -192,11 +193,17 @@ class OrcaStep(Step):
             device=device,
             library_path=library_path)
 
-    def run(self, prompt: str) -> Optional[Dict[str, Any]]:
+    def run(
+            self,
+            prompt: str,
+            on_synthesis: Optional[Callable[[Sequence[Orca.WordAlignment]], None]] = None
+    ) -> Optional[Dict[str, Any]]:
         try:
             self._speaker.start()
 
             pcm, alignment = self._orca.synthesize(text=prompt)
+            if on_synthesis is not None:
+                on_synthesis(alignment)
             self._speaker.flush(pcm)
         finally:
             self._speaker.stop()
@@ -498,7 +505,31 @@ class IdentifyUnitPromptState(State):
         if prompt is None:
             prompt = "What's the unit ID?"
 
-        self._step.run(prompt=prompt)
+        utterance = ""
+        utterance_lock = Lock()
+
+        def get_utterance() -> str:
+            with utterance_lock:
+                return f"[AI] {utterance}"
+
+        utterance_event, utterance_thread = print_async(get_utterance)
+
+        def update_utterance(chunk: str) -> None:
+            nonlocal utterance
+            with utterance_lock:
+                utterance += chunk
+
+        timer_thread = None
+
+        def on_synthesis(alignments: Sequence[Orca.WordAlignment]) -> None:
+            nonlocal timer_thread
+            timer_thread = time_async(alignments=alignments, on_tick=update_utterance)
+
+        self._step.run(prompt=prompt, on_synthesis=on_synthesis)
+        timer_thread.join()
+        utterance_event.set()
+        utterance_thread.join()
+
 
         return Transition(next_state=IdentifyUnitReportState.__name__)
 
