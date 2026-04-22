@@ -141,7 +141,11 @@ class CheetahStep(Step):
             enable_automatic_punctuation=enable_automatic_punctuation,
             enable_text_normalization=enable_text_normalization)
 
-    def run(self) -> Optional[Dict[str, Any]]:
+    def run(
+            self,
+            on_partial: Optional[Callable[[str], None]] = None,
+            on_endpoint: Optional[Callable[[str], None]] = None
+    ) -> Optional[Dict[str, Any]]:
         partials = list()
 
         try:
@@ -150,17 +154,20 @@ class CheetahStep(Step):
             while True:
                 partial, is_endpoint = self._cheetah.process(self._recorder.read(self._cheetah.frame_length))
                 partials.append(partial)
-                print(partial, end="", flush=True)
+                if on_endpoint is not None:
+                    on_endpoint(partial)
 
                 if is_endpoint:
                     remainder = self._cheetah.flush()
                     partials.append(remainder)
-                    print(remainder, end="\n", flush=True)
+                    if on_endpoint is not None:
+                        on_endpoint(remainder)
                     break
         except KeyboardInterrupt:
             remainder = self._cheetah.flush()
             partials.append(remainder)
-            print(remainder, end="\n", flush=True)
+            if on_endpoint is not None:
+                on_endpoint(remainder)
         finally:
             self._recorder.stop()
 
@@ -666,7 +673,27 @@ class FinalNoteRecordState(State):
             outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
             **kwargs: Any
     ) -> Transition:
-        transcription = self._step.run()
+        text = ""
+        text_lock = Lock()
+
+        def get_text() -> str:
+            with text_lock:
+                display_text = "(listening)" if text == "" else text
+                return display_text
+
+        text_event, text_thread = print_async(get_text)
+
+        def on_partial(partial: str) -> None:
+            nonlocal text
+            text += partial
+
+        def on_endpoint(endpoint: str) -> None:
+            nonlocal text
+            text += endpoint
+
+        transcription = self._step.run(on_partial=on_partial, on_endpoint=on_endpoint)
+        text_event.set()
+        text_thread.join()
 
         return Transition(outcome=transcription, next_state=ReportCompilationState.__name__)
 
