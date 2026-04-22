@@ -506,44 +506,44 @@ def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str]
     return thread
 
 
-class VoiceGuidedMaintenanceAndInspectionSteps(Enum):
+class RecipieSteps(Enum):
     STANDBY = "Standby"
-    PROMPT_USER = "Prompt User"
-    RECORD_USER = "Record User"
-    TRANSCRIBE_USER = "Transcribe User"
+    PROMPT_USER = "PromptUser"
+    RECORD_USER = "RecordUser"
+    TRANSCRIBE_USER = "TranscribeUser"
 
 
-class VoiceGuidedMaintenanceAndInspectionStates(Enum):
+class RecipieStates(Enum):
     STANDBY = "Standby"
-    IDENTIFY_UNIT_PROMPT = "Identify Unit Prompt"
-    IDENTIFY_UNIT_REPORT = "Identify Unit Report"
-    CHECK_OIL_PROMPT = "Check Oil Prompt"
-    CHECK_OIL_REPORT = "Check Oil Report"
-    CHECK_COOLANT_PROMPT = "Check Coolant Prompt"
-    CHECK_COOLANT_REPORT = "Check Coolant Report"
-    FINAL_NOTE_PROMPT = "Final Note Prompt"
-    FINAL_NOTE_REPORT = "Final Note Report"
-    REPORT_COMPILATION = "Report Compilation"
+    IDENTIFY_UNIT_PROMPT = "IdentifyUnitPrompt"
+    IDENTIFY_UNIT_REPORT = "IdentifyUnitReport"
+    CHECK_OIL_PROMPT = "CheckOilPrompt"
+    CHECK_OIL_REPORT = "CheckOilReport"
+    CHECK_COOLANT_PROMPT = "CheckCoolantPrompt"
+    CHECK_COOLANT_REPORT = "CheckCoolantReport"
+    FINAL_NOTE_PROMPT = "FinalNotePrompt"
+    FINAL_NOTE_REPORT = "FinalNoteReport"
+    REPORT_COMPILATION = "ReportCompilation"
 
 
-class VoiceGuidedMaintenanceAndInspectionState(State):
+class RecipieState(State):
     @classmethod
     def create(
             cls,
-            state: VoiceGuidedMaintenanceAndInspectionStates,
+            state: RecipieStates,
             **kwargs: Any
-    ) -> "VoiceGuidedMaintenanceAndInspectionState":
+    ) -> "RecipieState":
         children = {
-            VoiceGuidedMaintenanceAndInspectionStates.STANDBY: StandbyState,
-            VoiceGuidedMaintenanceAndInspectionStates.IDENTIFY_UNIT_PROMPT: IdentifyUnitPromptState,
-            VoiceGuidedMaintenanceAndInspectionStates.IDENTIFY_UNIT_REPORT: IdentifyUnitReportState,
-            VoiceGuidedMaintenanceAndInspectionStates.CHECK_OIL_PROMPT: CheckOilPromptState,
-            VoiceGuidedMaintenanceAndInspectionStates.CHECK_OIL_REPORT: CheckOilReportState,
-            VoiceGuidedMaintenanceAndInspectionStates.CHECK_COOLANT_PROMPT: CheckCoolantPromptState,
-            VoiceGuidedMaintenanceAndInspectionStates.CHECK_COOLANT_REPORT: CheckCoolantReportState,
-            VoiceGuidedMaintenanceAndInspectionStates.FINAL_NOTE_PROMPT: FinalNotePromptState,
-            VoiceGuidedMaintenanceAndInspectionStates.FINAL_NOTE_REPORT: FinalNoteRecordState,
-            VoiceGuidedMaintenanceAndInspectionStates.REPORT_COMPILATION: ReportCompilationState,
+            RecipieStates.STANDBY: RecipieStandbyState,
+            RecipieStates.IDENTIFY_UNIT_PROMPT: RecipieIdentifyUnitPromptState,
+            RecipieStates.IDENTIFY_UNIT_REPORT: RecipieIdentifyUnitReportState,
+            RecipieStates.CHECK_OIL_PROMPT: RecipieCheckOilPromptState,
+            RecipieStates.CHECK_OIL_REPORT: RecipieCheckOilReportState,
+            RecipieStates.CHECK_COOLANT_PROMPT: RecipieCheckCoolantPromptState,
+            RecipieStates.CHECK_COOLANT_REPORT: RecipieCheckCoolantReportState,
+            RecipieStates.FINAL_NOTE_PROMPT: RecipieFinalNotePromptState,
+            RecipieStates.FINAL_NOTE_REPORT: RecipieFinalNoteRecordState,
+            RecipieStates.REPORT_COMPILATION: RecipieReportCompilationState,
         }
 
         if state not in children:
@@ -552,7 +552,7 @@ class VoiceGuidedMaintenanceAndInspectionState(State):
         return children[state](**kwargs)
 
 
-class StandbyState(VoiceGuidedMaintenanceAndInspectionState):
+class RecipieStandbyState(RecipieState):
     def __init__(self, step: PorcupineStep) -> None:
         super().__init__(step=step)
 
@@ -573,11 +573,11 @@ class StandbyState(VoiceGuidedMaintenanceAndInspectionState):
         event.set()
         thread.join()
 
-        return Transition(next_state=VoiceGuidedMaintenanceAndInspectionStates.IDENTIFY_UNIT_PROMPT)
+        return Transition(next_state=RecipieStates.IDENTIFY_UNIT_PROMPT)
 
 
-class PromptState(VoiceGuidedMaintenanceAndInspectionState):
-    def __init__(self, step: OrcaStep, prompt: str, next_state: VoiceGuidedMaintenanceAndInspectionStates) -> None:
+class PromptState(RecipieState):
+    def __init__(self, step: OrcaStep, prompt: str, next_state: RecipieStates) -> None:
         super().__init__(step=step)
 
         self._prompt = prompt
@@ -620,24 +620,24 @@ class PromptState(VoiceGuidedMaintenanceAndInspectionState):
         return Transition(next_state=self._next_state)
 
 
-class IdentifyUnitPromptState(PromptState):
+class RecipieIdentifyUnitPromptState(PromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
             prompt="What's the unit ID?",
-            next_state=VoiceGuidedMaintenanceAndInspectionStates.IDENTIFY_UNIT_REPORT)
+            next_state=RecipieStates.IDENTIFY_UNIT_REPORT)
 
 
-class ReportState(VoiceGuidedMaintenanceAndInspectionState):
+class ReportState(RecipieState):
     def __init__(
             self,
             step: RhinoStep,
             listening_prompt: str,
             expected_intent: str,
             success_prompt: Callable[[Dict[str, Any]], str],
-            success_next_state: VoiceGuidedMaintenanceAndInspectionStates,
+            success_next_state: RecipieStates,
             failure_prompt: Callable[[Dict[str, Any]], str],
-            failure_next_state: VoiceGuidedMaintenanceAndInspectionStates,
+            failure_next_state: RecipieStates,
             failure_next_state_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         super().__init__(step=step)
@@ -681,70 +681,70 @@ class ReportState(VoiceGuidedMaintenanceAndInspectionState):
             return Transition(outcome=inference, next_state=self._success_next_state)
 
 
-class IdentifyUnitReportState(ReportState):
+class RecipieIdentifyUnitReportState(ReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
             listening_prompt="Listening for unit ID",
             expected_intent='identifyUnit',
             success_prompt=lambda x: f"{x['slots']['unitId']}",
-            success_next_state=VoiceGuidedMaintenanceAndInspectionStates.CHECK_OIL_PROMPT,
+            success_next_state=RecipieStates.CHECK_OIL_PROMPT,
             failure_prompt=lambda x: "Failed to capture unit ID. Retrying.",
-            failure_next_state=VoiceGuidedMaintenanceAndInspectionStates.IDENTIFY_UNIT_PROMPT,
+            failure_next_state=RecipieStates.IDENTIFY_UNIT_PROMPT,
             failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the unit ID again?"})
 
 
-class CheckOilPromptState(PromptState):
+class RecipieCheckOilPromptState(PromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
             prompt="What's the oil level?",
-            next_state=VoiceGuidedMaintenanceAndInspectionStates.CHECK_OIL_REPORT)
+            next_state=RecipieStates.CHECK_OIL_REPORT)
 
 
-class CheckOilReportState(ReportState):
+class RecipieCheckOilReportState(ReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
             listening_prompt="Listening for Oil Status",
             expected_intent='reportFluidCondition',
             success_prompt=lambda x: f"{x['slots']['fluidCondition']}",
-            success_next_state=VoiceGuidedMaintenanceAndInspectionStates.CHECK_COOLANT_PROMPT,
+            success_next_state=RecipieStates.CHECK_COOLANT_PROMPT,
             failure_prompt=lambda x: "Failed to capture oil condition. Retrying.",
-            failure_next_state=VoiceGuidedMaintenanceAndInspectionStates.CHECK_OIL_PROMPT,
+            failure_next_state=RecipieStates.CHECK_OIL_PROMPT,
             failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the oil level again?"})
 
 
-class CheckCoolantPromptState(PromptState):
+class RecipieCheckCoolantPromptState(PromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
             prompt="What's the coolant level?",
-            next_state=VoiceGuidedMaintenanceAndInspectionStates.CHECK_COOLANT_REPORT)
+            next_state=RecipieStates.CHECK_COOLANT_REPORT)
 
 
-class CheckCoolantReportState(ReportState):
+class RecipieCheckCoolantReportState(ReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
             listening_prompt="Listening for coolant Status",
             expected_intent='reportFluidCondition',
             success_prompt=lambda x: f"{x['slots']['fluidCondition']}",
-            success_next_state=VoiceGuidedMaintenanceAndInspectionStates.FINAL_NOTE_PROMPT,
+            success_next_state=RecipieStates.FINAL_NOTE_PROMPT,
             failure_prompt=lambda x: "Failed to capture coolant condition. Retrying.",
-            failure_next_state=VoiceGuidedMaintenanceAndInspectionStates.CHECK_COOLANT_PROMPT,
+            failure_next_state=RecipieStates.CHECK_COOLANT_PROMPT,
             failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the coolant level again?"})
 
 
-class FinalNotePromptState(PromptState):
+class RecipieFinalNotePromptState(PromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
             prompt="Any final notes?",
-            next_state=VoiceGuidedMaintenanceAndInspectionStates.FINAL_NOTE_REPORT)
+            next_state=RecipieStates.FINAL_NOTE_REPORT)
 
 
-class FinalNoteRecordState(VoiceGuidedMaintenanceAndInspectionState):
+class RecipieFinalNoteRecordState(RecipieState):
     def __init__(self, step: CheetahStep) -> None:
         super().__init__(step=step)
 
@@ -776,10 +776,10 @@ class FinalNoteRecordState(VoiceGuidedMaintenanceAndInspectionState):
         text_thread.join()
 
         return Transition(outcome=transcription,
-                          next_state=VoiceGuidedMaintenanceAndInspectionStates.REPORT_COMPILATION)
+                          next_state=RecipieStates.REPORT_COMPILATION)
 
 
-class ReportCompilationState(VoiceGuidedMaintenanceAndInspectionState):
+class RecipieReportCompilationState(RecipieState):
     def __init__(self) -> None:
         super().__init__()
 
@@ -790,15 +790,15 @@ class ReportCompilationState(VoiceGuidedMaintenanceAndInspectionState):
     ) -> Transition:
         print("Inspection Report")
         for state, outcome in outcomes:
-            if state == VoiceGuidedMaintenanceAndInspectionStates.IDENTIFY_UNIT_REPORT and outcome['is_understood'] and outcome['intent'] == 'identifyUnit':
+            if state == RecipieStates.IDENTIFY_UNIT_REPORT and outcome['is_understood'] and outcome['intent'] == 'identifyUnit':
                 print(f"Unit ID: {outcome['slots']['unitId']}")
-            elif state == VoiceGuidedMaintenanceAndInspectionStates.CHECK_OIL_REPORT and outcome['is_understood'] and outcome[
+            elif state == RecipieStates.CHECK_OIL_REPORT and outcome['is_understood'] and outcome[
                 'intent'] == 'reportFluidCondition':
                 print(f"Oil: {outcome['slots']['fluidCondition']}")
-            elif state == VoiceGuidedMaintenanceAndInspectionStates.CHECK_COOLANT_REPORT and outcome['is_understood'] and outcome[
+            elif state == RecipieStates.CHECK_COOLANT_REPORT and outcome['is_understood'] and outcome[
                 'intent'] == 'reportFluidCondition':
                 print(f"Coolant: {outcome['slots']['fluidCondition']}")
-            elif state == VoiceGuidedMaintenanceAndInspectionStates.FINAL_NOTE_REPORT:
+            elif state == RecipieStates.FINAL_NOTE_REPORT:
                 print(f"Note: {outcome['text']}")
         return Transition()
 
@@ -825,25 +825,25 @@ def main() -> None:
 
     workflow = Workflow(
         steps={
-            VoiceGuidedMaintenanceAndInspectionSteps.STANDBY: (Steps.PORCUPINE, {'keyword_path': keyword_path}),
-            VoiceGuidedMaintenanceAndInspectionSteps.PROMPT_USER: (Steps.ORCA, None),
-            VoiceGuidedMaintenanceAndInspectionSteps.RECORD_USER: (Steps.RHINO, {'context_path': context_path}),
-            VoiceGuidedMaintenanceAndInspectionSteps.TRANSCRIBE_USER: (Steps.CHEETAH, None)
+            RecipieSteps.STANDBY: (Steps.PORCUPINE, {'keyword_path': keyword_path}),
+            RecipieSteps.PROMPT_USER: (Steps.ORCA, None),
+            RecipieSteps.RECORD_USER: (Steps.RHINO, {'context_path': context_path}),
+            RecipieSteps.TRANSCRIBE_USER: (Steps.CHEETAH, None)
         },
-        state_enum=VoiceGuidedMaintenanceAndInspectionStates,
-        state_subclass=VoiceGuidedMaintenanceAndInspectionState,
+        state_enum=RecipieStates,
+        state_subclass=RecipieState,
         state_steps={
-            VoiceGuidedMaintenanceAndInspectionStates.STANDBY: VoiceGuidedMaintenanceAndInspectionSteps.STANDBY,
-            VoiceGuidedMaintenanceAndInspectionStates.IDENTIFY_UNIT_PROMPT: VoiceGuidedMaintenanceAndInspectionSteps.PROMPT_USER,
-            VoiceGuidedMaintenanceAndInspectionStates.IDENTIFY_UNIT_REPORT: VoiceGuidedMaintenanceAndInspectionSteps.RECORD_USER,
-            VoiceGuidedMaintenanceAndInspectionStates.CHECK_OIL_PROMPT: VoiceGuidedMaintenanceAndInspectionSteps.PROMPT_USER,
-            VoiceGuidedMaintenanceAndInspectionStates.CHECK_OIL_REPORT: VoiceGuidedMaintenanceAndInspectionSteps.RECORD_USER,
-            VoiceGuidedMaintenanceAndInspectionStates.CHECK_COOLANT_PROMPT: VoiceGuidedMaintenanceAndInspectionSteps.PROMPT_USER,
-            VoiceGuidedMaintenanceAndInspectionStates.CHECK_COOLANT_REPORT: VoiceGuidedMaintenanceAndInspectionSteps.RECORD_USER,
-            VoiceGuidedMaintenanceAndInspectionStates.FINAL_NOTE_PROMPT: VoiceGuidedMaintenanceAndInspectionSteps.PROMPT_USER,
-            VoiceGuidedMaintenanceAndInspectionStates.FINAL_NOTE_REPORT: VoiceGuidedMaintenanceAndInspectionSteps.TRANSCRIBE_USER,
+            RecipieStates.STANDBY: RecipieSteps.STANDBY,
+            RecipieStates.IDENTIFY_UNIT_PROMPT: RecipieSteps.PROMPT_USER,
+            RecipieStates.IDENTIFY_UNIT_REPORT: RecipieSteps.RECORD_USER,
+            RecipieStates.CHECK_OIL_PROMPT: RecipieSteps.PROMPT_USER,
+            RecipieStates.CHECK_OIL_REPORT: RecipieSteps.RECORD_USER,
+            RecipieStates.CHECK_COOLANT_PROMPT: RecipieSteps.PROMPT_USER,
+            RecipieStates.CHECK_COOLANT_REPORT: RecipieSteps.RECORD_USER,
+            RecipieStates.FINAL_NOTE_PROMPT: RecipieSteps.PROMPT_USER,
+            RecipieStates.FINAL_NOTE_REPORT: RecipieSteps.TRANSCRIBE_USER,
         },
-        start_state=VoiceGuidedMaintenanceAndInspectionStates.STANDBY,
+        start_state=RecipieStates.STANDBY,
         access_key=access_key)
 
     workflow.run()
