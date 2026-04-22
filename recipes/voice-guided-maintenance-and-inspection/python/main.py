@@ -98,7 +98,7 @@ class Step(object):
         raise NotImplementedError()
 
     def __str__(self) -> str:
-        return self.__class__.__name__
+        raise NotImplementedError()
 
     @classmethod
     def create(cls, step: Steps, **kwargs: Any) -> "Step":
@@ -110,7 +110,7 @@ class Step(object):
         }
 
         if step not in children:
-            raise ValueError(f"Cannot create a {cls.__name__} of type `{step.value}`.")
+            raise NotImplementedError(f"Cannot create a {cls.__name__} of type `{step.value}`.")
 
         return children[step](**kwargs)
 
@@ -122,9 +122,7 @@ class CheetahStep(Step):
             recorder: AINoiseSuppressedRecorder,
             speaker: PvSpeaker,
             model_path: Optional[str] = None,
-            device: str = 'best',
-            library_path: Optional[str] = None,
-            endpoint_duration_sec: Optional[float] = 2.,
+            endpoint_duration_sec: Optional[float] = 1.,
             enable_automatic_punctuation: bool = True,
             enable_text_normalization: bool = True
     ) -> None:
@@ -136,8 +134,6 @@ class CheetahStep(Step):
         self._cheetah = pvcheetah.create(
             access_key=access_key,
             model_path=model_path,
-            device=device,
-            library_path=library_path,
             endpoint_duration_sec=endpoint_duration_sec,
             enable_automatic_punctuation=enable_automatic_punctuation,
             enable_text_normalization=enable_text_normalization)
@@ -152,18 +148,18 @@ class CheetahStep(Step):
         try:
             self._recorder.start()
 
-            while True:
+            is_endpoint = False
+            while not is_endpoint:
                 partial, is_endpoint = self._cheetah.process(self._recorder.read(self._cheetah.frame_length))
                 partials.append(partial)
-                if on_endpoint is not None:
-                    on_endpoint(partial)
+                if on_partial is not None:
+                    on_partial(partial)
 
                 if is_endpoint:
                     remainder = self._cheetah.flush()
                     partials.append(remainder)
                     if on_endpoint is not None:
                         on_endpoint(remainder)
-                    break
         except KeyboardInterrupt:
             remainder = self._cheetah.flush()
             partials.append(remainder)
@@ -178,6 +174,12 @@ class CheetahStep(Step):
 
     def delete(self) -> None:
         self._cheetah.delete()
+
+    def __str__(self):
+        return f"""{self.__class__.__name__} {{
+  {self._cheetah.__class__.__name__}[V{self._cheetah.version}]
+}}
+"""
 
 
 class OrcaStep(Step):
@@ -219,6 +221,12 @@ class OrcaStep(Step):
     def delete(self) -> None:
         self._orca.delete()
 
+    def __str__(self):
+        return f"""{self.__class__.__name__} {{
+  {self._orca.__class__.__name__}[V{self._orca.version}]
+}}
+"""
+
 
 class PorcupineStep(Step):
     def __init__(
@@ -259,6 +267,12 @@ class PorcupineStep(Step):
 
     def delete(self) -> None:
         self._porcupine.delete()
+
+    def __str__(self):
+        return f"""{self.__class__.__name__} {{
+  {self._porcupine.__class__.__name__}[V{self._porcupine.version}]
+}}
+"""
 
 
 class RhinoStep(Step):
@@ -308,6 +322,12 @@ class RhinoStep(Step):
 
     def delete(self) -> None:
         self._rhino.delete()
+
+    def __str__(self):
+        return f"""{self.__class__.__name__} {{
+  {self._rhino.__class__.__name__}[V{self._rhino.version}]
+}}
+"""
 
 
 @dataclass
@@ -361,6 +381,7 @@ class Workflow(object):
                 speaker=self._speaker,
                 access_key=access_key,
                 **kwargs if kwargs is not None else dict())
+            print(f"[OK] {self._steps[name]}")
 
         self._states = dict()
         for state in state_enum:
