@@ -337,7 +337,8 @@ class State(object):
     def run(
             self,
             outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
-            **kwargs: Any) -> Transition:
+            **kwargs: Any
+    ) -> Transition:
         raise NotImplementedError()
 
     def __str__(self) -> str:
