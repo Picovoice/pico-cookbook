@@ -336,7 +336,7 @@ class State(object):
 
     def run(
             self,
-            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
             **kwargs: Any
     ) -> Transition:
         raise NotImplementedError()
@@ -368,24 +368,29 @@ class Workflow(object):
         self._speaker = PvSpeaker(sample_rate=22050, bits_per_sample=16)
 
         self._steps = dict()
-        for name, (step, kwargs) in steps.items():
-            self._steps[name] = Step.create(
+        for uid, (step, kwargs) in steps.items():
+            self._steps[uid] = Step.create(
                 step=step,
+                access_key=access_key,
                 recorder=self._recorder,
                 speaker=self._speaker,
-                access_key=access_key,
                 **kwargs if kwargs is not None else dict())
-            print(f"[OK] {self._steps[name]}")
+            print(f"[OK] {self._steps[uid]}")
 
         self._states = dict()
+        self._state_uids = dict()
         for state in state_enum:
-            kwargs = {'step': self._steps[state_steps[state]]} if state in state_steps else dict()
-            self._states[state] = state_subclass.create(state=state, **kwargs)
+            if state in state_steps:
+                self._states[state] = state_subclass.create(state=state, step=self._steps[state_steps[state]])
+            else:
+                self._states[state] = state_subclass.create(state=state)
+
+            self._state_uids[self._states[state]] = state
 
         self._start_state = self._states[start_state]
         self._start_state_kwargs = start_state_kwargs if start_state_kwargs is not None else dict()
 
-        self._outcomes: List[Tuple[str, Optional[Dict[str, Any]]]] = list()
+        self._outcomes: List[Tuple[Enum, Optional[Dict[str, Any]]]] = list()
 
     def run(self) -> None:
         current_state = self._start_state
@@ -393,7 +398,7 @@ class Workflow(object):
 
         while current_state is not None:
             transition = current_state.run(outcomes=self._outcomes, **current_state_kwargs)
-            self._outcomes.append((current_state.__class__.__name__, transition.outcome))
+            self._outcomes.append((self._state_uids[current_state], transition.outcome))
             current_state = self._states[transition.next_state] if transition.next_state is not None else None
             current_state_kwargs = transition.next_state_kwargs if transition.next_state_kwargs is not None else dict()
 
@@ -401,14 +406,14 @@ class Workflow(object):
         self._outcomes = list()
 
     def delete(self) -> None:
-        self._recorder.stop()
-        self._recorder.delete()
+        for step in reversed(self._steps.values()):
+            step.delete()
 
         self._speaker.stop()
         self._speaker.delete()
 
-        for step in self._steps.values():
-            step.delete()
+        self._recorder.stop()
+        self._recorder.delete()
 
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -553,7 +558,7 @@ class StandbyState(VoiceGuidedMaintenanceAndInspectionState):
 
     def run(
             self,
-            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
             **kwargs: Any
     ) -> Transition:
         text = "Listening for wake word"
@@ -580,7 +585,7 @@ class PromptState(VoiceGuidedMaintenanceAndInspectionState):
 
     def run(
             self,
-            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
             prompt: Optional[str] = None
     ) -> Transition:
         if prompt is None:
@@ -647,7 +652,7 @@ class ReportState(VoiceGuidedMaintenanceAndInspectionState):
 
     def run(
             self,
-            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
             **kwargs: Any
     ) -> Transition:
         text = self._listening_prompt
@@ -745,7 +750,7 @@ class FinalNoteRecordState(VoiceGuidedMaintenanceAndInspectionState):
 
     def run(
             self,
-            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
             **kwargs: Any
     ) -> Transition:
         text = ""
@@ -780,20 +785,20 @@ class ReportCompilationState(VoiceGuidedMaintenanceAndInspectionState):
 
     def run(
             self,
-            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
             **kwargs: Any
     ) -> Transition:
         print("Inspection Report")
         for state, outcome in outcomes:
-            if state == 'IdentifyUnitReportState' and outcome['is_understood'] and outcome['intent'] == 'identifyUnit':
+            if state == VoiceGuidedMaintenanceAndInspectionStates.IDENTIFY_UNIT_REPORT and outcome['is_understood'] and outcome['intent'] == 'identifyUnit':
                 print(f"Unit ID: {outcome['slots']['unitId']}")
-            elif state == 'CheckOilReportState' and outcome['is_understood'] and outcome[
+            elif state == VoiceGuidedMaintenanceAndInspectionStates.CHECK_OIL_REPORT and outcome['is_understood'] and outcome[
                 'intent'] == 'reportFluidCondition':
                 print(f"Oil: {outcome['slots']['fluidCondition']}")
-            elif state == 'CheckCoolantReportState' and outcome['is_understood'] and outcome[
+            elif state == VoiceGuidedMaintenanceAndInspectionStates.CHECK_COOLANT_REPORT and outcome['is_understood'] and outcome[
                 'intent'] == 'reportFluidCondition':
                 print(f"Coolant: {outcome['slots']['fluidCondition']}")
-            elif state == 'FinalNoteRecordState':
+            elif state == VoiceGuidedMaintenanceAndInspectionStates.FINAL_NOTE_REPORT:
                 print(f"Note: {outcome['text']}")
         return Transition()
 
