@@ -570,6 +570,7 @@ def main() -> None:
             CheckCoolantReportState.__name__: (CheckCoolantReportState, 'RecordUser'),
             FinalNotePromptState.__name__: (FinalNotePromptState, 'PromptUser'),
             FinalNoteRecordState.__name__: (FinalNoteRecordState, 'TranscribeUser'),
+            ReportCompilationState.__name__: (ReportCompilationState, None)
         },
         start_state=StandbyState.__name__,
         access_key=access_key)
