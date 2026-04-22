@@ -319,7 +319,6 @@ class Workflow(object):
         for name, (step, kwargs) in steps.items():
             self._steps[name] = Step.create(
                 step=step,
-                name=name,
                 recorder=self._recorder,
                 speaker=self._speaker,
                 access_key=access_key,
