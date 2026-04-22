@@ -552,6 +552,110 @@ class RecipieState(State):
         return children[state](**kwargs)
 
 
+class RecipiePromptState(RecipieState):
+    def __init__(
+            self,
+            step: OrcaStep,
+            prompt: str,
+            next_state: RecipieStates
+    ) -> None:
+        super().__init__(step=step)
+
+        self._prompt = prompt
+        self._next_state = next_state
+
+    def run(
+            self,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
+            prompt: Optional[str] = None
+    ) -> Transition:
+        if prompt is None:
+            prompt = self._prompt
+
+        text = ""
+        lock = Lock()
+
+        def get_text() -> str:
+            with lock:
+                return f"[AI] {text}"
+
+        print_event, print_thread = print_async(get_text)
+
+        def on_tick(chunk: str) -> None:
+            nonlocal text
+            with lock:
+                text += chunk
+
+        timer_thread = None
+
+        def on_synthesis(alignments: Sequence[Orca.WordAlignment]) -> None:
+            nonlocal timer_thread
+            timer_thread = time_async(alignments=alignments, on_tick=on_tick)
+
+        self._step.run(prompt=prompt, on_synthesis=on_synthesis)
+        # noinspection PyUnresolvedReferences
+        timer_thread.join()
+        print_event.set()
+        print_thread.join()
+
+        return Transition(next_state=self._next_state)
+
+
+class RecipieReportState(RecipieState):
+    def __init__(
+            self,
+            step: RhinoStep,
+            listening_prompt: str,
+            expected_intent: str,
+            success_prompt: Callable[[Dict[str, Any]], str],
+            success_next_state: RecipieStates,
+            failure_prompt: Callable[[Dict[str, Any]], str],
+            failure_next_state: RecipieStates,
+            success_next_state_kwargs: Optional[Dict[str, Any]] = None,
+            failure_next_state_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        super().__init__(step=step)
+
+        self._listening_prompt = listening_prompt
+        self._expected_intent = expected_intent
+        self._success_prompt = success_prompt
+        self._success_next_state = success_next_state
+        self._failure_prompt = failure_prompt
+        self._failure_next_state = failure_next_state
+        self._success_next_state_kwargs = success_next_state_kwargs
+        self._failure_next_state_kwargs = failure_next_state_kwargs
+
+    def run(
+            self,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
+            **kwargs: Any
+    ) -> Transition:
+        text = self._listening_prompt
+
+        def get_text() -> str:
+            return text
+
+        event, thread = print_async(get_text=get_text)
+        inference = self._step.run()
+
+        if inference['is_understood'] and inference['intent'] == self._expected_intent:
+            text = self._success_prompt(inference)
+            sleep(.1)
+            event.set()
+            thread.join()
+
+            return Transition(outcome=inference, next_state=self._success_next_state)
+        else:
+            text = self._failure_prompt(inference)
+            sleep(.1)
+            event.set()
+            thread.join()
+
+            return Transition(
+                next_state=self._failure_next_state,
+                next_state_kwargs=self._failure_next_state_kwargs)
+
+
 class RecipieStandbyState(RecipieState):
     def __init__(self, step: PorcupineStep) -> None:
         super().__init__(step=step)
@@ -576,51 +680,7 @@ class RecipieStandbyState(RecipieState):
         return Transition(next_state=RecipieStates.IDENTIFY_UNIT_PROMPT)
 
 
-class PromptState(RecipieState):
-    def __init__(self, step: OrcaStep, prompt: str, next_state: RecipieStates) -> None:
-        super().__init__(step=step)
-
-        self._prompt = prompt
-        self._next_state = next_state
-
-    def run(
-            self,
-            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
-            prompt: Optional[str] = None
-    ) -> Transition:
-        if prompt is None:
-            prompt = self._prompt
-
-        utterance = ""
-        utterance_lock = Lock()
-
-        def get_utterance() -> str:
-            with utterance_lock:
-                return f"[AI] {utterance}"
-
-        utterance_event, utterance_thread = print_async(get_utterance)
-
-        def update_utterance(chunk: str) -> None:
-            nonlocal utterance
-            with utterance_lock:
-                utterance += chunk
-
-        timer_thread = None
-
-        def on_synthesis(alignments: Sequence[Orca.WordAlignment]) -> None:
-            nonlocal timer_thread
-            timer_thread = time_async(alignments=alignments, on_tick=update_utterance)
-
-        self._step.run(prompt=prompt, on_synthesis=on_synthesis)
-        # noinspection PyUnresolvedReferences
-        timer_thread.join()
-        utterance_event.set()
-        utterance_thread.join()
-
-        return Transition(next_state=self._next_state)
-
-
-class RecipieIdentifyUnitPromptState(PromptState):
+class RecipieIdentifyUnitPromptState(RecipiePromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
@@ -628,60 +688,7 @@ class RecipieIdentifyUnitPromptState(PromptState):
             next_state=RecipieStates.IDENTIFY_UNIT_REPORT)
 
 
-class ReportState(RecipieState):
-    def __init__(
-            self,
-            step: RhinoStep,
-            listening_prompt: str,
-            expected_intent: str,
-            success_prompt: Callable[[Dict[str, Any]], str],
-            success_next_state: RecipieStates,
-            failure_prompt: Callable[[Dict[str, Any]], str],
-            failure_next_state: RecipieStates,
-            failure_next_state_kwargs: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        super().__init__(step=step)
-
-        self._listening_prompt = listening_prompt
-        self._expected_intent = expected_intent
-        self._success_prompt = success_prompt
-        self._success_next_state = success_next_state
-        self._failure_prompt = failure_prompt
-        self._failure_next_state = failure_next_state
-        self._failure_next_state_kwargs = failure_next_state_kwargs
-
-    def run(
-            self,
-            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
-            **kwargs: Any
-    ) -> Transition:
-        text = self._listening_prompt
-
-        def get_text() -> str:
-            return text
-
-        event, thread = print_async(get_text=get_text)
-        inference = self._step.run()
-
-        if not inference['is_understood'] or inference['intent'] != self._expected_intent:
-            text = self._failure_prompt(inference)
-            sleep(.1)
-            event.set()
-            thread.join()
-
-            return Transition(
-                next_state=self._failure_next_state,
-                next_state_kwargs=self._failure_next_state_kwargs)
-        else:
-            text = self._success_prompt(inference)
-            sleep(.1)
-            event.set()
-            thread.join()
-
-            return Transition(outcome=inference, next_state=self._success_next_state)
-
-
-class RecipieIdentifyUnitReportState(ReportState):
+class RecipieIdentifyUnitReportState(RecipieReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
@@ -694,7 +701,7 @@ class RecipieIdentifyUnitReportState(ReportState):
             failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the unit ID again?"})
 
 
-class RecipieCheckOilPromptState(PromptState):
+class RecipieCheckOilPromptState(RecipiePromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
@@ -702,7 +709,7 @@ class RecipieCheckOilPromptState(PromptState):
             next_state=RecipieStates.CHECK_OIL_REPORT)
 
 
-class RecipieCheckOilReportState(ReportState):
+class RecipieCheckOilReportState(RecipieReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
@@ -715,7 +722,7 @@ class RecipieCheckOilReportState(ReportState):
             failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the oil level again?"})
 
 
-class RecipieCheckCoolantPromptState(PromptState):
+class RecipieCheckCoolantPromptState(RecipiePromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
@@ -723,7 +730,7 @@ class RecipieCheckCoolantPromptState(PromptState):
             next_state=RecipieStates.CHECK_COOLANT_REPORT)
 
 
-class RecipieCheckCoolantReportState(ReportState):
+class RecipieCheckCoolantReportState(RecipieReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
@@ -736,7 +743,7 @@ class RecipieCheckCoolantReportState(ReportState):
             failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the coolant level again?"})
 
 
-class RecipieFinalNotePromptState(PromptState):
+class RecipieFinalNotePromptState(RecipiePromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
