@@ -342,10 +342,10 @@ class Workflow(object):
     def __init__(
             self,
             access_key: str,
-            steps: Dict[str, Tuple[Steps, Optional[Dict[str, Any]]]],
+            steps: Dict[Enum, Tuple[Steps, Optional[Dict[str, Any]]]],
             state_enum: Type[Enum],
             state_subclass: Type[State],
-            state_steps: Dict[Enum, str],
+            state_steps: Dict[Enum, Enum],
             start_state: Enum,
             start_state_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
@@ -483,6 +483,13 @@ def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str]
     thread = Thread(target=run, daemon=True)
     thread.start()
     return thread
+
+
+class VoiceGuidedMaintenanceAndInspectionSteps(Enum):
+    STANDBY = "Standby"
+    PROMPT_USER = "Prompt User"
+    RECORD_USER = "Record User"
+    TRANSCRIBE_USER = "Transcribe User"
 
 
 class VoiceGuidedMaintenanceAndInspectionStates(Enum):
@@ -795,23 +802,23 @@ def main() -> None:
 
     workflow = Workflow(
         steps={
-            'Standby': (Steps.PORCUPINE, {'keyword_path': keyword_path}),
-            'PromptUser': (Steps.ORCA, None),
-            'RecordUser': (Steps.RHINO, {'context_path': context_path}),
-            'TranscribeUser': (Steps.CHEETAH, None)
+            VoiceGuidedMaintenanceAndInspectionSteps.STANDBY: (Steps.PORCUPINE, {'keyword_path': keyword_path}),
+            VoiceGuidedMaintenanceAndInspectionSteps.PROMPT_USER: (Steps.ORCA, None),
+            VoiceGuidedMaintenanceAndInspectionSteps.RECORD_USER: (Steps.RHINO, {'context_path': context_path}),
+            VoiceGuidedMaintenanceAndInspectionSteps.TRANSCRIBE_USER: (Steps.CHEETAH, None)
         },
         state_enum=VoiceGuidedMaintenanceAndInspectionStates,
         state_subclass=VoiceGuidedMaintenanceAndInspectionState,
         state_steps={
-            VoiceGuidedMaintenanceAndInspectionStates.STANDBY: 'Standby',
-            VoiceGuidedMaintenanceAndInspectionStates.IDENTIFY_UNIT_PROMPT: 'PromptUser',
-            VoiceGuidedMaintenanceAndInspectionStates.IDENTIFY_UNIT_REPORT: 'RecordUser',
-            VoiceGuidedMaintenanceAndInspectionStates.CHECK_OIL_PROMPT: 'PromptUser',
-            VoiceGuidedMaintenanceAndInspectionStates.CHECK_OIL_REPORT: 'RecordUser',
-            VoiceGuidedMaintenanceAndInspectionStates.CHECK_COOLANT_PROMPT: 'PromptUser',
-            VoiceGuidedMaintenanceAndInspectionStates.CHECK_COOLANT_REPORT: 'RecordUser',
-            VoiceGuidedMaintenanceAndInspectionStates.FINAL_NOTE_PROMPT: 'PromptUser',
-            VoiceGuidedMaintenanceAndInspectionStates.FINAL_NOTE_REPORT: 'TranscribeUser',
+            VoiceGuidedMaintenanceAndInspectionStates.STANDBY: VoiceGuidedMaintenanceAndInspectionSteps.STANDBY,
+            VoiceGuidedMaintenanceAndInspectionStates.IDENTIFY_UNIT_PROMPT: VoiceGuidedMaintenanceAndInspectionSteps.PROMPT_USER,
+            VoiceGuidedMaintenanceAndInspectionStates.IDENTIFY_UNIT_REPORT: VoiceGuidedMaintenanceAndInspectionSteps.RECORD_USER,
+            VoiceGuidedMaintenanceAndInspectionStates.CHECK_OIL_PROMPT: VoiceGuidedMaintenanceAndInspectionSteps.PROMPT_USER,
+            VoiceGuidedMaintenanceAndInspectionStates.CHECK_OIL_REPORT: VoiceGuidedMaintenanceAndInspectionSteps.RECORD_USER,
+            VoiceGuidedMaintenanceAndInspectionStates.CHECK_COOLANT_PROMPT: VoiceGuidedMaintenanceAndInspectionSteps.PROMPT_USER,
+            VoiceGuidedMaintenanceAndInspectionStates.CHECK_COOLANT_REPORT: VoiceGuidedMaintenanceAndInspectionSteps.RECORD_USER,
+            VoiceGuidedMaintenanceAndInspectionStates.FINAL_NOTE_PROMPT: VoiceGuidedMaintenanceAndInspectionSteps.PROMPT_USER,
+            VoiceGuidedMaintenanceAndInspectionStates.FINAL_NOTE_REPORT: VoiceGuidedMaintenanceAndInspectionSteps.TRANSCRIBE_USER,
         },
         start_state=VoiceGuidedMaintenanceAndInspectionStates.STANDBY,
         access_key=access_key)
