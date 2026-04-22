@@ -189,8 +189,6 @@ class OrcaStep(Step):
             recorder: AINoiseSuppressedRecorder,
             speaker: PvSpeaker,
             model_path: Optional[str] = None,
-            device: str = 'best',
-            library_path: Optional[str] = None
     ) -> None:
         super().__init__(
             access_key=access_key,
@@ -199,9 +197,7 @@ class OrcaStep(Step):
 
         self._orca = pvorca.create(
             access_key=access_key,
-            model_path=model_path,
-            device=device,
-            library_path=library_path)
+            model_path=model_path)
 
     def run(
             self,
@@ -215,6 +211,8 @@ class OrcaStep(Step):
             if on_synthesis is not None:
                 on_synthesis(alignment)
             self._speaker.flush(pcm)
+        except KeyboardInterrupt:
+            pass
         finally:
             self._speaker.stop()
 
@@ -235,9 +233,7 @@ class PorcupineStep(Step):
             recorder: AINoiseSuppressedRecorder,
             speaker: PvSpeaker,
             keyword_path: str,
-            library_path: Optional[str] = None,
             model_path: Optional[str] = None,
-            device: str = 'best',
             sensitivity: float = 0.5
     ) -> None:
         super().__init__(
@@ -249,9 +245,7 @@ class PorcupineStep(Step):
 
         self._porcupine = pvporcupine.create(
             access_key=access_key,
-            library_path=library_path,
             model_path=model_path,
-            device=device,
             keyword_paths=[keyword_path],
             sensitivities=[sensitivity])
 
@@ -262,6 +256,8 @@ class PorcupineStep(Step):
             is_detected = False
             while not is_detected:
                 is_detected = self._porcupine.process(self._recorder.read(self._porcupine.frame_length)) == 0
+        except KeyboardInterrupt:
+            pass
         finally:
             self._recorder.stop()
 
@@ -282,12 +278,10 @@ class RhinoStep(Step):
             recorder: AINoiseSuppressedRecorder,
             speaker: PvSpeaker,
             context_path: str,
-            library_path: Optional[str] = None,
             model_path: Optional[str] = None,
-            device: str = 'best',
             sensitivity: float = 0.5,
             endpoint_duration_sec: float = .5,
-            require_endpoint: bool = True
+            require_endpoint: bool = False
     ) -> None:
         super().__init__(
             access_key=access_key,
@@ -297,9 +291,7 @@ class RhinoStep(Step):
         self._rhino = pvrhino.create(
             access_key=access_key,
             context_path=context_path,
-            library_path=library_path,
             model_path=model_path,
-            device=device,
             sensitivity=sensitivity,
             endpoint_duration_sec=endpoint_duration_sec,
             require_endpoint=require_endpoint)
@@ -316,8 +308,9 @@ class RhinoStep(Step):
                 'intent': inference.intent,
                 'slots': inference.slots,
             }
+        except KeyboardInterrupt:
+            pass
         finally:
-            self._rhino.reset()
             self._recorder.stop()
 
     def delete(self) -> None:
