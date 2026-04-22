@@ -615,23 +615,17 @@ class CheckOilPromptState(PromptState):
             next_state=CheckOilReportState.__name__)
 
 
-class CheckOilReportState(State):
+class CheckOilReportState(ReportState):
     def __init__(self, step: RhinoStep) -> None:
-        super().__init__(step=step)
-
-    def run(
-            self,
-            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
-            **kwargs: Any
-    ) -> Transition:
-        inference = self._step.run()
-
-        if not inference['is_understood'] or inference['intent'] != 'reportFluidCondition':
-            return Transition(
-                next_state=CheckOilPromptState.__name__,
-                next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the oil level again?"})
-        else:
-            return Transition(outcome=inference, next_state=CheckCoolantPromptState.__name__)
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for Oil Status",
+            expected_intent='reportFluidCondition',
+            success_prompt=lambda x: f"{x['slots']['fluidCondition']}",
+            success_next_state=CheckCoolantPromptState.__name__,
+            failure_prompt=lambda x: "Failed to capture oil condition. Retrying.",
+            failure_next_state=CheckOilPromptState.__name__,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the oil level again?"})
 
 
 class CheckCoolantPromptState(PromptState):
@@ -642,23 +636,17 @@ class CheckCoolantPromptState(PromptState):
             next_state=CheckCoolantReportState.__name__)
 
 
-class CheckCoolantReportState(State):
+class CheckCoolantReportState(ReportState):
     def __init__(self, step: RhinoStep) -> None:
-        super().__init__(step=step)
-
-    def run(
-            self,
-            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
-            **kwargs: Any
-    ) -> Transition:
-        inference = self._step.run()
-
-        if not inference['is_understood'] or inference['intent'] != 'reportFluidCondition':
-            return Transition(
-                next_state=CheckCoolantPromptState.__name__,
-                next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the coolant level again?"})
-        else:
-            return Transition(outcome=inference, next_state=FinalNotePromptState.__name__)
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for coolant Status",
+            expected_intent='reportFluidCondition',
+            success_prompt=lambda x: f"{x['slots']['fluidCondition']}",
+            success_next_state=FinalNotePromptState.__name__,
+            failure_prompt=lambda x: "Failed to capture coolant condition. Retrying.",
+            failure_next_state=CheckCoolantPromptState.__name__,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the coolant level again?"})
 
 
 class FinalNotePromptState(PromptState):
