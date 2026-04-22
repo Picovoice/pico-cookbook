@@ -519,8 +519,10 @@ class RecipieStates(Enum):
     IDENTIFY_UNIT_REPORT = "IdentifyUnitReport"
     CHECK_OIL_PROMPT = "CheckOilPrompt"
     CHECK_OIL_REPORT = "CheckOilReport"
-    CHECK_COOLANT_PROMPT = "CheckCoolantPrompt"
-    CHECK_COOLANT_REPORT = "CheckCoolantReport"
+    CHECK_TIRE_PROMPT = "CheckTirePrompt"
+    CHECK_TIRE_REPORT = "CheckTireReport"
+    CHECK_SERVICE_STATUS_PROMPT = "CheckServiceStatusPrompt"
+    CHECK_SERVICE_STATUS_REPORT = "CheckServiceStatusReport"
     FINAL_NOTE_PROMPT = "FinalNotePrompt"
     FINAL_NOTE_REPORT = "FinalNoteReport"
     REPORT_COMPILATION = "ReportCompilation"
@@ -539,8 +541,10 @@ class RecipieState(State):
             RecipieStates.IDENTIFY_UNIT_REPORT: RecipieIdentifyUnitReportState,
             RecipieStates.CHECK_OIL_PROMPT: RecipieCheckOilPromptState,
             RecipieStates.CHECK_OIL_REPORT: RecipieCheckOilReportState,
-            RecipieStates.CHECK_COOLANT_PROMPT: RecipieCheckCoolantPromptState,
-            RecipieStates.CHECK_COOLANT_REPORT: RecipieCheckCoolantReportState,
+            RecipieStates.CHECK_TIRE_PROMPT: RecipieCheckTirePromptState,
+            RecipieStates.CHECK_TIRE_REPORT: RecipieCheckTireReportState,
+            RecipieStates.CHECK_SERVICE_STATUS_PROMPT: RecipieCheckServiceStatusPromptState,
+            RecipieStates.CHECK_SERVICE_STATUS_REPORT: RecipieCheckServiceStatusReportState,
             RecipieStates.FINAL_NOTE_PROMPT: RecipieFinalNotePromptState,
             RecipieStates.FINAL_NOTE_REPORT: RecipieFinalNoteRecordState,
             RecipieStates.REPORT_COMPILATION: RecipieReportCompilationState,
@@ -652,6 +656,7 @@ class RecipieReportState(RecipieState):
             thread.join()
 
             return Transition(
+                outcome=inference,
                 next_state=self._failure_next_state,
                 next_state_kwargs=self._failure_next_state_kwargs)
 
@@ -713,34 +718,55 @@ class RecipieCheckOilReportState(RecipieReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
-            listening_prompt="Listening for Oil Status",
-            expected_intent='reportFluidCondition',
+            listening_prompt="Listening for oil status",
+            expected_intent='reportOilCondition',
             success_prompt=lambda x: f"Oil level is {x['slots']['fluidCondition']}.",
-            success_next_state=RecipieStates.CHECK_COOLANT_PROMPT,
+            success_next_state=RecipieStates.CHECK_TIRE_PROMPT,
             failure_prompt=lambda x: "Failed to capture oil condition. Retrying...",
             failure_next_state=RecipieStates.CHECK_OIL_PROMPT,
             failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the oil level again?"})
 
 
-class RecipieCheckCoolantPromptState(RecipiePromptState):
+class RecipieCheckTirePromptState(RecipiePromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
-            prompt="What's the coolant level?",
-            next_state=RecipieStates.CHECK_COOLANT_REPORT)
+            prompt="What's the tire condition?",
+            next_state=RecipieStates.CHECK_TIRE_REPORT)
 
 
-class RecipieCheckCoolantReportState(RecipieReportState):
+class RecipieCheckTireReportState(RecipieReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
-            listening_prompt="Listening for coolant Status",
-            expected_intent='reportFluidCondition',
-            success_prompt=lambda x: f"Coolant level is {x['slots']['fluidCondition']}.",
+            listening_prompt="Listening for tire condition",
+            expected_intent='reportTireCondition',
+            success_prompt=lambda x: f"Tire condition is {x['slots']['tireCondition']}.",
+            success_next_state=RecipieStates.CHECK_SERVICE_STATUS_PROMPT,
+            failure_prompt=lambda x: "Failed to capture tire condition. Retrying...",
+            failure_next_state=RecipieStates.CHECK_TIRE_PROMPT,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the tire condition again?"})
+
+
+class RecipieCheckServiceStatusPromptState(RecipiePromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="What's the vehicle status?",
+            next_state=RecipieStates.CHECK_SERVICE_STATUS_REPORT)
+
+
+class RecipieCheckServiceStatusReportState(RecipieReportState):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for vehicle status",
+            expected_intent='reportServiceStatus',
+            success_prompt=lambda x: f"Vehicle status is {x['slots']['serviceStatus']}.",
             success_next_state=RecipieStates.FINAL_NOTE_PROMPT,
-            failure_prompt=lambda x: "Failed to capture coolant condition. Retrying...",
-            failure_next_state=RecipieStates.CHECK_COOLANT_PROMPT,
-            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the coolant level again?"})
+            failure_prompt=lambda x: "Failed to capture vehicle status. Retrying...",
+            failure_next_state=RecipieStates.CHECK_SERVICE_STATUS_PROMPT,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the vehicle status again?"})
 
 
 class RecipieFinalNotePromptState(RecipiePromptState):
@@ -800,11 +826,14 @@ class RecipieReportCompilationState(RecipieState):
                 if outcome['is_understood'] and outcome['intent'] == 'identifyUnit':
                     print(f"Unit ID: {outcome['slots']['unitId']}")
             elif state == RecipieStates.CHECK_OIL_REPORT:
-                if outcome['is_understood'] and outcome['intent'] == 'reportFluidCondition':
+                if outcome['is_understood'] and outcome['intent'] == 'reportOilCondition':
                     print(f"Oil: {outcome['slots']['fluidCondition']}")
-            elif state == RecipieStates.CHECK_COOLANT_REPORT:
-                if outcome['is_understood'] and outcome['intent'] == 'reportFluidCondition':
-                    print(f"Coolant: {outcome['slots']['fluidCondition']}")
+            elif state == RecipieStates.CHECK_TIRE_REPORT:
+                if outcome['is_understood'] and outcome['intent'] == 'reportTireCondition':
+                    print(f"Tires: {outcome['slots']['tireCondition']}")
+            elif state == RecipieStates.CHECK_SERVICE_STATUS_REPORT:
+                if outcome['is_understood'] and outcome['intent'] == 'reportServiceStatus':
+                    print(f"Vehicle Status: {outcome['slots']['serviceStatus']}")
             elif state == RecipieStates.FINAL_NOTE_REPORT:
                 print(f"Note: {outcome['text']}")
         return Transition()
@@ -845,8 +874,10 @@ def main() -> None:
             RecipieStates.IDENTIFY_UNIT_REPORT: RecipieSteps.RECORD_USER,
             RecipieStates.CHECK_OIL_PROMPT: RecipieSteps.PROMPT_USER,
             RecipieStates.CHECK_OIL_REPORT: RecipieSteps.RECORD_USER,
-            RecipieStates.CHECK_COOLANT_PROMPT: RecipieSteps.PROMPT_USER,
-            RecipieStates.CHECK_COOLANT_REPORT: RecipieSteps.RECORD_USER,
+            RecipieStates.CHECK_TIRE_PROMPT: RecipieSteps.PROMPT_USER,
+            RecipieStates.CHECK_TIRE_REPORT: RecipieSteps.RECORD_USER,
+            RecipieStates.CHECK_SERVICE_STATUS_PROMPT: RecipieSteps.PROMPT_USER,
+            RecipieStates.CHECK_SERVICE_STATUS_REPORT: RecipieSteps.RECORD_USER,
             RecipieStates.FINAL_NOTE_PROMPT: RecipieSteps.PROMPT_USER,
             RecipieStates.FINAL_NOTE_REPORT: RecipieSteps.TRANSCRIBE_USER,
         },

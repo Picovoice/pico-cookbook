@@ -3,22 +3,43 @@ context:
     identifyUnit:
       - "$unitId:unitId"
 
-    reportFluidCondition:
+    reportOilCondition:
       - "$fluidCondition:fluidCondition"
+      - "(the) oil (level) is $fluidCondition:fluidCondition"
+
+    reportTireCondition:
+      - "$tireCondition:tireCondition"
+      - "(the) tire condition is $tireCondition:tireCondition"
+      - "(the) tires are $tireCondition:tireCondition"
+
+    reportServiceStatus:
+      - "$serviceStatus:serviceStatus"
+      - "(the) (vehicle) status is $serviceStatus:serviceStatus"
 
   slots:
     unitId:
-      - north hauler
-      - south hauler
       - east carrier
-      - west carrier
-      - valley runner
+      - north hauler
       - ridge runner
+      - south hauler
+      - valley runner
+      - west carrier
 
     fluidCondition:
-      - normal
-      - low
-      - high
       - empty
+      - high
+      - low
+      - normal
+
+    tireCondition:
+      - damaged
+      - low pressure
+      - ok
+      - worn
+
+    serviceStatus:
+      - do not operate
+      - needs service
+      - ready
 
   macros:
