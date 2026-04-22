@@ -1,7 +1,7 @@
-# Voice Guided Maintenance & Inspection
+# Voice Picking
 
-Hands-free inspections with guided voice prompts, structured inspection workflows, complex slot extraction, and
-free-form voice notes. Powered by on-device voice AI.
+Perform fully on-device, hands-free voice picking with spoken prompts, structured intent capture for picking workflows,
+and support for complex slots and exception handling.
 
 ## Components
 
@@ -9,7 +9,6 @@ free-form voice notes. Powered by on-device voice AI.
 - [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/)
 - [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/)
 - [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/)
-- [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/)
 
 ## Implementations
 
