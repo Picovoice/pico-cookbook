@@ -1,8 +1,20 @@
+import shutil
+import string
+import sys
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from enum import Enum
+from threading import (
+    Event,
+    Thread
+)
+from time import (
+    monotonic,
+    sleep
+)
 from typing import (
     Any,
+    Callable,
     Dict,
     List,
     Optional,
@@ -16,6 +28,7 @@ import pvkoala
 import pvorca
 import pvporcupine
 import pvrhino
+from pvorca import Orca
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
 
@@ -362,6 +375,93 @@ class Workflow(object):
         return self.__class__.__name__
 
 
+def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str = '\n') -> Tuple[Event, Thread]:
+    stop_event = Event()
+
+    def wrap_text(text: str, width: int) -> list[str]:
+        text = text.replace('\n', ' ')
+        if width <= 0:
+            return ['']
+        return [text[i:i + width] for i in range(0, len(text), width)] or ['']
+
+    def clear_block(num_lines: int) -> None:
+        if num_lines <= 0:
+            return
+
+        sys.stdout.write('\r')
+        if num_lines > 1:
+            sys.stdout.write(f'\033[{num_lines - 1}F')
+
+        for i in range(num_lines):
+            sys.stdout.write('\033[2K')
+            if i < num_lines - 1:
+                sys.stdout.write('\n')
+
+        if num_lines > 1:
+            sys.stdout.write(f'\033[{num_lines - 1}F')
+        sys.stdout.write('\r')
+
+    def run() -> None:
+        dots_list = [" .  ", " .. ", " ...", "  ..", "   .", "    "]
+        i = 0
+        prev_num_lines = 0
+
+        sys.stdout.write("\033[?25l")
+        sys.stdout.flush()
+
+        try:
+            while not stop_event.is_set():
+                text = get_text()
+                dots = dots_list[i]
+
+                width = max(1, shutil.get_terminal_size(fallback=(80, 24)).columns - 1)
+                lines = wrap_text(f"{text}{dots}", width)
+                output = '\n'.join(lines)
+
+                clear_block(prev_num_lines)
+                sys.stdout.write(output)
+                sys.stdout.flush()
+
+                prev_num_lines = len(lines)
+                i = (i + 1) % len(dots_list)
+                sleep(refresh_sec)
+
+            text = get_text()
+            width = max(1, shutil.get_terminal_size(fallback=(80, 24)).columns - 1)
+            lines = wrap_text(f"{text}    ", width)
+            output = '\n'.join(lines)
+
+            clear_block(prev_num_lines)
+            sys.stdout.write(output)
+            sys.stdout.write(end)
+            sys.stdout.flush()
+
+        finally:
+            sys.stdout.write("\033[?25h")
+            sys.stdout.flush()
+
+    thread = Thread(target=run, daemon=True)
+    thread.start()
+    return stop_event, thread
+
+
+def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str], None]) -> Thread:
+    def run() -> None:
+        start_sec = monotonic()
+
+        for i, x in enumerate(alignments):
+            delay = float(x.start_sec) - (monotonic() - start_sec)
+            if delay > 0.:
+                sleep(delay)
+
+            suffix = ' ' if i < (len(alignments) - 1) and (alignments[i + 1].word not in string.punctuation) else ''
+            on_tick(x.word + suffix)
+
+    thread = Thread(target=run, daemon=True)
+    thread.start()
+    return thread
+
+
 class StandbyState(State):
     def __init__(self, step: PorcupineStep) -> None:
         super().__init__(step=step)
@@ -371,7 +471,17 @@ class StandbyState(State):
             outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
             **kwargs: Any
     ) -> Transition:
+        text = "Listening for wake word"
+
+        def get_text() -> str:
+            return text
+
+        event, thread = print_async(get_text=get_text)
         self._step.run()
+        text = "Detected wake word. Starting inspection workflow..."
+        sleep(.1)
+        event.set()
+        thread.join()
 
         return Transition(next_state=IdentifyUnitPromptState.__name__)
 
@@ -387,6 +497,7 @@ class IdentifyUnitPromptState(State):
     ) -> Transition:
         if prompt is None:
             prompt = "What's the unit ID?"
+
         self._step.run(prompt=prompt)
 
         return Transition(next_state=IdentifyUnitReportState.__name__)
@@ -524,9 +635,11 @@ class ReportCompilationState(State):
         for state, outcome in outcomes:
             if state == 'IdentifyUnitReportState' and outcome['is_understood'] and outcome['intent'] == 'identifyUnit':
                 print(f"Unit ID: {outcome['slots']['unitId']}")
-            elif state == 'CheckOilReportState' and outcome['is_understood'] and outcome['intent'] == 'reportFluidCondition':
-                print(f"Oid: {outcome['slots']['fluidCondition']}")
-            elif state == 'CheckCoolantReportState' and outcome['is_understood'] and outcome['intent'] == 'reportFluidCondition':
+            elif state == 'CheckOilReportState' and outcome['is_understood'] and outcome[
+                'intent'] == 'reportFluidCondition':
+                print(f"Oil: {outcome['slots']['fluidCondition']}")
+            elif state == 'CheckCoolantReportState' and outcome['is_understood'] and outcome[
+                'intent'] == 'reportFluidCondition':
                 print(f"Coolant: {outcome['slots']['fluidCondition']}")
             elif state == 'FinalNoteRecordState':
                 print(f"Note: {outcome['text']}")
