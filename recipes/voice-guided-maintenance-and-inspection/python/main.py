@@ -506,14 +506,14 @@ def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str]
     return thread
 
 
-class RecipieSteps(Enum):
+class RecipeSteps(Enum):
     STANDBY = "Standby"
     PROMPT_USER = "PromptUser"
     RECORD_USER = "RecordUser"
     TRANSCRIBE_USER = "TranscribeUser"
 
 
-class RecipieStates(Enum):
+class RecipeStates(Enum):
     STANDBY = "Standby"
     IDENTIFY_UNIT_PROMPT = "IdentifyUnitPrompt"
     IDENTIFY_UNIT_REPORT = "IdentifyUnitReport"
@@ -528,26 +528,26 @@ class RecipieStates(Enum):
     REPORT_COMPILATION = "ReportCompilation"
 
 
-class RecipieState(State):
+class RecipeState(State):
     @classmethod
     def create(
             cls,
-            state: RecipieStates,
+            state: RecipeStates,
             **kwargs: Any
-    ) -> "RecipieState":
+    ) -> "RecipeState":
         children = {
-            RecipieStates.STANDBY: RecipieStandbyState,
-            RecipieStates.IDENTIFY_UNIT_PROMPT: RecipieIdentifyUnitPromptState,
-            RecipieStates.IDENTIFY_UNIT_REPORT: RecipieIdentifyUnitReportState,
-            RecipieStates.CHECK_OIL_PROMPT: RecipieCheckOilPromptState,
-            RecipieStates.CHECK_OIL_REPORT: RecipieCheckOilReportState,
-            RecipieStates.CHECK_TIRE_PROMPT: RecipieCheckTirePromptState,
-            RecipieStates.CHECK_TIRE_REPORT: RecipieCheckTireReportState,
-            RecipieStates.CHECK_SERVICE_STATUS_PROMPT: RecipieCheckServiceStatusPromptState,
-            RecipieStates.CHECK_SERVICE_STATUS_REPORT: RecipieCheckServiceStatusReportState,
-            RecipieStates.FINAL_NOTE_PROMPT: RecipieFinalNotePromptState,
-            RecipieStates.FINAL_NOTE_REPORT: RecipieFinalNoteRecordState,
-            RecipieStates.REPORT_COMPILATION: RecipieReportCompilationState,
+            RecipeStates.STANDBY: RecipeStandbyState,
+            RecipeStates.IDENTIFY_UNIT_PROMPT: RecipeIdentifyUnitPromptState,
+            RecipeStates.IDENTIFY_UNIT_REPORT: RecipeIdentifyUnitReportState,
+            RecipeStates.CHECK_OIL_PROMPT: RecipeCheckOilPromptState,
+            RecipeStates.CHECK_OIL_REPORT: RecipeCheckOilReportState,
+            RecipeStates.CHECK_TIRE_PROMPT: RecipeCheckTirePromptState,
+            RecipeStates.CHECK_TIRE_REPORT: RecipeCheckTireReportState,
+            RecipeStates.CHECK_SERVICE_STATUS_PROMPT: RecipeCheckServiceStatusPromptState,
+            RecipeStates.CHECK_SERVICE_STATUS_REPORT: RecipeCheckServiceStatusReportState,
+            RecipeStates.FINAL_NOTE_PROMPT: RecipeFinalNotePromptState,
+            RecipeStates.FINAL_NOTE_REPORT: RecipeFinalNoteRecordState,
+            RecipeStates.REPORT_COMPILATION: RecipeReportCompilationState,
         }
 
         if state not in children:
@@ -556,12 +556,12 @@ class RecipieState(State):
         return children[state](**kwargs)
 
 
-class RecipiePromptState(RecipieState):
+class RecipePromptState(RecipeState):
     def __init__(
             self,
             step: OrcaStep,
             prompt: str,
-            next_state: RecipieStates
+            next_state: RecipeStates
     ) -> None:
         super().__init__(step=step)
 
@@ -605,16 +605,16 @@ class RecipiePromptState(RecipieState):
         return Transition(next_state=self._next_state)
 
 
-class RecipieReportState(RecipieState):
+class RecipeReportState(RecipeState):
     def __init__(
             self,
             step: RhinoStep,
             listening_prompt: str,
             expected_intent: str,
             success_prompt: Callable[[Dict[str, Any]], str],
-            success_next_state: RecipieStates,
+            success_next_state: RecipeStates,
             failure_prompt: Callable[[Dict[str, Any]], str],
-            failure_next_state: RecipieStates,
+            failure_next_state: RecipeStates,
             success_next_state_kwargs: Optional[Dict[str, Any]] = None,
             failure_next_state_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
@@ -661,7 +661,7 @@ class RecipieReportState(RecipieState):
                 next_state_kwargs=self._failure_next_state_kwargs)
 
 
-class RecipieStandbyState(RecipieState):
+class RecipeStandbyState(RecipeState):
     def __init__(self, step: PorcupineStep) -> None:
         super().__init__(step=step)
 
@@ -682,102 +682,102 @@ class RecipieStandbyState(RecipieState):
         event.set()
         thread.join()
 
-        return Transition(next_state=RecipieStates.IDENTIFY_UNIT_PROMPT)
+        return Transition(next_state=RecipeStates.IDENTIFY_UNIT_PROMPT)
 
 
-class RecipieIdentifyUnitPromptState(RecipiePromptState):
+class RecipeIdentifyUnitPromptState(RecipePromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
             prompt="What's the unit ID?",
-            next_state=RecipieStates.IDENTIFY_UNIT_REPORT)
+            next_state=RecipeStates.IDENTIFY_UNIT_REPORT)
 
 
-class RecipieIdentifyUnitReportState(RecipieReportState):
+class RecipeIdentifyUnitReportState(RecipeReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
             listening_prompt="Listening for unit ID",
             expected_intent='identifyUnit',
             success_prompt=lambda x: f"Unit ID is {x['slots']['unitId']}.",
-            success_next_state=RecipieStates.CHECK_OIL_PROMPT,
+            success_next_state=RecipeStates.CHECK_OIL_PROMPT,
             failure_prompt=lambda x: "Failed to capture unit ID. Retrying...",
-            failure_next_state=RecipieStates.IDENTIFY_UNIT_PROMPT,
+            failure_next_state=RecipeStates.IDENTIFY_UNIT_PROMPT,
             failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the unit ID again?"})
 
 
-class RecipieCheckOilPromptState(RecipiePromptState):
+class RecipeCheckOilPromptState(RecipePromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
             prompt="What's the oil level?",
-            next_state=RecipieStates.CHECK_OIL_REPORT)
+            next_state=RecipeStates.CHECK_OIL_REPORT)
 
 
-class RecipieCheckOilReportState(RecipieReportState):
+class RecipeCheckOilReportState(RecipeReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
             listening_prompt="Listening for oil status",
             expected_intent='reportOilCondition',
             success_prompt=lambda x: f"Oil level is {x['slots']['fluidCondition']}.",
-            success_next_state=RecipieStates.CHECK_TIRE_PROMPT,
+            success_next_state=RecipeStates.CHECK_TIRE_PROMPT,
             failure_prompt=lambda x: "Failed to capture oil condition. Retrying...",
-            failure_next_state=RecipieStates.CHECK_OIL_PROMPT,
+            failure_next_state=RecipeStates.CHECK_OIL_PROMPT,
             failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the oil level again?"})
 
 
-class RecipieCheckTirePromptState(RecipiePromptState):
+class RecipeCheckTirePromptState(RecipePromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
             prompt="What's the tire condition?",
-            next_state=RecipieStates.CHECK_TIRE_REPORT)
+            next_state=RecipeStates.CHECK_TIRE_REPORT)
 
 
-class RecipieCheckTireReportState(RecipieReportState):
+class RecipeCheckTireReportState(RecipeReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
             listening_prompt="Listening for tire condition",
             expected_intent='reportTireCondition',
             success_prompt=lambda x: f"Tire condition is {x['slots']['tireCondition']}.",
-            success_next_state=RecipieStates.CHECK_SERVICE_STATUS_PROMPT,
+            success_next_state=RecipeStates.CHECK_SERVICE_STATUS_PROMPT,
             failure_prompt=lambda x: "Failed to capture tire condition. Retrying...",
-            failure_next_state=RecipieStates.CHECK_TIRE_PROMPT,
+            failure_next_state=RecipeStates.CHECK_TIRE_PROMPT,
             failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the tire condition again?"})
 
 
-class RecipieCheckServiceStatusPromptState(RecipiePromptState):
+class RecipeCheckServiceStatusPromptState(RecipePromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
             prompt="What's the vehicle status?",
-            next_state=RecipieStates.CHECK_SERVICE_STATUS_REPORT)
+            next_state=RecipeStates.CHECK_SERVICE_STATUS_REPORT)
 
 
-class RecipieCheckServiceStatusReportState(RecipieReportState):
+class RecipeCheckServiceStatusReportState(RecipeReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
             listening_prompt="Listening for vehicle status",
             expected_intent='reportServiceStatus',
             success_prompt=lambda x: f"Vehicle status is {x['slots']['serviceStatus']}.",
-            success_next_state=RecipieStates.FINAL_NOTE_PROMPT,
+            success_next_state=RecipeStates.FINAL_NOTE_PROMPT,
             failure_prompt=lambda x: "Failed to capture vehicle status. Retrying...",
-            failure_next_state=RecipieStates.CHECK_SERVICE_STATUS_PROMPT,
+            failure_next_state=RecipeStates.CHECK_SERVICE_STATUS_PROMPT,
             failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the vehicle status again?"})
 
 
-class RecipieFinalNotePromptState(RecipiePromptState):
+class RecipeFinalNotePromptState(RecipePromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
             prompt="Please provide final notes.",
-            next_state=RecipieStates.FINAL_NOTE_REPORT)
+            next_state=RecipeStates.FINAL_NOTE_REPORT)
 
 
-class RecipieFinalNoteRecordState(RecipieState):
+class RecipeFinalNoteRecordState(RecipeState):
     def __init__(self, step: CheetahStep) -> None:
         super().__init__(step=step)
 
@@ -808,10 +808,10 @@ class RecipieFinalNoteRecordState(RecipieState):
         text_event.set()
         text_thread.join()
 
-        return Transition(outcome=transcription, next_state=RecipieStates.REPORT_COMPILATION)
+        return Transition(outcome=transcription, next_state=RecipeStates.REPORT_COMPILATION)
 
 
-class RecipieReportCompilationState(RecipieState):
+class RecipeReportCompilationState(RecipeState):
     def __init__(self) -> None:
         super().__init__()
 
@@ -822,19 +822,19 @@ class RecipieReportCompilationState(RecipieState):
     ) -> Transition:
         print("\n\nInspection Report:")
         for state, outcome in outcomes:
-            if state == RecipieStates.IDENTIFY_UNIT_REPORT:
+            if state == RecipeStates.IDENTIFY_UNIT_REPORT:
                 if outcome['is_understood'] and outcome['intent'] == 'identifyUnit':
                     print(f"Unit ID: {outcome['slots']['unitId']}")
-            elif state == RecipieStates.CHECK_OIL_REPORT:
+            elif state == RecipeStates.CHECK_OIL_REPORT:
                 if outcome['is_understood'] and outcome['intent'] == 'reportOilCondition':
                     print(f"Oil: {outcome['slots']['fluidCondition']}")
-            elif state == RecipieStates.CHECK_TIRE_REPORT:
+            elif state == RecipeStates.CHECK_TIRE_REPORT:
                 if outcome['is_understood'] and outcome['intent'] == 'reportTireCondition':
                     print(f"Tires: {outcome['slots']['tireCondition']}")
-            elif state == RecipieStates.CHECK_SERVICE_STATUS_REPORT:
+            elif state == RecipeStates.CHECK_SERVICE_STATUS_REPORT:
                 if outcome['is_understood'] and outcome['intent'] == 'reportServiceStatus':
                     print(f"Vehicle Status: {outcome['slots']['serviceStatus']}")
-            elif state == RecipieStates.FINAL_NOTE_REPORT:
+            elif state == RecipeStates.FINAL_NOTE_REPORT:
                 print(f"Note: {outcome['text']}")
         return Transition()
 
@@ -861,27 +861,27 @@ def main() -> None:
 
     workflow = Workflow(
         steps={
-            RecipieSteps.STANDBY: (Steps.PORCUPINE, {'keyword_path': keyword_path}),
-            RecipieSteps.PROMPT_USER: (Steps.ORCA, None),
-            RecipieSteps.RECORD_USER: (Steps.RHINO, {'context_path': context_path}),
-            RecipieSteps.TRANSCRIBE_USER: (Steps.CHEETAH, None)
+            RecipeSteps.STANDBY: (Steps.PORCUPINE, {'keyword_path': keyword_path}),
+            RecipeSteps.PROMPT_USER: (Steps.ORCA, None),
+            RecipeSteps.RECORD_USER: (Steps.RHINO, {'context_path': context_path}),
+            RecipeSteps.TRANSCRIBE_USER: (Steps.CHEETAH, None)
         },
-        state_enum=RecipieStates,
-        state_subclass=RecipieState,
+        state_enum=RecipeStates,
+        state_subclass=RecipeState,
         state_steps={
-            RecipieStates.STANDBY: RecipieSteps.STANDBY,
-            RecipieStates.IDENTIFY_UNIT_PROMPT: RecipieSteps.PROMPT_USER,
-            RecipieStates.IDENTIFY_UNIT_REPORT: RecipieSteps.RECORD_USER,
-            RecipieStates.CHECK_OIL_PROMPT: RecipieSteps.PROMPT_USER,
-            RecipieStates.CHECK_OIL_REPORT: RecipieSteps.RECORD_USER,
-            RecipieStates.CHECK_TIRE_PROMPT: RecipieSteps.PROMPT_USER,
-            RecipieStates.CHECK_TIRE_REPORT: RecipieSteps.RECORD_USER,
-            RecipieStates.CHECK_SERVICE_STATUS_PROMPT: RecipieSteps.PROMPT_USER,
-            RecipieStates.CHECK_SERVICE_STATUS_REPORT: RecipieSteps.RECORD_USER,
-            RecipieStates.FINAL_NOTE_PROMPT: RecipieSteps.PROMPT_USER,
-            RecipieStates.FINAL_NOTE_REPORT: RecipieSteps.TRANSCRIBE_USER,
+            RecipeStates.STANDBY: RecipeSteps.STANDBY,
+            RecipeStates.IDENTIFY_UNIT_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.IDENTIFY_UNIT_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.CHECK_OIL_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.CHECK_OIL_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.CHECK_TIRE_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.CHECK_TIRE_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.CHECK_SERVICE_STATUS_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.CHECK_SERVICE_STATUS_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.FINAL_NOTE_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.FINAL_NOTE_REPORT: RecipeSteps.TRANSCRIBE_USER,
         },
-        start_state=RecipieStates.STANDBY,
+        start_state=RecipeStates.STANDBY,
         access_key=access_key)
 
     workflow.run()

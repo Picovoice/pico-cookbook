@@ -34,10 +34,12 @@ psutil
 pvbat
 pvcheetah
 pveagle
+pvkoala
 pvleopard
 pvorca
 pvporcupine
 pvrecorder
+pvrhino
 pvspeaker
 pvzebra
 samplerate
@@ -47,6 +49,7 @@ spannable
 subwin
 tock
 tock
+uids
 venv
 wakeword
 xcodeproj
