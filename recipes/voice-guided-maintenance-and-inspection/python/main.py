@@ -554,13 +554,29 @@ class IdentifyUnitReportState(State):
             outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
             **kwargs: Any
     ) -> Transition:
+        text = "Listening for unit ID"
+
+        def get_text() -> str:
+            return text
+
+        event, thread = print_async(get_text=get_text)
         inference = self._step.run()
 
         if not inference['is_understood'] or inference['intent'] != 'identifyUnit':
+            text = f"Failed to capture unit ID. Retrying."
+            sleep(.1)
+            event.set()
+            thread.join()
+
             return Transition(
                 next_state=IdentifyUnitPromptState.__name__,
                 next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the unit ID again?"})
         else:
+            text = f"{inference['slots']['unitId']}"
+            sleep(.1)
+            event.set()
+            thread.join()
+
             return Transition(outcome=inference, next_state=CheckOilPromptState.__name__)
 
 
