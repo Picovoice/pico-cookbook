@@ -293,7 +293,10 @@ class State(object):
     def __init__(self, step: Optional[Step] = None) -> None:
         self._step = step
 
-    def run(self, **kwargs: Any) -> Transition:
+    def run(
+            self,
+            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            **kwargs: Any) -> Transition:
         raise NotImplementedError()
 
     def __str__(self) -> str:
@@ -364,7 +367,11 @@ class StandbyState(State):
     def __init__(self, step: PorcupineStep) -> None:
         super().__init__(step=step)
 
-    def run(self) -> Transition:
+    def run(
+            self,
+            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            **kwargs: Any
+    ) -> Transition:
         self._step.run()
 
         return Transition(next_state=IdentifyUnitPromptState.__name__)
@@ -374,19 +381,27 @@ class IdentifyUnitPromptState(State):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(step=step)
 
-    def run(self, prompt: Optional[str] = None) -> Transition:
+    def run(
+            self,
+            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            prompt: Optional[str] = None
+    ) -> Transition:
         if prompt is None:
             prompt = "What's the unit ID?"
         self._step.run(prompt=prompt)
 
-        return Transition(next_state=IdentifyUnitRecordState.__name__)
+        return Transition(next_state=IdentifyUnitReportState.__name__)
 
 
-class IdentifyUnitRecordState(State):
+class IdentifyUnitReportState(State):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(step=step)
 
-    def run(self) -> Transition:
+    def run(
+            self,
+            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            **kwargs: Any
+    ) -> Transition:
         inference = self._step.run()
 
         if not inference['is_understood'] or inference['intent'] != 'identifyUnit':
@@ -401,19 +416,27 @@ class CheckOilPromptState(State):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(step=step)
 
-    def run(self, prompt: Optional[str] = None) -> Transition:
+    def run(
+            self,
+            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            prompt: Optional[str] = None
+    ) -> Transition:
         if prompt is None:
             prompt = "What's the oil level?"
         self._step.run(prompt=prompt)
 
-        return Transition(next_state=CheckOilRecordState.__name__)
+        return Transition(next_state=CheckOilReportState.__name__)
 
 
-class CheckOilRecordState(State):
+class CheckOilReportState(State):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(step=step)
 
-    def run(self) -> Transition:
+    def run(
+            self,
+            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            **kwargs: Any
+    ) -> Transition:
         inference = self._step.run()
 
         if not inference['is_understood'] or inference['intent'] != 'reportFluidCondition':
@@ -428,19 +451,27 @@ class CheckCoolantPromptState(State):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(step=step)
 
-    def run(self, prompt: Optional[str] = None) -> Transition:
+    def run(
+            self,
+            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            prompt: Optional[str] = None
+    ) -> Transition:
         if prompt is None:
             prompt = "What's the coolant level?"
         self._step.run(prompt=prompt)
 
-        return Transition(next_state=CheckCoolantRecordState.__name__)
+        return Transition(next_state=CheckCoolantReportState.__name__)
 
 
-class CheckCoolantRecordState(State):
+class CheckCoolantReportState(State):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(step=step)
 
-    def run(self) -> Transition:
+    def run(
+            self,
+            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            **kwargs: Any
+    ) -> Transition:
         inference = self._step.run()
 
         if not inference['is_understood'] or inference['intent'] != 'reportFluidCondition':
@@ -455,7 +486,11 @@ class FinalNotePromptState(State):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(step=step)
 
-    def run(self, prompt: Optional[str] = None) -> Transition:
+    def run(
+            self,
+            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            prompt: Optional[str] = None
+    ) -> Transition:
         if prompt is None:
             prompt = "Any final notes?"
         self._step.run(prompt=prompt)
@@ -467,10 +502,36 @@ class FinalNoteRecordState(State):
     def __init__(self, step: CheetahStep) -> None:
         super().__init__(step=step)
 
-    def run(self, prompt: Optional[str] = None) -> Transition:
+    def run(
+            self,
+            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            **kwargs: Any
+    ) -> Transition:
         transcription = self._step.run()
 
-        return Transition(outcome=transcription, next_state=None)
+        return Transition(outcome=transcription, next_state=ReportCompilationState.__name__)
+
+
+class ReportCompilationState(State):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def run(
+            self,
+            outcomes: Sequence[Tuple[str, Optional[Dict[str, Any]]]] = None,
+            **kwargs: Any
+    ) -> Transition:
+        print("Inspection Report")
+        for state, outcome in outcomes:
+            if state == 'IdentifyUnitReportState' and outcome['is_understood'] and outcome['intent'] == 'identifyUnit':
+                print(f"Unit ID: {outcome['slots']['unitId']}")
+            elif state == 'CheckOilReportState' and outcome['is_understood'] and outcome['intent'] == 'reportFluidCondition':
+                print(f"Oid: {outcome['slots']['fluidCondition']}")
+            elif state == 'CheckCoolantReportState' and outcome['is_understood'] and outcome['intent'] == 'reportFluidCondition':
+                print(f"Coolant: {outcome['slots']['fluidCondition']}")
+            elif state == 'FinalNoteRecordState':
+                print(f"Note: {outcome['text']}")
+        return Transition()
 
 
 def main() -> None:
@@ -503,11 +564,11 @@ def main() -> None:
         states={
             StandbyState.__name__: (StandbyState, 'Standby'),
             IdentifyUnitPromptState.__name__: (IdentifyUnitPromptState, 'PromptUser'),
-            IdentifyUnitRecordState.__name__: (IdentifyUnitRecordState, 'RecordUser'),
+            IdentifyUnitReportState.__name__: (IdentifyUnitReportState, 'RecordUser'),
             CheckOilPromptState.__name__: (CheckOilPromptState, 'PromptUser'),
-            CheckOilRecordState.__name__: (CheckOilRecordState, 'RecordUser'),
+            CheckOilReportState.__name__: (CheckOilReportState, 'RecordUser'),
             CheckCoolantPromptState.__name__: (CheckCoolantPromptState, 'PromptUser'),
-            CheckCoolantRecordState.__name__: (CheckCoolantRecordState, 'RecordUser'),
+            CheckCoolantReportState.__name__: (CheckCoolantReportState, 'RecordUser'),
             FinalNotePromptState.__name__: (FinalNotePromptState, 'PromptUser'),
             FinalNoteRecordState.__name__: (FinalNoteRecordState, 'TranscribeUser'),
         },
