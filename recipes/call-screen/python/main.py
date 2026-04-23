@@ -278,7 +278,7 @@ def main() -> None:
 
             def get_text():
                 with text_lock:
-                    return f"[AI] Select one of the call-assist actions above"
+                    return "[AI] Select one of the call-assist actions above"
 
             text_event, text_thread = print_async(get_text)
 
