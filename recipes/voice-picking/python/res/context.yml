@@ -1,68 +1,25 @@
 context:
   expressions:
-    identifyPicker:
-      - "$pickerId:pickerId"
+    confirmLocation:
+      - "$checkDigit:checkDigit"
+      - "check digits are $checkDigit:checkDigit"
 
-    pickItem:
-      - "$itemName:itemName"
-      - "(the) item is $itemName:itemName"
-      - "picking $itemName:itemName"
+    confirmPickedQuantity:
+      - "picked $pv.SingleDigitInteger:quantity"
 
-    confirmQuantity:
-      - "$quantity:quantity"
-      - "picked $quantity:quantity"
-      - "quantity is $quantity:quantity"
-      - "(the) quantity is $quantity:quantity"
+    reportShortPick:
+      - "short pick $pv.SingleDigitInteger:quantity"
 
-    confirmBin:
-      - "$binId:binId"
-      - "bin $binId:binId"
-      - "going to $binId:binId"
-      - "(the) bin is $binId:binId"
+    reportDamagedItem:
+      - "damaged item"
 
-    reportPickStatus:
-      - "$pickStatus:pickStatus"
-      - "(the) status is $pickStatus:pickStatus"
-      - "pick status is $pickStatus:pickStatus"
+    reportLocationEmpty:
+      - "location empty"
 
   slots:
-    pickerId:
-      - alex
-      - jordan
-      - taylor
-      - casey
-      - morgan
-      - riley
-
-    itemName:
-      - blue widget
-      - red widget
-      - packing tape
-      - shipping label roll
-      - battery pack
-      - safety gloves
-
-    quantity:
-      - one
-      - two
-      - three
-      - four
-      - five
-      - six
-      - ten
-
-    binId:
-      - bin alpha
-      - bin bravo
-      - bin charlie
-      - bin delta
-      - zone one
-      - zone two
-
-    pickStatus:
-      - complete
-      - short pick
-      - item missing
-      - damaged item
+    checkDigit:
+      - one nine
+      - four two
+      - five seven
 
   macros:

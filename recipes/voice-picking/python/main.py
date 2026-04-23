@@ -514,16 +514,22 @@ class RecipeSteps(Enum):
 
 class RecipeStates(Enum):
     STANDBY = "Standby"
-    IDENTIFY_PICKER_PROMPT = "IdentifyPickerPrompt"
-    IDENTIFY_PICKER_REPORT = "IdentifyPickerReport"
-    PICK_ITEM_PROMPT = "PickItemPrompt"
-    PICK_ITEM_REPORT = "PickItemReport"
-    CONFIRM_QUANTITY_PROMPT = "ConfirmQuantityPrompt"
-    CONFIRM_QUANTITY_REPORT = "ConfirmQuantityReport"
-    CONFIRM_BIN_PROMPT = "ConfirmBinPrompt"
-    CONFIRM_BIN_REPORT = "ConfirmBinReport"
-    CONFIRM_STATUS_PROMPT = "ConfirmStatusPrompt"
-    CONFIRM_STATUS_REPORT = "ConfirmStatusReport"
+
+    TASK_1_LOCATION_PROMPT = "Task1LocationPrompt"
+    TASK_1_LOCATION_REPORT = "Task1LocationReport"
+    TASK_1_PICK_PROMPT = "Task1PickPrompt"
+    TASK_1_PICK_REPORT = "Task1PickReport"
+
+    TASK_2_LOCATION_PROMPT = "Task2LocationPrompt"
+    TASK_2_LOCATION_REPORT = "Task2LocationReport"
+    TASK_2_PICK_PROMPT = "Task2PickPrompt"
+    TASK_2_PICK_REPORT = "Task2PickReport"
+
+    TASK_3_LOCATION_PROMPT = "Task3LocationPrompt"
+    TASK_3_LOCATION_REPORT = "Task3LocationReport"
+    TASK_3_PICK_PROMPT = "Task3PickPrompt"
+    TASK_3_PICK_REPORT = "Task3PickReport"
+
     COMPLETE_PROMPT = "CompletePrompt"
 
 
@@ -536,16 +542,22 @@ class RecipeState(State):
     ) -> "RecipeState":
         children = {
             RecipeStates.STANDBY: RecipeStandbyState,
-            RecipeStates.IDENTIFY_PICKER_PROMPT: RecipeIdentifyPickerPromptState,
-            RecipeStates.IDENTIFY_PICKER_REPORT: RecipeIdentifyPickerReportState,
-            RecipeStates.PICK_ITEM_PROMPT: RecipePickItemPromptState,
-            RecipeStates.PICK_ITEM_REPORT: RecipePickItemReportState,
-            RecipeStates.CONFIRM_QUANTITY_PROMPT: RecipeConfirmQuantityPromptState,
-            RecipeStates.CONFIRM_QUANTITY_REPORT: RecipeConfirmQuantityReportState,
-            RecipeStates.CONFIRM_BIN_PROMPT: RecipeConfirmBinPromptState,
-            RecipeStates.CONFIRM_BIN_REPORT: RecipeConfirmBinReportState,
-            RecipeStates.CONFIRM_STATUS_PROMPT: RecipeConfirmStatusPromptState,
-            RecipeStates.CONFIRM_STATUS_REPORT: RecipeConfirmStatusReportState,
+
+            RecipeStates.TASK_1_LOCATION_PROMPT: RecipeTask1LocationPromptState,
+            RecipeStates.TASK_1_LOCATION_REPORT: RecipeTask1LocationReportState,
+            RecipeStates.TASK_1_PICK_PROMPT: RecipeTask1PickPromptState,
+            RecipeStates.TASK_1_PICK_REPORT: RecipeTask1PickReportState,
+
+            RecipeStates.TASK_2_LOCATION_PROMPT: RecipeTask2LocationPromptState,
+            RecipeStates.TASK_2_LOCATION_REPORT: RecipeTask2LocationReportState,
+            RecipeStates.TASK_2_PICK_PROMPT: RecipeTask2PickPromptState,
+            RecipeStates.TASK_2_PICK_REPORT: RecipeTask2PickReportState,
+
+            RecipeStates.TASK_3_LOCATION_PROMPT: RecipeTask3LocationPromptState,
+            RecipeStates.TASK_3_LOCATION_REPORT: RecipeTask3LocationReportState,
+            RecipeStates.TASK_3_PICK_PROMPT: RecipeTask3PickPromptState,
+            RecipeStates.TASK_3_PICK_REPORT: RecipeTask3PickReportState,
+
             RecipeStates.COMPLETE_PROMPT: RecipeCompletePromptState,
         }
 
@@ -604,62 +616,6 @@ class RecipePromptState(RecipeState):
         return Transition(next_state=self._next_state)
 
 
-class RecipeReportState(RecipeState):
-    def __init__(
-            self,
-            step: RhinoStep,
-            listening_prompt: str,
-            expected_intent: str,
-            success_prompt: Callable[[Dict[str, Any]], str],
-            success_next_state: RecipeStates,
-            failure_prompt: Callable[[Dict[str, Any]], str],
-            failure_next_state: RecipeStates,
-            success_next_state_kwargs: Optional[Dict[str, Any]] = None,
-            failure_next_state_kwargs: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        super().__init__(step=step)
-
-        self._listening_prompt = listening_prompt
-        self._expected_intent = expected_intent
-        self._success_prompt = success_prompt
-        self._success_next_state = success_next_state
-        self._failure_prompt = failure_prompt
-        self._failure_next_state = failure_next_state
-        self._success_next_state_kwargs = success_next_state_kwargs
-        self._failure_next_state_kwargs = failure_next_state_kwargs
-
-    def run(
-            self,
-            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
-            **kwargs: Any
-    ) -> Transition:
-        text = self._listening_prompt
-
-        def get_text() -> str:
-            return text
-
-        event, thread = print_async(get_text=get_text)
-        inference = self._step.run()
-
-        if inference['is_understood'] and inference['intent'] == self._expected_intent:
-            text = self._success_prompt(inference)
-            sleep(.1)
-            event.set()
-            thread.join()
-
-            return Transition(outcome=inference, next_state=self._success_next_state)
-        else:
-            text = self._failure_prompt(inference)
-            sleep(.1)
-            event.set()
-            thread.join()
-
-            return Transition(
-                outcome=inference,
-                next_state=self._failure_next_state,
-                next_state_kwargs=self._failure_next_state_kwargs)
-
-
 class RecipeStandbyState(RecipeState):
     def __init__(self, step: PorcupineStep) -> None:
         super().__init__(step=step)
@@ -681,119 +637,268 @@ class RecipeStandbyState(RecipeState):
         event.set()
         thread.join()
 
-        return Transition(next_state=RecipeStates.IDENTIFY_PICKER_PROMPT)
+        return Transition(next_state=RecipeStates.TASK_1_LOCATION_PROMPT)
 
 
-class RecipeIdentifyPickerPromptState(RecipePromptState):
+class RecipeLocationPromptState(RecipePromptState):
+    def __init__(
+            self,
+            step: OrcaStep,
+            prompt: str,
+            next_state: RecipeStates
+    ) -> None:
+        super().__init__(step=step, prompt=prompt, next_state=next_state)
+
+
+class RecipeLocationReportState(RecipeState):
+    def __init__(
+            self,
+            step: RhinoStep,
+            expected_check_digit: str,
+            success_next_state: RecipeStates,
+            failure_next_state: RecipeStates,
+            retry_prompt: str,
+    ) -> None:
+        super().__init__(step=step)
+        self._expected_check_digit = expected_check_digit
+        self._success_next_state = success_next_state
+        self._failure_next_state = failure_next_state
+        self._retry_prompt = retry_prompt
+
+    def run(
+            self,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
+            **kwargs: Any
+    ) -> Transition:
+        text = "Listening for location confirmation"
+
+        def get_text() -> str:
+            return text
+
+        event, thread = print_async(get_text=get_text)
+        inference = self._step.run()
+
+        if (
+                inference is not None and
+                inference['is_understood'] and
+                inference['intent'] == 'confirmLocation' and
+                inference['slots'].get('checkDigit') == self._expected_check_digit):
+            text = f"Location {inference['slots']['checkDigit']} confirmed."
+            sleep(.1)
+            event.set()
+            thread.join()
+
+            return Transition(outcome=inference, next_state=self._success_next_state)
+
+        if (
+                inference is not None and
+                inference['is_understood'] and
+                inference['intent'] == 'confirmLocation'):
+            text = f"Location check digit {inference['slots'].get('checkDigit', '')} does not match. Retrying..."
+        else:
+            text = "Failed to capture location confirmation. Retrying..."
+
+        sleep(.1)
+        event.set()
+        thread.join()
+
+        return Transition(
+            outcome=inference,
+            next_state=self._failure_next_state,
+            next_state_kwargs={'prompt': self._retry_prompt})
+
+
+class RecipePickPromptState(RecipePromptState):
+    def __init__(
+            self,
+            step: OrcaStep,
+            prompt: str,
+            next_state: RecipeStates
+    ) -> None:
+        super().__init__(step=step, prompt=prompt, next_state=next_state)
+
+
+class RecipePickReportState(RecipeState):
+    def __init__(
+            self,
+            step: RhinoStep,
+            success_next_state: RecipeStates,
+            failure_next_state: RecipeStates,
+            retry_prompt: str,
+    ) -> None:
+        super().__init__(step=step)
+        self._success_next_state = success_next_state
+        self._failure_next_state = failure_next_state
+        self._retry_prompt = retry_prompt
+
+    @staticmethod
+    def _format_success(inference: Dict[str, Any]) -> str:
+        intent = inference['intent']
+        slots = inference['slots']
+
+        if intent == 'confirmPickedQuantity':
+            return f"Recorded picked {slots['quantity']}. Proceed to next location."
+        elif intent == 'reportShortPick':
+            return f"Recorded short pick {slots['quantity']}. Proceed to next location."
+        elif intent == 'reportDamagedItem':
+            return "Recorded damaged item. Set aside the item and proceed to next location."
+        elif intent == 'reportLocationEmpty':
+            return "Recorded empty location. Proceed to next location."
+        else:
+            return "Pick result recorded."
+
+    def run(
+            self,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
+            **kwargs: Any
+    ) -> Transition:
+        text = "Listening for pick result"
+
+        def get_text() -> str:
+            return text
+
+        event, thread = print_async(get_text=get_text)
+        inference = self._step.run()
+
+        valid_intents = {
+            'confirmPickedQuantity',
+            'reportShortPick',
+            'reportDamagedItem',
+            'reportLocationEmpty',
+        }
+
+        if (
+                inference is not None and
+                inference['is_understood'] and
+                inference['intent'] in valid_intents):
+            text = self._format_success(inference)
+            sleep(.1)
+            event.set()
+            thread.join()
+
+            return Transition(outcome=inference, next_state=self._success_next_state)
+
+        text = "Failed to capture pick result. Retrying..."
+        sleep(.1)
+        event.set()
+        thread.join()
+
+        return Transition(
+            outcome=inference,
+            next_state=self._failure_next_state,
+            next_state_kwargs={'prompt': self._retry_prompt})
+
+
+class RecipeTask1LocationPromptState(RecipeLocationPromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
-            prompt="Who's picking this order?",
-            next_state=RecipeStates.IDENTIFY_PICKER_REPORT)
+            prompt="Go to bin bravo. Confirm location. Check digits are four two.",
+            next_state=RecipeStates.TASK_1_LOCATION_REPORT)
 
 
-class RecipeIdentifyPickerReportState(RecipeReportState):
+class RecipeTask1LocationReportState(RecipeLocationReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
-            listening_prompt="Listening for picker ID",
-            expected_intent='identifyPicker',
-            success_prompt=lambda x: f"Picker is {x['slots']['pickerId']}.",
-            success_next_state=RecipeStates.PICK_ITEM_PROMPT,
-            failure_prompt=lambda x: "Failed to capture picker ID. Retrying...",
-            failure_next_state=RecipeStates.IDENTIFY_PICKER_PROMPT,
-            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. Who's picking this order?"})
+            expected_check_digit='four two',
+            success_next_state=RecipeStates.TASK_1_PICK_PROMPT,
+            failure_next_state=RecipeStates.TASK_1_LOCATION_PROMPT,
+            retry_prompt="Please confirm location for bin bravo. Check digits are four two.")
 
 
-class RecipePickItemPromptState(RecipePromptState):
+class RecipeTask1PickPromptState(RecipePickPromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
-            prompt="What item are you picking?",
-            next_state=RecipeStates.PICK_ITEM_REPORT)
+            prompt="Pick three blue widgets.",
+            next_state=RecipeStates.TASK_1_PICK_REPORT)
 
 
-class RecipePickItemReportState(RecipeReportState):
+class RecipeTask1PickReportState(RecipePickReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
-            listening_prompt="Listening for item",
-            expected_intent='pickItem',
-            success_prompt=lambda x: f"Picking {x['slots']['itemName']}.",
-            success_next_state=RecipeStates.CONFIRM_QUANTITY_PROMPT,
-            failure_prompt=lambda x: "Failed to capture item. Retrying...",
-            failure_next_state=RecipeStates.PICK_ITEM_PROMPT,
-            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What item are you picking?"})
+            success_next_state=RecipeStates.TASK_2_LOCATION_PROMPT,
+            failure_next_state=RecipeStates.TASK_1_PICK_PROMPT,
+            retry_prompt="Please report the result for picking three blue widgets.")
 
 
-class RecipeConfirmQuantityPromptState(RecipePromptState):
+class RecipeTask2LocationPromptState(RecipeLocationPromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
-            prompt="What quantity did you pick?",
-            next_state=RecipeStates.CONFIRM_QUANTITY_REPORT)
+            prompt="Go to bin delta. Confirm location. Check digits are five seven.",
+            next_state=RecipeStates.TASK_2_LOCATION_REPORT)
 
 
-class RecipeConfirmQuantityReportState(RecipeReportState):
+class RecipeTask2LocationReportState(RecipeLocationReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
-            listening_prompt="Listening for quantity",
-            expected_intent='confirmQuantity',
-            success_prompt=lambda x: f"Quantity is {x['slots']['quantity']}.",
-            success_next_state=RecipeStates.CONFIRM_BIN_PROMPT,
-            failure_prompt=lambda x: "Failed to capture quantity. Retrying...",
-            failure_next_state=RecipeStates.CONFIRM_QUANTITY_PROMPT,
-            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What quantity did you pick?"})
+            expected_check_digit='five seven',
+            success_next_state=RecipeStates.TASK_2_PICK_PROMPT,
+            failure_next_state=RecipeStates.TASK_2_LOCATION_PROMPT,
+            retry_prompt="Please confirm location for bin delta. Check digits are five seven.")
 
 
-class RecipeConfirmBinPromptState(RecipePromptState):
+class RecipeTask2PickPromptState(RecipePickPromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
-            prompt="Which bin is it going to?",
-            next_state=RecipeStates.CONFIRM_BIN_REPORT)
+            prompt="Pick five battery packs.",
+            next_state=RecipeStates.TASK_2_PICK_REPORT)
 
 
-class RecipeConfirmBinReportState(RecipeReportState):
+class RecipeTask2PickReportState(RecipePickReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
-            listening_prompt="Listening for destination bin",
-            expected_intent='confirmBin',
-            success_prompt=lambda x: f"Destination bin is {x['slots']['binId']}.",
-            success_next_state=RecipeStates.CONFIRM_STATUS_PROMPT,
-            failure_prompt=lambda x: "Failed to capture destination bin. Retrying...",
-            failure_next_state=RecipeStates.CONFIRM_BIN_PROMPT,
-            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. Which bin is it going to?"})
+            success_next_state=RecipeStates.TASK_3_LOCATION_PROMPT,
+            failure_next_state=RecipeStates.TASK_2_PICK_PROMPT,
+            retry_prompt="Please report the result for picking five battery packs.")
 
 
-class RecipeConfirmStatusPromptState(RecipePromptState):
+class RecipeTask3LocationPromptState(RecipeLocationPromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
-            prompt="What's the pick status?",
-            next_state=RecipeStates.CONFIRM_STATUS_REPORT)
+            prompt="Go to zone one. Confirm location. Check digits are one nine.",
+            next_state=RecipeStates.TASK_3_LOCATION_REPORT)
 
 
-class RecipeConfirmStatusReportState(RecipeReportState):
+class RecipeTask3LocationReportState(RecipeLocationReportState):
     def __init__(self, step: RhinoStep) -> None:
         super().__init__(
             step=step,
-            listening_prompt="Listening for pick status",
-            expected_intent='reportPickStatus',
-            success_prompt=lambda x: f"Pick status is {x['slots']['pickStatus']}.",
+            expected_check_digit='one nine',
+            success_next_state=RecipeStates.TASK_3_PICK_PROMPT,
+            failure_next_state=RecipeStates.TASK_3_LOCATION_PROMPT,
+            retry_prompt="Please confirm location for zone one. Check digits are one nine.")
+
+
+class RecipeTask3PickPromptState(RecipePickPromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="Pick one safety gloves.",
+            next_state=RecipeStates.TASK_3_PICK_REPORT)
+
+
+class RecipeTask3PickReportState(RecipePickReportState):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(
+            step=step,
             success_next_state=RecipeStates.COMPLETE_PROMPT,
-            failure_prompt=lambda x: "Failed to capture pick status. Retrying...",
-            failure_next_state=RecipeStates.CONFIRM_STATUS_PROMPT,
-            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What's the pick status?"})
+            failure_next_state=RecipeStates.TASK_3_PICK_PROMPT,
+            retry_prompt="Please report the result for picking one safety gloves.")
 
 
 class RecipeCompletePromptState(RecipePromptState):
     def __init__(self, step: OrcaStep) -> None:
         super().__init__(
             step=step,
-            prompt="Pick recorded. Ready for the next item.",
+            prompt="Picking workflow complete.",
             next_state=None)
 
 
@@ -827,16 +932,22 @@ def main() -> None:
         state_subclass=RecipeState,
         state_steps={
             RecipeStates.STANDBY: RecipeSteps.STANDBY,
-            RecipeStates.IDENTIFY_PICKER_PROMPT: RecipeSteps.PROMPT_USER,
-            RecipeStates.IDENTIFY_PICKER_REPORT: RecipeSteps.RECORD_USER,
-            RecipeStates.PICK_ITEM_PROMPT: RecipeSteps.PROMPT_USER,
-            RecipeStates.PICK_ITEM_REPORT: RecipeSteps.RECORD_USER,
-            RecipeStates.CONFIRM_QUANTITY_PROMPT: RecipeSteps.PROMPT_USER,
-            RecipeStates.CONFIRM_QUANTITY_REPORT: RecipeSteps.RECORD_USER,
-            RecipeStates.CONFIRM_BIN_PROMPT: RecipeSteps.PROMPT_USER,
-            RecipeStates.CONFIRM_BIN_REPORT: RecipeSteps.RECORD_USER,
-            RecipeStates.CONFIRM_STATUS_PROMPT: RecipeSteps.PROMPT_USER,
-            RecipeStates.CONFIRM_STATUS_REPORT: RecipeSteps.RECORD_USER,
+
+            RecipeStates.TASK_1_LOCATION_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.TASK_1_LOCATION_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.TASK_1_PICK_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.TASK_1_PICK_REPORT: RecipeSteps.RECORD_USER,
+
+            RecipeStates.TASK_2_LOCATION_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.TASK_2_LOCATION_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.TASK_2_PICK_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.TASK_2_PICK_REPORT: RecipeSteps.RECORD_USER,
+
+            RecipeStates.TASK_3_LOCATION_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.TASK_3_LOCATION_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.TASK_3_PICK_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.TASK_3_PICK_REPORT: RecipeSteps.RECORD_USER,
+
             RecipeStates.COMPLETE_PROMPT: RecipeSteps.PROMPT_USER,
         },
         start_state=RecipeStates.STANDBY,
