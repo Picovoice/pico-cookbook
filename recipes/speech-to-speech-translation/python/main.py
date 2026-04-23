@@ -1,4 +1,5 @@
 import os
+import shutil
 import string
 import sys
 from argparse import ArgumentParser
@@ -80,30 +81,67 @@ class LanguagePairs(Enum):
 def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str = '\n') -> Tuple[Event, Thread]:
     stop_event = Event()
 
+    def wrap_text(text: str, width: int) -> list[str]:
+        text = text.replace('\n', ' ')
+        if width <= 0:
+            return ['']
+        return [text[i:i + width] for i in range(0, len(text), width)] or ['']
+
+    def clear_block(num_lines: int) -> None:
+        if num_lines <= 0:
+            return
+
+        sys.stdout.write('\r')
+        if num_lines > 1:
+            sys.stdout.write(f'\033[{num_lines - 1}F')
+
+        for i in range(num_lines):
+            sys.stdout.write('\033[2K')
+            if i < num_lines - 1:
+                sys.stdout.write('\n')
+
+        if num_lines > 1:
+            sys.stdout.write(f'\033[{num_lines - 1}F')
+        sys.stdout.write('\r')
+
     def run() -> None:
         dots_list = [" .  ", " .. ", " ...", "  ..", "   .", "    "]
         i = 0
+        prev_num_lines = 0
 
-        # Hide the cursor.
         sys.stdout.write("\033[?25l")
         sys.stdout.flush()
 
-        residue = 0
+        try:
+            while not stop_event.is_set():
+                text = get_text()
+                dots = dots_list[i]
 
-        while not stop_event.is_set():
+                width = max(1, shutil.get_terminal_size(fallback=(80, 24)).columns - 1)
+                lines = wrap_text(f"{text}{dots}", width)
+                output = '\n'.join(lines)
+
+                clear_block(prev_num_lines)
+                sys.stdout.write(output)
+                sys.stdout.flush()
+
+                prev_num_lines = len(lines)
+                i = (i + 1) % len(dots_list)
+                sleep(refresh_sec)
+
             text = get_text()
-            dots = dots_list[i]
-            sys.stdout.write(f"\r{' ' * residue}")
-            sys.stdout.write(f"\r{text}{dots}")
+            width = max(1, shutil.get_terminal_size(fallback=(80, 24)).columns - 1)
+            lines = wrap_text(f"{text}    ", width)
+            output = '\n'.join(lines)
+
+            clear_block(prev_num_lines)
+            sys.stdout.write(output)
+            sys.stdout.write(end)
             sys.stdout.flush()
-            residue = len(text) + len(dots)
 
-            i = (i + 1) % len(dots_list)
-            sleep(refresh_sec)
-
-        text = get_text()
-        sys.stdout.write(f"\r{text}    {end}")
-        sys.stdout.flush()
+        finally:
+            sys.stdout.write("\033[?25h")
+            sys.stdout.flush()
 
     thread = Thread(target=run, daemon=True)
     thread.start()
