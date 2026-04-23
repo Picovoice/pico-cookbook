@@ -646,11 +646,7 @@ class RecipeReportState(RecipeState):
         event, thread = print_async(get_text=get_text)
         inference = self._step.run()
 
-        if (
-            inference is not None
-            and inference['is_understood']
-            and inference['intent'] == self._expected_intent
-        ):
+        if inference is not None and inference['is_understood'] and inference['intent'] == self._expected_intent:
             text = self._success_prompt(inference)
             sleep(.1)
             event.set()
@@ -753,7 +749,10 @@ class RecipePatientConditionReportState(RecipeReportState):
             success_next_state=RecipeStates.DESTINATION_PROMPT,
             failure_prompt=lambda x: "Failed to capture patient condition. Retrying...",
             failure_next_state=RecipeStates.PATIENT_CONDITION_PROMPT,
-            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What is the patient condition again?"})
+            failure_next_state_kwargs={
+                'prompt': "I'm sorry, I didn't catch that. What is the patient condition again?"
+            }
+        )
 
 
 class RecipeDestinationPromptState(RecipePromptState):
@@ -862,11 +861,7 @@ class RecipeHandoffTimeReportState(RecipeReportState):
                 meridiem = inference['slots']['meridiem']
                 hour = self._HOUR_MAP[hour_word]
 
-                is_valid = (
-                    1 <= hour <= 12
-                    and 0 <= minute <= 59
-                    and meridiem in {'am', 'pm'}
-                )
+                is_valid = 1 <= hour <= 12 and 0 <= minute <= 59 and meridiem in {'am', 'pm'}
             except (KeyError, ValueError, TypeError):
                 is_valid = False
 

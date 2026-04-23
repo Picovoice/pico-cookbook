@@ -694,7 +694,8 @@ class RecipeTaskLocationReportState(RecipeState):
                 inference is not None
                 and inference['is_understood']
                 and inference['intent'] == 'confirmLocation'
-                and inference['slots'].get('checkDigit') == task.check_digit):
+                and inference['slots'].get('checkDigit') == task.check_digit
+        ):
             text = f"Location {inference['slots']['checkDigit']} confirmed."
             sleep(.1)
             event.set()
@@ -708,10 +709,7 @@ class RecipeTaskLocationReportState(RecipeState):
                     'task_index': task_index,
                 })
 
-        if (
-                inference is not None
-                and inference['is_understood']
-                and inference['intent'] == 'confirmLocation'):
+        if inference is not None and inference['is_understood'] and inference['intent'] == 'confirmLocation':
             text = f"Location check digit {inference['slots'].get('checkDigit', '')} does not match. Retrying..."
         else:
             text = "Failed to capture location confirmation. Retrying..."
@@ -792,10 +790,7 @@ class RecipeTaskPickReportState(RecipeState):
             'exitWorkflow',
         }
 
-        if (
-                inference is not None
-                and inference['is_understood']
-                and inference['intent'] in valid_intents):
+        if inference is not None and inference['is_understood'] and inference['intent'] in valid_intents:
             intent = inference['intent']
             slots = inference['slots']
 
