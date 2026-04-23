@@ -691,10 +691,10 @@ class RecipeTaskLocationReportState(RecipeState):
         inference = self._step.run()
 
         if (
-                inference is not None
-                and inference['is_understood']
-                and inference['intent'] == 'confirmLocation'
-                and inference['slots'].get('checkDigit') == task.check_digit
+                inference is not None and
+                inference['is_understood'] and
+                inference['intent'] == 'confirmLocation' and
+                inference['slots'].get('checkDigit') == task.check_digit
         ):
             text = f"Location {inference['slots']['checkDigit']} confirmed."
             sleep(.1)

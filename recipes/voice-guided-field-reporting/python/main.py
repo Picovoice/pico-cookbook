@@ -850,11 +850,7 @@ class RecipeHandoffTimeReportState(RecipeReportState):
         inference = self._step.run()
 
         is_valid = False
-        if (
-            inference is not None
-            and inference['is_understood']
-            and inference['intent'] == self._expected_intent
-        ):
+        if inference is not None and inference['is_understood'] and inference['intent'] == self._expected_intent:
             try:
                 hour_word = inference['slots']['hour']
                 minute = int(inference['slots']['minute'])
