@@ -525,6 +525,8 @@ class RecipeStates(Enum):
     DESTINATION_REPORT = "DestinationReport"
     HANDOFF_STATUS_PROMPT = "HandoffStatusPrompt"
     HANDOFF_STATUS_REPORT = "HandoffStatusReport"
+    HANDOFF_TIME_PROMPT = "HandoffTimePrompt"
+    HANDOFF_TIME_REPORT = "HandoffTimeReport"
     FINAL_NOTE_PROMPT = "FinalNotePrompt"
     FINAL_NOTE_REPORT = "FinalNoteReport"
     COMPLETE_PROMPT = "CompletePrompt"
@@ -549,6 +551,8 @@ class RecipeState(State):
             RecipeStates.DESTINATION_REPORT: RecipeDestinationReportState,
             RecipeStates.HANDOFF_STATUS_PROMPT: RecipeHandoffStatusPromptState,
             RecipeStates.HANDOFF_STATUS_REPORT: RecipeHandoffStatusReportState,
+            RecipeStates.HANDOFF_TIME_PROMPT: RecipeHandoffTimePromptState,
+            RecipeStates.HANDOFF_TIME_REPORT: RecipeHandoffTimeReportState,
             RecipeStates.FINAL_NOTE_PROMPT: RecipeFinalNotePromptState,
             RecipeStates.FINAL_NOTE_REPORT: RecipeFinalNoteRecordState,
             RecipeStates.COMPLETE_PROMPT: RecipeCompletePromptState,
@@ -616,7 +620,7 @@ class RecipeReportState(RecipeState):
             expected_intent: str,
             success_prompt: Callable[[Dict[str, Any]], str],
             success_next_state: RecipeStates,
-            failure_prompt: Callable[[Dict[str, Any]], str],
+            failure_prompt: Callable[[Optional[Dict[str, Any]]], str],
             failure_next_state: RecipeStates,
             failure_next_state_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
@@ -788,10 +792,101 @@ class RecipeHandoffStatusReportState(RecipeReportState):
             listening_prompt="Listening for handoff status",
             expected_intent='reportHandoffStatus',
             success_prompt=lambda x: f"Handoff status is {x['slots']['handoffStatus']}.",
-            success_next_state=RecipeStates.FINAL_NOTE_PROMPT,
+            success_next_state=RecipeStates.HANDOFF_TIME_PROMPT,
             failure_prompt=lambda x: "Failed to capture handoff status. Retrying...",
             failure_next_state=RecipeStates.HANDOFF_STATUS_PROMPT,
             failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What is the handoff status again?"})
+
+
+class RecipeHandoffTimePromptState(RecipePromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="What was the handoff time?",
+            next_state=RecipeStates.HANDOFF_TIME_REPORT)
+
+
+class RecipeHandoffTimeReportState(RecipeReportState):
+    _HOUR_MAP = {
+        'one': 1,
+        'two': 2,
+        'three': 3,
+        'four': 4,
+        'five': 5,
+        'six': 6,
+        'seven': 7,
+        'eight': 8,
+        'nine': 9,
+        'ten': 10,
+        'eleven': 11,
+        'twelve': 12,
+    }
+
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for handoff time",
+            expected_intent='reportHandoffTime',
+            success_prompt=lambda x: (
+                f"Handoff time is {x['slots']['hour']} "
+                f"{x['slots']['minute']} "
+                f"{x['slots']['meridiem']}."
+            ),
+            success_next_state=RecipeStates.FINAL_NOTE_PROMPT,
+            failure_prompt=lambda x: "Failed to capture handoff time. Retrying...",
+            failure_next_state=RecipeStates.HANDOFF_TIME_PROMPT,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What was the handoff time again?"})
+
+    def run(
+            self,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
+            **kwargs: Any
+    ) -> Transition:
+        text = self._listening_prompt
+
+        def get_text() -> str:
+            return text
+
+        event, thread = print_async(get_text=get_text)
+        inference = self._step.run()
+
+        is_valid = False
+        if (
+            inference is not None
+            and inference['is_understood']
+            and inference['intent'] == self._expected_intent
+        ):
+            try:
+                hour_word = inference['slots']['hour']
+                minute = int(inference['slots']['minute'])
+                meridiem = inference['slots']['meridiem']
+                hour = self._HOUR_MAP[hour_word]
+
+                is_valid = (
+                    1 <= hour <= 12
+                    and 0 <= minute <= 59
+                    and meridiem in {'am', 'pm'}
+                )
+            except (KeyError, ValueError, TypeError):
+                is_valid = False
+
+        if is_valid:
+            text = self._success_prompt(inference)
+            sleep(.1)
+            event.set()
+            thread.join()
+
+            return Transition(outcome=inference, next_state=self._success_next_state)
+
+        text = "Failed to capture handoff time. Retrying..."
+        sleep(.1)
+        event.set()
+        thread.join()
+
+        return Transition(
+            outcome=inference,
+            next_state=self._failure_next_state,
+            next_state_kwargs=self._failure_next_state_kwargs)
 
 
 class RecipeFinalNotePromptState(RecipePromptState):
@@ -884,6 +979,8 @@ def main() -> None:
             RecipeStates.DESTINATION_REPORT: RecipeSteps.RECORD_USER,
             RecipeStates.HANDOFF_STATUS_PROMPT: RecipeSteps.PROMPT_USER,
             RecipeStates.HANDOFF_STATUS_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.HANDOFF_TIME_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.HANDOFF_TIME_REPORT: RecipeSteps.RECORD_USER,
             RecipeStates.FINAL_NOTE_PROMPT: RecipeSteps.PROMPT_USER,
             RecipeStates.FINAL_NOTE_REPORT: RecipeSteps.TRANSCRIBE_USER,
             RecipeStates.COMPLETE_PROMPT: RecipeSteps.PROMPT_USER,

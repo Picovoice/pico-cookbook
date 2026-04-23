@@ -22,6 +22,10 @@ context:
       - "handoff is $handoffStatus:handoffStatus"
       - "(the) handoff is $handoffStatus:handoffStatus"
 
+    reportHandoffTime:
+      - "handoff time was $hourTwelve:hour $pv.TwoDigitInteger:minute $meridiem:meridiem"
+      - "$hourTwelve:hour $pv.TwoDigitInteger:minute $meridiem:meridiem"
+
   slots:
     unitId:
       - medic one
@@ -54,5 +58,23 @@ context:
       - completed
       - delayed
       - pending
+
+    hourTwelve:
+      - one
+      - two
+      - three
+      - four
+      - five
+      - six
+      - seven
+      - eight
+      - nine
+      - ten
+      - eleven
+      - twelve
+
+    meridiem:
+      - am
+      - pm
 
   macros:
