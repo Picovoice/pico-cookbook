@@ -1,0 +1,58 @@
+context:
+  expressions:
+    identifyUnit:
+      - "$unitId:unitId"
+
+    reportIncidentType:
+      - "$incidentType:incidentType"
+      - "(the) incident was $incidentType:incidentType"
+
+    reportPatientCondition:
+      - "$patientCondition:patientCondition"
+      - "(the) patient is $patientCondition:patientCondition"
+      - "(the) patient was $patientCondition:patientCondition"
+
+    reportDestination:
+      - "$destination:destination"
+      - "(the) destination is $destination:destination"
+      - "transported to $destination:destination"
+
+    reportHandoffStatus:
+      - "$handoffStatus:handoffStatus"
+      - "handoff is $handoffStatus:handoffStatus"
+      - "(the) handoff is $handoffStatus:handoffStatus"
+
+  slots:
+    unitId:
+      - medic one
+      - medic two
+      - medic three
+      - unit seven
+      - unit nine
+
+    incidentType:
+      - chest pain
+      - fall
+      - motor vehicle collision
+      - breathing difficulty
+      - overdose
+      - seizure
+
+    patientCondition:
+      - stable
+      - critical
+      - improving
+      - unresponsive
+
+    destination:
+      - saint mary hospital
+      - general hospital
+      - city medical center
+      - memorial hospital
+
+    handoffStatus:
+      - completed
+      - delayed
+      - pending
+
+  macros:

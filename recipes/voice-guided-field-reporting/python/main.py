@@ -504,3 +504,396 @@ def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str]
     thread = Thread(target=run, daemon=True)
     thread.start()
     return thread
+
+
+class RecipeSteps(Enum):
+    STANDBY = "Standby"
+    PROMPT_USER = "PromptUser"
+    RECORD_USER = "RecordUser"
+    TRANSCRIBE_USER = "TranscribeUser"
+
+
+class RecipeStates(Enum):
+    STANDBY = "Standby"
+    IDENTIFY_UNIT_PROMPT = "IdentifyUnitPrompt"
+    IDENTIFY_UNIT_REPORT = "IdentifyUnitReport"
+    INCIDENT_TYPE_PROMPT = "IncidentTypePrompt"
+    INCIDENT_TYPE_REPORT = "IncidentTypeReport"
+    PATIENT_CONDITION_PROMPT = "PatientConditionPrompt"
+    PATIENT_CONDITION_REPORT = "PatientConditionReport"
+    DESTINATION_PROMPT = "DestinationPrompt"
+    DESTINATION_REPORT = "DestinationReport"
+    HANDOFF_STATUS_PROMPT = "HandoffStatusPrompt"
+    HANDOFF_STATUS_REPORT = "HandoffStatusReport"
+    FINAL_NOTE_PROMPT = "FinalNotePrompt"
+    FINAL_NOTE_REPORT = "FinalNoteReport"
+    COMPLETE_PROMPT = "CompletePrompt"
+
+
+class RecipeState(State):
+    @classmethod
+    def create(
+            cls,
+            state: RecipeStates,
+            **kwargs: Any
+    ) -> "RecipeState":
+        children = {
+            RecipeStates.STANDBY: RecipeStandbyState,
+            RecipeStates.IDENTIFY_UNIT_PROMPT: RecipeIdentifyUnitPromptState,
+            RecipeStates.IDENTIFY_UNIT_REPORT: RecipeIdentifyUnitReportState,
+            RecipeStates.INCIDENT_TYPE_PROMPT: RecipeIncidentTypePromptState,
+            RecipeStates.INCIDENT_TYPE_REPORT: RecipeIncidentTypeReportState,
+            RecipeStates.PATIENT_CONDITION_PROMPT: RecipePatientConditionPromptState,
+            RecipeStates.PATIENT_CONDITION_REPORT: RecipePatientConditionReportState,
+            RecipeStates.DESTINATION_PROMPT: RecipeDestinationPromptState,
+            RecipeStates.DESTINATION_REPORT: RecipeDestinationReportState,
+            RecipeStates.HANDOFF_STATUS_PROMPT: RecipeHandoffStatusPromptState,
+            RecipeStates.HANDOFF_STATUS_REPORT: RecipeHandoffStatusReportState,
+            RecipeStates.FINAL_NOTE_PROMPT: RecipeFinalNotePromptState,
+            RecipeStates.FINAL_NOTE_REPORT: RecipeFinalNoteRecordState,
+            RecipeStates.COMPLETE_PROMPT: RecipeCompletePromptState,
+        }
+
+        if state not in children:
+            raise ValueError(f"Cannot create a {cls.__name__} of type `{state.value}`.")
+
+        return children[state](**kwargs)
+
+
+class RecipePromptState(RecipeState):
+    def __init__(
+            self,
+            step: OrcaStep,
+            prompt: str,
+            next_state: Optional[RecipeStates]
+    ) -> None:
+        super().__init__(step=step)
+        self._prompt = prompt
+        self._next_state = next_state
+
+    def run(
+            self,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
+            prompt: Optional[str] = None
+    ) -> Transition:
+        if prompt is None:
+            prompt = self._prompt
+
+        text = ""
+        lock = Lock()
+
+        def get_text() -> str:
+            with lock:
+                return f"[AI] {text}"
+
+        print_event, print_thread = print_async(get_text)
+
+        def on_tick(chunk: str) -> None:
+            nonlocal text
+            with lock:
+                text += chunk
+
+        timer_thread = None
+
+        def on_synthesis(alignments: Sequence[Orca.WordAlignment]) -> None:
+            nonlocal timer_thread
+            timer_thread = time_async(alignments=alignments, on_tick=on_tick)
+
+        self._step.run(prompt=prompt, on_synthesis=on_synthesis)
+        # noinspection PyUnresolvedReferences
+        timer_thread.join()
+        print_event.set()
+        print_thread.join()
+
+        return Transition(next_state=self._next_state)
+
+
+class RecipeReportState(RecipeState):
+    def __init__(
+            self,
+            step: RhinoStep,
+            listening_prompt: str,
+            expected_intent: str,
+            success_prompt: Callable[[Dict[str, Any]], str],
+            success_next_state: RecipeStates,
+            failure_prompt: Callable[[Dict[str, Any]], str],
+            failure_next_state: RecipeStates,
+            failure_next_state_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        super().__init__(step=step)
+        self._listening_prompt = listening_prompt
+        self._expected_intent = expected_intent
+        self._success_prompt = success_prompt
+        self._success_next_state = success_next_state
+        self._failure_prompt = failure_prompt
+        self._failure_next_state = failure_next_state
+        self._failure_next_state_kwargs = failure_next_state_kwargs
+
+    def run(
+            self,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
+            **kwargs: Any
+    ) -> Transition:
+        text = self._listening_prompt
+
+        def get_text() -> str:
+            return text
+
+        event, thread = print_async(get_text=get_text)
+        inference = self._step.run()
+
+        if (
+            inference is not None
+            and inference['is_understood']
+            and inference['intent'] == self._expected_intent
+        ):
+            text = self._success_prompt(inference)
+            sleep(.1)
+            event.set()
+            thread.join()
+
+            return Transition(outcome=inference, next_state=self._success_next_state)
+
+        text = self._failure_prompt(inference)
+        sleep(.1)
+        event.set()
+        thread.join()
+
+        return Transition(
+            outcome=inference,
+            next_state=self._failure_next_state,
+            next_state_kwargs=self._failure_next_state_kwargs)
+
+
+class RecipeStandbyState(RecipeState):
+    def __init__(self, step: PorcupineStep) -> None:
+        super().__init__(step=step)
+
+    def run(
+            self,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
+            **kwargs: Any
+    ) -> Transition:
+        text = "Listening for wake word"
+
+        def get_text() -> str:
+            return text
+
+        event, thread = print_async(get_text=get_text)
+        self._step.run()
+        text = "Detected wake word. Starting field report..."
+        sleep(.1)
+        event.set()
+        thread.join()
+
+        return Transition(next_state=RecipeStates.IDENTIFY_UNIT_PROMPT)
+
+
+class RecipeIdentifyUnitPromptState(RecipePromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="What is the unit ID?",
+            next_state=RecipeStates.IDENTIFY_UNIT_REPORT)
+
+
+class RecipeIdentifyUnitReportState(RecipeReportState):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for unit ID",
+            expected_intent='identifyUnit',
+            success_prompt=lambda x: f"Unit ID is {x['slots']['unitId']}.",
+            success_next_state=RecipeStates.INCIDENT_TYPE_PROMPT,
+            failure_prompt=lambda x: "Failed to capture unit ID. Retrying...",
+            failure_next_state=RecipeStates.IDENTIFY_UNIT_PROMPT,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What is the unit ID again?"})
+
+
+class RecipeIncidentTypePromptState(RecipePromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="What was the incident type?",
+            next_state=RecipeStates.INCIDENT_TYPE_REPORT)
+
+
+class RecipeIncidentTypeReportState(RecipeReportState):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for incident type",
+            expected_intent='reportIncidentType',
+            success_prompt=lambda x: f"Incident type is {x['slots']['incidentType']}.",
+            success_next_state=RecipeStates.PATIENT_CONDITION_PROMPT,
+            failure_prompt=lambda x: "Failed to capture incident type. Retrying...",
+            failure_next_state=RecipeStates.INCIDENT_TYPE_PROMPT,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What was the incident type again?"})
+
+
+class RecipePatientConditionPromptState(RecipePromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="What is the patient condition?",
+            next_state=RecipeStates.PATIENT_CONDITION_REPORT)
+
+
+class RecipePatientConditionReportState(RecipeReportState):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for patient condition",
+            expected_intent='reportPatientCondition',
+            success_prompt=lambda x: f"Patient condition is {x['slots']['patientCondition']}.",
+            success_next_state=RecipeStates.DESTINATION_PROMPT,
+            failure_prompt=lambda x: "Failed to capture patient condition. Retrying...",
+            failure_next_state=RecipeStates.PATIENT_CONDITION_PROMPT,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What is the patient condition again?"})
+
+
+class RecipeDestinationPromptState(RecipePromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="What was the destination?",
+            next_state=RecipeStates.DESTINATION_REPORT)
+
+
+class RecipeDestinationReportState(RecipeReportState):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for destination",
+            expected_intent='reportDestination',
+            success_prompt=lambda x: f"Destination is {x['slots']['destination']}.",
+            success_next_state=RecipeStates.HANDOFF_STATUS_PROMPT,
+            failure_prompt=lambda x: "Failed to capture destination. Retrying...",
+            failure_next_state=RecipeStates.DESTINATION_PROMPT,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What was the destination again?"})
+
+
+class RecipeHandoffStatusPromptState(RecipePromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="What is the handoff status?",
+            next_state=RecipeStates.HANDOFF_STATUS_REPORT)
+
+
+class RecipeHandoffStatusReportState(RecipeReportState):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for handoff status",
+            expected_intent='reportHandoffStatus',
+            success_prompt=lambda x: f"Handoff status is {x['slots']['handoffStatus']}.",
+            success_next_state=RecipeStates.FINAL_NOTE_PROMPT,
+            failure_prompt=lambda x: "Failed to capture handoff status. Retrying...",
+            failure_next_state=RecipeStates.HANDOFF_STATUS_PROMPT,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What is the handoff status again?"})
+
+
+class RecipeFinalNotePromptState(RecipePromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="Please provide additional notes.",
+            next_state=RecipeStates.FINAL_NOTE_REPORT)
+
+
+class RecipeFinalNoteRecordState(RecipeState):
+    def __init__(self, step: CheetahStep) -> None:
+        super().__init__(step=step)
+
+    def run(
+            self,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
+            **kwargs: Any
+    ) -> Transition:
+        text = ""
+        text_lock = Lock()
+
+        def get_text() -> str:
+            with text_lock:
+                return "(listening)" if text == "" else text
+
+        text_event, text_thread = print_async(get_text)
+
+        def on_partial(partial: str) -> None:
+            nonlocal text
+            text += partial
+
+        def on_endpoint(endpoint: str) -> None:
+            nonlocal text
+            text += endpoint
+
+        transcription = self._step.run(on_partial=on_partial, on_endpoint=on_endpoint)
+        text_event.set()
+        text_thread.join()
+
+        return Transition(outcome=transcription, next_state=RecipeStates.COMPLETE_PROMPT)
+
+
+class RecipeCompletePromptState(RecipePromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="Field report recorded.",
+            next_state=None)
+
+
+def main() -> None:
+    parser = ArgumentParser()
+    parser.add_argument(
+        '--access_key',
+        required=True,
+        help='AccessKey obtained from Picovoice Console (https://console.picovoice.ai/)')
+    parser.add_argument(
+        '--keyword_path',
+        required=True,
+        help='')
+    parser.add_argument(
+        '--context_path',
+        required=True,
+        help='')
+    args = parser.parse_args()
+
+    access_key = args.access_key
+    keyword_path = args.keyword_path
+    context_path = args.context_path
+
+    workflow = Workflow(
+        steps={
+            RecipeSteps.STANDBY: (Steps.PORCUPINE, {'keyword_path': keyword_path}),
+            RecipeSteps.PROMPT_USER: (Steps.ORCA, None),
+            RecipeSteps.RECORD_USER: (Steps.RHINO, {'context_path': context_path}),
+            RecipeSteps.TRANSCRIBE_USER: (Steps.CHEETAH, None),
+        },
+        state_enum=RecipeStates,
+        state_subclass=RecipeState,
+        state_steps={
+            RecipeStates.STANDBY: RecipeSteps.STANDBY,
+            RecipeStates.IDENTIFY_UNIT_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.IDENTIFY_UNIT_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.INCIDENT_TYPE_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.INCIDENT_TYPE_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.PATIENT_CONDITION_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.PATIENT_CONDITION_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.DESTINATION_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.DESTINATION_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.HANDOFF_STATUS_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.HANDOFF_STATUS_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.FINAL_NOTE_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.FINAL_NOTE_REPORT: RecipeSteps.TRANSCRIBE_USER,
+            RecipeStates.COMPLETE_PROMPT: RecipeSteps.PROMPT_USER,
+        },
+        start_state=RecipeStates.STANDBY,
+        access_key=access_key)
+
+    workflow.run()
+    workflow.delete()
+
+
+if __name__ == '__main__':
+    main()
