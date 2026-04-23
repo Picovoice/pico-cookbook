@@ -20,32 +20,21 @@ from typing import (
 
 import pvcheetah
 import pvorca
+import pvrhino
 from pvorca import Orca
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
 
 
 class Actions(Enum):
-    GREET = 0
-    CONNECT_CALL = 1
-    DECLINE_CALL = 2
-    ASK_FOR_DETAILS = 3
-    ASK_TO_TEXT = 4
-    ASK_TO_EMAIL = 5
-    ASK_TO_CALL_BACK = 6
-    BLOCK_CALLER = 7
-
-    def __str__(self) -> str:
-        return {
-            self.GREET: "Greet",
-            self.CONNECT_CALL: "Connect Call",
-            self.DECLINE_CALL: "Decline Call",
-            self.ASK_FOR_DETAILS: "Ask for Details",
-            self.ASK_TO_TEXT: "Ask to Text",
-            self.ASK_TO_EMAIL: "Ask to Email",
-            self.ASK_TO_CALL_BACK: "Ask to Call Back",
-            self.BLOCK_CALLER: "Block Caller",
-        }[self]
+    GREET = "Greet"
+    CONNECT_CALL = "Connect Call"
+    DECLINE_CALL = "Decline Call"
+    ASK_FOR_DETAILS = "Ask for Details"
+    ASK_TO_TEXT = "Ask to Text"
+    ASK_TO_EMAIL = "Ask to Email"
+    ASK_TO_CALL_BACK = "Ask to Call Back"
+    BLOCK_CALLER = "Block Caller"
 
     def prompt(self, username: str) -> str:
         return {
@@ -166,6 +155,10 @@ def main() -> None:
         required=True,
         help="AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).")
     parser.add_argument(
+        '--context_path',
+        required=True,
+        help="Path to Rhino Speech-to-Intent context trained on Picovoice Console (https://console.picovoice.ai/).")
+    parser.add_argument(
         "--username",
         default="the recipient",
         help="Name of the person receiving the call. Used in the spoken prompts.")
@@ -182,6 +175,7 @@ def main() -> None:
     args = parser.parse_args()
 
     access_key = args.access_key
+    context_path = args.context_path
     username = args.username
     username_pronunciation = args.username_pronunciation
     endpoint_duration_sec = args.endpoint_duration_sec
@@ -192,6 +186,7 @@ def main() -> None:
 
     cheetah = None
     orca = None
+    rhino = None
     recorder = None
     speaker = None
 
@@ -207,6 +202,12 @@ def main() -> None:
 
         orca = pvorca.create(access_key=access_key)
         print(f"[OK] Orca Streaming Text-to-Speech[V{orca.version}]")
+
+        rhino = pvrhino.create(
+            access_key=access_key,
+            context_path=context_path,
+            require_endpoint=False)
+        print(f"[OK] Rhino Speech-to-Intent[V{rhino.version}]")
 
         recorder = PvRecorder(frame_length=cheetah.frame_length)
 
@@ -269,18 +270,30 @@ def main() -> None:
 
             print()
 
-            print("Enter a number to select a call-assist action:")
             for x in Actions:
-                print(f"{x.value}. {str(x)}")
+                print(f"- {x.value}")
 
-            while True:
-                try:
-                    action = Actions(int(input("> ")))
-                    break
-                except ValueError:
+            text = ""
+            text_lock = Lock()
+
+            def get_text():
+                with text_lock:
+                    return f"[AI] Select one of the call-assist actions above"
+
+            text_event, text_thread = print_async(get_text)
+
+            recorder.start()
+            action = None
+            while action is None:
+                while not rhino.process(recorder.read()):
                     pass
-
-            print()
+                inference = rhino.get_inference()
+                if inference.is_understood and inference.intent == 'chooseAction':
+                    action = Actions(inference.slots['action'])
+            recorder.stop()
+            text_event.set()
+            text_thread.join()
+            print(f"[{username.upper()}] {action.value}.\n")
     except KeyboardInterrupt:
         pass
     finally:
@@ -295,6 +308,9 @@ def main() -> None:
         if recorder is not None:
             recorder.stop()
             recorder.delete()
+
+        if rhino is not None:
+            rhino.delete()
 
         if orca is not None:
             orca.delete()

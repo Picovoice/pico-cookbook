@@ -1,4 +1,5 @@
 pvcheetah~=4.0.1
 pvorca~=3.0.0
 pvrecorder~=1.2.7
+pvrhino~=4.0.2
 pvspeaker~=1.0.5
