@@ -691,10 +691,10 @@ class RecipeTaskLocationReportState(RecipeState):
         inference = self._step.run()
 
         if (
-                inference is not None and
-                inference['is_understood'] and
-                inference['intent'] == 'confirmLocation' and
-                inference['slots'].get('checkDigit') == task.check_digit):
+                inference is not None
+                and inference['is_understood']
+                and inference['intent'] == 'confirmLocation'
+                and inference['slots'].get('checkDigit') == task.check_digit):
             text = f"Location {inference['slots']['checkDigit']} confirmed."
             sleep(.1)
             event.set()
@@ -709,9 +709,9 @@ class RecipeTaskLocationReportState(RecipeState):
                 })
 
         if (
-                inference is not None and
-                inference['is_understood'] and
-                inference['intent'] == 'confirmLocation'):
+                inference is not None
+                and inference['is_understood']
+                and inference['intent'] == 'confirmLocation'):
             text = f"Location check digit {inference['slots'].get('checkDigit', '')} does not match. Retrying..."
         else:
             text = "Failed to capture location confirmation. Retrying..."
@@ -793,9 +793,9 @@ class RecipeTaskPickReportState(RecipeState):
         }
 
         if (
-                inference is not None and
-                inference['is_understood'] and
-                inference['intent'] in valid_intents):
+                inference is not None
+                and inference['is_understood']
+                and inference['intent'] in valid_intents):
             intent = inference['intent']
             slots = inference['slots']
 
