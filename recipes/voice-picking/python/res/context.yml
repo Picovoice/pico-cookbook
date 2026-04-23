@@ -16,6 +16,12 @@ context:
     reportLocationEmpty:
       - "location empty"
 
+    exitWorkflow:
+      - "stop picking"
+      - "end picking"
+      - "i am done"
+      - "we are done"
+
   slots:
     checkDigit:
       - one nine
