@@ -506,45 +506,29 @@ def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str]
     return thread
 
 
-@dataclass(frozen=True)
-class PickTask(object):
-    location_name: str
-    check_digit: str
-    item_name: str
-    quantity: int
-
-
-TASKS: Sequence[PickTask] = [
-    PickTask(
-        location_name="bin bravo",
-        check_digit="four two",
-        item_name="blue widgets",
-        quantity=3),
-    PickTask(
-        location_name="bin delta",
-        check_digit="five seven",
-        item_name="battery packs",
-        quantity=5),
-    PickTask(
-        location_name="zone one",
-        check_digit="one nine",
-        item_name="safety gloves",
-        quantity=1),
-]
-
-
 class RecipeSteps(Enum):
     STANDBY = "Standby"
     PROMPT_USER = "PromptUser"
     RECORD_USER = "RecordUser"
+    TRANSCRIBE_USER = "TranscribeUser"
 
 
 class RecipeStates(Enum):
     STANDBY = "Standby"
-    TASK_LOCATION_PROMPT = "TaskLocationPrompt"
-    TASK_LOCATION_REPORT = "TaskLocationReport"
-    TASK_PICK_PROMPT = "TaskPickPrompt"
-    TASK_PICK_REPORT = "TaskPickReport"
+    IDENTIFY_UNIT_PROMPT = "IdentifyUnitPrompt"
+    IDENTIFY_UNIT_REPORT = "IdentifyUnitReport"
+    INCIDENT_TYPE_PROMPT = "IncidentTypePrompt"
+    INCIDENT_TYPE_REPORT = "IncidentTypeReport"
+    PATIENT_CONDITION_PROMPT = "PatientConditionPrompt"
+    PATIENT_CONDITION_REPORT = "PatientConditionReport"
+    DESTINATION_PROMPT = "DestinationPrompt"
+    DESTINATION_REPORT = "DestinationReport"
+    HANDOFF_STATUS_PROMPT = "HandoffStatusPrompt"
+    HANDOFF_STATUS_REPORT = "HandoffStatusReport"
+    HANDOFF_TIME_PROMPT = "HandoffTimePrompt"
+    HANDOFF_TIME_REPORT = "HandoffTimeReport"
+    FINAL_NOTE_PROMPT = "FinalNotePrompt"
+    FINAL_NOTE_REPORT = "FinalNoteReport"
     COMPLETE_PROMPT = "CompletePrompt"
 
 
@@ -557,10 +541,20 @@ class RecipeState(State):
     ) -> "RecipeState":
         children = {
             RecipeStates.STANDBY: RecipeStandbyState,
-            RecipeStates.TASK_LOCATION_PROMPT: RecipeTaskLocationPromptState,
-            RecipeStates.TASK_LOCATION_REPORT: RecipeTaskLocationReportState,
-            RecipeStates.TASK_PICK_PROMPT: RecipeTaskPickPromptState,
-            RecipeStates.TASK_PICK_REPORT: RecipeTaskPickReportState,
+            RecipeStates.IDENTIFY_UNIT_PROMPT: RecipeIdentifyUnitPromptState,
+            RecipeStates.IDENTIFY_UNIT_REPORT: RecipeIdentifyUnitReportState,
+            RecipeStates.INCIDENT_TYPE_PROMPT: RecipeIncidentTypePromptState,
+            RecipeStates.INCIDENT_TYPE_REPORT: RecipeIncidentTypeReportState,
+            RecipeStates.PATIENT_CONDITION_PROMPT: RecipePatientConditionPromptState,
+            RecipeStates.PATIENT_CONDITION_REPORT: RecipePatientConditionReportState,
+            RecipeStates.DESTINATION_PROMPT: RecipeDestinationPromptState,
+            RecipeStates.DESTINATION_REPORT: RecipeDestinationReportState,
+            RecipeStates.HANDOFF_STATUS_PROMPT: RecipeHandoffStatusPromptState,
+            RecipeStates.HANDOFF_STATUS_REPORT: RecipeHandoffStatusReportState,
+            RecipeStates.HANDOFF_TIME_PROMPT: RecipeHandoffTimePromptState,
+            RecipeStates.HANDOFF_TIME_REPORT: RecipeHandoffTimeReportState,
+            RecipeStates.FINAL_NOTE_PROMPT: RecipeFinalNotePromptState,
+            RecipeStates.FINAL_NOTE_REPORT: RecipeFinalNoteRecordState,
             RecipeStates.COMPLETE_PROMPT: RecipeCompletePromptState,
         }
 
@@ -571,10 +565,24 @@ class RecipeState(State):
 
 
 class RecipePromptState(RecipeState):
-    def __init__(self, step: OrcaStep) -> None:
+    def __init__(
+            self,
+            step: OrcaStep,
+            prompt: str,
+            next_state: Optional[RecipeStates]
+    ) -> None:
         super().__init__(step=step)
+        self._prompt = prompt
+        self._next_state = next_state
 
-    def _run_prompt(self, prompt: str) -> None:
+    def run(
+            self,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
+            prompt: Optional[str] = None
+    ) -> Transition:
+        if prompt is None:
+            prompt = self._prompt
+
         text = ""
         lock = Lock()
 
@@ -601,6 +609,65 @@ class RecipePromptState(RecipeState):
         print_event.set()
         print_thread.join()
 
+        return Transition(next_state=self._next_state)
+
+
+class RecipeReportState(RecipeState):
+    def __init__(
+            self,
+            step: RhinoStep,
+            listening_prompt: str,
+            expected_intent: str,
+            success_prompt: Callable[[Dict[str, Any]], str],
+            success_next_state: RecipeStates,
+            failure_prompt: Callable[[Optional[Dict[str, Any]]], str],
+            failure_next_state: RecipeStates,
+            failure_next_state_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        super().__init__(step=step)
+        self._listening_prompt = listening_prompt
+        self._expected_intent = expected_intent
+        self._success_prompt = success_prompt
+        self._success_next_state = success_next_state
+        self._failure_prompt = failure_prompt
+        self._failure_next_state = failure_next_state
+        self._failure_next_state_kwargs = failure_next_state_kwargs
+
+    def run(
+            self,
+            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
+            **kwargs: Any
+    ) -> Transition:
+        text = self._listening_prompt
+
+        def get_text() -> str:
+            return text
+
+        event, thread = print_async(get_text=get_text)
+        inference = self._step.run()
+
+        if (
+            inference is not None
+            and inference['is_understood']
+            and inference['intent'] == self._expected_intent
+        ):
+            text = self._success_prompt(inference)
+            sleep(.1)
+            event.set()
+            thread.join()
+
+            return Transition(outcome=inference, next_state=self._success_next_state)
+
+        text = self._failure_prompt(inference)
+        sleep(.1)
+        event.set()
+        thread.join()
+
+        return Transition(
+            outcome=inference,
+            next_state=self._failure_next_state,
+            next_state_kwargs=self._failure_next_state_kwargs)
+
 
 class RecipeStandbyState(RecipeState):
     def __init__(self, step: PorcupineStep) -> None:
@@ -609,7 +676,6 @@ class RecipeStandbyState(RecipeState):
     def run(
             self,
             outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
-            tasks: Optional[Sequence[PickTask]] = None,
             **kwargs: Any
     ) -> Transition:
         text = "Listening for wake word"
@@ -619,70 +685,164 @@ class RecipeStandbyState(RecipeState):
 
         event, thread = print_async(get_text=get_text)
         self._step.run()
-        text = "Detected wake word. Starting picking workflow..."
+        text = "Detected wake word. Starting field report..."
         sleep(.1)
         event.set()
         thread.join()
 
-        if tasks is None:
-            tasks = TASKS
-
-        if len(tasks) == 0:
-            return Transition(
-                next_state=RecipeStates.COMPLETE_PROMPT,
-                next_state_kwargs={'tasks': tasks, 'task_index': 0})
-
-        return Transition(
-            next_state=RecipeStates.TASK_LOCATION_PROMPT,
-            next_state_kwargs={
-                'tasks': tasks,
-                'task_index': 0,
-            })
+        return Transition(next_state=RecipeStates.IDENTIFY_UNIT_PROMPT)
 
 
-class RecipeTaskLocationPromptState(RecipePromptState):
+class RecipeIdentifyUnitPromptState(RecipePromptState):
     def __init__(self, step: OrcaStep) -> None:
-        super().__init__(step=step)
-
-    def run(
-            self,
-            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
-            tasks: Sequence[PickTask] = TASKS,
-            task_index: int = 0,
-            prompt: Optional[str] = None,
-            **kwargs: Any
-    ) -> Transition:
-        task = tasks[task_index]
-        if prompt is None:
-            prompt = (
-                f"Go to {task.location_name}. "
-                f"Confirm location. "
-                f"Check digits are {task.check_digit}."
-            )
-
-        self._run_prompt(prompt=prompt)
-
-        return Transition(
-            next_state=RecipeStates.TASK_LOCATION_REPORT,
-            next_state_kwargs={
-                'tasks': tasks,
-                'task_index': task_index,
-            })
+        super().__init__(
+            step=step,
+            prompt="What is the unit ID?",
+            next_state=RecipeStates.IDENTIFY_UNIT_REPORT)
 
 
-class RecipeTaskLocationReportState(RecipeState):
+class RecipeIdentifyUnitReportState(RecipeReportState):
     def __init__(self, step: RhinoStep) -> None:
-        super().__init__(step=step)
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for unit ID",
+            expected_intent='identifyUnit',
+            success_prompt=lambda x: f"Unit ID is {x['slots']['unitId']}.",
+            success_next_state=RecipeStates.INCIDENT_TYPE_PROMPT,
+            failure_prompt=lambda x: "Failed to capture unit ID. Retrying...",
+            failure_next_state=RecipeStates.IDENTIFY_UNIT_PROMPT,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What is the unit ID again?"})
+
+
+class RecipeIncidentTypePromptState(RecipePromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="What was the incident type?",
+            next_state=RecipeStates.INCIDENT_TYPE_REPORT)
+
+
+class RecipeIncidentTypeReportState(RecipeReportState):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for incident type",
+            expected_intent='reportIncidentType',
+            success_prompt=lambda x: f"Incident type is {x['slots']['incidentType']}.",
+            success_next_state=RecipeStates.PATIENT_CONDITION_PROMPT,
+            failure_prompt=lambda x: "Failed to capture incident type. Retrying...",
+            failure_next_state=RecipeStates.INCIDENT_TYPE_PROMPT,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What was the incident type again?"})
+
+
+class RecipePatientConditionPromptState(RecipePromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="What is the patient condition?",
+            next_state=RecipeStates.PATIENT_CONDITION_REPORT)
+
+
+class RecipePatientConditionReportState(RecipeReportState):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for patient condition",
+            expected_intent='reportPatientCondition',
+            success_prompt=lambda x: f"Patient condition is {x['slots']['patientCondition']}.",
+            success_next_state=RecipeStates.DESTINATION_PROMPT,
+            failure_prompt=lambda x: "Failed to capture patient condition. Retrying...",
+            failure_next_state=RecipeStates.PATIENT_CONDITION_PROMPT,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What is the patient condition again?"})
+
+
+class RecipeDestinationPromptState(RecipePromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="What was the destination?",
+            next_state=RecipeStates.DESTINATION_REPORT)
+
+
+class RecipeDestinationReportState(RecipeReportState):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for destination",
+            expected_intent='reportDestination',
+            success_prompt=lambda x: f"Destination is {x['slots']['destination']}.",
+            success_next_state=RecipeStates.HANDOFF_STATUS_PROMPT,
+            failure_prompt=lambda x: "Failed to capture destination. Retrying...",
+            failure_next_state=RecipeStates.DESTINATION_PROMPT,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What was the destination again?"})
+
+
+class RecipeHandoffStatusPromptState(RecipePromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="What is the handoff status?",
+            next_state=RecipeStates.HANDOFF_STATUS_REPORT)
+
+
+class RecipeHandoffStatusReportState(RecipeReportState):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for handoff status",
+            expected_intent='reportHandoffStatus',
+            success_prompt=lambda x: f"Handoff status is {x['slots']['handoffStatus']}.",
+            success_next_state=RecipeStates.HANDOFF_TIME_PROMPT,
+            failure_prompt=lambda x: "Failed to capture handoff status. Retrying...",
+            failure_next_state=RecipeStates.HANDOFF_STATUS_PROMPT,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What is the handoff status again?"})
+
+
+class RecipeHandoffTimePromptState(RecipePromptState):
+    def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="What was the handoff time?",
+            next_state=RecipeStates.HANDOFF_TIME_REPORT)
+
+
+class RecipeHandoffTimeReportState(RecipeReportState):
+    _HOUR_MAP = {
+        'one': 1,
+        'two': 2,
+        'three': 3,
+        'four': 4,
+        'five': 5,
+        'six': 6,
+        'seven': 7,
+        'eight': 8,
+        'nine': 9,
+        'ten': 10,
+        'eleven': 11,
+        'twelve': 12,
+    }
+
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(
+            step=step,
+            listening_prompt="Listening for handoff time",
+            expected_intent='reportHandoffTime',
+            success_prompt=lambda x: (
+                f"Handoff time is {x['slots']['hour']} "
+                f"{x['slots']['minute']} "
+                f"{x['slots']['meridiem']}."
+            ),
+            success_next_state=RecipeStates.FINAL_NOTE_PROMPT,
+            failure_prompt=lambda x: "Failed to capture handoff time. Retrying...",
+            failure_next_state=RecipeStates.HANDOFF_TIME_PROMPT,
+            failure_next_state_kwargs={'prompt': "I'm sorry, I didn't catch that. What was the handoff time again?"})
 
     def run(
             self,
             outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
-            tasks: Sequence[PickTask] = TASKS,
-            task_index: int = 0,
             **kwargs: Any
     ) -> Transition:
-        task = tasks[task_index]
-        text = "Listening for location confirmation"
+        text = self._listening_prompt
 
         def get_text() -> str:
             return text
@@ -690,224 +850,92 @@ class RecipeTaskLocationReportState(RecipeState):
         event, thread = print_async(get_text=get_text)
         inference = self._step.run()
 
+        is_valid = False
         if (
-                inference is not None
-                and inference['is_understood']
-                and inference['intent'] == 'confirmLocation'
-                and inference['slots'].get('checkDigit') == task.check_digit):
-            text = f"Location {inference['slots']['checkDigit']} confirmed."
+            inference is not None
+            and inference['is_understood']
+            and inference['intent'] == self._expected_intent
+        ):
+            try:
+                hour_word = inference['slots']['hour']
+                minute = int(inference['slots']['minute'])
+                meridiem = inference['slots']['meridiem']
+                hour = self._HOUR_MAP[hour_word]
+
+                is_valid = (
+                    1 <= hour <= 12
+                    and 0 <= minute <= 59
+                    and meridiem in {'am', 'pm'}
+                )
+            except (KeyError, ValueError, TypeError):
+                is_valid = False
+
+        if is_valid:
+            text = self._success_prompt(inference)
             sleep(.1)
             event.set()
             thread.join()
 
-            return Transition(
-                outcome=inference,
-                next_state=RecipeStates.TASK_PICK_PROMPT,
-                next_state_kwargs={
-                    'tasks': tasks,
-                    'task_index': task_index,
-                })
+            return Transition(outcome=inference, next_state=self._success_next_state)
 
-        if (
-                inference is not None
-                and inference['is_understood']
-                and inference['intent'] == 'confirmLocation'):
-            text = f"Location check digit {inference['slots'].get('checkDigit', '')} does not match. Retrying..."
-        else:
-            text = "Failed to capture location confirmation. Retrying..."
-
+        text = "Failed to capture handoff time. Retrying..."
         sleep(.1)
         event.set()
         thread.join()
 
         return Transition(
             outcome=inference,
-            next_state=RecipeStates.TASK_LOCATION_PROMPT,
-            next_state_kwargs={
-                'tasks': tasks,
-                'task_index': task_index,
-                'prompt': f"Please confirm location for {task.location_name}. Check digits are {task.check_digit}.",
-            })
+            next_state=self._failure_next_state,
+            next_state_kwargs=self._failure_next_state_kwargs)
 
 
-class RecipeTaskPickPromptState(RecipePromptState):
+class RecipeFinalNotePromptState(RecipePromptState):
     def __init__(self, step: OrcaStep) -> None:
+        super().__init__(
+            step=step,
+            prompt="Please provide additional notes.",
+            next_state=RecipeStates.FINAL_NOTE_REPORT)
+
+
+class RecipeFinalNoteRecordState(RecipeState):
+    def __init__(self, step: CheetahStep) -> None:
         super().__init__(step=step)
 
     def run(
             self,
             outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
-            tasks: Sequence[PickTask] = TASKS,
-            task_index: int = 0,
-            prompt: Optional[str] = None,
             **kwargs: Any
     ) -> Transition:
-        task = tasks[task_index]
-        if prompt is None:
-            prompt = f"Pick {task.quantity} {task.item_name}."
-
-        self._run_prompt(prompt=prompt)
-
-        return Transition(
-            next_state=RecipeStates.TASK_PICK_REPORT,
-            next_state_kwargs={
-                'tasks': tasks,
-                'task_index': task_index,
-            })
-
-
-class RecipeTaskPickReportState(RecipeState):
-    def __init__(self, step: RhinoStep) -> None:
-        super().__init__(step=step)
-
-    @staticmethod
-    def _next_location_prompt(task: PickTask) -> str:
-        return (
-            f"Go to {task.location_name}. "
-            f"Confirm location. "
-            f"Check digits are {task.check_digit}."
-        )
-
-    def run(
-            self,
-            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
-            tasks: Sequence[PickTask] = TASKS,
-            task_index: int = 0,
-            **kwargs: Any
-    ) -> Transition:
-        task = tasks[task_index]
-        text = "Listening for pick result"
+        text = ""
+        text_lock = Lock()
 
         def get_text() -> str:
-            return text
+            with text_lock:
+                return "(listening)" if text == "" else text
 
-        event, thread = print_async(get_text=get_text)
-        inference = self._step.run()
+        text_event, text_thread = print_async(get_text)
 
-        valid_intents = {
-            'confirmPickedQuantity',
-            'reportShortPick',
-            'reportDamagedItem',
-            'reportLocationEmpty',
-            'exitWorkflow',
-        }
+        def on_partial(partial: str) -> None:
+            nonlocal text
+            text += partial
 
-        if (
-                inference is not None
-                and inference['is_understood']
-                and inference['intent'] in valid_intents):
-            intent = inference['intent']
-            slots = inference['slots']
+        def on_endpoint(endpoint: str) -> None:
+            nonlocal text
+            text += endpoint
 
-            if intent == 'exitWorkflow':
-                text = "Ending picking workflow."
-                sleep(.1)
-                event.set()
-                thread.join()
+        transcription = self._step.run(on_partial=on_partial, on_endpoint=on_endpoint)
+        text_event.set()
+        text_thread.join()
 
-                return Transition(
-                    outcome=inference,
-                    next_state=RecipeStates.COMPLETE_PROMPT,
-                    next_state_kwargs={
-                        'tasks': tasks,
-                        'task_index': task_index,
-                        'prompt': "Picking workflow ended.",
-                    })
-
-            next_task_index = task_index + 1
-
-            if next_task_index >= len(tasks):
-                if intent == 'confirmPickedQuantity':
-                    text = f"Recorded picked {slots['quantity']}."
-                elif intent == 'reportShortPick':
-                    text = f"Recorded short pick {slots['quantity']}."
-                elif intent == 'reportDamagedItem':
-                    text = "Recorded damaged item."
-                else:
-                    text = "Recorded empty location."
-
-                sleep(.1)
-                event.set()
-                thread.join()
-
-                return Transition(
-                    outcome=inference,
-                    next_state=RecipeStates.COMPLETE_PROMPT,
-                    next_state_kwargs={
-                        'tasks': tasks,
-                        'task_index': next_task_index,
-                    })
-
-            next_task = tasks[next_task_index]
-
-            if intent == 'confirmPickedQuantity':
-                text = f"Recorded picked {slots['quantity']}."
-                next_prompt = self._next_location_prompt(next_task)
-            elif intent == 'reportShortPick':
-                text = f"Recorded short pick {slots['quantity']}."
-                next_prompt = (
-                    f"Short pick recorded. "
-                    f"Proceed to {next_task.location_name}. "
-                    f"Confirm location. "
-                    f"Check digits are {next_task.check_digit}."
-                )
-            elif intent == 'reportDamagedItem':
-                text = "Recorded damaged item."
-                next_prompt = (
-                    f"Damaged item recorded. Set it aside. "
-                    f"Then proceed to {next_task.location_name}. "
-                    f"Confirm location. "
-                    f"Check digits are {next_task.check_digit}."
-                )
-            else:
-                text = "Recorded empty location."
-                next_prompt = (
-                    f"Empty location recorded. "
-                    f"Proceed to {next_task.location_name}. "
-                    f"Confirm location. "
-                    f"Check digits are {next_task.check_digit}."
-                )
-
-            sleep(.1)
-            event.set()
-            thread.join()
-
-            return Transition(
-                outcome=inference,
-                next_state=RecipeStates.TASK_LOCATION_PROMPT,
-                next_state_kwargs={
-                    'tasks': tasks,
-                    'task_index': next_task_index,
-                    'prompt': next_prompt,
-                })
-
-        text = "Failed to capture pick result. Retrying..."
-        sleep(.1)
-        event.set()
-        thread.join()
-
-        return Transition(
-            outcome=inference,
-            next_state=RecipeStates.TASK_PICK_PROMPT,
-            next_state_kwargs={
-                'tasks': tasks,
-                'task_index': task_index,
-                'prompt': f"Please report the result for picking {task.quantity} {task.item_name}.",
-            })
+        return Transition(outcome=transcription, next_state=RecipeStates.COMPLETE_PROMPT)
 
 
 class RecipeCompletePromptState(RecipePromptState):
     def __init__(self, step: OrcaStep) -> None:
-        super().__init__(step=step)
-
-    def run(
-            self,
-            outcomes: Sequence[Tuple[Enum, Optional[Dict[str, Any]]]] = None,
-            prompt: str = "Picking workflow complete.",
-            **kwargs: Any
-    ) -> Transition:
-        self._run_prompt(prompt=prompt)
-        return Transition(next_state=None)
+        super().__init__(
+            step=step,
+            prompt="Field report recorded.",
+            next_state=None)
 
 
 def main() -> None:
@@ -935,19 +963,29 @@ def main() -> None:
             RecipeSteps.STANDBY: (Steps.PORCUPINE, {'keyword_path': keyword_path}),
             RecipeSteps.PROMPT_USER: (Steps.ORCA, None),
             RecipeSteps.RECORD_USER: (Steps.RHINO, {'context_path': context_path}),
+            RecipeSteps.TRANSCRIBE_USER: (Steps.CHEETAH, None),
         },
         state_enum=RecipeStates,
         state_subclass=RecipeState,
         state_steps={
             RecipeStates.STANDBY: RecipeSteps.STANDBY,
-            RecipeStates.TASK_LOCATION_PROMPT: RecipeSteps.PROMPT_USER,
-            RecipeStates.TASK_LOCATION_REPORT: RecipeSteps.RECORD_USER,
-            RecipeStates.TASK_PICK_PROMPT: RecipeSteps.PROMPT_USER,
-            RecipeStates.TASK_PICK_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.IDENTIFY_UNIT_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.IDENTIFY_UNIT_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.INCIDENT_TYPE_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.INCIDENT_TYPE_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.PATIENT_CONDITION_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.PATIENT_CONDITION_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.DESTINATION_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.DESTINATION_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.HANDOFF_STATUS_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.HANDOFF_STATUS_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.HANDOFF_TIME_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.HANDOFF_TIME_REPORT: RecipeSteps.RECORD_USER,
+            RecipeStates.FINAL_NOTE_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.FINAL_NOTE_REPORT: RecipeSteps.TRANSCRIBE_USER,
             RecipeStates.COMPLETE_PROMPT: RecipeSteps.PROMPT_USER,
         },
         start_state=RecipeStates.STANDBY,
-        start_state_kwargs={'tasks': TASKS},
         access_key=access_key)
 
     workflow.run()
