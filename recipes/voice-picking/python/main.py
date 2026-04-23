@@ -761,26 +761,12 @@ class RecipeTaskPickReportState(RecipeState):
         super().__init__(step=step)
 
     @staticmethod
-    def _format_success(inference: Dict[str, Any]) -> str:
-        intent = inference['intent']
-        slots = inference['slots']
-
-        if intent == 'confirmPickedQuantity':
-            return f"Recorded picked {slots['quantity']}. Proceed to next location."
-
-        if intent == 'reportShortPick':
-            return f"Recorded short pick {slots['quantity']}. Proceed to next location."
-
-        if intent == 'reportDamagedItem':
-            return "Recorded damaged item. Set aside the item and proceed to next location."
-
-        if intent == 'reportLocationEmpty':
-            return "Recorded empty location. Proceed to next location."
-
-        if intent == 'exitWorkflow':
-            return "Ending picking workflow."
-
-        return "Pick result recorded."
+    def _next_location_prompt(task: PickTask) -> str:
+        return (
+            f"Go to {task.location_name}. "
+            f"Confirm location. "
+            f"Check digits are {task.check_digit}."
+        )
 
     def run(
             self,
@@ -810,12 +796,15 @@ class RecipeTaskPickReportState(RecipeState):
                 inference is not None and
                 inference['is_understood'] and
                 inference['intent'] in valid_intents):
-            text = self._format_success(inference)
-            sleep(.1)
-            event.set()
-            thread.join()
+            intent = inference['intent']
+            slots = inference['slots']
 
-            if inference['intent'] == 'exitWorkflow':
+            if intent == 'exitWorkflow':
+                text = "Ending picking workflow."
+                sleep(.1)
+                event.set()
+                thread.join()
+
                 return Transition(
                     outcome=inference,
                     next_state=RecipeStates.COMPLETE_PROMPT,
@@ -826,7 +815,21 @@ class RecipeTaskPickReportState(RecipeState):
                     })
 
             next_task_index = task_index + 1
+
             if next_task_index >= len(tasks):
+                if intent == 'confirmPickedQuantity':
+                    text = f"Recorded picked {slots['quantity']}."
+                elif intent == 'reportShortPick':
+                    text = f"Recorded short pick {slots['quantity']}."
+                elif intent == 'reportDamagedItem':
+                    text = "Recorded damaged item."
+                else:
+                    text = "Recorded empty location."
+
+                sleep(.1)
+                event.set()
+                thread.join()
+
                 return Transition(
                     outcome=inference,
                     next_state=RecipeStates.COMPLETE_PROMPT,
@@ -835,12 +838,47 @@ class RecipeTaskPickReportState(RecipeState):
                         'task_index': next_task_index,
                     })
 
+            next_task = tasks[next_task_index]
+
+            if intent == 'confirmPickedQuantity':
+                text = f"Recorded picked {slots['quantity']}."
+                next_prompt = self._next_location_prompt(next_task)
+            elif intent == 'reportShortPick':
+                text = f"Recorded short pick {slots['quantity']}."
+                next_prompt = (
+                    f"Short pick recorded. "
+                    f"Proceed to {next_task.location_name}. "
+                    f"Confirm location. "
+                    f"Check digits are {next_task.check_digit}."
+                )
+            elif intent == 'reportDamagedItem':
+                text = "Recorded damaged item."
+                next_prompt = (
+                    f"Damaged item recorded. Set it aside. "
+                    f"Then proceed to {next_task.location_name}. "
+                    f"Confirm location. "
+                    f"Check digits are {next_task.check_digit}."
+                )
+            else:
+                text = "Recorded empty location."
+                next_prompt = (
+                    f"Empty location recorded. "
+                    f"Proceed to {next_task.location_name}. "
+                    f"Confirm location. "
+                    f"Check digits are {next_task.check_digit}."
+                )
+
+            sleep(.1)
+            event.set()
+            thread.join()
+
             return Transition(
                 outcome=inference,
                 next_state=RecipeStates.TASK_LOCATION_PROMPT,
                 next_state_kwargs={
                     'tasks': tasks,
                     'task_index': next_task_index,
+                    'prompt': next_prompt,
                 })
 
         text = "Failed to capture pick result. Retrying..."
@@ -854,10 +892,7 @@ class RecipeTaskPickReportState(RecipeState):
             next_state_kwargs={
                 'tasks': tasks,
                 'task_index': task_index,
-                'prompt': (
-                    f"Please report the result for picking "
-                    f"{task.quantity} {task.item_name}."
-                ),
+                'prompt': f"Please report the result for picking {task.quantity} {task.item_name}.",
             })
 
 
