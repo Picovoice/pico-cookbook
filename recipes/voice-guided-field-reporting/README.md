@@ -1,5 +1,8 @@
 # Voice Guided Field Reporting
 
+Capture field reports hands-free with wake word activation, spoken prompts, structured intent capture, and free-form
+voice notes, all powered by on-device voice AI.
+
 ## Components
 
 - [Koala Noise Suppression](https://picovoice.ai/docs/koala/)

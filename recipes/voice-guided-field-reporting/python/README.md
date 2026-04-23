@@ -1,7 +1,7 @@
 # Voice Guided Field Reporting in Python
 
-Hands-free inspections with guided voice prompts, structured inspection workflows, complex slot extraction, and
-free-form voice notes. Powered by on-device voice AI.
+Capture field reports hands-free with wake word activation, spoken prompts, structured intent capture, and free-form
+voice notes, all powered by on-device voice AI.
 
 ## Compatibility
 
