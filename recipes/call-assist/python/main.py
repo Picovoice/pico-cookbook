@@ -21,6 +21,7 @@ from typing import (
 import picollm
 import pvcheetah
 import pvorca
+from pvcheetah import Cheetah
 from pvorca import Orca
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
@@ -231,13 +232,13 @@ def synthesize_and_playback(orca: Orca, speaker: PvSpeaker, text: str) -> None:
     utterance_lock = Lock()
 
     def get_utterance() -> str:
-     with utterance_lock:
-         return f"[AI] {utterance}"
+        with utterance_lock:
+            return f"[AI] {utterance}"
 
     def update_utterance(chunk: str) -> None:
-     nonlocal utterance
-     with utterance_lock:
-         utterance += chunk
+        nonlocal utterance
+        with utterance_lock:
+            utterance += chunk
 
     utterance_event, utterance_thread = print_async(get_utterance)
 
@@ -247,6 +248,35 @@ def synthesize_and_playback(orca: Orca, speaker: PvSpeaker, text: str) -> None:
     timer_thread.join()
     utterance_event.set()
     utterance_thread.join()
+
+
+def record_and_transcribe(cheetah: Cheetah, recorder: PvRecorder) -> str:
+    text = ""
+    text_lock = Lock()
+
+    def get_text():
+        with text_lock:
+            display_text = "(listening)" if text == "" else text
+            return f"[CALLER] {display_text}"
+
+    text_event, text_thread = print_async(get_text)
+
+    recorder.start()
+    is_endpoint = False
+    while not is_endpoint:
+        partial, is_endpoint = cheetah.process(recorder.read())
+        with text_lock:
+            text += partial
+    recorder.stop()
+    remainder = cheetah.flush()
+    with text_lock:
+        text += remainder
+
+    recorder.stop()
+    text_event.set()
+    text_thread.join()
+
+    return text
 
 
 def main() -> None:
@@ -342,30 +372,7 @@ def main() -> None:
             if action.is_terminal():
                 return
 
-            text = ""
-            text_lock = Lock()
-
-            def get_text():
-                with text_lock:
-                    display_text = "(listening)" if text == "" else text
-                    return f"[CALLER] {display_text}"
-
-            text_event, text_thread = print_async(get_text)
-
-            recorder.start()
-            is_endpoint = False
-            while not is_endpoint:
-                partial, is_endpoint = cheetah.process(recorder.read())
-                with text_lock:
-                    text += partial
-            recorder.stop()
-            remainder = cheetah.flush()
-            with text_lock:
-                text += remainder
-
-            recorder.stop()
-            text_event.set()
-            text_thread.join()
+            text = record_and_transcribe(cheetah=cheetah, recorder=recorder)
 
             dialog = llm.get_dialog(system=SYSTEM)
 
@@ -426,41 +433,7 @@ def main() -> None:
             if action.is_terminal():
                 break
 
-            text = ""
-            text_lock = Lock()
-
-            def get_text():
-                with text_lock:
-                    display_text = "(listening)" if text == "" else text
-                    return f"[CALLER] {display_text}"
-
-            text_event, text_thread = print_async(get_text)
-
-            recorder.start()
-            is_endpoint = False
-            while not is_endpoint:
-                partial, is_endpoint = cheetah.process(recorder.read())
-                with text_lock:
-                    text += partial
-            recorder.stop()
-            remainder = cheetah.flush()
-            with text_lock:
-                text += remainder
-
-            recorder.stop()
-            text_event.set()
-            text_thread.join()
-
-            dialog = llm.get_dialog(system=SYSTEM)
-
-            dialog.add_human_request(f"Caller said: \"{text}\"\n")
-
-            completion = llm.generate(
-                prompt=dialog.prompt(),
-                stop_phrases={'<|eot_id|>'})
-            inference = completion.completion.strip('\n ').replace('<|eot_id|>', '')
-            caller, reason = extract_caller_and_reason_from_llm_inference(inference)
-            print(caller, reason)
+            record_and_transcribe(cheetah=cheetah, recorder=recorder)
     except KeyboardInterrupt:
         pass
     finally:
