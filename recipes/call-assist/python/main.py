@@ -14,7 +14,6 @@ from time import (
 )
 from typing import (
     Callable,
-    Optional,
     Sequence,
     Tuple
 )
@@ -54,7 +53,7 @@ class Actions(Enum):
             self.GREET: "Hi, {username} can't answer right now. Please say your name and why you're calling.",
             self.CONNECT_CALL: "Okay, one moment while I connect you.",
             self.DECLINE_CALL: "Sorry, {username} is unavailable right now.",
-            self.ASK_FOR_DETAILS: "Can you briefly say what this is regarding?",
+            self.ASK_FOR_DETAILS: "Can you briefly say who you are and what this is regarding?",
             self.ASK_TO_TEXT: "{username} can't talk right now. Please send a text message instead.",
             self.ASK_TO_EMAIL: "Please send the details by email. Thank you.",
             self.ASK_TO_CALL_BACK: "{username} can't take your call right now. Please call back later.",
@@ -202,25 +201,25 @@ reason: unknown
 """
 
 
-def extract_caller_and_reason_from_llm_inference(inference: str) -> Optional[Tuple[str, str]]:
+def extract_caller_and_reason_from_llm_inference(inference: str) -> Tuple[str, str]:
     inference_lines = inference.split("\n")
     if len(inference_lines) != 2:
-        return None
+        return "unknown", "unknown"
 
     caller_line = inference_lines[0]
     reason_line = inference_lines[1]
 
     if not caller_line.startswith("caller: "):
-        return None
+        return "unknown", "unknown"
     caller = caller_line[len("caller: "):]
     if len(caller) == 0:
-        return None
+        return "unknown", "unknown"
 
     if not reason_line.startswith("reason: "):
-        return None
+        return "unknown", "unknown"
     reason = reason_line[len("reason: "):]
     if len(reason) == 0:
-        return None
+        return "unknown", "unknown"
 
     return caller, reason
 
@@ -257,7 +256,11 @@ def main() -> None:
              "of the target GPU. If set to `cpu`, the engine will run on the CPU with the default number of threads. "
              "To specify the number of threads, set this argument to `cpu:${NUM_THREADS}`, where `${NUM_THREADS}` is "
              "the desired number of threads.")
-    parser.add_argument('--picollm_library_path')
+    parser.add_argument(
+        '--ask_for_details_retry_limit',
+        type=int,
+        default=2,
+        help='')
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -266,7 +269,7 @@ def main() -> None:
     username_pronunciation = args.username_pronunciation
     endpoint_duration_sec = args.endpoint_duration_sec
     picollm_device = args.picollm_device
-    picollm_library_path = args.picollm_library_path
+    ask_for_details_retry_limit = args.ask_for_details_retry_limit
 
     username_orca = username
     if username_pronunciation is not None:
@@ -291,8 +294,7 @@ def main() -> None:
         llm = picollm.create(
             access_key=access_key,
             model_path=picollm_model_path,
-            device=picollm_device,
-            library_path=picollm_library_path)
+            device=picollm_device)
         print(f"[OK] picoLLM Inference[V{llm.version}]")
 
         orca = pvorca.create(access_key=access_key)
@@ -305,7 +307,101 @@ def main() -> None:
 
         print()
 
+        ask_for_details_retry_count = 0
         while True:
+            pcm, word_alignments = orca.synthesize(action.prompt(username_orca))
+
+            utterance = ""
+            utterance_lock = Lock()
+
+            def get_utterance() -> str:
+                with utterance_lock:
+                    return f"[AI] {utterance}"
+
+            def update_utterance(chunk: str) -> None:
+                nonlocal utterance
+                with utterance_lock:
+                    utterance += chunk
+
+            utterance_event, utterance_thread = print_async(get_utterance)
+
+            timer_thread = time_async(alignments=word_alignments, on_tick=update_utterance)
+
+            speaker.flush(pcm)
+            timer_thread.join()
+            utterance_event.set()
+            utterance_thread.join()
+
+            if action.is_terminal():
+                return
+
+            text = ""
+            text_lock = Lock()
+
+            def get_text():
+                with text_lock:
+                    display_text = "(listening)" if text == "" else text
+                    return f"[CALLER] {display_text}"
+
+            text_event, text_thread = print_async(get_text)
+
+            recorder.start()
+            is_endpoint = False
+            while not is_endpoint:
+                partial, is_endpoint = cheetah.process(recorder.read())
+                with text_lock:
+                    text += partial
+            recorder.stop()
+            remainder = cheetah.flush()
+            with text_lock:
+                text += remainder
+
+            recorder.stop()
+            text_event.set()
+            text_thread.join()
+
+            dialog = llm.get_dialog(system=SYSTEM)
+
+            dialog.add_human_request(f"Caller said: \"{text}\"\n")
+
+            completion = llm.generate(
+                prompt=dialog.prompt(),
+                stop_phrases={'<|eot_id|>'})
+            inference = completion.completion.strip('\n ').replace('<|eot_id|>', '')
+            caller, reason = extract_caller_and_reason_from_llm_inference(inference)
+            print(caller, reason)
+            if any(x == 'unknown' for x in {caller, reason}):
+                if caller is 'unknown':
+                    print(
+                        f"[AI] Unknown caller is trying to speak to you about `{reason}`. I will push to get their identity.")
+                else:
+                    print(f"[AI] `{caller}` is trying to speaker to you. I will push to get their reason.`")
+
+                if ask_for_details_retry_count < ask_for_details_retry_limit:
+                    action = Actions.ASK_FOR_DETAILS
+                else:
+                    action = Actions.DECLINE_CALL
+            else:
+                print(f"[AI] `{caller}` is trying to speak to you about `{reason}`")
+
+            ask_for_details_retry_count += 1
+
+        while True:
+            print()
+
+            print("Enter a number to select a call-assist action:")
+            for x in Actions:
+                print(f"{x.value}. {str(x)}")
+
+            while True:
+                try:
+                    action = Actions(int(input("> ")))
+                    break
+                except ValueError:
+                    pass
+
+            print()
+
             pcm, word_alignments = orca.synthesize(action.prompt(username_orca))
 
             utterance = ""
@@ -367,21 +463,6 @@ def main() -> None:
             inference = completion.completion.strip('\n ').replace('<|eot_id|>', '')
             caller, reason = extract_caller_and_reason_from_llm_inference(inference)
             print(caller, reason)
-
-            print()
-
-            print("Enter a number to select a call-assist action:")
-            for x in Actions:
-                print(f"{x.value}. {str(x)}")
-
-            while True:
-                try:
-                    action = Actions(int(input("> ")))
-                    break
-                except ValueError:
-                    pass
-
-            print()
     except KeyboardInterrupt:
         pass
     finally:
