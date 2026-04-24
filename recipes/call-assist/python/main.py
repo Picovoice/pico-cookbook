@@ -159,6 +159,46 @@ def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str]
     return thread
 
 
+SYSTEM = """Extract call information.
+
+Return exactly two lines:
+caller: <one short value>
+reason: <one short value>
+
+Rules:
+- Use exactly one value for caller.
+- Use exactly one value for reason.
+- Do not list alternatives.
+- Do not use commas.
+- Do not explain.
+- If the caller says a company or organization, use that as caller.
+- If the caller says only a generic role like customer service, use that as caller.
+- If the caller does not say who they are, use unknown.
+- If the caller does not say why they are calling, use unknown.
+- Use lowercase unless the caller gives a proper name.
+
+Examples:
+Caller said: "I'm calling from the bank."
+caller: bank
+reason: unknown
+
+Caller said: "This is UPS with a package delivery."
+caller: UPS
+reason: package delivery
+
+Caller said: "This is customer service."
+caller: customer service
+reason: unknown
+
+Caller said: "I'm calling about your credit card."
+caller: unknown
+reason: credit card
+
+Caller said: "Hello, can you hear me?"
+caller: unknown
+reason: unknown
+"""
+
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
@@ -223,7 +263,7 @@ def main() -> None:
         print(f"[OK] Cheetah Streaming Speech-to-Text[V{cheetah.version}]")
 
         llm = picollm.create(
-            access_key="3JMq23JToNI11NcraaRoT7MWw9jyL2TvGWl/Rio4Bl1yUjTVSG8GBA==",
+            access_key=access_key,
             model_path=picollm_model_path,
             device=picollm_device,
             library_path=picollm_library_path)
@@ -291,20 +331,12 @@ def main() -> None:
             text_event.set()
             text_thread.join()
 
-            dialog = picollm.GemmaChatDialog()
-            print(dialog)
+            dialog = llm.get_dialog(system=SYSTEM)
 
-            dialog.add_human_request(f"The caller said:\n{text}\n\nWho is calling?")
+            dialog.add_human_request(f"Caller said: \"{text}\"\n")
 
             print(dialog.prompt())
-            completion = llm.generate(
-                prompt=dialog.prompt(),
-                completion_token_limit=25,
-                # stop_phrases={',', '\n', 'Transcript:'},
-                # presence_penalty=1.,
-                # frequency_penalty=1.,
-                # temperature=0.
-            )
+            completion = llm.generate(prompt=dialog.prompt(), stop_phrases={'<|eot_id|>'})
             print(completion)
             topic = completion.completion.strip()
             print(topic)
