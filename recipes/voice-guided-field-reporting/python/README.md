@@ -61,7 +61,7 @@ Save the downloaded file somewhere accessible on your machine. You will pass its
 2. Go to Rhino Speech-to-Intent.
 3. Create an empty Rhino context.
 4. Click Import YAML in the top-right corner.
-5. Paste the [Rhino context YAML](res/context.yml) for this demo.
+5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
 6. Download the generated Rhino context file (`.rhn`) for your target platform.
 
 ### 6. Run the Demo
