@@ -276,15 +276,16 @@ def main() -> None:
     parser.add_argument(
         '--picollm_model_path',
         required=True,
-        help='Absolute path to the file containing LLM parameters (`.pllm`).')
+        help='Absolute path to the picoLLM model file (`.pllm`).')
     parser.add_argument(
         '--context_path',
         required=True,
-        help="Path to Rhino Speech-to-Intent context trained on Picovoice Console (https://console.picovoice.ai/).")
+        help="Path to the Rhino Speech-to-Intent context file trained on Picovoice Console "
+             "(https://console.picovoice.ai/).")
     parser.add_argument(
         "--username",
         default="the recipient",
-        help="Name of the person receiving the call. Used in the spoken prompts.")
+        help="Name of the person receiving the call. Used in spoken prompts.")
     parser.add_argument(
         "--username_pronunciation",
         nargs='+',
@@ -297,17 +298,17 @@ def main() -> None:
         help="Duration of silence, in seconds, required to detect the end of the caller's utterance.")
     parser.add_argument(
         '--picollm_device',
-        help="String representation of the device (e.g., CPU or GPU) to use for inference. If set to `best`, picoLLM "
-             "picks the most suitable device. If set to `gpu`, the engine uses the first available GPU device. To "
-             "select a specific GPU device, set this argument to `gpu:${GPU_INDEX}`, where `${GPU_INDEX}` is the index "
-             "of the target GPU. If set to `cpu`, the engine will run on the CPU with the default number of threads. "
-             "To specify the number of threads, set this argument to `cpu:${NUM_THREADS}`, where `${NUM_THREADS}` is "
-             "the desired number of threads.")
+        help="String representation of the device to use for picoLLM inference. If set to `best`, picoLLM picks the "
+             "most suitable device. If set to `gpu`, picoLLM uses the first available GPU. To select a specific GPU, "
+             "set this argument to `gpu:${GPU_INDEX}`, where `${GPU_INDEX}` is the index of the target GPU. If set to "
+             "`cpu`, picoLLM runs on the CPU with the default number of threads. To specify the number of threads, set "
+             "this argument to `cpu:${NUM_THREADS}`, where `${NUM_THREADS}` is the desired number of threads.")
     parser.add_argument(
         '--ask_for_details_retry_limit',
         type=int,
         default=2,
-        help='')
+        help="Maximum number of times to ask the caller for missing identity or reason details before declining the "
+             "call.")
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -338,22 +339,22 @@ def main() -> None:
             endpoint_duration_sec=endpoint_duration_sec,
             enable_automatic_punctuation=True,
             enable_text_normalization=True)
-        print(f"[OK] Cheetah Streaming Speech-to-Text[V{cheetah.version}]")
+        print(f"[OK] Cheetah Streaming Speech-to-Text [V{cheetah.version}]")
 
         llm = picollm.create(
             access_key=access_key,
             model_path=picollm_model_path,
             device=picollm_device)
-        print(f"[OK] picoLLM Inference[V{llm.version}]")
+        print(f"[OK] picoLLM Inference [V{llm.version}]")
 
         orca = pvorca.create(access_key=access_key)
-        print(f"[OK] Orca Streaming Text-to-Speech[V{orca.version}]")
+        print(f"[OK] Orca Streaming Text-to-Speech [V{orca.version}]")
 
         rhino = pvrhino.create(
             access_key=access_key,
             context_path=context_path,
             require_endpoint=False)
-        print(f"[OK] Rhino Speech-to-Intent[V{rhino.version}]")
+        print(f"[OK] Rhino Speech-to-Intent [V{rhino.version}]")
 
         recorder = PvRecorder(frame_length=cheetah.frame_length)
 
@@ -383,20 +384,20 @@ def main() -> None:
             caller, reason = extract_caller_and_reason_from_llm_inference(inference)
             if caller == 'unknown' or reason == 'unknown':
                 if caller == 'unknown' and reason == 'unknown':
-                    print(
-                        f"[AI] Unknown caller with no specific reason. I will push to get information.")
+                    print("[AI] Unknown caller with no specific reason. I will ask for more information.")
                 elif caller == 'unknown':
                     print(
-                        f"[AI] Unknown caller is trying to speak to you about `{reason}`. I will push to get their identity.")
+                        f"[AI] Unknown caller is trying to speak with you about `{reason}`. "
+                        f"I will ask for their identity.")
                 else:
-                    print(f"[AI] `{caller}` is trying to speaker to you. I will push to get their reason.`")
+                    print(f"[AI] `{caller}` is trying to speak with you. I will ask for their reason.")
 
                 if ask_for_details_retry_count < ask_for_details_retry_limit:
                     action = Actions.ASK_FOR_DETAILS
                 else:
                     action = Actions.DECLINE_CALL
             else:
-                print(f"[AI] `{caller}` is trying to speak to you about `{reason}`")
+                print(f"[AI] `{caller}` is trying to speak with you about `{reason}`.")
                 break
 
             ask_for_details_retry_count += 1
