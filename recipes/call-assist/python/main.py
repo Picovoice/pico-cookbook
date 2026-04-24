@@ -375,16 +375,13 @@ def main() -> None:
             text = record_and_transcribe(cheetah=cheetah, recorder=recorder)
 
             dialog = llm.get_dialog(system=SYSTEM)
-
             dialog.add_human_request(f"Caller said: \"{text}\"\n")
-
             completion = llm.generate(
                 prompt=dialog.prompt(),
                 stop_phrases={'<|eot_id|>'})
             inference = completion.completion.strip('\n ').replace('<|eot_id|>', '')
             caller, reason = extract_caller_and_reason_from_llm_inference(inference)
-            print(caller, reason)
-            if any(x == 'unknown' for x in {caller, reason}):
+            if caller == 'unknown' or reason == 'unknown':
                 if caller == 'unknown' and reason == 'unknown':
                     print(
                         f"[AI] Unknown caller with no specific reason. I will push to get information.")
