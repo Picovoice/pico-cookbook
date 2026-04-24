@@ -44,10 +44,21 @@ On Windows:
 pip install -r requirements.txt
 ```
 
-### 4. Run the Demo
+### 4. Train the Speech-to-Intent Model
+
+1. Open [Picovoice Console](https://console.picovoice.ai/)
+2. Go to Rhino Speech-to-Intent.
+3. Create an empty Rhino context.
+4. Click Import YAML in the top-right corner.
+5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
+6. Download the generated Rhino context file (`.rhn`) for your target platform.
+
+### 5. Run the Demo
 
 ```console
-python main.py --access_key ${ACCESS_KEY}
+python main.py \
+  --access_key ${ACCESS_KEY} \
+  --context_path ${CONTEXT_PATH}
 ```
 
 Use `--username` to set the name of the person receiving the call.
@@ -55,14 +66,21 @@ Use `--username` to set the name of the person receiving the call.
 For example:
 
 ```console
-python main.py --access_key ${ACCESS_KEY} --username Alireza
+python main.py \
+  --access_key ${ACCESS_KEY} \
+   --context_path ${CONTEXT_PATH} \
+   --username Alireza
 ```
 
 You can also provide `--username_pronunciation` to control how the name is spoken by
 [Orca Streaming Text-to-Speech](https://picovoice.ai/platform/orca/).
 
 ```console
-python main.py --access_key ${ACCESS_KEY} --username Alireza --username_pronunciation AE L IY R EH Z AA
+python main.py \
+  --access_key ${ACCESS_KEY} \
+  --context_path ${CONTEXT_PATH} \
+  --username Alireza \
+  --username_pronunciation AE L IY R EH Z AA
 ```
 
 You can find information about custom pronunciation and related phonemes on

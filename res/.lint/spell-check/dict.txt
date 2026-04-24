@@ -38,6 +38,7 @@ pvleopard
 pvorca
 pvporcupine
 pvrecorder
+pvrhino
 pvspeaker
 pvzebra
 samplerate

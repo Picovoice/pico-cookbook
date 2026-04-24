@@ -1,0 +1,15 @@
+context:
+  expressions:
+    chooseAction:
+      - $action:action
+  slots:
+    action:
+      - Greet
+      - Connect Call
+      - Decline Call
+      - Ask for Details
+      - Ask to Text
+      - Ask to Email
+      - Ask to Call Back
+      - Block Caller
+  macros: {}
