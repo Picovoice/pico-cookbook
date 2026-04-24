@@ -9,7 +9,7 @@ context:
 
     reportTireCondition:
       - "$tireCondition:tireCondition"
-      - "(the) tire condition is $tireCondition:tireCondition"
+      - "(the) tire (condition) is $tireCondition:tireCondition"
       - "(the) tires are $tireCondition:tireCondition"
 
     reportServiceStatus:

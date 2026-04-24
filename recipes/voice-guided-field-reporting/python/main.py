@@ -979,8 +979,16 @@ def main() -> None:
         start_state=RecipeStates.STANDBY,
         access_key=access_key)
 
-    workflow.run()
-    workflow.delete()
+    try:
+        workflow.run()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        # Make the cursor visible again.
+        sys.stdout.write("\033[?25h")
+        sys.stdout.flush()
+
+        workflow.delete()
 
 
 if __name__ == '__main__':
