@@ -371,7 +371,10 @@ def main() -> None:
             caller, reason = extract_caller_and_reason_from_llm_inference(inference)
             print(caller, reason)
             if any(x == 'unknown' for x in {caller, reason}):
-                if caller is 'unknown':
+                if caller == 'unknown' and reason == 'unknown':
+                    print(
+                        f"[AI] Unknown caller with no specific reason. I will push to get information.")
+                elif caller == 'unknown':
                     print(
                         f"[AI] Unknown caller is trying to speak to you about `{reason}`. I will push to get their identity.")
                 else:
@@ -383,8 +386,32 @@ def main() -> None:
                     action = Actions.DECLINE_CALL
             else:
                 print(f"[AI] `{caller}` is trying to speak to you about `{reason}`")
+                break
 
             ask_for_details_retry_count += 1
+
+        pcm, word_alignments = orca.synthesize(f"{caller} is trying to speak to you about {reason}.")
+
+        utterance = ""
+        utterance_lock = Lock()
+
+        def get_utterance() -> str:
+            with utterance_lock:
+                return f"[AI] {utterance}"
+
+        def update_utterance(chunk: str) -> None:
+            nonlocal utterance
+            with utterance_lock:
+                utterance += chunk
+
+        utterance_event, utterance_thread = print_async(get_utterance)
+
+        timer_thread = time_async(alignments=word_alignments, on_tick=update_utterance)
+
+        speaker.flush(pcm)
+        timer_thread.join()
+        utterance_event.set()
+        utterance_thread.join()
 
         while True:
             print()
