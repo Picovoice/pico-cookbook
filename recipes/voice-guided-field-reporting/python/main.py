@@ -211,8 +211,6 @@ class OrcaStep(Step):
             if on_synthesis is not None:
                 on_synthesis(alignment)
             self._speaker.flush(pcm)
-        except KeyboardInterrupt:
-            pass
         finally:
             self._speaker.stop()
 
@@ -256,8 +254,6 @@ class PorcupineStep(Step):
             is_detected = False
             while not is_detected:
                 is_detected = self._porcupine.process(self._recorder.read(self._porcupine.frame_length)) == 0
-        except KeyboardInterrupt:
-            pass
         finally:
             self._recorder.stop()
 
@@ -308,8 +304,6 @@ class RhinoStep(Step):
                 'intent': inference.intent,
                 'slots': inference.slots,
             }
-        except KeyboardInterrupt:
-            pass
         finally:
             self._recorder.stop()
 
