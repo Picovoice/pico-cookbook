@@ -273,12 +273,8 @@ def main() -> None:
             for x in Actions:
                 print(f"- {x.value}")
 
-            text = ""
-            text_lock = Lock()
-
             def get_text():
-                with text_lock:
-                    return "[AI] Select one of the call-assist actions above"
+                return "[AI] Select one of the call-assist actions above"
 
             text_event, text_thread = print_async(get_text)
 
