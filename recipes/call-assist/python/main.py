@@ -14,9 +14,11 @@ from time import (
 )
 from typing import (
     Callable,
+    Optional,
     Sequence,
     Tuple
 )
+
 import picollm
 import pvcheetah
 import pvorca
@@ -199,6 +201,30 @@ caller: unknown
 reason: unknown
 """
 
+
+def extract_caller_and_reason_from_llm_inference(inference: str) -> Optional[Tuple[str, str]]:
+    inference_lines = inference.split("\n")
+    if len(inference_lines) != 2:
+        return None
+
+    caller_line = inference_lines[0]
+    reason_line = inference_lines[1]
+
+    if not caller_line.startswith("caller: "):
+        return None
+    caller = caller_line[len("caller: "):]
+    if len(caller) == 0:
+        return None
+
+    if not reason_line.startswith("reason: "):
+        return None
+    reason = reason_line[len("reason: "):]
+    if len(reason) == 0:
+        return None
+
+    return caller, reason
+
+
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
@@ -335,11 +361,12 @@ def main() -> None:
 
             dialog.add_human_request(f"Caller said: \"{text}\"\n")
 
-            print(dialog.prompt())
-            completion = llm.generate(prompt=dialog.prompt(), stop_phrases={'<|eot_id|>'})
-            print(completion)
-            topic = completion.completion.strip()
-            print(topic)
+            completion = llm.generate(
+                prompt=dialog.prompt(),
+                stop_phrases={'<|eot_id|>'})
+            inference = completion.completion.strip('\n ').replace('<|eot_id|>', '')
+            caller, reason = extract_caller_and_reason_from_llm_inference(inference)
+            print(caller, reason)
 
             print()
 
