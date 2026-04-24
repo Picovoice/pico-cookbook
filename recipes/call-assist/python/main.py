@@ -224,6 +224,31 @@ def extract_caller_and_reason_from_llm_inference(inference: str) -> Tuple[str, s
     return caller, reason
 
 
+def synthesize_and_playback(orca: Orca, speaker: PvSpeaker, text: str) -> None:
+    pcm, word_alignments = orca.synthesize(text)
+
+    utterance = ""
+    utterance_lock = Lock()
+
+    def get_utterance() -> str:
+     with utterance_lock:
+         return f"[AI] {utterance}"
+
+    def update_utterance(chunk: str) -> None:
+     nonlocal utterance
+     with utterance_lock:
+         utterance += chunk
+
+    utterance_event, utterance_thread = print_async(get_utterance)
+
+    timer_thread = time_async(alignments=word_alignments, on_tick=update_utterance)
+
+    speaker.flush(pcm)
+    timer_thread.join()
+    utterance_event.set()
+    utterance_thread.join()
+
+
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
@@ -309,28 +334,10 @@ def main() -> None:
 
         ask_for_details_retry_count = 0
         while True:
-            pcm, word_alignments = orca.synthesize(action.prompt(username_orca))
-
-            utterance = ""
-            utterance_lock = Lock()
-
-            def get_utterance() -> str:
-                with utterance_lock:
-                    return f"[AI] {utterance}"
-
-            def update_utterance(chunk: str) -> None:
-                nonlocal utterance
-                with utterance_lock:
-                    utterance += chunk
-
-            utterance_event, utterance_thread = print_async(get_utterance)
-
-            timer_thread = time_async(alignments=word_alignments, on_tick=update_utterance)
-
-            speaker.flush(pcm)
-            timer_thread.join()
-            utterance_event.set()
-            utterance_thread.join()
+            synthesize_and_playback(
+                orca=orca,
+                speaker=speaker,
+                text=action.prompt(username_orca))
 
             if action.is_terminal():
                 return
@@ -390,28 +397,10 @@ def main() -> None:
 
             ask_for_details_retry_count += 1
 
-        pcm, word_alignments = orca.synthesize(f"{caller} is trying to speak to you about {reason}.")
-
-        utterance = ""
-        utterance_lock = Lock()
-
-        def get_utterance() -> str:
-            with utterance_lock:
-                return f"[AI] {utterance}"
-
-        def update_utterance(chunk: str) -> None:
-            nonlocal utterance
-            with utterance_lock:
-                utterance += chunk
-
-        utterance_event, utterance_thread = print_async(get_utterance)
-
-        timer_thread = time_async(alignments=word_alignments, on_tick=update_utterance)
-
-        speaker.flush(pcm)
-        timer_thread.join()
-        utterance_event.set()
-        utterance_thread.join()
+        synthesize_and_playback(
+            orca=orca,
+            speaker=speaker,
+            text=f"{caller} is trying to speak to you about {reason}.")
 
         while True:
             print()
@@ -429,28 +418,10 @@ def main() -> None:
 
             print()
 
-            pcm, word_alignments = orca.synthesize(action.prompt(username_orca))
-
-            utterance = ""
-            utterance_lock = Lock()
-
-            def get_utterance() -> str:
-                with utterance_lock:
-                    return f"[AI] {utterance}"
-
-            def update_utterance(chunk: str) -> None:
-                nonlocal utterance
-                with utterance_lock:
-                    utterance += chunk
-
-            utterance_event, utterance_thread = print_async(get_utterance)
-
-            timer_thread = time_async(alignments=word_alignments, on_tick=update_utterance)
-
-            speaker.flush(pcm)
-            timer_thread.join()
-            utterance_event.set()
-            utterance_thread.join()
+            synthesize_and_playback(
+                orca=orca,
+                speaker=speaker,
+                text=action.prompt(username_orca))
 
             if action.is_terminal():
                 break
