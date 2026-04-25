@@ -46,7 +46,20 @@ pip install -r requirements.txt
 
 Download `llama-3.2-1b-instruct-385.pllm` from [Picovoice Console](https://console.picovoice.ai/).
 
-### 5. Train the Speech-to-Intent Model
+### 5. Train Wake Word Models
+
+This demo uses two wake word models: One for activation and one for stopping note-taking. The one used for stopping
+note-taking should be a rather unique phrase (e.g., `pico stop`).
+
+1. Open [Picovoice Console](https://console.picovoice.ai/)
+2. Go to Porcupine Wake Word.
+3. Enter your desired wake phrase.
+4. Click Train.
+5. Select your target platform and download the generated wake word model file (`.ppn`).
+
+Save the downloaded file somewhere accessible on your machine. You will pass its path to the demo with `--keyword_path`.
+
+### 6. Train the Speech-to-Intent Model
 
 1. Open [Picovoice Console](https://console.picovoice.ai/)
 2. Go to Rhino Speech-to-Intent.
@@ -55,7 +68,7 @@ Download `llama-3.2-1b-instruct-385.pllm` from [Picovoice Console](https://conso
 5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
 6. Download the generated Rhino context file (`.rhn`) for your target platform.
 
-### 6. Run the Demo
+### 7. Run the Demo
 
 ```console
 python main.py \
@@ -64,7 +77,7 @@ python main.py \
   --context_path ${CONTEXT_PATH}   
 ```
 
-### 7. View All Options
+### 8. View All Options
 
 ```console
 python main.py --help
