@@ -1,0 +1,16 @@
+*.iml
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+release
+test_resources
+voice-memo-assistant/src/main/assets/*.pv
+voice-memo-assistant/src/main/assets/*.pllm
+voice-memo-assistant/src/main/assets/*.ppn
+voice-memo-assistant/src/main/assets/*.rhn
+cheetah/
+orca/
