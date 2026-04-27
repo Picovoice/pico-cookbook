@@ -22,7 +22,6 @@ import pvcheetah
 import pvorca
 import pvporcupine
 import pvrhino
-from pvcheetah import Cheetah
 from pvorca import Orca
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
@@ -140,35 +139,6 @@ def synthesize_and_playback(orca: Orca, speaker: PvSpeaker, text: str) -> None:
     utterance_thread.join()
 
 
-def record_and_transcribe(cheetah: Cheetah, recorder: PvRecorder) -> str:
-    text = ""
-    text_lock = Lock()
-
-    def get_text():
-        with text_lock:
-            display_text = "(listening)" if text == "" else text
-            return f"[CALLER] {display_text}"
-
-    text_event, text_thread = print_async(get_text)
-
-    recorder.start()
-    is_endpoint = False
-    while not is_endpoint:
-        partial, is_endpoint = cheetah.process(recorder.read())
-        with text_lock:
-            text += partial
-    recorder.stop()
-    remainder = cheetah.flush()
-    with text_lock:
-        text += remainder
-
-    recorder.stop()
-    text_event.set()
-    text_thread.join()
-
-    return text
-
-
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
@@ -268,13 +238,13 @@ def main() -> None:
             while not is_understood:
                 while not rhino.process(recorder.read()):
                     pass
+                recorder.stop()
                 print_event.set()
                 print_thread.join()
+
                 inference = rhino.get_inference()
                 is_understood = inference.is_understood
-                recorder.stop()
-
-                if inference.is_understood:
+                if is_understood:
                     if inference.intent == 'startRecording':
                         recorder.start()
 
@@ -289,9 +259,7 @@ def main() -> None:
                         text_event, text_thread = print_async(get_recording)
 
                         while True:
-                            frame = recorder.read()
-
-                            partial, is_endpoint = cheetah.process(frame)
+                            partial, is_endpoint = cheetah.process(recorder.read())
                             with recording_lock:
                                 recording += partial
                             if is_endpoint:
@@ -311,17 +279,11 @@ def main() -> None:
                     elif inference.intent == 'readRecording':
                         if recording is not None:
                             synthesize_and_playback(orca=orca, speaker=speaker, text=recording)
-
-                            recorder.start()
-                            print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                         else:
-                            synthesize_and_playback(
-                                orca=orca,
-                                speaker=speaker,
-                                text="You need to record first.")
+                            synthesize_and_playback(orca=orca, speaker=speaker, text="You need to record first.")
 
-                            recorder.start()
-                            print_event, print_thread = print_async(get_text=lambda: "Say wake word")
+                        recorder.start()
+                        print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                     elif inference.intent == 'summarizeRecording':
                         if recording is not None:
                             dialog = llm.get_dialog()
