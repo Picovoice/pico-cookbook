@@ -172,13 +172,37 @@ def main() -> None:
         type=float,
         default=1.0,
         help="Duration of silence, in seconds, required to detect the end of the caller's utterance.")
+    parser.add_argument(
+        "--input_device",
+        type=int,
+        default=-1,
+        help="The input device to use for accepting calls. Use -1 to select the system's default input device.")
+    parser.add_argument(
+        "--get_available_input_devices",
+        type=bool,
+        default=False,
+        help="List the system's avaliable input devices.")
     args = parser.parse_args()
+
+    if args.get_available_input_devices:
+        recorder = PvRecorder(1)
+        print(f"[OK] PV Recorder[V{recorder.version}]")
+
+        avaliable_devices = recorder.get_available_devices()
+        print("\nInput Devices")
+        for i, device_name in enumerate(avaliable_devices):
+            print(f"  {i}: {device_name}")
+
+        print("\nTo run the demo with the input device you want, remove `--get_available_input_devices` and run this "
+              "again with `--input_device ${DEVICE_ID}`.\n")
+        exit(0)
 
     access_key = args.access_key
     context_path = args.context_path
     username = args.username
     username_pronunciation = args.username_pronunciation
     endpoint_duration_sec = args.endpoint_duration_sec
+    input_device_index = args.input_device
 
     username_orca = username
     if username_pronunciation is not None:
@@ -209,7 +233,11 @@ def main() -> None:
             require_endpoint=False)
         print(f"[OK] Rhino Speech-to-Intent[V{rhino.version}]")
 
-        recorder = PvRecorder(frame_length=cheetah.frame_length)
+        recorder = PvRecorder(
+            device_index=input_device_index,
+            frame_length=cheetah.frame_length)
+        print(f"[OK] PV Recorder[V{recorder.version}]")
+        print(f"     Recording Device {recorder.selected_device}")
 
         speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16)
         speaker.start()
@@ -278,7 +306,7 @@ def main() -> None:
 
             def get_text():
                 with text_lock:
-                    return "[AI] Select one of the call-assist actions above"
+                    return "[AI] Select one of the call-assist actions above (listening)"
 
             text_event, text_thread = print_async(get_text)
 
