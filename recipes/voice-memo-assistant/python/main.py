@@ -176,11 +176,7 @@ def main() -> None:
         required=True,
         help="AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).")
     parser.add_argument(
-        '--activation_keyword_path',
-        required=True,
-        help='')
-    parser.add_argument(
-        '--stop_memo_keyword_path',
+        '--keyword_path',
         required=True,
         help='')
     parser.add_argument(
@@ -207,8 +203,7 @@ def main() -> None:
     args = parser.parse_args()
 
     access_key = args.access_key
-    activation_keyword_path = args.activation_keyword_path
-    stop_memo_keyword_path = args.stop_memo_keyword_path
+    keyword_path = args.keyword_path
     context_path = args.context_path
     picollm_model_path = args.picollm_model_path
     endpoint_duration_sec = args.endpoint_duration_sec
@@ -226,7 +221,7 @@ def main() -> None:
     try:
         porcupine = pvporcupine.create(
             access_key=access_key,
-            keyword_paths=[activation_keyword_path, stop_memo_keyword_path])
+            keyword_paths=[keyword_path])
         print(f"[OK] Porcupine Wake Word [V{porcupine.version}]")
 
         rhino = pvrhino.create(
@@ -260,7 +255,7 @@ def main() -> None:
 
         print()
 
-        print_event, print_thread = print_async(get_text=lambda: "Say activation keyword")
+        print_event, print_thread = print_async(get_text=lambda: "Say wake word")
 
         while True:
             if porcupine.process(recorder.read()) != 0:
@@ -303,16 +298,20 @@ def main() -> None:
                                 remainder = cheetah.flush()
                                 with recording_lock:
                                     recording += remainder
+                                    recording += '\n'
 
-                            keyword_index = porcupine.process(frame)
-                            print(keyword_index)
-                            if keyword_index == 1 and is_endpoint:
+                            if recording.lower().rstrip(' .').endswith('stop recording'):
                                 text_event.set()
                                 text_thread.join()
                                 break
+
+                        print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                     elif inference.intent == 'readRecording':
                         if recording is not None:
                             synthesize_and_playback(orca=orca, speaker=speaker, text=recording)
+
+                            recorder.start()
+                            print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                         else:
                             synthesize_and_playback(
                                 orca=orca,
@@ -320,7 +319,7 @@ def main() -> None:
                                 text="You need to record first.")
 
                             recorder.start()
-                            print_event, print_thread = print_async(get_text=lambda: "Say voice command")
+                            print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                     elif inference.intent == 'summarizeRecording':
                         if recording is not None:
                             pass
@@ -331,7 +330,7 @@ def main() -> None:
                                 text="You need to record first.")
 
                             recorder.start()
-                            print_event, print_thread = print_async(get_text=lambda: "Say voice command")
+                            print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                     elif inference.intent == 'rewriteRecording':
                         if recording is not None:
                             pass
@@ -342,7 +341,7 @@ def main() -> None:
                                 text="You need to record first.")
 
                             recorder.start()
-                            print_event, print_thread = print_async(get_text=lambda: "Say voice command")
+                            print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                     else:
                         raise NotImplementedError()
                 else:
@@ -352,7 +351,7 @@ def main() -> None:
                         text="Sorry, I didn't understand. Please try again.")
 
                     recorder.start()
-                    print_event, print_thread = print_async(get_text=lambda: "Say voice command", end="\r\033[2K")
+                    print_event, print_thread = print_async(get_text=lambda: "Say voice command")
     except KeyboardInterrupt:
         pass
     finally:
