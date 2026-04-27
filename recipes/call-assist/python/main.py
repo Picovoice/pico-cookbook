@@ -412,10 +412,10 @@ def main() -> None:
         while True:
             print()
             for x in Actions:
-                print(f"- {x.value}")
+                print(f"- \"{x.value}\"")
 
             def get_text():
-                return "[AI] Select one of the call-assist actions above"
+                return "[AI] Say one of the call-assist voice commands above"
 
             text_event, text_thread = print_async(get_text)
 
