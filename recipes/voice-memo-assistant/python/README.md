@@ -1,5 +1,7 @@
 # Voice Memo Assistant in Python
 
+Record, rewrite, summarize, and replay voice memos hands-free, powered by on-device voice AI.
+
 ## Compatibility
 
 - Runs on Linux (x86_64), macOS (arm64, x86_64), Windows (arm64, x86_64), and Raspberry Pi (5, 4, and 3).
