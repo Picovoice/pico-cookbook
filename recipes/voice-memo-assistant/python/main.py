@@ -274,16 +274,11 @@ def main() -> None:
                                 text_event.set()
                                 text_thread.join()
                                 break
-
-                        print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                     elif inference.intent == 'readRecording':
                         if recording is not None:
                             synthesize_and_playback(orca=orca, speaker=speaker, text=recording)
                         else:
                             synthesize_and_playback(orca=orca, speaker=speaker, text="You need to record first.")
-
-                        recorder.start()
-                        print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                     elif inference.intent == 'summarizeRecording':
                         if recording is not None:
                             dialog = llm.get_dialog()
@@ -314,13 +309,7 @@ Summary:""")
                             recorder.start()
                             print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                         else:
-                            synthesize_and_playback(
-                                orca=orca,
-                                speaker=speaker,
-                                text="You need to record first.")
-
-                            recorder.start()
-                            print_event, print_thread = print_async(get_text=lambda: "Say wake word")
+                            synthesize_and_playback(orca=orca, speaker=speaker, text="You need to record first.")
                     elif inference.intent == 'rewriteRecording':
                         if recording is not None:
                             dialog = llm.get_dialog()
@@ -348,27 +337,16 @@ Edited text:
                             print_event.set()
                             print_thread.join()
                             recording = completion.completion.strip('<|eot_id|>')
-
-                            recorder.start()
-                            print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                         else:
-                            synthesize_and_playback(
-                                orca=orca,
-                                speaker=speaker,
-                                text="You need to record first.")
-
-                            recorder.start()
-                            print_event, print_thread = print_async(get_text=lambda: "Say wake word")
-                    else:
-                        raise NotImplementedError()
+                            synthesize_and_playback(orca=orca, speaker=speaker, text="You need to record first.")
                 else:
                     synthesize_and_playback(
                         orca=orca,
                         speaker=speaker,
                         text="Sorry, I didn't understand. Please try again.")
 
-                    recorder.start()
-                    print_event, print_thread = print_async(get_text=lambda: "Say voice command")
+                recorder.start()
+                print_event, print_thread = print_async(get_text=lambda: "Say voice command")
     except KeyboardInterrupt:
         pass
     finally:
