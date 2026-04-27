@@ -324,10 +324,22 @@ def main() -> None:
                             print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                     elif inference.intent == 'summarizeRecording':
                         if recording is not None:
-                            dialog = llm.get_dialog()
-                            dialog.add_human_request("")
-                            completion = llm.generate(prompt=dialog.prompt())
-                            recording = completion.completion
+                            system = """You summarize voice memos from automatic speech recognition transcripts. The
+transcript may contain punctuation mistakes, casing mistakes, repeated words, or obvious speech recognition errors. Fix
+only obvious errors when the intended meaning is clear. Do not invent missing details. Return only a short summary."""
+                            dialog = llm.get_dialog(system=system)
+                            dialog.add_human_request(f"Summarize this voice memo:\n\n{recording}")
+
+                            print_event, print_thread = print_async(get_text=lambda: "Summarizing")
+                            completion = llm.generate(
+                                prompt=dialog.prompt(),
+                                stop_phrases={'<|eot_id|>'})
+                            print_event.set()
+                            print_thread.join()
+                            recording = completion.completion.strip('<|eot_id|>')
+
+                            recorder.start()
+                            print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                         else:
                             synthesize_and_playback(
                                 orca=orca,
@@ -338,10 +350,23 @@ def main() -> None:
                             print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                     elif inference.intent == 'rewriteRecording':
                         if recording is not None:
-                            dialog = llm.get_dialog()
-                            dialog.add_human_request("")
-                            completion = llm.generate(prompt=dialog.prompt())
-                            recording = completion.completion
+                            system = """You rewrite voice memos from automatic speech recognition transcripts. The
+transcript may contain speech recognition errors, casing mistakes, punctuation mistakes, repeated words, filler words,
+false starts, and thinking-out-loud phrasing. Rewrite it into clear, polished written text. Fix obvious errors when the
+intended meaning is clear. Remove filler words and repeated words. Preserve the original meaning and important details.
+Do not summarize. Do not add new information. Return only the rewritten text."""
+                            dialog = llm.get_dialog(system=system)
+                            dialog.add_human_request(f"Rewrite this voice memo:\n\n{recording}")
+                            print_event, print_thread = print_async(get_text=lambda: "Rewriting")
+                            completion = llm.generate(
+                                prompt=dialog.prompt(),
+                                stop_phrases={'<|eot_id|>'})
+                            print_event.set()
+                            print_thread.join()
+                            recording = completion.completion.strip('<|eot_id|>')
+
+                            recorder.start()
+                            print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                         else:
                             synthesize_and_playback(
                                 orca=orca,
