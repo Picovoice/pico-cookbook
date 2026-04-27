@@ -1,12 +1,16 @@
 context:
   expressions:
-    startRecording:
-      - Start (recording, memo)
-    readRecording:
-      - read (recording, memo)
-    summarizeRecording:
-      - summarize (recording, memo)
-    rewriteRecording:
-      - rewrite (recording, memo)
+    startMemo:
+      - Start (@memo)
+    readMemo:
+      - read (@memo)
+    summarizeMemo:
+      - summarize (@memo )
+    rewriteMemo:
+      - rewrite (@memo )
   slots: {}
-  macros: {}
+  macros:
+    memo:
+      - recording
+      - memo
+      - it

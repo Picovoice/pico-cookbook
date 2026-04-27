@@ -235,6 +235,7 @@ def main() -> None:
 
             is_understood = False
             print_event, print_thread = print_async(get_text=lambda: "Say voice command")
+
             while not is_understood:
                 while not rhino.process(recorder.read()):
                     pass
@@ -245,7 +246,7 @@ def main() -> None:
                 inference = rhino.get_inference()
                 is_understood = inference.is_understood
                 if is_understood:
-                    if inference.intent == 'startRecording':
+                    if inference.intent == 'startMemo':
                         recorder.start()
 
                         recording = ""
@@ -274,12 +275,14 @@ def main() -> None:
                                 text_event.set()
                                 text_thread.join()
                                 break
-                    elif inference.intent == 'readRecording':
+
+                        recorder.stop()
+                    elif inference.intent == 'readMemo':
                         if recording is not None:
                             synthesize_and_playback(orca=orca, speaker=speaker, text=recording)
                         else:
                             synthesize_and_playback(orca=orca, speaker=speaker, text="You need to record first.")
-                    elif inference.intent == 'summarizeRecording':
+                    elif inference.intent == 'summarizeMemo':
                         if recording is not None:
                             dialog = llm.get_dialog()
                             dialog.add_human_request(f"""Summarize the text below.
@@ -305,12 +308,9 @@ Summary:""")
                             print_event.set()
                             print_thread.join()
                             recording = completion.completion.strip('<|eot_id|>')
-
-                            recorder.start()
-                            print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                         else:
                             synthesize_and_playback(orca=orca, speaker=speaker, text="You need to record first.")
-                    elif inference.intent == 'rewriteRecording':
+                    elif inference.intent == 'rewriteMemo':
                         if recording is not None:
                             dialog = llm.get_dialog()
                             dialog.add_human_request(f"""Edit the text below.
@@ -346,7 +346,7 @@ Edited text:
                         text="Sorry, I didn't understand. Please try again.")
 
                 recorder.start()
-                print_event, print_thread = print_async(get_text=lambda: "Say voice command")
+                print_event, print_thread = print_async(get_text=lambda: "Say wake word")
     except KeyboardInterrupt:
         pass
     finally:
