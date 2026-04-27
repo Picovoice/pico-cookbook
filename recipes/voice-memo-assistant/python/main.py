@@ -298,9 +298,11 @@ def main() -> None:
                                 remainder = cheetah.flush()
                                 with recording_lock:
                                     recording += remainder
-                                    recording += '\n'
+                                    recording += ' '
 
-                            if recording.lower().rstrip(' .').endswith('stop recording'):
+                            if recording.lower().strip(' .').endswith('stop recording'):
+                                with recording_lock:
+                                    recording = recording.rstrip(' .')[:-len('stop recording')]
                                 text_event.set()
                                 text_thread.join()
                                 break
