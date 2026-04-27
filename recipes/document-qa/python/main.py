@@ -1,10 +1,10 @@
+import os
 import shutil
 import string
 import sys
 from argparse import ArgumentParser
 from threading import (
     Event,
-    Lock,
     Thread
 )
 from time import (
@@ -154,7 +154,39 @@ def main() -> None:
     speaker = None
 
     try:
-        pass
+        embedding_llm = picollm.create(
+            access_key=access_key,
+            model_path=picollm_embedding_model_path,
+            device=picollm_device)
+        print(
+            f"[OK] picoLLM Inference [V{embedding_llm.version}] "
+            f"[{os.path.basename(picollm_embedding_model_path).replace('.pllm', '')}]")
+
+        cheetah = pvcheetah.create(
+            access_key=access_key,
+            endpoint_duration_sec=endpoint_duration_sec,
+            enable_automatic_punctuation=True,
+            enable_text_normalization=True)
+        print(f"[OK] Cheetah Streaming Speech-to-Text [V{cheetah.version}]")
+
+        chat_llm = picollm.create(
+            access_key=access_key,
+            model_path=picollm_chat_model_path,
+            device=picollm_device)
+        print(
+            f"[OK] picoLLM Inference [V{chat_llm.version}] "
+            f"[{os.path.basename(picollm_chat_model_path).replace('.pllm', '')}]")
+
+        orca = pvorca.create(access_key=access_key)
+        print(f"[OK] Orca Streaming Text-to-Speech [V{orca.version}]")
+
+        recorder = PvRecorder(frame_length=cheetah.frame_length)
+        recorder.start()
+
+        speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16)
+        speaker.start()
+
+        print()
     except KeyboardInterrupt:
         pass
     finally:
