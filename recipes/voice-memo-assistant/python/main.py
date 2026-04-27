@@ -232,6 +232,7 @@ def main() -> None:
         rhino = pvrhino.create(
             access_key=access_key,
             context_path=context_path,
+            endpoint_duration_sec=0.5,
             require_endpoint=False)
         print(f"[OK] Rhino Speech-to-Intent [V{rhino.version}]")
 
@@ -259,33 +260,62 @@ def main() -> None:
 
         print()
 
+        print_event, print_thread = print_async(get_text=lambda: "Say activation keyword")
+
         while True:
             if porcupine.process(recorder.read()) != 0:
                 continue
+            print_event.set()
+            print_thread.join()
 
             is_understood = False
+            print_event, print_thread = print_async(get_text=lambda: "Say voice command")
             while not is_understood:
                 while not rhino.process(recorder.read()):
                     pass
+                print_event.set()
+                print_thread.join()
                 inference = rhino.get_inference()
+                is_understood = inference.is_understood
+                recorder.stop()
+                print(inference)
+
                 if inference.is_understood:
                     if inference.intent == 'startRecording':
                         break
                     elif inference.intent == 'readRecording':
-                        if recorder is not None:
+                        if recording is not None:
                             pass
                         else:
-                            pass
+                            synthesize_and_playback(
+                                orca=orca,
+                                speaker=speaker,
+                                text="You need to record first.")
+
+                            recorder.start()
+                            print_event, print_thread = print_async(get_text=lambda: "Say voice command")
                     elif inference.intent == 'summarizeRecording':
-                        if recorder is not None:
+                        if recording is not None:
                             pass
                         else:
-                            pass
+                            synthesize_and_playback(
+                                orca=orca,
+                                speaker=speaker,
+                                text="You need to record first.")
+
+                            recorder.start()
+                            print_event, print_thread = print_async(get_text=lambda: "Say voice command")
                     elif inference.intent == 'rewriteRecording':
-                        if recorder is not None:
+                        if recording is not None:
                             pass
                         else:
-                            pass
+                            synthesize_and_playback(
+                                orca=orca,
+                                speaker=speaker,
+                                text="You need to record first.")
+
+                            recorder.start()
+                            print_event, print_thread = print_async(get_text=lambda: "Say voice command")
                     else:
                         raise NotImplementedError()
                 else:
@@ -293,6 +323,9 @@ def main() -> None:
                         orca=orca,
                         speaker=speaker,
                         text="Sorry, I didn't understand. Please try again.")
+
+                    recorder.start()
+                    print_event, print_thread = print_async(get_text=lambda: "Say voice command", end="\r\033[2K")
     except KeyboardInterrupt:
         pass
     finally:
