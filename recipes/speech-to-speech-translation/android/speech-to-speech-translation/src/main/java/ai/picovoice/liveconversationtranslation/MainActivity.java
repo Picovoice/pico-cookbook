@@ -235,6 +235,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void setStatus(String text) {
         mainHandler.post(() -> {
+            statusProgress.setVisibility(View.VISIBLE);
             statusText.setVisibility(View.VISIBLE);
             statusText.setText(text);
         });
@@ -654,7 +655,10 @@ public class MainActivity extends AppCompatActivity {
 
         engineExecutor.submit(() -> {
             try {
-                String translation = zebra.translate(transcript);
+                String translation = zebra.translate(
+                        transcript.substring(0, Math.min(
+                                transcript.length(),
+                                zebra.getMaxCharacterLimit())));
 
                 startSpeaking(translation);
             } catch (ZebraException e) {
