@@ -46,10 +46,7 @@ pip install -r requirements.txt
 
 Download `llama-3.2-1b-instruct-385.pllm` from [Picovoice Console](https://console.picovoice.ai/).
 
-### 5. Train Wake Word Models
-
-This demo uses two wake word models: One for activation and one for stopping note-taking. The one used for stopping
-note-taking should be a rather unique phrase (e.g., `pico stop`).
+### 5. Train the Wake Word Model
 
 1. Open [Picovoice Console](https://console.picovoice.ai/)
 2. Go to Porcupine Wake Word.
