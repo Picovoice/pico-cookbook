@@ -324,7 +324,10 @@ def main() -> None:
                             print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                     elif inference.intent == 'summarizeRecording':
                         if recording is not None:
-                            pass
+                            dialog = llm.get_dialog()
+                            dialog.add_human_request("")
+                            completion = llm.generate(prompt=dialog.prompt())
+                            recording = completion.completion
                         else:
                             synthesize_and_playback(
                                 orca=orca,
@@ -335,7 +338,10 @@ def main() -> None:
                             print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                     elif inference.intent == 'rewriteRecording':
                         if recording is not None:
-                            pass
+                            dialog = llm.get_dialog()
+                            dialog.add_human_request("")
+                            completion = llm.generate(prompt=dialog.prompt())
+                            recording = completion.completion
                         else:
                             synthesize_and_playback(
                                 orca=orca,
