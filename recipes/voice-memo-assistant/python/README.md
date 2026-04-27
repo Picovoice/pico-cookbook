@@ -16,7 +16,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ## Usage
 
-These instructions assume your current working directory is `recipes/call-screen/python`.
+These instructions assume your current working directory is `recipes/voice-memo-assistant/python`.
 
 ### 1. Create a Virtual Environment
 
