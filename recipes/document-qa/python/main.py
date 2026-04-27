@@ -6,6 +6,7 @@ import sys
 from argparse import ArgumentParser
 from threading import (
     Event,
+    Lock,
     Thread
 )
 from time import (
@@ -229,14 +230,62 @@ def main() -> None:
         speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16)
         speaker.start()
 
-        print()
-
         with open(document_path, 'r') as f:
             chunks = chunk_document(f.read())
-        print(f"[OK] Broke `{document_path}` into {len(chunks)} chunks")
+        print(f"[OK] Broke `{os.path.basename(document_path)}` into {len(chunks)} chunks")
 
         embeddings = [embedding_llm.generate_embeddings(x) for x in chunks]
         print(f"[OK] Generated embeddings")
+
+        print()
+
+        while True:
+            recorder.start()
+            question = ""
+            question_lock = Lock()
+
+            def get_question() -> str:
+                with question_lock:
+                    display_question = "(listening)" if question == "" else question
+                    return f"[Q] {display_question}"
+
+            question_event, question_thread = print_async(get_question)
+
+            while True:
+                partial, is_endpoint = cheetah.process(recorder.read())
+                with question_lock:
+                    question += partial
+                if is_endpoint:
+                    remainder = cheetah.flush()
+                    with question_lock:
+                        question += remainder
+                    question_event.set()
+                    question_thread.join()
+                    recorder.stop()
+                    break
+
+            pcm, alignments = orca.synthesize(text=question)
+
+            answer = ""
+            answer_lock = Lock()
+
+            def get_answer() -> str:
+                with answer_lock:
+                    return f"[A] {answer}"
+
+            def update_answer(chunk: str) -> None:
+                nonlocal answer
+                with answer_lock:
+                    answer += chunk
+
+            answer_event, answer_thread = print_async(get_answer)
+
+            timer_thread = time_async(alignments=alignments, on_tick=update_answer)
+
+            speaker.flush(pcm)
+            timer_thread.join()
+            answer_event.set()
+            answer_thread.join()
 
 
     except KeyboardInterrupt:
