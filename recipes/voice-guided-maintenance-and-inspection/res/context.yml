@@ -1,0 +1,45 @@
+context:
+  expressions:
+    identifyUnit:
+      - "$unitId:unitId"
+
+    reportOilCondition:
+      - "$fluidCondition:fluidCondition"
+      - "(the) oil (level) is $fluidCondition:fluidCondition"
+
+    reportTireCondition:
+      - "$tireCondition:tireCondition"
+      - "(the) tire (condition) is $tireCondition:tireCondition"
+      - "(the) tires are $tireCondition:tireCondition"
+
+    reportServiceStatus:
+      - "$serviceStatus:serviceStatus"
+      - "(the) (vehicle) status is $serviceStatus:serviceStatus"
+
+  slots:
+    unitId:
+      - east carrier
+      - north hauler
+      - ridge runner
+      - south hauler
+      - valley runner
+      - west carrier
+
+    fluidCondition:
+      - empty
+      - high
+      - low
+      - normal
+
+    tireCondition:
+      - damaged
+      - low pressure
+      - ok
+      - worn
+
+    serviceStatus:
+      - do not operate
+      - needs service
+      - ready
+
+  macros:

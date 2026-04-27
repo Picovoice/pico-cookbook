@@ -1,0 +1,31 @@
+context:
+  expressions:
+    confirmLocation:
+      - "$checkDigit:checkDigit"
+      - "check digits are $checkDigit:checkDigit"
+
+    confirmPickedQuantity:
+      - "picked $pv.SingleDigitInteger:quantity"
+
+    reportShortPick:
+      - "short pick $pv.SingleDigitInteger:quantity"
+
+    reportDamagedItem:
+      - "damaged item"
+
+    reportLocationEmpty:
+      - "location empty"
+
+    exitWorkflow:
+      - "stop picking"
+      - "end picking"
+      - "i am done"
+      - "we are done"
+
+  slots:
+    checkDigit:
+      - one nine
+      - four two
+      - five seven
+
+  macros:
