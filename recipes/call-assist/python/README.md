@@ -70,6 +70,9 @@ Download `llama-3.2-1b-instruct-385.pllm` from [Picovoice Console](https://conso
 
 ### 6. Run the Demo
 
+This demo simulates responding to an incoming phone call using the current device's microphone. Start by speaking as the
+caller, then receive guidance from the assistant on how to respond as the user.
+
 ```console
 python main.py \
   --access_key ${ACCESS_KEY} \
