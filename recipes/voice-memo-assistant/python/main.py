@@ -148,7 +148,8 @@ def main() -> None:
     parser.add_argument(
         '--keyword_path',
         required=True,
-        help='')
+        help="Path to the Porcupine wake word file trained on Picovoice Console "
+             "(https://console.picovoice.ai/).")
     parser.add_argument(
         '--context_path',
         required=True,
@@ -162,7 +163,7 @@ def main() -> None:
         "--endpoint_duration_sec",
         type=float,
         default=1.0,
-        help="Duration of silence, in seconds, required to detect the end of the caller's utterance.")
+        help="Duration of silence, in seconds, required to detect the end of the memo recording.")
     parser.add_argument(
         '--picollm_device',
         help="String representation of the device to use for picoLLM inference. If set to `best`, picoLLM picks the "
@@ -225,7 +226,7 @@ def main() -> None:
 
         print()
 
-        print_event, print_thread = print_async(get_text=lambda: "Say wake word")
+        print_event, print_thread = print_async(get_text=lambda: "Say the wake word")
 
         while True:
             if porcupine.process(recorder.read()) != 0:
@@ -234,7 +235,7 @@ def main() -> None:
             print_thread.join()
 
             is_understood = False
-            print_event, print_thread = print_async(get_text=lambda: "Say voice command")
+            print_event, print_thread = print_async(get_text=lambda: "Say a voice command")
 
             while not is_understood:
                 while not rhino.process(recorder.read()):
@@ -281,27 +282,29 @@ def main() -> None:
                         if recording is not None:
                             synthesize_and_playback(orca=orca, speaker=speaker, text=recording)
                         else:
-                            synthesize_and_playback(orca=orca, speaker=speaker, text="You need to record first.")
+                            synthesize_and_playback(orca=orca, speaker=speaker, text="Please record a memo first.")
                     elif inference.intent == 'summarizeMemo':
                         if recording is not None:
                             dialog = llm.get_dialog()
-                            dialog.add_human_request(f"""Summarize the text below.
+                            dialog.add_human_request(f"""Summarize the memo below.
+
+Return only the summary.
+
 Rules:
-- Output only the summary.
-- No intro.
-- No label.
-- No quotes.
-- No explanation.
+- Do not include an intro.
+- Do not include a label.
+- Do not use quotes.
+- Do not explain your changes.
 - Keep the important details.
 - Fix obvious transcription errors only when the meaning is clear.
-- Do not add information.
-- Use 1 short sentence.
+- Do not add new information.
+- Use one short sentence.
 
-Text:
+Memo:
 {recording}
 
 Summary:""")
-                            print_event, print_thread = print_async(get_text=lambda: "Summarizing")
+                            print_event, print_thread = print_async(get_text=lambda: "Summarizing memo")
                             completion = llm.generate(
                                 prompt=dialog.prompt(),
                                 stop_phrases={'<|eot_id|>'})
@@ -309,28 +312,29 @@ Summary:""")
                             print_thread.join()
                             recording = completion.completion.strip('<|eot_id|>')
                         else:
-                            synthesize_and_playback(orca=orca, speaker=speaker, text="You need to record first.")
+                            synthesize_and_playback(orca=orca, speaker=speaker, text="Please record a memo first.")
                     elif inference.intent == 'rewriteMemo':
                         if recording is not None:
                             dialog = llm.get_dialog()
-                            dialog.add_human_request(f"""Edit the text below.
-Rules:
-- Output only the edited text.
-- No intro.
-- No label.
-- No quotes.
-- No explanation.
-- Fix grammar, punctuation, casing, repeated words, filler words, and false starts.
-- Preserve the meaning.
-- Do not summarize.
-- Do not add information.
+                            dialog.add_human_request(f"""Rewrite the memo below.
 
-Text:
+Return only the rewritten memo.
+
+Rules:
+- Do not include an intro.
+- Do not include a label.
+- Do not use quotes.
+- Do not explain your changes.
+- Fix grammar, punctuation, casing, repeated words, filler words, and false starts.
+- Preserve the original meaning.
+- Do not summarize.
+- Do not add new information.
+
+Memo:
 {recording}
 
-Edited text:
-""")
-                            print_event, print_thread = print_async(get_text=lambda: "Rewriting")
+Rewritten memo:""")
+                            print_event, print_thread = print_async(get_text=lambda: "Rewriting memo")
                             completion = llm.generate(
                                 prompt=dialog.prompt(),
                                 stop_phrases={'<|eot_id|>'})
@@ -338,15 +342,15 @@ Edited text:
                             print_thread.join()
                             recording = completion.completion.strip('<|eot_id|>')
                         else:
-                            synthesize_and_playback(orca=orca, speaker=speaker, text="You need to record first.")
+                            synthesize_and_playback(orca=orca, speaker=speaker, text="Please record a memo first.")
                 else:
                     synthesize_and_playback(
                         orca=orca,
                         speaker=speaker,
-                        text="Sorry, I didn't understand. Please try again.")
+                        text="Sorry, I didn't understand that. Please try again.")
 
                 recorder.start()
-                print_event, print_thread = print_async(get_text=lambda: "Say wake word")
+                print_event, print_thread = print_async(get_text=lambda: "Say the wake word")
     except KeyboardInterrupt:
         pass
     finally:
