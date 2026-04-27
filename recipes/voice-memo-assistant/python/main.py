@@ -20,6 +20,7 @@ from typing import (
 import picollm
 import pvcheetah
 import pvorca
+import pvporcupine
 import pvrhino
 from pvcheetah import Cheetah
 from pvorca import Orca
@@ -175,14 +176,22 @@ def main() -> None:
         required=True,
         help="AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).")
     parser.add_argument(
-        '--picollm_model_path',
+        'activation_keyword_path',
         required=True,
-        help='Absolute path to the picoLLM model file (`.pllm`).')
+        help='')
+    parser.add_argument(
+        'stop_keyword_path',
+        required=True,
+        help='')
     parser.add_argument(
         '--context_path',
         required=True,
         help="Path to the Rhino Speech-to-Intent context file trained on Picovoice Console "
              "(https://console.picovoice.ai/).")
+    parser.add_argument(
+        '--picollm_model_path',
+        required=True,
+        help='Absolute path to the picoLLM model file (`.pllm`).')
     parser.add_argument(
         "--endpoint_duration_sec",
         type=float,
@@ -198,19 +207,33 @@ def main() -> None:
     args = parser.parse_args()
 
     access_key = args.access_key
-    picollm_model_path = args.picollm_model_path
+    activation_keyword_path = args.activation_keyword_path
+    stop_keyword_path = args.stop_keyword_path
     context_path = args.context_path
+    picollm_model_path = args.picollm_model_path
     endpoint_duration_sec = args.endpoint_duration_sec
     picollm_device = args.picollm_device
 
+    porcupine = None
+    rhino = None
     cheetah = None
     llm = None
     orca = None
-    rhino = None
     recorder = None
     speaker = None
 
     try:
+        porcupine = pvporcupine.create(
+            access_key=access_key,
+            keyword_paths=[activation_keyword_path, stop_keyword_path])
+        print(f"[OK] Porcupine Wake Word [V{porcupine.version}]")
+
+        rhino = pvrhino.create(
+            access_key=access_key,
+            context_path=context_path,
+            require_endpoint=False)
+        print(f"[OK] Rhino Speech-to-Intent [V{rhino.version}]")
+
         cheetah = pvcheetah.create(
             access_key=access_key,
             endpoint_duration_sec=endpoint_duration_sec,
@@ -226,12 +249,6 @@ def main() -> None:
 
         orca = pvorca.create(access_key=access_key)
         print(f"[OK] Orca Streaming Text-to-Speech [V{orca.version}]")
-
-        rhino = pvrhino.create(
-            access_key=access_key,
-            context_path=context_path,
-            require_endpoint=False)
-        print(f"[OK] Rhino Speech-to-Intent [V{rhino.version}]")
 
         recorder = PvRecorder(frame_length=cheetah.frame_length)
 
@@ -254,9 +271,6 @@ def main() -> None:
             recorder.stop()
             recorder.delete()
 
-        if rhino is not None:
-            rhino.delete()
-
         if orca is not None:
             orca.delete()
 
@@ -265,6 +279,12 @@ def main() -> None:
 
         if cheetah is not None:
             cheetah.delete()
+
+        if rhino is not None:
+            rhino.delete()
+
+        if porcupine is not None:
+            porcupine.delete()
 
 
 if __name__ == "__main__":
