@@ -43,11 +43,11 @@ class Actions(Enum):
             self.CONNECT_CALL: "Okay, one moment while I connect you.",
             self.DECLINE_CALL: "Sorry, {username} is unavailable right now.",
             self.ASK_FOR_DETAILS: "Can you briefly say who you are and what this is regarding?",
-            self.ASK_TO_TEXT: "{username} can't talk right now. Please send a text message instead.",
+            self.ASK_TO_TEXT: "{Username} can't talk right now. Please send a text message instead.",
             self.ASK_TO_EMAIL: "Please send the details by email. Thank you.",
-            self.ASK_TO_CALL_BACK: "{username} can't take your call right now. Please call back later.",
+            self.ASK_TO_CALL_BACK: "{Username} can't take your call right now. Please call back later.",
             self.BLOCK_CALLER: "This number is not accepting calls.",
-        }[self].format(username=username)
+        }[self].format(username=username, Username=username[:1].upper() + username[1:])
 
     def is_terminal(self) -> bool:
         return {
