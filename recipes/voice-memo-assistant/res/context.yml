@@ -1,0 +1,12 @@
+context:
+  expressions:
+    startRecording:
+      - Start (recording, memo)
+    readRecording:
+      - read (recording, memo)
+    summarizeRecording:
+      - summarize (recording, memo)
+    rewriteRecording:
+      - rewrite (recording, memo)
+  slots: {}
+  macros: {}

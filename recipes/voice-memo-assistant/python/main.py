@@ -176,11 +176,11 @@ def main() -> None:
         required=True,
         help="AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).")
     parser.add_argument(
-        'activation_keyword_path',
+        '--activation_keyword_path',
         required=True,
         help='')
     parser.add_argument(
-        'stop_keyword_path',
+        '--stop_memo_keyword_path',
         required=True,
         help='')
     parser.add_argument(
@@ -208,7 +208,7 @@ def main() -> None:
 
     access_key = args.access_key
     activation_keyword_path = args.activation_keyword_path
-    stop_keyword_path = args.stop_keyword_path
+    stop_memo_keyword_path = args.stop_memo_keyword_path
     context_path = args.context_path
     picollm_model_path = args.picollm_model_path
     endpoint_duration_sec = args.endpoint_duration_sec
@@ -221,11 +221,12 @@ def main() -> None:
     orca = None
     recorder = None
     speaker = None
+    recording = None
 
     try:
         porcupine = pvporcupine.create(
             access_key=access_key,
-            keyword_paths=[activation_keyword_path, stop_keyword_path])
+            keyword_paths=[activation_keyword_path, stop_memo_keyword_path])
         print(f"[OK] Porcupine Wake Word [V{porcupine.version}]")
 
         rhino = pvrhino.create(
@@ -251,11 +252,47 @@ def main() -> None:
         print(f"[OK] Orca Streaming Text-to-Speech [V{orca.version}]")
 
         recorder = PvRecorder(frame_length=cheetah.frame_length)
+        recorder.start()
 
         speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16)
         speaker.start()
 
         print()
+
+        while True:
+            if porcupine.process(recorder.read()) != 0:
+                continue
+
+            is_understood = False
+            while not is_understood:
+                while not rhino.process(recorder.read()):
+                    pass
+                inference = rhino.get_inference()
+                if inference.is_understood:
+                    if inference.intent == 'startRecording':
+                        break
+                    elif inference.intent == 'readRecording':
+                        if recorder is not None:
+                            pass
+                        else:
+                            pass
+                    elif inference.intent == 'summarizeRecording':
+                        if recorder is not None:
+                            pass
+                        else:
+                            pass
+                    elif inference.intent == 'rewriteRecording':
+                        if recorder is not None:
+                            pass
+                        else:
+                            pass
+                    else:
+                        raise NotImplementedError()
+                else:
+                    synthesize_and_playback(
+                        orca=orca,
+                        speaker=speaker,
+                        text="Sorry, I didn't understand. Please try again.")
     except KeyboardInterrupt:
         pass
     finally:
