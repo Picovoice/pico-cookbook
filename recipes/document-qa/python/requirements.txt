@@ -1,0 +1,4 @@
+picollm==2.1.0
+pvcheetah==4.0.1
+pvrecorder==1.2.7
+pvspeaker==1.0.5
