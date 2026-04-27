@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import string
 import sys
@@ -112,6 +113,38 @@ def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str]
     return thread
 
 
+def chunk_document(
+        text: str,
+        chunk_size: int = 1200,
+        chunk_overlap: int = 250,
+) -> Sequence[str]:
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+
+    chunks = list()
+    start = 0
+
+    while start < len(text):
+        end = min(start + chunk_size, len(text))
+
+        if end < len(text):
+            paragraph_break = text.rfind("\n\n", start, end)
+            if paragraph_break > start + int(chunk_size * 0.5):
+                end = paragraph_break
+
+        chunk = text[start:end].strip()
+
+        if len(chunk) > 0:
+            chunks.append(chunk)
+
+        if end >= len(text):
+            break
+
+        start = max(0, end - chunk_overlap)
+
+    return chunks
+
+
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
@@ -126,6 +159,13 @@ def main() -> None:
         '--picollm_chat_model_path',
         required=True,
         help='Absolute path to the picoLLM chat model file (`.pllm`).')
+    parser.add_argument(
+        '--document_path',
+        default=os.path.join(os.path.dirname(__file__), '..', 'res', 'CPAL-1.0.txt'),
+        help="")
+    parser.add_argument(
+        '--cheetah_model_path',
+        help="")
     parser.add_argument(
         "--endpoint_duration_sec",
         type=float,
@@ -143,6 +183,8 @@ def main() -> None:
     access_key = args.access_key
     picollm_embedding_model_path = args.picollm_embedding_model_path
     picollm_chat_model_path = args.picollm_chat_model_path
+    document_path = args.document_path
+    cheetah_model_path = args.cheetah_model_path
     endpoint_duration_sec = args.endpoint_duration_sec
     picollm_device = args.picollm_device
 
@@ -164,6 +206,7 @@ def main() -> None:
 
         cheetah = pvcheetah.create(
             access_key=access_key,
+            model_path=cheetah_model_path,
             endpoint_duration_sec=endpoint_duration_sec,
             enable_automatic_punctuation=True,
             enable_text_normalization=True)
@@ -187,6 +230,15 @@ def main() -> None:
         speaker.start()
 
         print()
+
+        with open(document_path, 'r') as f:
+            chunks = chunk_document(f.read())
+        print(f"[OK] Broke `{document_path}` into {len(chunks)} chunks")
+
+        embeddings = [embedding_llm.generate_embeddings(x) for x in chunks]
+        print(f"[OK] Generated embeddings")
+
+
     except KeyboardInterrupt:
         pass
     finally:
