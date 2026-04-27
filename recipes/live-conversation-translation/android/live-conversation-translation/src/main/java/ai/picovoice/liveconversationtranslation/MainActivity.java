@@ -229,6 +229,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void setStatus(String text) {
         mainHandler.post(() -> {
+            statusProgress.setVisibility(View.VISIBLE);
             statusText.setVisibility(View.VISIBLE);
             statusText.setText(text);
         });
@@ -394,12 +395,35 @@ public class MainActivity extends AppCompatActivity {
             targetLanguageSpinner.invalidate();
             startButton.invalidate();
 
-            cheetah0.delete();
-            cheetah1.delete();
-            zebra0.delete();
-            zebra1.delete();
-            orca0.delete();
-            orca1.delete();
+            if (cheetah0 != null) {
+                cheetah0.delete();
+                cheetah0 = null;
+            }
+
+            if (cheetah1 != null) {
+                cheetah1.delete();
+                cheetah1 = null;
+            }
+
+            if (zebra0 != null) {
+                zebra0.delete();
+                zebra0 = null;
+            }
+
+            if (zebra1 != null) {
+                zebra1.delete();
+                zebra1 = null;
+            }
+
+            if (orca0 != null) {
+                orca0.delete();
+                orca0 = null;
+            }
+
+            if (orca1 != null) {
+                orca1.delete();
+                orca1 = null;
+            }
 
             try {
                 voiceProcessor.stop();
@@ -618,7 +642,10 @@ public class MainActivity extends AppCompatActivity {
 
         engineExecutor.submit(() -> {
             try {
-                String translation = zebra0.translate(transcript);
+                String translation = zebra0.translate(
+                        transcript.substring(0, Math.min(
+                                transcript.length(),
+                                zebra0.getMaxCharacterLimit())));
 
                 startSpeakingTarget(translation);
             } catch (ZebraException e) {
@@ -640,7 +667,10 @@ public class MainActivity extends AppCompatActivity {
 
         engineExecutor.submit(() -> {
             try {
-                String translation = zebra1.translate(transcript);
+                String translation = zebra1.translate(
+                        transcript.substring(0, Math.min(
+                                transcript.length(),
+                                zebra1.getMaxCharacterLimit())));
 
                 startSpeakingSource(translation);
             } catch (ZebraException e) {
