@@ -383,19 +383,21 @@ def main() -> None:
             inference = completion.completion.strip('\n ').replace('<|eot_id|>', '')
             caller, reason = extract_caller_and_reason_from_llm_inference(inference)
             if caller == 'unknown' or reason == 'unknown':
-                if caller == 'unknown' and reason == 'unknown':
-                    print("[AI] Unknown caller with no specific reason. I will ask for more information.")
-                elif caller == 'unknown':
-                    print(
-                        f"[AI] Unknown caller is trying to speak with you about `{reason}`. "
-                        f"I will ask for their identity.")
-                else:
-                    print(f"[AI] `{caller}` is trying to speak with you. I will ask for their reason.")
-
                 if ask_for_details_retry_count < ask_for_details_retry_limit:
                     action = Actions.ASK_FOR_DETAILS
+                    if caller == 'unknown' and reason == 'unknown':
+                        print("[AI] Unknown caller with no specific reason. I will ask for more information.")
+                    elif caller == 'unknown':
+                        print(
+                            f"[AI] Unknown caller is trying to speak with you about `{reason}`. "
+                            f"I will ask for their identity.")
+                    else:
+                        print(f"[AI] `{caller}` is trying to speak with you. I will ask for their reason.")
                 else:
                     action = Actions.DECLINE_CALL
+                    print(
+                        f"[AI] Couldn't understand caller's identity and agenda after {ask_for_details_retry_limit} "
+                        "inquiries. Declining their call.")
             else:
                 print(f"[AI] `{caller}` is trying to speak with you about `{reason}`.")
                 break
