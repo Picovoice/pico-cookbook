@@ -324,12 +324,23 @@ def main() -> None:
                             print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                     elif inference.intent == 'summarizeRecording':
                         if recording is not None:
-                            system = """You summarize voice memos from automatic speech recognition transcripts. The
-transcript may contain punctuation mistakes, casing mistakes, repeated words, or obvious speech recognition errors. Fix
-only obvious errors when the intended meaning is clear. Do not invent missing details. Return only a short summary."""
-                            dialog = llm.get_dialog(system=system)
-                            dialog.add_human_request(f"Summarize this voice memo:\n\n{recording}")
+                            dialog = llm.get_dialog()
+                            dialog.add_human_request(f"""Summarize the text below.
+Rules:
+- Output only the summary.
+- No intro.
+- No label.
+- No quotes.
+- No explanation.
+- Keep the important details.
+- Fix obvious transcription errors only when the meaning is clear.
+- Do not add information.
+- Use 1 short sentence.
 
+Text:
+{recording}
+
+Summary:""")
                             print_event, print_thread = print_async(get_text=lambda: "Summarizing")
                             completion = llm.generate(
                                 prompt=dialog.prompt(),
@@ -350,13 +361,24 @@ only obvious errors when the intended meaning is clear. Do not invent missing de
                             print_event, print_thread = print_async(get_text=lambda: "Say wake word")
                     elif inference.intent == 'rewriteRecording':
                         if recording is not None:
-                            system = """You rewrite voice memos from automatic speech recognition transcripts. The
-transcript may contain speech recognition errors, casing mistakes, punctuation mistakes, repeated words, filler words,
-false starts, and thinking-out-loud phrasing. Rewrite it into clear, polished written text. Fix obvious errors when the
-intended meaning is clear. Remove filler words and repeated words. Preserve the original meaning and important details.
-Do not summarize. Do not add new information. Return only the rewritten text."""
-                            dialog = llm.get_dialog(system=system)
-                            dialog.add_human_request(f"Rewrite this voice memo:\n\n{recording}")
+                            dialog = llm.get_dialog()
+                            dialog.add_human_request(f"""Edit the text below.
+Rules:
+- Output only the edited text.
+- No intro.
+- No label.
+- No quotes.
+- No explanation.
+- Fix grammar, punctuation, casing, repeated words, filler words, and false starts.
+- Preserve the meaning.
+- Do not summarize.
+- Do not add information.
+
+Text:
+{recording}
+
+Edited text:
+""")
                             print_event, print_thread = print_async(get_text=lambda: "Rewriting")
                             completion = llm.generate(
                                 prompt=dialog.prompt(),
