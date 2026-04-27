@@ -446,6 +446,7 @@ public class MainActivity extends AppCompatActivity {
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(model_path)
                     .setEnableAutomaticPunctuation(true)
+                    .setEnableTextNormalization(true)
                     .build(getApplicationContext());
         } catch (CheetahException e) {
             setError(e.getMessage());
@@ -460,6 +461,7 @@ public class MainActivity extends AppCompatActivity {
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(model_path)
                     .setEnableAutomaticPunctuation(true)
+                    .setEnableTextNormalization(true)
                     .build(getApplicationContext());
         } catch (CheetahException e) {
             setError(e.getMessage());
