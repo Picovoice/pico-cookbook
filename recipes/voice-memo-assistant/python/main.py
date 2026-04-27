@@ -278,14 +278,41 @@ def main() -> None:
                 inference = rhino.get_inference()
                 is_understood = inference.is_understood
                 recorder.stop()
-                print(inference)
 
                 if inference.is_understood:
                     if inference.intent == 'startRecording':
-                        break
+                        recorder.start()
+
+                        recording = ""
+                        recording_lock = Lock()
+
+                        def get_recording() -> str:
+                            with recording_lock:
+                                display_text = "(listening)" if recording_lock == "" else recording
+                                return f"[MEMO] {display_text}"
+
+                        text_event, text_thread = print_async(get_recording)
+
+                        while True:
+                            frame = recorder.read()
+
+                            partial, is_endpoint = cheetah.process(frame)
+                            with recording_lock:
+                                recording += partial
+                            if is_endpoint:
+                                remainder = cheetah.flush()
+                                with recording_lock:
+                                    recording += remainder
+
+                            keyword_index = porcupine.process(frame)
+                            print(keyword_index)
+                            if keyword_index == 1 and is_endpoint:
+                                text_event.set()
+                                text_thread.join()
+                                break
                     elif inference.intent == 'readRecording':
                         if recording is not None:
-                            pass
+                            synthesize_and_playback(orca=orca, speaker=speaker, text=recording)
                         else:
                             synthesize_and_playback(
                                 orca=orca,
