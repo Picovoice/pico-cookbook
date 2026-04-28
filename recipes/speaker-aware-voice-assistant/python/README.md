@@ -59,7 +59,14 @@ pip install -r requirements.txt
 5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
 6. Download the generated Rhino context file (`.rhn`) for your target platform.
 
-### 6. Run the Demo
+### 6. Enroll Users
+
+```console
+python main.py \
+  --access_key ${ACCESS_KEY} 
+```
+
+### 7. Run the Demo
 
 ```console
 python main.py \
