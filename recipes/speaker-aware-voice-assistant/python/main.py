@@ -169,10 +169,12 @@ def main() -> None:
              "(https://console.picovoice.ai/).")
     parser.add_argument(
         '--user_profile_paths',
+        required=True,
         nargs='+',
         help="")
     parser.add_argument(
         '--user_roles',
+        required=True,
         nargs='+',
         choices=[x.value for x in UserRoles],
         help="")
