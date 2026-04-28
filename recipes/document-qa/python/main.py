@@ -501,7 +501,7 @@ def main() -> None:
     parser.add_argument(
         "--top_k",
         type=int,
-        default=5,
+        default=3,
         help="Number of document chunks to retrieve for each question.")
     parser.add_argument(
         "--completion_token_limit",
