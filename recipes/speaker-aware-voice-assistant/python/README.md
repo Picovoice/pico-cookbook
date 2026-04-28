@@ -1,5 +1,13 @@
 # Speaker-Aware Voice Assistant
 
+Build voice assistants that can personalize behavior and enforce access control based on who is speaking.
+
+This demo shows how to combine wake word detection, speech-to-intent, speaker recognition, and text-to-speech to create
+a voice assistant that reacts differently for different users. It can allow everyone to use basic commands, personalize
+responses for recognized speakers, and restrict sensitive actions to authorized admins. This enables use cases like
+personal dashboards, user-specific settings, family profiles, workplace permissions, protected device controls,
+and admin-only operations.
+
 ## Compatibility
 
 - Runs on Linux (x86_64), macOS (arm64, x86_64), Windows (arm64, x86_64), and Raspberry Pi (5, 4, and 3).
@@ -61,9 +69,12 @@ pip install -r requirements.txt
 
 ### 6. Enroll Users
 
+Create one Eagle speaker profile for each user you want the assistant to recognize.
+
 ```console
 python main.py \
-  --access_key ${ACCESS_KEY} 
+  --access_key ${ACCESS_KEY} \
+  --eagle_speaker_profile_path ${EAGLE_SPEAKER_PROFILE_PATH}
 ```
 
 ### 7. Run the Demo
@@ -72,7 +83,9 @@ python main.py \
 python main.py \
   --access_key ${ACCESS_KEY} \
   --keyword_path ${KEYWORD_PATH} \
-  --context_path ${CONTEXT_PATH}   
+  --context_path ${CONTEXT_PATH} \
+  --user_profile_paths ${USER_PROFILE_PATH_1} ${USER_PROFILE_PATH_2} ... \
+  --user_roles ${USER_ROLE_1} ${USER_ROLE_2} ...
 ```
 
 ### 7. View All Options
