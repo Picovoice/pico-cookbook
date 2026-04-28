@@ -9,6 +9,15 @@ import pveagle
 from pvrecorder import PvRecorder
 
 
+ENROLLMENT_SENTENCES = [
+    "The quick brown fox jumps over the lazy dog.",
+    "I am recording my voice for speaker enrollment.",
+    "This is my normal speaking voice in a quiet room.",
+    "The assistant should recognize me when I speak.",
+    "Voice recognition works best with clean and natural speech.",
+]
+
+
 class Animation(Thread):
     def __init__(self):
         super().__init__()
@@ -22,13 +31,25 @@ class Animation(Thread):
         i = 0
         while not self.stop_event.is_set():
             print(
-                f'\033[2K\033[1G\r[{self.progress:3d}%] Say the wake word {frames[i % len(frames)]}',
+                f'\033[2K\033[1G\r[{self.progress:3d}%] Enrolling your voice {frames[i % len(frames)]}',
                 end='',
                 flush=True)
             i += 1
             time.sleep(0.1)
 
         print('\033[2K\033[1G\r', end='', flush=True)
+
+
+def print_enrollment_instructions() -> None:
+    print()
+    print("Read the following sentences aloud in your normal voice.")
+    print("Keep speaking until enrollment reaches 100%.")
+    print()
+
+    for i, sentence in enumerate(ENROLLMENT_SENTENCES, start=1):
+        print(f"{i}. {sentence}")
+
+    print()
 
 
 def main() -> None:
@@ -63,6 +84,8 @@ def main() -> None:
             min_enrollment_chunks=eagle_min_enrollment_chunks)
         print(f"[OK] Eagle Speaker Recognition[V{eagle.version}]")
 
+        print_enrollment_instructions()
+
         recorder = PvRecorder(frame_length=eagle.frame_length)
         recorder.start()
 
@@ -72,6 +95,7 @@ def main() -> None:
         while progress < 100.0:
             progress = eagle.enroll(recorder.read())
             animation.progress = int(progress)
+
     except KeyboardInterrupt:
         pass
     finally:
