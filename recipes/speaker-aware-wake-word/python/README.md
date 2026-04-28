@@ -1,4 +1,4 @@
-# # Speaker-Aware Wake Word in Python
+# Speaker-Aware Wake Word in Python
 
 Detect wake words and recognize who said them, powered by on-device voice AI.
 
