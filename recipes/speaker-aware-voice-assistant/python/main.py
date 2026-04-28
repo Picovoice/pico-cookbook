@@ -1,3 +1,4 @@
+import os
 import shutil
 import string
 import sys
@@ -8,7 +9,6 @@ from threading import (
     Lock,
     Thread
 )
-import os
 from time import (
     monotonic,
     sleep
@@ -19,9 +19,9 @@ from typing import (
     Tuple
 )
 
+import pvorca
 import pvporcupine
 import pvrhino
-import pvorca
 from pveagle import (
     EagleProfile,
     create_recognizer
@@ -124,6 +124,34 @@ def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str]
     return thread
 
 
+def synthesize_and_playback(orca: Orca, speaker: PvSpeaker, recorder: PvRecorder, text: str) -> None:
+    recorder.stop()
+
+    pcm, word_alignments = orca.synthesize(text)
+
+    utterance = ""
+    utterance_lock = Lock()
+
+    def get_utterance() -> str:
+        with utterance_lock:
+            return f"[AI] {utterance}"
+
+    def update_utterance(chunk: str) -> None:
+        nonlocal utterance
+        with utterance_lock:
+            utterance += chunk
+
+    utterance_event, utterance_thread = print_async(get_utterance)
+
+    timer_thread = time_async(alignments=word_alignments, on_tick=update_utterance)
+
+    speaker.flush(pcm)
+    timer_thread.join()
+    utterance_event.set()
+    utterance_thread.join()
+    recorder.start()
+
+
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
@@ -198,6 +226,54 @@ def main() -> None:
         speaker.start()
 
         print()
+
+        print_event, print_thread = print_async(get_text=lambda: "Say the wake word")
+
+        while True:
+            if porcupine.process(recorder.read()) != 0:
+                continue
+            print_event.set()
+            print_thread.join()
+
+            print_event, print_thread = print_async(get_text=lambda: "Say a voice command")
+
+            is_finalized = False
+            while not is_finalized:
+                frame = recorder.read()
+                is_finalized = rhino.process(frame)
+            inference = rhino.get_inference()
+            print_event.set()
+            print_thread.join()
+
+            if inference.is_understood:
+                if inference.intent == 'adminOnly':
+                    synthesize_and_playback(
+                        orca=orca,
+                        speaker=speaker,
+                        recorder=recorder,
+                        text='adminOnly')
+                elif inference.intent == 'speakerPersonalized':
+                    synthesize_and_playback(
+                        orca=orca,
+                        speaker=speaker,
+                        recorder=recorder,
+                        text='speakerPersonalized')
+                elif inference.intent == 'generic':
+                    synthesize_and_playback(
+                        orca=orca,
+                        speaker=speaker,
+                        recorder=recorder,
+                        text='generic')
+                else:
+                    raise NotImplementedError()
+            else:
+                synthesize_and_playback(
+                    orca=orca,
+                    speaker=speaker,
+                    recorder=recorder,
+                    text="I didn't understand")
+
+            print_event, print_thread = print_async(get_text=lambda: "Say the wake word")
     except KeyboardInterrupt:
         pass
     finally:
