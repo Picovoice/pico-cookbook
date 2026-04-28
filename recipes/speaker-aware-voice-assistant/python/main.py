@@ -33,7 +33,6 @@ from pvspeaker import PvSpeaker
 
 class UserRoles(Enum):
     ADMIN = 'admin'
-    BLOCKED = 'blocked'
     USER = 'user'
 
 
@@ -178,6 +177,10 @@ def main() -> None:
         nargs='+',
         choices=[x.value for x in UserRoles],
         help="")
+    parser.add_argument(
+        '--admin_similarity_threshold',
+        type=float,
+        default=0.75)
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -185,6 +188,7 @@ def main() -> None:
     context_path = args.context_path
     user_profile_paths = args.user_profile_paths
     user_roles = [UserRoles(x) for x in args.user_roles]
+    admin_similarity_threshold = args.admin_similarity_threshold
 
     if len(user_profile_paths) != len(user_roles):
         raise ValueError()
@@ -215,7 +219,7 @@ def main() -> None:
             require_endpoint=False)
         print(f"[OK] Rhino Speech-to-Intent [V{rhino.version}]")
 
-        eagle = create_recognizer(access_key=access_key, voice_threshold=0.)
+        eagle = create_recognizer(access_key=access_key)
         print(f"[OK] Eagle Speaker Recognition[V{eagle.version}]")
 
         orca = pvorca.create(access_key=access_key)
@@ -239,27 +243,58 @@ def main() -> None:
 
             print_event, print_thread = print_async(get_text=lambda: "Say a voice command")
 
+            pcm_voice_command = list()
             is_finalized = False
             while not is_finalized:
                 frame = recorder.read()
                 is_finalized = rhino.process(frame)
+                pcm_voice_command.extend(frame)
             inference = rhino.get_inference()
             print_event.set()
             print_thread.join()
 
             if inference.is_understood:
-                if inference.intent == 'adminOnly':
+                if len(pcm_voice_command) < eagle.min_process_samples:
+                    pcm_voice_command.extend([0] * (eagle.min_process_samples - len(pcm_voice_command)))
+                similarities = eagle.process(pcm_voice_command, speaker_profiles=user_profiles)
+                if similarities is None:
                     synthesize_and_playback(
                         orca=orca,
                         speaker=speaker,
                         recorder=recorder,
-                        text='adminOnly')
+                        text="I didn't who is talking")
+
+                user_index = max(range(len(similarities)), key=similarities.__getitem__)
+                user_similarity = similarities[user_index]
+                username = usernames[user_index]
+                user_role = user_roles[user_index]
+
+                if inference.intent == 'adminOnly':
+                    if user_similarity >= admin_similarity_threshold:
+                        if user_role is UserRoles.ADMIN:
+                            synthesize_and_playback(
+                                orca=orca,
+                                speaker=speaker,
+                                recorder=recorder,
+                                text='adminOnly')
+                        else:
+                            synthesize_and_playback(
+                                orca=orca,
+                                speaker=speaker,
+                                recorder=recorder,
+                                text='You are not an admin')
+                    else:
+                        synthesize_and_playback(
+                            orca=orca,
+                            speaker=speaker,
+                            recorder=recorder,
+                            text="Sorry, couldn't verify you")
                 elif inference.intent == 'speakerPersonalized':
                     synthesize_and_playback(
                         orca=orca,
                         speaker=speaker,
                         recorder=recorder,
-                        text='speakerPersonalized')
+                        text=f'speakerPersonalized for {username}')
                 elif inference.intent == 'generic':
                     synthesize_and_playback(
                         orca=orca,
