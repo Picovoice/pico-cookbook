@@ -170,17 +170,18 @@ def main() -> None:
         '--user_profile_paths',
         required=True,
         nargs='+',
-        help="")
+        help="Paths to Eagle speaker profile files.")
     parser.add_argument(
         '--user_roles',
         required=True,
         nargs='+',
         choices=[x.value for x in UserRoles],
-        help="")
+        help="Roles for the speaker profiles, in the same order as `--user_profile_paths`.")
     parser.add_argument(
         '--admin_similarity_threshold',
         type=float,
-        default=0.75)
+        default=0.75,
+        help="Minimum Eagle similarity score required before allowing an admin-only command.")
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -191,7 +192,7 @@ def main() -> None:
     admin_similarity_threshold = args.admin_similarity_threshold
 
     if len(user_profile_paths) != len(user_roles):
-        raise ValueError()
+        raise ValueError("`--user_profile_paths` and `--user_roles` must have the same number of entries.")
 
     user_profiles = list()
     for path in user_profile_paths:
@@ -211,7 +212,7 @@ def main() -> None:
         porcupine = pvporcupine.create(
             access_key=access_key,
             keyword_paths=[keyword_path])
-        print(f"[OK] Porcupine Wake Word[V{porcupine.version}]")
+        print(f"[OK] Porcupine Wake Word [V{porcupine.version}]")
 
         rhino = pvrhino.create(
             access_key=access_key,
@@ -220,7 +221,7 @@ def main() -> None:
         print(f"[OK] Rhino Speech-to-Intent [V{rhino.version}]")
 
         eagle = create_recognizer(access_key=access_key)
-        print(f"[OK] Eagle Speaker Recognition[V{eagle.version}]")
+        print(f"[OK] Eagle Speaker Recognition [V{eagle.version}]")
 
         orca = pvorca.create(access_key=access_key)
         print(f"[OK] Orca Streaming Text-to-Speech [V{orca.version}]")
@@ -262,7 +263,9 @@ def main() -> None:
                         orca=orca,
                         speaker=speaker,
                         recorder=recorder,
-                        text="I didn't who is talking")
+                        text="Sorry, I could not identify who is speaking.")
+                    print_event, print_thread = print_async(get_text=lambda: "Say the wake word")
+                    continue
 
                 user_index = max(range(len(similarities)), key=similarities.__getitem__)
                 user_similarity = similarities[user_index]
@@ -276,39 +279,37 @@ def main() -> None:
                                 orca=orca,
                                 speaker=speaker,
                                 recorder=recorder,
-                                text='adminOnly')
+                                text="Admin command approved.")
                         else:
                             synthesize_and_playback(
                                 orca=orca,
                                 speaker=speaker,
                                 recorder=recorder,
-                                text='You are not an admin')
+                                text="Permission denied. This command requires an admin.")
                     else:
                         synthesize_and_playback(
                             orca=orca,
                             speaker=speaker,
                             recorder=recorder,
-                            text="Sorry, couldn't verify you")
+                            text="Sorry, I could not verify your voice.")
                 elif inference.intent == 'speakerPersonalized':
                     synthesize_and_playback(
                         orca=orca,
                         speaker=speaker,
                         recorder=recorder,
-                        text=f'speakerPersonalized for {username}')
+                        text=f"Hi {username}. I will personalize this command for you.")
                 elif inference.intent == 'generic':
                     synthesize_and_playback(
                         orca=orca,
                         speaker=speaker,
                         recorder=recorder,
-                        text='generic')
-                else:
-                    raise NotImplementedError()
+                        text="Okay. This command is available to everyone.")
             else:
                 synthesize_and_playback(
                     orca=orca,
                     speaker=speaker,
                     recorder=recorder,
-                    text="I didn't understand")
+                    text="Sorry, I did not understand that command.")
 
             print_event, print_thread = print_async(get_text=lambda: "Say the wake word")
     except KeyboardInterrupt:
