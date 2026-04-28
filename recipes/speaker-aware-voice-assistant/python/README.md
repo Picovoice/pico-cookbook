@@ -14,7 +14,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ## Usage
 
-These instructions assume your current working directory is `recipes/speaker-aware-wake-word/python`.
+These instructions assume your current working directory is `recipes/speaker-aware-voice-assistant/python`.
 
 ### 1. Create a Virtual Environment
 
@@ -40,4 +40,36 @@ On Windows:
 
 ```console
 pip install -r requirements.txt
+```
+
+### 4. Train a Wake Word Model
+
+1. Open [Picovoice Console](https://console.picovoice.ai/)
+2. Go to Porcupine Wake Word.
+3. Enter your desired wake phrase.
+4. Click Train.
+5. Select your target platform and download the generated wake word model file (`.ppn`).
+
+### 5. Train the Speech-to-Intent Model
+
+1. Open [Picovoice Console](https://console.picovoice.ai/)
+2. Go to Rhino Speech-to-Intent.
+3. Create an empty Rhino context.
+4. Click Import YAML in the top-right corner.
+5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
+6. Download the generated Rhino context file (`.rhn`) for your target platform.
+
+### 6. Run the Demo
+
+```console
+python main.py \
+  --access_key ${ACCESS_KEY} \
+  --keyword_path ${KEYWORD_PATH} \
+  --context_path ${CONTEXT_PATH}   
+```
+
+### 7. View All Options
+
+```console
+python main.py --help
 ```
