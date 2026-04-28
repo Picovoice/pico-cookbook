@@ -198,6 +198,7 @@ def main() -> None:
         rhino = pvrhino.create(
             access_key=access_key,
             context_path=context_path,
+            sensitivity=0.0,
             endpoint_duration_sec=0.5,
             require_endpoint=False)
         print(f"[OK] Rhino Speech-to-Intent [V{rhino.version}]")
@@ -335,14 +336,17 @@ Rewritten memo:""")
                             memo = completion.completion.strip('<|eot_id|>')
                         else:
                             synthesize_and_playback(orca=orca, speaker=speaker, text="Please record a memo first.")
+
+                    recorder.start()
+                    print_event, print_thread = print_async(get_text=lambda: "Say the wake word")
                 else:
                     synthesize_and_playback(
                         orca=orca,
                         speaker=speaker,
                         text="Sorry, I didn't understand that. Please try again.")
 
-                recorder.start()
-                print_event, print_thread = print_async(get_text=lambda: "Say the wake word")
+                    recorder.start()
+                    print_event, print_thread = print_async(get_text=lambda: "Say a voice command")
     except KeyboardInterrupt:
         pass
     finally:
