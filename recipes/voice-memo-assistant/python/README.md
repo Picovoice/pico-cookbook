@@ -56,8 +56,6 @@ Download `llama-3.2-1b-instruct-385.pllm` from [Picovoice Console](https://conso
 4. Click Train.
 5. Select your target platform and download the generated wake word model file (`.ppn`).
 
-Save the downloaded file somewhere accessible on your machine. You will pass its path to the demo with `--keyword_path`.
-
 ### 6. Train the Speech-to-Intent Model
 
 1. Open [Picovoice Console](https://console.picovoice.ai/)
@@ -72,8 +70,9 @@ Save the downloaded file somewhere accessible on your machine. You will pass its
 ```console
 python main.py \
   --access_key ${ACCESS_KEY} \
-  --picollm_model_path ${PICOLLM_MODEL_PATH} \
-  --context_path ${CONTEXT_PATH}   
+  --keyword_path ${KEYWORD_PATH} \
+  --context_path ${CONTEXT_PATH} \
+  --picollm_model_path ${PICOLLM_MODEL_PATH}
 ```
 
 ### 8. View All Options

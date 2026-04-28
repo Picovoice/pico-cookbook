@@ -5,9 +5,9 @@ context:
     readMemo:
       - read (@memo)
     summarizeMemo:
-      - summarize (@memo )
+      - summarize (@memo)
     rewriteMemo:
-      - rewrite (@memo )
+      - rewrite (@memo)
   slots: {}
   macros:
     memo:
