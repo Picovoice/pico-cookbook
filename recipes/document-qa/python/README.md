@@ -56,7 +56,7 @@ pip install -r requirements.txt
 ### 4. Download the LLMs
 
 
-Download `llama-3.2-1b-instruct-385.pllm` and `embeddinggemma-300m-137.pllm` from
+Download `llama-3.2-1b-instruct-385.pllm` and `embeddinggemma-300m-375.pllm` from
 [Picovoice Console](https://console.picovoice.ai/).
 
 ### 5. Run the Demo
