@@ -1,7 +1,7 @@
 import os
+import queue
 import re
 import shutil
-import string
 import sys
 from argparse import ArgumentParser
 from threading import (
@@ -9,12 +9,9 @@ from threading import (
     Lock,
     Thread
 )
-from time import (
-    monotonic,
-    sleep
-)
 from typing import (
     Callable,
+    Optional,
     Sequence,
     Set,
     Tuple
@@ -23,7 +20,6 @@ from typing import (
 import picollm
 import pvcheetah
 import pvorca
-from pvorca import Orca
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
 
@@ -77,7 +73,7 @@ def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str 
 
                 prev_num_lines = len(lines)
                 i = (i + 1) % len(dots_list)
-                sleep(refresh_sec)
+                stop_event.wait(refresh_sec)
 
             text = get_text()
             width = max(1, shutil.get_terminal_size(fallback=(80, 24)).columns - 1)
@@ -98,23 +94,6 @@ def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str 
     return stop_event, thread
 
 
-def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str], None]) -> Thread:
-    def run() -> None:
-        start_sec = monotonic()
-
-        for i, x in enumerate(alignments):
-            delay = float(x.start_sec) - (monotonic() - start_sec)
-            if delay > 0:
-                sleep(delay)
-
-            suffix = ' ' if i < (len(alignments) - 1) and (alignments[i + 1].word not in string.punctuation) else ''
-            on_tick(x.word + suffix)
-
-    thread = Thread(target=run, daemon=True)
-    thread.start()
-    return thread
-
-
 def chunk_document(
         text: str,
         chunk_size: int = 1200,
@@ -122,6 +101,9 @@ def chunk_document(
 ) -> Sequence[str]:
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
+
+    if chunk_overlap >= chunk_size:
+        raise ValueError("`chunk_overlap` must be smaller than `chunk_size`.")
 
     chunks = list()
     start = 0
@@ -232,12 +214,161 @@ def sanitize_for_orca(text: str, valid_characters: Set[str]) -> str:
 
     text = "".join(replacements.get(x, x) for x in text)
     text = "".join(x if x in valid_character_set else " " for x in text)
-    text = re.sub(r"\s+", " ", text).strip()
-
-    if len(text) == 0:
-        return "I don't know from the provided document."
+    text = re.sub(r"\s+", " ", text)
 
     return text
+
+
+def stream_answer(
+        chat_llm: picollm.PicoLLM,
+        orca: pvorca.Orca,
+        speaker: PvSpeaker,
+        prompt: str,
+        completion_token_limit: int,
+) -> str:
+    text_queue: queue.Queue[Optional[str]] = queue.Queue()
+    tts_error_queue: queue.Queue[BaseException] = queue.Queue()
+
+    answer = ""
+    answer_lock = Lock()
+
+    pending_speech_text = ""
+    pending_speech_lock = Lock()
+
+    sentence_end_pattern = re.compile(r"([.!?;:])\s+")
+
+    def get_answer() -> str:
+        with answer_lock:
+            if len(answer) == 0:
+                return "[A] (thinking)"
+            return f"[A] {answer}"
+
+    def pop_speakable_text(force: bool = False) -> str:
+        nonlocal pending_speech_text
+
+        with pending_speech_lock:
+            text = pending_speech_text
+
+            if len(text.strip()) == 0:
+                return ""
+
+            last_end = -1
+            for match in sentence_end_pattern.finditer(text):
+                last_end = match.end()
+
+            if last_end > 0:
+                speakable = text[:last_end]
+                pending_speech_text = text[last_end:]
+                return speakable
+
+            if len(text) >= 180:
+                split = text.rfind(" ", 0, 180)
+                if split > 60:
+                    speakable = text[:split + 1]
+                    pending_speech_text = text[split + 1:]
+                    return speakable
+
+            if force:
+                speakable = text
+                pending_speech_text = ""
+                return speakable
+
+            return ""
+
+    def tts_worker() -> None:
+        stream = None
+
+        try:
+            stream = orca.stream_open()
+
+            while True:
+                text = text_queue.get()
+                if text is None:
+                    break
+
+                speech_text = sanitize_for_orca(
+                    text=text,
+                    valid_characters=orca.valid_characters)
+
+                if len(speech_text.strip()) == 0:
+                    continue
+
+                pcm = stream.synthesize(speech_text)
+                if pcm is not None and len(pcm) > 0:
+                    speaker.flush(pcm)
+
+            pcm = stream.flush()
+            if pcm is not None and len(pcm) > 0:
+                speaker.flush(pcm)
+
+        except BaseException as e:
+            tts_error_queue.put(e)
+
+        finally:
+            if stream is not None:
+                stream.close()
+
+    def on_llm_stream(text: str) -> None:
+        nonlocal answer
+        nonlocal pending_speech_text
+
+        text = text.replace('<|eot_id|>', '')
+        if len(text) == 0:
+            return
+
+        with answer_lock:
+            answer += text
+
+        with pending_speech_lock:
+            pending_speech_text += text
+
+        while True:
+            speakable_text = pop_speakable_text(force=False)
+            if len(speakable_text) == 0:
+                break
+            text_queue.put(speakable_text)
+
+    answer_event, answer_thread = print_async(get_answer)
+    tts_thread = Thread(target=tts_worker, daemon=True)
+    tts_thread.start()
+
+    try:
+        completion = chat_llm.generate(
+            prompt=prompt,
+            completion_token_limit=completion_token_limit,
+            stop_phrases={'<|eot_id|>'},
+            stream_callback=on_llm_stream)
+
+        final_answer = completion.completion.strip().replace('<|eot_id|>', '')
+
+        with answer_lock:
+            if len(final_answer) > 0:
+                answer = final_answer
+            elif len(answer.strip()) == 0:
+                answer = "I don't know from the provided document."
+
+        remaining_speech_text = pop_speakable_text(force=True)
+        if len(remaining_speech_text) > 0:
+            text_queue.put(remaining_speech_text)
+
+        text_queue.put(None)
+        tts_thread.join()
+
+        if not tts_error_queue.empty():
+            raise tts_error_queue.get()
+
+        answer_event.set()
+        answer_thread.join()
+
+        with answer_lock:
+            return answer.strip()
+
+    except BaseException:
+        text_queue.put(None)
+        tts_thread.join(timeout=1.0)
+        answer_event.set()
+        answer_thread.join()
+        raise
 
 
 def main() -> None:
@@ -380,15 +511,6 @@ def main() -> None:
             if len(question) == 0:
                 continue
 
-            status = "Thinking"
-            status_lock = Lock()
-
-            def get_status() -> str:
-                with status_lock:
-                    return status
-
-            status_event, status_thread = print_async(get_status)
-
             retrieved_chunks = retrieve_chunks(
                 question=question,
                 embedding_llm=embedding_llm,
@@ -401,54 +523,16 @@ def main() -> None:
                 question=question,
                 retrieved_chunks=retrieved_chunks)
 
-            completion = chat_llm.generate(
+            stream_answer(
+                chat_llm=chat_llm,
+                orca=orca,
+                speaker=speaker,
                 prompt=prompt,
-                completion_token_limit=completion_token_limit,
-                stop_phrases={'<|eot_id|>'})
-            answer_text = completion.completion.strip().replace('<|eot_id|>', '')
-
-            if len(answer_text) == 0:
-                answer_text = "I don't know from the provided document."
-
-            with status_lock:
-                status = f"[A] {answer_text}"
-
-            status_event.set()
-            status_thread.join()
-
-            speech_text = sanitize_for_orca(
-                text=answer_text,
-                valid_characters=orca.valid_characters)
-
-            pcm, alignments = orca.synthesize(text=speech_text)
-
-            spoken_answer = ""
-            spoken_answer_lock = Lock()
-
-            def get_spoken_answer() -> str:
-                with spoken_answer_lock:
-                    return f"[A] {spoken_answer}"
-
-            def update_spoken_answer(chunk: str) -> None:
-                nonlocal spoken_answer
-                with spoken_answer_lock:
-                    spoken_answer += chunk
-
-            answer_event, answer_thread = print_async(get_spoken_answer)
-
-            timer_thread = time_async(
-                alignments=alignments,
-                on_tick=update_spoken_answer)
-
-            speaker.flush(pcm)
-            timer_thread.join()
-            answer_event.set()
-            answer_thread.join()
+                completion_token_limit=completion_token_limit)
 
     except KeyboardInterrupt:
         pass
     finally:
-        # Make the cursor visible again.
         sys.stdout.write("\033[?25h")
         sys.stdout.flush()
 
