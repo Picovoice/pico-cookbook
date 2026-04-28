@@ -1,0 +1,2 @@
+rootProject.name = "PersonalizedWakeWord"
+include ':personalized-wake-word'
