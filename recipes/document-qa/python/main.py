@@ -16,6 +16,7 @@ from time import (
 from typing import (
     Callable,
     Sequence,
+    Set,
     Tuple
 )
 
@@ -198,7 +199,10 @@ def build_prompt(
             "Answer only using the provided document excerpts. "
             "If the answer is not in the excerpts, say that you do not know from the provided document. "
             "Do not give legal advice. "
-            "Keep the answer concise."
+            "Keep the answer concise. "
+            "Do not use Markdown formatting. "
+            "Do not use bullet points. "
+            "Use plain text only."
         )
     )
 
@@ -208,6 +212,32 @@ def build_prompt(
     )
 
     return dialog.prompt()
+
+
+def sanitize_for_orca(text: str, valid_characters: Set[str]) -> str:
+    valid_character_set = set(valid_characters)
+
+    replacements = {
+        "\n": " ",
+        "\r": " ",
+        "\t": " ",
+        "“": '"',
+        "”": '"',
+        "‘": "'",
+        "’": "'",
+        "—": "-",
+        "–": "-",
+        "…": "...",
+    }
+
+    text = "".join(replacements.get(x, x) for x in text)
+    text = "".join(x if x in valid_character_set else " " for x in text)
+    text = re.sub(r"\s+", " ", text).strip()
+
+    if len(text) == 0:
+        return "I don't know from the provided document."
+
+    return text
 
 
 def main() -> None:
@@ -386,7 +416,11 @@ def main() -> None:
             status_event.set()
             status_thread.join()
 
-            pcm, alignments = orca.synthesize(text=answer_text)
+            speech_text = sanitize_for_orca(
+                text=answer_text,
+                valid_characters=orca.valid_characters)
+
+            pcm, alignments = orca.synthesize(text=speech_text)
 
             spoken_answer = ""
             spoken_answer_lock = Lock()
