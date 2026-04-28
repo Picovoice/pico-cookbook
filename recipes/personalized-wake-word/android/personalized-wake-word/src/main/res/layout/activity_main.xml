@@ -7,7 +7,7 @@
     android:padding="24dp">
 
     <TextView
-        android:id="@+id/tvTitle"
+        android:id="@+id/titleText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Personalized Wake Word"
@@ -17,30 +17,39 @@
         android:layout_marginBottom="32dp"/>
 
     <TextView
-        android:id="@+id/tvStatus"
+        android:id="@+id/statusText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Ready to Enroll"
         android:textSize="18sp"
-        android:textAlignment="center"
-        android:layout_marginBottom="24dp"/>
+        android:textAlignment="center"/>
 
     <ImageView
-        android:id="@+id/ivResultIcon"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        android:layout_marginBottom="16dp"
+        android:id="@+id/testResultIcon"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:layout_marginBottom="10dp"
         android:visibility="gone" />
 
+    <TextView
+        android:id="@+id/resultText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:visibility="gone"/>
+
     <ProgressBar
-        android:id="@+id/progressBar"
+        android:id="@+id/enrollProgressBar"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="150dp"
         android:layout_height="150dp"
         android:progressDrawable="@drawable/circular_progress"
         android:progress="0"
         android:max="100"
-        android:visibility="gone"/>
+        android:visibility="gone"
+        android:layout_marginTop="24dp"/>
 
     <ai.picovoice.personalizedwakeword.VolumeMeterView
         android:id="@+id/volumeMeterView"
@@ -49,17 +58,8 @@
         android:layout_marginTop="24dp"
         android:visibility="gone" />
 
-    <TextView
-        android:id="@+id/tvResult"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:layout_marginTop="16dp"
-        android:visibility="gone"/>
-
     <LinearLayout
-        android:id="@+id/layoutButtons"
+        android:id="@+id/buttonContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"

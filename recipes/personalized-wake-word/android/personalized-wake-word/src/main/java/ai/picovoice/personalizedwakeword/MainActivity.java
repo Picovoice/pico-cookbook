@@ -1,7 +1,6 @@
 package ai.picovoice.personalizedwakeword;
 
 import android.Manifest;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -11,7 +10,6 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
@@ -24,20 +22,21 @@ import ai.picovoice.eagle.EagleProfiler;
 import ai.picovoice.porcupine.Porcupine;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String TAG = "PersonalWakeWord";
+    private static final String TAG = "PICOVOICE";
     private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
     private static final float EAGLE_THRESHOLD = 0.75f;
 
-    private TextView tvTitle, tvStatus, tvResult;
-    private ProgressBar progressBar;
+    private TextView titleText, statusText, resultText;
+    private ProgressBar enrollProgressBar;
     private Button btnStartEnroll, btnStartTest, btnCancel;
-    private View layoutButtons;
-    private ImageView ivResultIcon;
+    private View buttonContainer;
+    private ImageView testResultIcon;
     private VolumeMeterView volumeMeterView;
 
     private boolean hasEnrolled = false;
     private AppState currentState = AppState.IDLE;
-    private enum AppState { IDLE, ENROLLING, TESTING }
+
+    private enum AppState {IDLE, ENROLLING, TESTING}
 
     private Porcupine porcupine;
     private EagleProfiler eagleProfiler;
@@ -58,17 +57,17 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        tvTitle = findViewById(R.id.tvTitle);
-        tvStatus = findViewById(R.id.tvStatus);
-        tvResult = findViewById(R.id.tvResult);
-        progressBar = findViewById(R.id.progressBar);
-        ivResultIcon = findViewById(R.id.ivResultIcon);
+        titleText = findViewById(R.id.titleText);
+        statusText = findViewById(R.id.statusText);
+        resultText = findViewById(R.id.resultText);
+        enrollProgressBar = findViewById(R.id.enrollProgressBar);
+        testResultIcon = findViewById(R.id.testResultIcon);
 
         btnStartEnroll = findViewById(R.id.btnStartEnroll);
         btnStartTest = findViewById(R.id.btnStartTest);
         btnCancel = findViewById(R.id.btnCancel);
 
-        layoutButtons = findViewById(R.id.layoutButtons);
+        buttonContainer = findViewById(R.id.buttonContainer);
         volumeMeterView = findViewById(R.id.volumeMeterView);
 
         btnStartEnroll.setOnClickListener(v -> checkPermissionsAndStart(AppState.ENROLLING));
@@ -96,19 +95,26 @@ public class MainActivity extends AppCompatActivity {
                         float progress = 0f;
 
                         int startIndex = enrollMaxSamples - enrollValidSamples;
-                        int numChunks = enrollValidSamples / eagleFrameLength;
+                        int numEagleFrames = enrollValidSamples / eagleFrameLength;
 
-                        for (int i = 0; i < numChunks; i++) {
-                            short[] chunk = new short[eagleFrameLength];
-                            System.arraycopy(enrollSlidingBuffer, startIndex + (i * eagleFrameLength), chunk, 0, eagleFrameLength);
-                            progress = eagleProfiler.enroll(chunk);
+                        for (int i = 0; i < numEagleFrames; i++) {
+                            short[] eagleFrame = new short[eagleFrameLength];
+                            System.arraycopy(
+                                    enrollSlidingBuffer,
+                                    startIndex + (i * eagleFrameLength),
+                                    eagleFrame,
+                                    0,
+                                    eagleFrameLength);
+                            progress = eagleProfiler.enroll(eagleFrame);
                         }
                         enrollValidSamples = 0;
 
                         float finalProgress = progress;
                         runOnUiThread(() -> {
-                            progressBar.setProgress((int) finalProgress);
-                            if (finalProgress >= 100f) finishEnrollment();
+                            enrollProgressBar.setProgress((int) finalProgress);
+                            if (finalProgress >= 100f) {
+                                finishEnrollment();
+                            }
                         });
                     }
                 } else if (currentState == AppState.TESTING) {
@@ -118,8 +124,9 @@ public class MainActivity extends AppCompatActivity {
 
                     int keywordIndex = porcupine.process(frame);
                     if (keywordIndex == 0) {
-                        EagleProfile[] profiles = new EagleProfile[]{ speakerProfile };
-                        float[] scores = eagle.process(slidingBuffer, profiles);
+                        float[] scores = eagle.process(
+                                slidingBuffer,
+                                new EagleProfile[]{speakerProfile});
 
                         if (scores != null && scores.length > 0) {
                             boolean isVerified = scores[0] >= EAGLE_THRESHOLD;
@@ -134,7 +141,7 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        errorListener = error -> Log.e(TAG, "VoiceProcessor Error: ", error);
+        errorListener = error -> Log.e(TAG, "Audio Error: ", error);
         voiceProcessor.addFrameListener(frameListener);
         voiceProcessor.addErrorListener(errorListener);
     }
@@ -174,7 +181,7 @@ public class MainActivity extends AppCompatActivity {
             voiceProcessor.start(porcupine.getFrameLength(), porcupine.getSampleRate());
 
         } catch (Exception e) {
-            tvStatus.setText("Init Error: " + e.getMessage());
+            statusText.setText("Init Error: " + e.getMessage());
             Log.e(TAG, "Init Error", e);
         }
     }
@@ -199,7 +206,7 @@ public class MainActivity extends AppCompatActivity {
             voiceProcessor.start(porcupine.getFrameLength(), porcupine.getSampleRate());
 
         } catch (Exception e) {
-            tvStatus.setText("Init Error: " + e.getMessage());
+            statusText.setText("Init Error: " + e.getMessage());
             Log.e(TAG, "Init Error", e);
         }
     }
@@ -225,67 +232,78 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showTestResult(boolean isVerified, float score) {
-        tvResult.setVisibility(View.VISIBLE);
-        ivResultIcon.setVisibility(View.VISIBLE);
+        volumeMeterView.setVisibility(View.GONE);
+        statusText.setVisibility(View.GONE);
+        btnCancel.setVisibility(View.GONE);
+        resultText.setVisibility(View.VISIBLE);
+        testResultIcon.setVisibility(View.VISIBLE);
 
         if (isVerified) {
-            ivResultIcon.setImageResource(R.drawable.ic_check_circle);
-            tvResult.setText(String.format("User Verified\nConfidence: %.2f", score));
-            tvResult.setTextColor(getResources().getColor(R.color.success_green, getTheme()));
+            testResultIcon.setImageResource(R.drawable.ic_check_circle);
+            resultText.setText(String.format("Wake word detected\nUser score: %.2f", score));
+            resultText.setTextColor(getResources().getColor(R.color.success_green, getTheme()));
         } else {
-            ivResultIcon.setImageResource(R.drawable.ic_cancel);
-            tvResult.setText(String.format("User Rejected\nConfidence: %.2f", score));
-            tvResult.setTextColor(getResources().getColor(R.color.error_red, getTheme()));
+            testResultIcon.setImageResource(R.drawable.ic_cancel);
+            resultText.setText(String.format("Wake word detected\nUser score: %.2f", score));
+            resultText.setTextColor(getResources().getColor(R.color.error_red, getTheme()));
         }
 
-        ivResultIcon.setScaleX(0.3f);
-        ivResultIcon.setScaleY(0.3f);
-        ivResultIcon.setAlpha(0f);
-        ivResultIcon.animate()
+        testResultIcon.setScaleX(0.3f);
+        testResultIcon.setScaleY(0.3f);
+        testResultIcon.setAlpha(0f);
+        testResultIcon.animate()
                 .scaleX(1f).scaleY(1f).alpha(1f)
                 .setDuration(300)
                 .setInterpolator(new OvershootInterpolator())
                 .start();
 
-        ivResultIcon.postDelayed(() -> {
-            tvResult.setVisibility(View.GONE);
-            ivResultIcon.setVisibility(View.GONE);
+        testResultIcon.postDelayed(() -> {
+            resultText.setVisibility(View.GONE);
+            testResultIcon.setVisibility(View.GONE);
+            statusText.setVisibility(View.VISIBLE);
+            volumeMeterView.setVisibility(View.VISIBLE);
+            btnCancel.setVisibility(View.VISIBLE);
         }, 2500);
     }
 
     private void updateUIForState() {
-        tvTitle.setVisibility(hasEnrolled ? View.GONE : View.VISIBLE);
-
         if (currentState == AppState.ENROLLING) {
-            tvStatus.setText("Say the wake word 'Porcupine'...");
-            progressBar.setVisibility(View.VISIBLE);
-            progressBar.setProgress(0);
+            statusText.setText("Say the wake word until\nthe circle is full");
+            enrollProgressBar.setVisibility(View.VISIBLE);
+            enrollProgressBar.setProgress(0);
 
-            layoutButtons.setVisibility(View.GONE);
+            buttonContainer.setVisibility(View.GONE);
+            titleText.setVisibility(View.GONE);
             volumeMeterView.setVisibility(View.VISIBLE);
 
             btnCancel.setText("Cancel");
             btnCancel.setVisibility(View.VISIBLE);
 
         } else if (currentState == AppState.TESTING) {
-            tvStatus.setText("Listening for wake word...");
-            progressBar.setVisibility(View.GONE);
+            statusText.setText("Listening for wake word...");
+            enrollProgressBar.setVisibility(View.GONE);
 
-            layoutButtons.setVisibility(View.GONE);
+            buttonContainer.setVisibility(View.GONE);
+            titleText.setVisibility(View.GONE);
             volumeMeterView.setVisibility(View.VISIBLE);
 
             btnCancel.setText("Stop Testing");
             btnCancel.setVisibility(View.VISIBLE);
 
         } else {
-            tvStatus.setText(hasEnrolled ? "Ready to Test or Re-Enroll" : "Ready to Enroll");
-            progressBar.setVisibility(View.GONE);
+            statusText.setText(hasEnrolled ? "Ready to Test or Re-Enroll" : "Ready to Enroll");
+            enrollProgressBar.setVisibility(View.GONE);
             volumeMeterView.setVisibility(View.GONE);
             btnCancel.setVisibility(View.GONE);
 
-            layoutButtons.setVisibility(View.VISIBLE);
+            buttonContainer.setVisibility(View.VISIBLE);
+            titleText.setVisibility(View.VISIBLE);
             btnStartEnroll.setText(hasEnrolled ? "Re-Enroll" : "Start Enrollment");
-            btnStartEnroll.setBackgroundTintList(getResources().getColorStateList(hasEnrolled ? R.color.gray_light : R.color.brand_primary, getTheme()));
+            btnStartEnroll.setBackgroundTintList(
+                    getResources().getColorStateList(
+                            hasEnrolled ? R.color.gray_light : R.color.brand_primary, getTheme()
+                    )
+            );
             btnStartEnroll.setTextColor(hasEnrolled ? 0xFF333333 : getResources().getColor(R.color.white, getTheme()));
 
             btnStartTest.setVisibility(hasEnrolled ? View.VISIBLE : View.GONE);
@@ -301,9 +319,18 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG, "Failed to stop VoiceProcessor", e);
         }
 
-        if (porcupine != null) { porcupine.delete(); porcupine = null; }
-        if (eagleProfiler != null) { eagleProfiler.delete(); eagleProfiler = null; }
-        if (eagle != null) { eagle.delete(); eagle = null; }
+        if (porcupine != null) {
+            porcupine.delete();
+            porcupine = null;
+        }
+        if (eagleProfiler != null) {
+            eagleProfiler.delete();
+            eagleProfiler = null;
+        }
+        if (eagle != null) {
+            eagle.delete();
+            eagle = null;
+        }
     }
 
     @Override
@@ -316,14 +343,6 @@ public class MainActivity extends AppCompatActivity {
         if (voiceProcessor != null) {
             voiceProcessor.clearFrameListeners();
             voiceProcessor.clearErrorListeners();
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            checkPermissionsAndStart(currentState == AppState.IDLE ? AppState.ENROLLING : currentState);
         }
     }
 }

@@ -11,6 +11,9 @@ public class VolumeMeterView extends LinearLayout {
     private View bar2;
     private View bar3;
 
+    final double MIN_DB = -40.0;
+    final double MAX_DB = 0.0;
+
     public VolumeMeterView(Context context) {
         super(context);
         init(context);
@@ -44,18 +47,18 @@ public class VolumeMeterView extends LinearLayout {
     }
 
     private float calculateVolume(short[] frame) {
-        long sum = 0;
+        double sum = 0;
         for (short sample : frame) {
-            sum += sample * sample;
+            sum += Math.pow(sample, 2);
         }
-        double rms = Math.sqrt(sum / (double) frame.length);
-
-        float normalizedVolume = (float) (rms / 10000.0);
-        return Math.min(1.0f, normalizedVolume);
+        double rms = (sum / frame.length) / Math.pow(Short.MAX_VALUE, 2);
+        double db = 10 * Math.log10(Math.max(rms, 1e-9));
+        double normalized = (db - MIN_DB) / (MAX_DB - MIN_DB);
+        return (float) Math.max(0.0, Math.min(1.0, normalized));
     }
 
     private void animateVolumeBars(float volume) {
-        float scale1 = 1f + (volume * 4.5f);
+        float scale1 = 1f + (volume * 4f);
         float scale2 = 1f + (volume * 9f);
         float scale3 = 1f + (volume * 6f);
 
