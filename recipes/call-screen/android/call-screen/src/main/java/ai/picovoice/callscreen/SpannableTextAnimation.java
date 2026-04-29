@@ -90,7 +90,7 @@ public class SpannableTextAnimation {
         });
     }
 
-    /// @brief returns a string if an error occured.
+    /// @brief returns a string if an error occurred.
     public String end() {
         exitThread = true;
 

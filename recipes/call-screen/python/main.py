@@ -181,16 +181,16 @@ def main() -> None:
         "--get_available_input_devices",
         type=bool,
         default=False,
-        help="List the system's avaliable input devices.")
+        help="List the system's available input devices.")
     args = parser.parse_args()
 
     if args.get_available_input_devices:
         recorder = PvRecorder(1)
         print(f"[OK] PV Recorder[V{recorder.version}]")
 
-        avaliable_devices = recorder.get_available_devices()
+        available_devices = recorder.get_available_devices()
         print("\nInput Devices")
-        for i, device_name in enumerate(avaliable_devices):
+        for i, device_name in enumerate(available_devices):
             print(f"  {i}: {device_name}")
 
         print("\nTo run the demo with the input device you want, remove `--get_available_input_devices` and run this "
