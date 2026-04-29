@@ -20,7 +20,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ## Usage
 
-These instructions assume your current working directory is `recipes/personalized-wake-word/python`.
+These instructions assume your current working directory is `recipes/real-time-microphone-noise-removal/python`.
 
 ### 1. Create a Virtual Environment
 
