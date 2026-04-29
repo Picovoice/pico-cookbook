@@ -72,17 +72,3 @@ python main.py \
   --raw_output_path ${RAW_OUTPUT_PATH} \
   --enhanced_output_path ${ENHANCED_OUTPUT_PATH}
 ```
-
-### 5. Compare the Output
-
-Listen to both files and compare the difference:
-
-```console
-python -m wave ./raw.wav
-```
-
-```console
-python -m wave ./noise_suppressed.wav
-```
-
-Or open both WAV files in any audio player or editor.
