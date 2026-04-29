@@ -43,6 +43,7 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
+import android.widget.LinearLayout;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -89,12 +90,9 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String STT_MODEL_FILE = "cheetah_params.pv";
     private static final String TTS_MODEL_FILE = "orca_params_female.pv";
-    // TODO: add instructions that this file must be generated then moved here
-    private static final String RHINO_CONTEXT_FILE = "call-screen-demo.rhn";
+    private static final String RHINO_CONTEXT_FILE = "call_screen_demo_android.rhn";
 
     private static final String PUNCTUATION = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
-
-    private static final int TTS_WARMUP_SECONDS = 1;
 
     private final VoiceProcessor voiceProcessor = VoiceProcessor.getInstance();
 
@@ -112,14 +110,17 @@ public class MainActivity extends AppCompatActivity {
     private AudioTrack ttsOutput;
 
     private UIState uiState;
-    private AppState appState = AppState.SPEAKING_TO_CALLER;
+    private AppState appState;
 
-    private ConstraintLayout loadingLayout;
+    private LinearLayout loadingLayout;
     private ConstraintLayout chatLayout;
     private ConstraintLayout errorLayout;
 
     private TextView loadingText;
+    private ProgressBar loadModelProgress;
+    private boolean startButtonInProgress = false;
     private Button startButton;
+    private TextView loadingErrorText;
 
     private TextView callerText;
     private ScrollView callerScrollView;
@@ -128,6 +129,7 @@ public class MainActivity extends AppCompatActivity {
     private ScrollView userScrollView;
     private SpannableStringBuilder userTextBuilder;
     private TextView stateText;
+    private VolumeMeterView volumeMeterView;
     private int spanColour;
     private int callerColour;
 
@@ -148,20 +150,25 @@ public class MainActivity extends AppCompatActivity {
         errorLayout = findViewById(R.id.errorLayout);
 
         loadingText = findViewById(R.id.loadingText);
+        loadModelProgress = findViewById(R.id.loadModelProgress);
         startButton = findViewById(R.id.startButton);
+        loadingErrorText = findViewById(R.id.loadingErrorText);
 
         callerScrollView = findViewById(R.id.callerScrollView);
         callerText = findViewById(R.id.callerText);
+        callerTextBuilder = new SpannableStringBuilder();
         userScrollView = findViewById(R.id.userScrollView);
         userText = findViewById(R.id.userText);
+        userTextBuilder = new SpannableStringBuilder();
         stateText = findViewById(R.id.stateText);
+        volumeMeterView = findViewById(R.id.volumeMeterView);
         spanColour = ContextCompat.getColor(this, R.color.colorPrimary);
         callerColour = ContextCompat.getColor(this, R.color.colorCaller);
     
         errorText = findViewById(R.id.errorText);
 
-        if (USERNAME == "${YOUR_USERNAME_HERE}") {
-            mainHandler.post(() -> errorText.setText("Please replace " + USERNAME + " with a username"));
+        if (USERNAME.startsWith("${")) {
+            errorText.setText("Please replace " + USERNAME + " with a username");
             updateUIState(UIState.ERROR);
             return;
         }
@@ -169,7 +176,12 @@ public class MainActivity extends AppCompatActivity {
 
         updateUIState(UIState.BEFORE_DEMO);
 
-        initEngines();
+        startButton.setVisibility(View.INVISIBLE);
+        loadModelProgress.setVisibility(View.VISIBLE);
+
+        new Thread(() -> {
+            initEngines();
+        }).start();
     }
 
     private void initEngines() {
@@ -207,9 +219,6 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        callerTextBuilder = new SpannableStringBuilder();
-        userTextBuilder = new SpannableStringBuilder();
-
         mainHandler.post(() -> loadingText.setText("Loading Voice Processor..."));
 
         if (voiceProcessor.hasRecordAudioPermission(this)) {
@@ -230,13 +239,20 @@ public class MainActivity extends AppCompatActivity {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (grantResults.length == 0 || grantResults[0] == PackageManager.PERMISSION_DENIED) {
-            onEngineProcessError("Recording permission not granted");
+            mainHandler.post(() -> loadingErrorText.setText("Recording permission is required for this demo"));
         } else {
-            enableStartButton();
+            mainHandler.post(() -> loadingErrorText.setText(""));
         }
+
+        enableStartButton();
     }
 
     private void enableStartButton() {
+        mainHandler.post(() -> {
+            startButton.setVisibility(View.VISIBLE);
+            loadModelProgress.setVisibility(View.INVISIBLE);
+        });
+
         voiceProcessor.addFrameListener(this::frameListener);
         voiceProcessor.addErrorListener(error -> {
             onEngineProcessError(error.getMessage());
@@ -244,30 +260,42 @@ public class MainActivity extends AppCompatActivity {
 
         mainHandler.post(() -> loadingText.setText("Press the Start Demo button to begin."));
         startButton.setOnClickListener(view -> {
-            // TODO: fix double click; this is not working
-            view.setEnabled(false);
+            if (startButtonInProgress)
+                return;
 
-            mainHandler.post(() -> {
-                loadingLayout.setAlpha(1f);
-                chatLayout.setAlpha(0f);
-                chatLayout.setVisibility(View.VISIBLE);
+            startButtonInProgress = true;
 
-                loadingLayout.animate().alpha(0f).setDuration(400);
-                chatLayout.animate().alpha(1f).setDuration(400);
-            });
+            loadingLayout.setAlpha(1f);
+            chatLayout.setAlpha(0f);
+            chatLayout.setVisibility(View.VISIBLE);
+            
+            loadingLayout.animate().alpha(0f).setDuration(400);
+            chatLayout.animate().alpha(1f).setDuration(400);
 
-            try {
-                Thread.sleep(400);
-            } catch (InterruptedException e) { }
+            new Thread(() -> {
+                try {
+                    Thread.sleep(400);
+                } catch (InterruptedException e) { }
 
-            updateUIState(UIState.CALL_SCREEN);
-            speakToCaller(Action.GREET);
+                updateUIState(UIState.CALL_SCREEN);
+                view.setEnabled(true);
 
-            view.setEnabled(true);
+                speakToCaller(Action.GREET);
+
+                startButtonInProgress = false;
+            }).start();
         });
     }
 
     private void frameListener(short[] frame) {
+        if (uiState == UIState.CALL_SCREEN) {
+            try {
+                volumeMeterView.processFrame(frame);
+            } catch (Exception e) {
+                Log.e("PICOVOICE", "Audio processing error: ", e);
+            }
+        }
+
         if (uiState == UIState.CALL_SCREEN && appState == AppState.LISTEN_TO_CALLER) {
             try {
                 CheetahTranscript result = cheetah.process(frame);
@@ -301,6 +329,7 @@ public class MainActivity extends AppCompatActivity {
                     if (inference.getIsUnderstood() && (inference.getIntent().equals("chooseAction"))) {
                         Action action = Action.fromString(inference.getSlots().get("action"));
 
+                        animation.clearTimed();
                         appendStyledText(
                                 userTextBuilder,
                                 action.toString() + "\n",
@@ -313,10 +342,7 @@ public class MainActivity extends AppCompatActivity {
                             speakToCaller(action);
                         }).start();
                     } else {
-                        appendStyledText(
-                                userTextBuilder,
-                                "Unknown Action\n" + "[" + username.toUpperCase() + "] ",
-                                new ForegroundColorSpan(spanColour));
+                        animation.appendTimed("Unknown Action", 1000);
                     }
                 }
             } catch (RhinoException e) {
@@ -364,9 +390,7 @@ public class MainActivity extends AppCompatActivity {
                 double now_s = (double)System.nanoTime() / 1_000_000_000.0 - start_s;
                 try {
                     Thread.sleep((long)((word.getStartSec() - now_s) * 1000.0));
-                } catch (InterruptedException e) {
-                    return;
-                }
+                } catch (InterruptedException e) { }
 
                 boolean no_trailing_space =
                     i == (words.length - 1) ||
@@ -388,9 +412,7 @@ public class MainActivity extends AppCompatActivity {
 
             try {
                 Thread.sleep(100);
-            } catch (InterruptedException e) {
-                return;
-            }
+            } catch (InterruptedException e) { }
 
             if (action.isTerminal()) {
                 try {
@@ -477,6 +499,7 @@ public class MainActivity extends AppCompatActivity {
             voiceProcessor.start(cheetah.getFrameLength(), cheetah.getSampleRate());
         } catch (VoiceProcessorException e) {
             onEngineProcessError(e.getMessage());
+            return;
         }
 
         animation.start();
@@ -499,6 +522,7 @@ public class MainActivity extends AppCompatActivity {
             voiceProcessor.start(rhino.getFrameLength(), rhino.getSampleRate());
         } catch (VoiceProcessorException e) {
             onEngineProcessError(e.getMessage());
+            return;
         }
 
         animation.start();
@@ -523,17 +547,17 @@ public class MainActivity extends AppCompatActivity {
 
             switch (state) {
                 case BEFORE_DEMO:
-                    loadingLayout.setVisibility(View.VISIBLE);
-                    chatLayout.setVisibility(View.INVISIBLE);
-                    errorLayout.setVisibility(View.INVISIBLE);
-                    break;
-                case CALL_SCREEN:
                     callerTextBuilder.clear();
                     userTextBuilder.clear();
                     callerText.setText("");
                     userText.setText("");
                     stateText.setText("");
 
+                    loadingLayout.setVisibility(View.VISIBLE);
+                    chatLayout.setVisibility(View.INVISIBLE);
+                    errorLayout.setVisibility(View.INVISIBLE);
+                    break;
+                case CALL_SCREEN:
                     loadingLayout.setVisibility(View.INVISIBLE);
                     chatLayout.setVisibility(View.VISIBLE);
                     errorLayout.setVisibility(View.INVISIBLE);

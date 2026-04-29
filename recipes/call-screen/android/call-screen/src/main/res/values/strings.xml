@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">Call Screen</string>
+    <string name="appName">Call Screen</string>
     <string name="startButtonText">Start Demo</string>
 </resources>

@@ -2,53 +2,66 @@
 <RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/rootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:id="@+id/loadingLayout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-        <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/loadingGuidelineHorizontal"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:id="@+id/titleText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            app:layout_constraintGuide_percent="0.60" />
-        <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/buttonGuidelineHorizontal"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            app:layout_constraintGuide_percent="0.45" />
+            android:layout_marginBottom="32dp"
+            android:text="@string/appName"
+            android:textColor="@color/colorPrimary"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
         <TextView
             android:id="@+id/loadingText"
-            android:text="Loading..."
-            android:textSize="30sp"
-            android:layout_marginStart="32dp"
-            android:layout_marginEnd="32dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="Loading..."
             android:textAlignment="center"
-            android:paddingHorizontal="20dp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toTopOf="@+id/loadingGuidelineHorizontal"
-            app:layout_constraintTop_toTopOf="parent" />
+            android:textSize="18sp" />
+
+        <ProgressBar
+            android:id="@+id/loadModelProgress"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="30dp"
+            android:indeterminateTint="@color/colorPrimary"
+            android:visibility="invisible" />
+
         <Button
             android:id="@+id/startButton"
-            android:background="@drawable/button_background"
-            android:textColor="#FFFFFF"
-            android:text="@string/startButtonText"
-            android:textSize="30sp"
-            android:padding="28dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/buttonGuidelineHorizontal" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
+            android:layout_marginTop="-32dp"
+            android:background="@drawable/button_background"
+            android:text="@string/startButtonText"
+            android:textAllCaps="false"
+            android:textColor="#ffffff" />
+
+        <TextView
+            android:id="@+id/loadingErrorText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:text=""
+            android:textAlignment="center"
+            android:textStyle="bold"
+            android:textColor="@color/colorDanger" />
+
+    </LinearLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/chatLayout"
@@ -58,91 +71,97 @@
 
         <ScrollView
             android:id="@+id/callerScrollView"
-            android:layout_height="0dp"
             android:layout_width="0dp"
+            android:layout_height="0dp"
             android:layout_marginStart="24dp"
             android:layout_marginTop="24dp"
             android:layout_marginEnd="24dp"
+            android:background="@drawable/chat_text_background"
+            android:gravity="center"
             android:paddingTop="8dp"
             android:paddingBottom="35dp"
-            android:gravity="center"
-            android:background="@drawable/chat_text_background"
-            app:layout_constraintVertical_chainStyle="spread"
-            app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toTopOf="@+id/userScrollView"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintVertical_weight="1">
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_chainStyle="spread"
+            app:layout_constraintVertical_weight="4">
 
             <TextView
                 android:id="@+id/callerText"
-                android:layout_height="wrap_content"
                 android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:breakStrategy="simple"
                 android:fontFamily="monospace"
-                android:textSize="18sp"
+                android:hyphenationFrequency="none"
                 android:padding="10dp"
                 android:text=""
-                app:layout_constraintTop_toTopOf="parent"
+                android:textSize="18sp"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"/>
-        
+                app:layout_constraintTop_toTopOf="parent" />
+
         </ScrollView>
 
         <ScrollView
             android:id="@+id/userScrollView"
-            android:layout_height="0dp"
             android:layout_width="0dp"
+            android:layout_height="0dp"
             android:layout_marginStart="24dp"
             android:layout_marginTop="24dp"
             android:layout_marginEnd="24dp"
+            android:background="@drawable/chat_text_background"
+            android:gravity="center"
             android:paddingTop="8dp"
             android:paddingBottom="35dp"
-            android:gravity="center"
-            android:background="@drawable/chat_text_background"
-            app:layout_constraintTop_toBottomOf="@+id/callerScrollView"
             app:layout_constraintBottom_toTopOf="@+id/stateContainer"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintVertical_weight="1">
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/callerScrollView"
+            app:layout_constraintVertical_weight="5">
 
             <TextView
                 android:id="@+id/userText"
-                android:layout_height="wrap_content"
                 android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:breakStrategy="simple"
                 android:fontFamily="monospace"
-                android:textSize="18sp"
+                android:hyphenationFrequency="none"
                 android:padding="10dp"
                 android:text=""
-                app:layout_constraintTop_toTopOf="parent"
+                android:textSize="18sp"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"/>
-        
-        </ScrollView>
+                app:layout_constraintTop_toTopOf="parent" />
 
-        <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/guidelineHorizontal"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            app:layout_constraintGuide_percent="0.96" />
+        </ScrollView>
 
         <LinearLayout
             android:id="@+id/stateContainer"
             android:layout_width="match_parent"
-            android:layout_height="100dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="@+id/chatScrollView"
-            app:layout_constraintEnd_toEndOf="@+id/chatScrollView"
-            android:orientation="horizontal"
-            android:gravity="center">
+            android:layout_height="140dp"
+            android:gravity="center"
+            android:orientation="vertical"
+            app:layout_constraintTop_toBottomOf="@+id/userScrollView"
+            app:layout_constraintBottom_toBottomOf="parent" >
 
             <TextView
                 android:id="@+id/stateText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
                 android:text="State:"
                 android:textSize="20sp"
-                app:layout_constraintBottom_toTopOf="@+id/guidelineHorizontal" />
+                app:layout_constraintBottom_toTopOf="@+id/volumeMeterView"
+                app:layout_constraintTop_toTopOf="@+id/stateContainer" />
+
+            <ai.picovoice.callscreen.VolumeMeterView
+                android:id="@+id/volumeMeterView"
+                android:layout_width="wrap_content"
+                android:layout_height="64dp"
+                android:layout_marginTop="8dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/stateText" />
 
         </LinearLayout>
 
@@ -152,24 +171,26 @@
         android:id="@+id/errorLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
+
         <androidx.constraintlayout.widget.Guideline
             android:id="@+id/errorGuidelineHorizontal"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             app:layout_constraintGuide_percent="0.80" />
+
         <TextView
             android:id="@+id/errorText"
-            android:text=""
-            android:textColor="@color/colorDanger"
-            android:textSize="17sp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAlignment="center"
             android:paddingHorizontal="20dp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
+            android:text=""
+            android:textAlignment="center"
+            android:textColor="@color/colorDanger"
+            android:textSize="17sp"
             app:layout_constraintBottom_toTopOf="@+id/errorGuidelineHorizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 

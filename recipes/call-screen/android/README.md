@@ -29,6 +29,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 4. Click Import YAML in the top-right corner.
 5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
 6. Select the **Android** platform and download the generated Rhino context file (`.rhn`).
+7. Copy the downloaded Rhino context file into [call-screen/src/main/assets](call-screen/src/main/assets) and rename it to `call_screen_demo_android.rhn`.
 
 ### 3. Run the Android Studio project
 
