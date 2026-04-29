@@ -1,6 +1,6 @@
+import queue
 import re
 import shutil
-import string
 import sys
 from argparse import ArgumentParser
 from threading import (
@@ -8,13 +8,9 @@ from threading import (
     Lock,
     Thread
 )
-from time import (
-    monotonic,
-    sleep
-)
 from typing import (
     Callable,
-    Sequence,
+    Optional,
     Set,
     Tuple
 )
@@ -23,7 +19,6 @@ import picollm
 import pvcheetah
 import pvorca
 from PIL import Image
-from pvorca import Orca
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
 
@@ -98,23 +93,6 @@ def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str 
     return stop_event, thread
 
 
-def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str], None]) -> Thread:
-    def run() -> None:
-        start_sec = monotonic()
-
-        for i, x in enumerate(alignments):
-            delay = float(x.start_sec) - (monotonic() - start_sec)
-            if delay > 0:
-                sleep(delay)
-
-            suffix = ' ' if i < (len(alignments) - 1) and (alignments[i + 1].word not in string.punctuation) else ''
-            on_tick(x.word + suffix)
-
-    thread = Thread(target=run, daemon=True)
-    thread.start()
-    return thread
-
-
 def sanitize_for_orca(text: str, valid_characters: Set[str]) -> str:
     valid_character_set = set(valid_characters)
 
@@ -136,6 +114,176 @@ def sanitize_for_orca(text: str, valid_characters: Set[str]) -> str:
     text = re.sub(r"\s+", " ", text)
 
     return text
+
+
+def stream_answer(
+        vlm: picollm.PicoLLM,
+        orca: pvorca.Orca,
+        speaker: PvSpeaker,
+        question: str,
+        image: Image.Image,
+) -> str:
+    text_queue: queue.Queue[Optional[str]] = queue.Queue()
+    tts_error_queue: queue.Queue[BaseException] = queue.Queue()
+
+    answer = ""
+    answer_lock = Lock()
+
+    pending_speech_text = ""
+    pending_speech_lock = Lock()
+
+    progress = ""
+    progress_lock = Lock()
+
+    sentence_end_pattern = re.compile(r"([.!?;:])\s+")
+
+    def get_answer() -> str:
+        with answer_lock:
+            if len(answer) == 0:
+                with progress_lock:
+                    if len(progress) > 0:
+                        return progress
+                return "[A] (thinking)"
+
+            return f"[A] {answer}"
+
+    def update_progress(x: float) -> None:
+        nonlocal progress
+        with progress_lock:
+            progress = f"{x:.2f}%"
+
+    def pop_speakable_text(force: bool = False) -> str:
+        nonlocal pending_speech_text
+
+        with pending_speech_lock:
+            text = pending_speech_text
+
+            if len(text.strip()) == 0:
+                return ""
+
+            last_end = -1
+            for match in sentence_end_pattern.finditer(text):
+                last_end = match.end()
+
+            if last_end > 0:
+                speakable = text[:last_end]
+                pending_speech_text = text[last_end:]
+                return speakable
+
+            if len(text) >= 180:
+                split = text.rfind(" ", 0, 180)
+                if split > 60:
+                    speakable = text[:split + 1]
+                    pending_speech_text = text[split + 1:]
+                    return speakable
+
+            if force:
+                speakable = text
+                pending_speech_text = ""
+                return speakable
+
+            return ""
+
+    def tts_worker() -> None:
+        stream = None
+
+        try:
+            stream = orca.stream_open()
+
+            while True:
+                text = text_queue.get()
+                if text is None:
+                    break
+
+                speech_text = sanitize_for_orca(
+                    text=text,
+                    valid_characters=orca.valid_characters)
+
+                if len(speech_text.strip()) == 0:
+                    continue
+
+                pcm = stream.synthesize(speech_text)
+                if pcm is not None and len(pcm) > 0:
+                    speaker.flush(pcm)
+
+            pcm = stream.flush()
+            if pcm is not None and len(pcm) > 0:
+                speaker.flush(pcm)
+
+        except BaseException as e:
+            tts_error_queue.put(e)
+
+        finally:
+            if stream is not None:
+                stream.close()
+
+    def on_llm_stream(text: str) -> None:
+        nonlocal answer
+        nonlocal pending_speech_text
+
+        text = text.replace('<|im_end|>', '')
+        if len(text) == 0:
+            return
+
+        with answer_lock:
+            answer += text
+
+        with pending_speech_lock:
+            pending_speech_text += text
+
+        while True:
+            speakable_text = pop_speakable_text(force=False)
+            if len(speakable_text) == 0:
+                break
+
+            text_queue.put(speakable_text)
+
+    answer_event, answer_thread = print_async(get_answer)
+    tts_thread = Thread(target=tts_worker, daemon=True)
+    tts_thread.start()
+
+    try:
+        completion = vlm.generate_with_image(
+            prompt=question,
+            image_width=image.width,
+            image_height=image.height,
+            image=image.tobytes(),
+            completion_token_limit=256,
+            stop_phrases={'<|im_end|>'},
+            frequency_penalty=2.5,
+            prompt_progress_callback=update_progress,
+            stream_callback=on_llm_stream)
+
+        final_answer = completion.completion.strip().replace('<|im_end|>', '')
+
+        with answer_lock:
+            if len(final_answer) > 0:
+                answer = final_answer
+            elif len(answer.strip()) == 0:
+                answer = "I don't know."
+
+        remaining_speech_text = pop_speakable_text(force=True)
+        if len(remaining_speech_text) > 0:
+            text_queue.put(remaining_speech_text)
+
+        text_queue.put(None)
+        tts_thread.join()
+
+        if not tts_error_queue.empty():
+            raise tts_error_queue.get()
+
+        answer_event.set()
+        answer_thread.join()
+
+        with answer_lock:
+            return answer.strip()
+
+    except BaseException:
+        text_queue.put(None)
+        tts_thread.join(timeout=1.0)
+        answer_event.set()
+        answer_thread.join()
+        raise
 
 
 def main() -> None:
@@ -234,62 +382,18 @@ def main() -> None:
             question_thread.join()
             recorder.stop()
 
-            progress = ""
-            progress_lock = Lock()
-
-            def get_progress() -> str:
-                with question_lock:
-                    return progress
-
-            def update_progress(x: float) -> None:
-                nonlocal progress
-                with progress_lock:
-                    progress = f"{x:.2f}%"
-
-            progress_event, progress_thread = print_async(get_progress, end="\r\033[2K")
-
-            completion = vlm.generate_with_image(
-                prompt=question,
-                image_width=image.width,
-                image_height=image.height,
-                image=image.tobytes(),
-                completion_token_limit=256,
-                stop_phrases={'<|im_end|>'},
-                frequency_penalty=2.5,
-                prompt_progress_callback=update_progress)
-
-            progress_event.set()
-            progress_thread.join()
-
-            answer = completion.completion.replace('<|im_end|>', '')
-            print(f"[A] {answer}")
-
-            pcm, word_alignments = orca.synthesize(sanitize_for_orca(answer, orca.valid_characters))
-
-            utterance = ""
-            utterance_lock = Lock()
-
-            def get_utterance() -> str:
-                with utterance_lock:
-                    return f"[AI] {utterance}"
-
-            def update_utterance(chunk: str) -> None:
-                nonlocal utterance
-                with utterance_lock:
-                    utterance += chunk
-
-            utterance_event, utterance_thread = print_async(get_utterance)
-
-            timer_thread = time_async(alignments=word_alignments, on_tick=update_utterance)
-
-            speaker.flush(pcm)
-            timer_thread.join()
-            utterance_event.set()
-            utterance_thread.join()
+            stream_answer(
+                vlm=vlm,
+                orca=orca,
+                speaker=speaker,
+                question=question,
+                image=image)
 
             recorder.start()
+
     except KeyboardInterrupt:
         pass
+
     finally:
         sys.stdout.write("\033[?25h")
         sys.stdout.flush()
