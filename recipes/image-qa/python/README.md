@@ -1,5 +1,14 @@
 # Image Question Answering in Python
 
+Ask questions about an image using your voice and hear the answer spoken back in real time.
+
+This demo combines on-device speech-to-text, vision-language inference, and streaming text-to-speech to create a
+hands-free image question answering experience. Cheetah transcribes the user's spoken question, picoLLM analyzes the
+image and generates an answer, and Orca reads the response aloud as it is being generated.
+
+Use it to ask natural questions such as what objects are visible in an image, what is happening in the scene, where
+something is located, or how the image should be described.
+
 ## Compatibility
 
 - Runs on Linux (x86_64), macOS (arm64, x86_64), Windows (arm64, x86_64), and Raspberry Pi (5, 4, and 3).
@@ -51,7 +60,8 @@ Download `qwen3-vl-2b-it-537.pllm` from [Picovoice Console](https://console.pico
 ```console
 python main.py \
   --access_key ${ACCESS_KEY} \
-  --picollm_model_path ${PICOLLM_MODEL_PATH}
+  --picollm_model_path ${PICOLLM_MODEL_PATH} \
+  --image_path ${IMAGE_PATH}
 ```
 
 ### 6. View All Options
