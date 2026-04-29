@@ -197,11 +197,13 @@ public class MainActivity extends AppCompatActivity {
         mainHandler.post(() -> {
             if (!chatBubbles.isEmpty()) {
                 LinearLayout chatBubble = chatBubbles.get(chatBubbles.size() - 1);
-                LinearLayout bottom = chatBubble.findViewById(R.id.bottom);
                 TextView bottomText = chatBubble.findViewById(R.id.bottomText);
 
-                bottomText.setText(String.format("%s%s", activeText, dots[dotIndex]));
-                bottom.setVisibility(View.VISIBLE);
+                if (voiceProcessor.getIsRecording()) {
+                    bottomText.setText(String.format("%s%s", activeText, dots[dotIndex]));
+                } else {
+                    bottomText.setText(activeText);
+                }
             }
         });
     }
@@ -300,6 +302,11 @@ public class MainActivity extends AppCompatActivity {
                     targetLanguageSpinner.setSelection(0);
                     targetLanguageSpinner.setEnabled(true);
                     rootView.invalidate();
+
+                    engineExecutor.submit(() -> {
+                        clearChatArea();
+                        deleteEngines();
+                    });
                 } else {
                     this.onNothingSelected(parentView);
                 }
@@ -424,12 +431,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void onLanguageSelected() {
+        setStatus("Loading");
         clearChatArea();
         engineExecutor.submit(this::initEngines);
     }
 
     private void onButtonPressed() {
-        engineExecutor.submit(this::startRecording);
+        engineExecutor.submit(() -> {
+            if (voiceProcessor.getIsRecording()) {
+                stopRecording();
+                flush();
+            } else {
+                startRecording();
+            }
+        });
     }
 
     private void initEngines() {
@@ -537,6 +552,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void deleteEngines() {
+        stopRecording();
+
         currentState = State.IDLE;
 
         if (cheetah0 != null) {
@@ -574,6 +591,7 @@ public class MainActivity extends AppCompatActivity {
         if (voiceProcessor.hasRecordAudioPermission(this)) {
             try {
                 voiceProcessor.start(cheetah0.getFrameLength(), cheetah0.getSampleRate());
+                mainHandler.post(() -> startButton.setActivated(true));
             } catch (VoiceProcessorException e) {
                 setError(e.getMessage());
             }
@@ -588,6 +606,7 @@ public class MainActivity extends AppCompatActivity {
     private void stopRecording() {
         try {
             voiceProcessor.stop();
+            mainHandler.post(() -> startButton.setActivated(false));
         } catch (VoiceProcessorException e) {
             setError(e.getMessage());
         }
@@ -609,9 +628,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void frameListener(short[] frame) {
         if (currentState == State.LISTENING_SOURCE) {
-            listenSource(frame);
+            mainHandler.post(() -> listenSource(frame));
         } else if (currentState == State.LISTENING_TARGET) {
-            listenTarget(frame);
+            mainHandler.post(() -> listenTarget(frame));
         }
     }
 
@@ -632,15 +651,7 @@ public class MainActivity extends AppCompatActivity {
             sendText(transcript.getTranscript());
 
             if (transcript.getIsEndpoint()) {
-                CheetahTranscript flush = cheetah0.flush();
-                currentTranscript += flush.getTranscript();
-                sendText(flush.getTranscript());
-
-                if (!currentTranscript.isEmpty()) {
-                    swapText();
-                    currentState= State.IDLE;
-                    engineExecutor.submit(this::translateSource);
-                }
+                flushSource();
             }
         } catch (CheetahException e) {
             setError(e.getMessage());
@@ -654,15 +665,47 @@ public class MainActivity extends AppCompatActivity {
             sendText(transcript.getTranscript());
 
             if (transcript.getIsEndpoint()) {
-                CheetahTranscript flush = cheetah1.flush();
-                currentTranscript += flush.getTranscript();
-                sendText(flush.getTranscript());
+                flushTarget();
+            }
+        } catch (CheetahException e) {
+            setError(e.getMessage());
+        }
+    }
 
-                if (!currentTranscript.isEmpty()) {
-                    swapText();
-                    currentState= State.IDLE;
-                    engineExecutor.submit(this::translateTarget);
-                }
+    private void flush() {
+        if (currentState == State.LISTENING_SOURCE) {
+            engineExecutor.submit(this::flushSource);
+        } else {
+            engineExecutor.submit(this::flushTarget);
+        }
+    }
+
+    private void flushSource() {
+        try {
+            CheetahTranscript flush = cheetah0.flush();
+            currentTranscript += flush.getTranscript();
+            sendText(flush.getTranscript());
+
+            if (!currentTranscript.isEmpty()) {
+                swapText();
+                currentState = State.IDLE;
+                engineExecutor.submit(this::translateSource);
+            }
+        } catch (CheetahException e) {
+            setError(e.getMessage());
+        }
+    }
+
+    private void flushTarget() {
+        try {
+            CheetahTranscript flush = cheetah1.flush();
+            currentTranscript += flush.getTranscript();
+            sendText(flush.getTranscript());
+
+            if (!currentTranscript.isEmpty()) {
+                swapText();
+                currentState = State.IDLE;
+                engineExecutor.submit(this::translateTarget);
             }
         } catch (CheetahException e) {
             setError(e.getMessage());

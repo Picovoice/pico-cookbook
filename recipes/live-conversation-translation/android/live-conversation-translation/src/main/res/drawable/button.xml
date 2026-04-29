@@ -17,6 +17,40 @@
         </layer-list>
     </item>
 
+    <item android:state_activated="true" android:state_pressed="true">
+        <layer-list>
+            <item>
+                <shape android:shape="oval">
+                    <stroke android:width="2dp" android:color="@color/colorPrimary" />
+                    <size android:width="100dp" android:height="100dp" />
+                </shape>
+            </item>
+
+            <item
+                android:drawable="@drawable/ic_no_mic_primary"
+                android:width="64dp"
+                android:height="64dp"
+                android:gravity="center"/>
+        </layer-list>
+    </item>
+
+    <item android:state_activated="true">
+        <layer-list>
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="@color/colorPrimary" />
+                    <size android:width="100dp" android:height="100dp" />
+                </shape>
+            </item>
+
+            <item
+                android:drawable="@drawable/ic_no_mic_white"
+                android:width="64dp"
+                android:height="64dp"
+                android:gravity="center"/>
+        </layer-list>
+    </item>
+
     <item android:state_pressed="true">
         <layer-list>
             <item>
