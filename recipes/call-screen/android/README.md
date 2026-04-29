@@ -1,22 +1,25 @@
+# Call Screen on Android
+
+Screen unknown calls with real-time transcription and natural voice responses, powered by on-device AI.
+
 ## Compatibility
 
 - Android 5.0 (SDK 21+)
 
-// TODO: update this readme with correct information
-
 ## AccessKey
 
-AccessKey is your authentication and authorization token for deploying Picovoice SDKs. Anyone who is
-using Picovoice needs to have a valid AccessKey. You must keep your AccessKey secret. You would need internet
-connectivity to validate your AccessKey with Picovoice license servers. Everyone who signs up for
-[Picovoice Console](https://console.picovoice.ai/) receives a unique AccessKey.
+AccessKey is your authentication and authorization token for deploying Picovoice SDKs. Anyone who is using Picovoice
+needs to have a valid AccessKey. You must keep your AccessKey secret. You would need internet connectivity to validate
+your AccessKey with Picovoice license servers, even though the inference is running 100% offline. Everyone who signs up
+for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessKey.
 
 ## Usage
 
-### 1. Open the `CallScreen` project in Android Studio.
+### 1. Configure the demo
 
-1. Copy your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable in [MainActivity.java](llm-voice-assistant/src/main/java/ai/picovoice/callscreen/MainActivity.java).
-2. Set your name into the `USERNAME` variable in ...
+1. Open the `CallScreen` project in Android Studio. 
+2. Copy your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable in [MainActivity.java](llm-voice-assistant/src/main/java/ai/picovoice/callscreen/MainActivity.java).
+3. Type your name in the `USERNAME` variable in [MainActivity.java](llm-voice-assistant/src/main/java/ai/picovoice/callscreen/MainActivity.java).
 
 ### 2. Train the Speech-to-Intent Model
 
@@ -31,23 +34,4 @@ connectivity to validate your AccessKey with Picovoice license servers. Everyone
 
 1. Connect a device or launch an Android simulator.
 2. Build and run the demo.
-3. Press the `Start Demo` button.
-
-/*
-## Custom Wake Word
-
-The demo's default wake phrase is `Picovoice`. You can generate your custom (branded) wake word using
-Picovoice Console by following [Porcupine Wake Word documentation](https://picovoice.ai/docs/porcupine/).
-Once you have the model trained, add it to your project by following these steps:
-
-1. Download the custom wake word file (`.ppn`)
-2. Add it to the `${ANDROID_APP}/src/main/assets` directory of your Android project
-3. Create an instance of Porcupine using the .setKeywordPaths builder method and the keyword path (relative to the assets directory or absolute path to the file on device):
-
-```java
-porcupine = new Porcupine.Builder()
-        .setAccessKey("${ACCESS_KEY}")
-        .setKeywordPath("${KEYWORD_FILE_PATH}")
-        .build(getApplicationContext());
-```
-*/
+3. Tap the `Start Demo` button in the demo.

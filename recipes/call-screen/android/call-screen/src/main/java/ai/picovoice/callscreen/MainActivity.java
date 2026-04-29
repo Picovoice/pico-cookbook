@@ -85,13 +85,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
+    private static final String USERNAME = "${YOUR_USERNAME_HERE}";
 
     private static final String STT_MODEL_FILE = "cheetah_params.pv";
     private static final String TTS_MODEL_FILE = "orca_params_female.pv";
     // TODO: add instructions that this file must be generated then moved here
     private static final String RHINO_CONTEXT_FILE = "call-screen-demo.rhn";
-
-    private static final String USERNAME = "User";
 
     private static final String PUNCTUATION = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
 
@@ -162,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
         errorText = findViewById(R.id.errorText);
 
         if (USERNAME == "${YOUR_USERNAME_HERE}") {
-            mainHandler.post(() -> errorText.setText("Invalid username " + USERNAME));
+            mainHandler.post(() -> errorText.setText("Please replace " + USERNAME + " with a username"));
             updateUIState(UIState.ERROR);
             return;
         }
@@ -243,7 +242,7 @@ public class MainActivity extends AppCompatActivity {
             onEngineProcessError(error.getMessage());
         });
 
-        mainHandler.post(() -> loadingText.setText("Press the `Start Demo` button to begin."));
+        mainHandler.post(() -> loadingText.setText("Press the Start Demo button to begin."));
         startButton.setOnClickListener(view -> {
             // TODO: fix double click; this is not working
             view.setEnabled(false);
@@ -399,7 +398,7 @@ public class MainActivity extends AppCompatActivity {
                 } catch (InterruptedException e) { }
 
                 mainHandler.post(() -> {
-                    loadingText.setText("Press the `Start Demo` button if you'd like to try again.");
+                    loadingText.setText("Press the Start Demo button to try again.");
 
                     chatLayout.setAlpha(1f);
                     loadingLayout.setAlpha(0f);
