@@ -1,3 +1,4 @@
+import re
 import shutil
 import string
 import sys
@@ -14,6 +15,7 @@ from time import (
 from typing import (
     Callable,
     Sequence,
+    Set,
     Tuple
 )
 
@@ -113,6 +115,29 @@ def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str]
     return thread
 
 
+def sanitize_for_orca(text: str, valid_characters: Set[str]) -> str:
+    valid_character_set = set(valid_characters)
+
+    replacements = {
+        "\n": " ",
+        "\r": " ",
+        "\t": " ",
+        "“": '"',
+        "”": '"',
+        "‘": "'",
+        "’": "'",
+        "—": "-",
+        "–": "-",
+        "…": "...",
+    }
+
+    text = "".join(replacements.get(x, x) for x in text)
+    text = "".join(x if x in valid_character_set else " " for x in text)
+    text = re.sub(r"\s+", " ", text)
+
+    return text
+
+
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
@@ -209,6 +234,19 @@ def main() -> None:
             question_thread.join()
             recorder.stop()
 
+            progress = ""
+            progress_lock = Lock()
+
+            def get_progress() -> str:
+                with question_lock:
+                    return progress
+
+            def update_progress(x: float) -> None:
+                nonlocal progress
+                with progress_lock:
+                    progress = f"{x:.2f}%"
+
+            progress_event, progress_thread = print_async(get_progress, end="\r\033[2K")
 
             completion = vlm.generate_with_image(
                 prompt=question,
@@ -217,9 +255,37 @@ def main() -> None:
                 image=image.tobytes(),
                 completion_token_limit=256,
                 stop_phrases={'<|im_end|>'},
-                frequency_penalty=2)
+                frequency_penalty=2.5,
+                prompt_progress_callback=update_progress)
+
+            progress_event.set()
+            progress_thread.join()
+
             answer = completion.completion.replace('<|im_end|>', '')
-            print(answer)
+            print(f"[A] {answer}")
+
+            pcm, word_alignments = orca.synthesize(sanitize_for_orca(answer, orca.valid_characters))
+
+            utterance = ""
+            utterance_lock = Lock()
+
+            def get_utterance() -> str:
+                with utterance_lock:
+                    return f"[AI] {utterance}"
+
+            def update_utterance(chunk: str) -> None:
+                nonlocal utterance
+                with utterance_lock:
+                    utterance += chunk
+
+            utterance_event, utterance_thread = print_async(get_utterance)
+
+            timer_thread = time_async(alignments=word_alignments, on_tick=update_utterance)
+
+            speaker.flush(pcm)
+            timer_thread.join()
+            utterance_event.set()
+            utterance_thread.join()
 
             recorder.start()
     except KeyboardInterrupt:
