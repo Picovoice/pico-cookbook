@@ -1,6 +1,19 @@
+/*
+    Copyright 2026 Picovoice Inc.
+
+    You may not use this file except in compliance with the license. A copy of the license is
+    located in the "LICENSE" file accompanying this source.
+
+    Unless required by applicable law or agreed to in writing, software distributed under the
+    License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+    express or implied. See the License for the specific language governing permissions and
+    limitations under the License.
+*/
+
 package ai.picovoice.personalizedwakeword;
 
 import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -10,16 +23,20 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import ai.picovoice.android.voiceprocessor.VoiceProcessor;
+import ai.picovoice.android.voiceprocessor.VoiceProcessorArgumentException;
 import ai.picovoice.android.voiceprocessor.VoiceProcessorErrorListener;
 import ai.picovoice.android.voiceprocessor.VoiceProcessorFrameListener;
 import ai.picovoice.eagle.Eagle;
+import ai.picovoice.eagle.EagleException;
 import ai.picovoice.eagle.EagleProfile;
 import ai.picovoice.eagle.EagleProfiler;
 import ai.picovoice.porcupine.Porcupine;
+import ai.picovoice.porcupine.PorcupineException;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "PICOVOICE";
@@ -37,7 +54,11 @@ public class MainActivity extends AppCompatActivity {
     private boolean hasEnrolled = false;
     private AppState currentState = AppState.IDLE;
 
-    private enum AppState {IDLE, ENROLLING, TESTING}
+    private enum AppState {
+        IDLE,
+        ENROLLING,
+        TESTING
+    }
 
     private Porcupine porcupine;
     private EagleProfiler eagleProfiler;
@@ -45,8 +66,6 @@ public class MainActivity extends AppCompatActivity {
     private EagleProfile speakerProfile;
 
     private VoiceProcessor voiceProcessor;
-    private VoiceProcessorFrameListener frameListener;
-    private VoiceProcessorErrorListener errorListener;
 
     private short[] enrollSlidingBuffer;
     private int enrollMaxSamples;
@@ -81,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupVoiceProcessor() {
         voiceProcessor = VoiceProcessor.getInstance();
 
-        frameListener = frame -> {
+        VoiceProcessorFrameListener frameListener = frame -> {
             try {
                 volumeMeterView.processFrame(frame);
 
@@ -142,14 +161,18 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        errorListener = error -> Log.e(TAG, "Audio Error: ", error);
+        VoiceProcessorErrorListener errorListener = error -> Log.e(TAG, "Audio Error: ", error);
         voiceProcessor.addFrameListener(frameListener);
         voiceProcessor.addErrorListener(errorListener);
     }
 
     private void checkPermissionsAndStart(AppState targetState) {
         if (!voiceProcessor.hasRecordAudioPermission(this)) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, 1);
+            currentState = targetState;
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.RECORD_AUDIO},
+                    1);
         } else {
             if (targetState == AppState.ENROLLING) {
                 startEnrollment();
@@ -160,6 +183,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startEnrollment() {
+        if (checkDefaultArgs()) {
+            currentState = AppState.IDLE;
+            return;
+        }
+
         try {
             stopAudio();
             currentState = AppState.ENROLLING;
@@ -183,13 +211,21 @@ public class MainActivity extends AppCompatActivity {
             updateUIForState();
             voiceProcessor.start(porcupine.getFrameLength(), porcupine.getSampleRate());
 
-        } catch (Exception e) {
-            statusText.setText("Init Error: " + e.getMessage());
-            Log.e(TAG, "Init Error", e);
+        } catch (PorcupineException | EagleException e) {
+            statusText.setText("Engine init error: " + e.getMessage());
+            Log.e(TAG, "Init error", e);
+        } catch (VoiceProcessorArgumentException e) {
+            statusText.setText("Audio error: " + e.getMessage());
+            Log.e(TAG, "Audio error", e);
         }
     }
 
     private void startTesting() {
+        if (checkDefaultArgs()) {
+            currentState = AppState.IDLE;
+            return;
+        }
+
         try {
             stopAudio();
             currentState = AppState.TESTING;
@@ -210,10 +246,26 @@ public class MainActivity extends AppCompatActivity {
             updateUIForState();
             voiceProcessor.start(porcupine.getFrameLength(), porcupine.getSampleRate());
 
-        } catch (Exception e) {
-            statusText.setText("Init Error: " + e.getMessage());
-            Log.e(TAG, "Init Error", e);
+        } catch (PorcupineException | EagleException e) {
+            statusText.setText("Engine init error: " + e.getMessage());
+            Log.e(TAG, "Init error", e);
+        } catch (VoiceProcessorArgumentException e) {
+            statusText.setText("Audio error: " + e.getMessage());
+            Log.e(TAG, "Audio error", e);
         }
+    }
+
+    private boolean checkDefaultArgs() {
+        if (ACCESS_KEY.equals("${YOUR_ACCESS_KEY_HERE}")) {
+            statusText.setText("Please set your Picovoice AccessKey in MainActivity.java");
+            return true;
+        }
+
+        if (WAKE_WORD_FILE.equals("${YOUR_WAKE_WORD_HERE}.ppn")) {
+            statusText.setText("Please set your Porcupine Wake Word file in MainActivity.java");
+            return true;
+        }
+        return false;
     }
 
     private void finishEnrollment() {
@@ -348,6 +400,25 @@ public class MainActivity extends AppCompatActivity {
         if (voiceProcessor != null) {
             voiceProcessor.clearFrameListeners();
             voiceProcessor.clearErrorListeners();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            @NonNull String[] permissions,
+            @NonNull int[] grantResults
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (grantResults.length == 0 || grantResults[0] == PackageManager.PERMISSION_DENIED) {
+            currentState = AppState.IDLE;
+            statusText.setText("Microphone permission is required for this demo");
+        } else {
+            if (currentState == AppState.ENROLLING) {
+                startEnrollment();
+            } else if (currentState == AppState.TESTING) {
+                startTesting();
+            }
         }
     }
 }
