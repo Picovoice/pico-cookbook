@@ -202,18 +202,22 @@ def main() -> None:
                     with question_lock:
                         question += remainder
 
-                    question_event.set()
-                    question_thread.join()
+                    if len(question) > 0:
+                        break
 
-                    recorder.stop()
-                    break
+            question_event.set()
+            question_thread.join()
+            recorder.stop()
+
 
             completion = vlm.generate_with_image(
                 prompt=question,
                 image_width=image.width,
                 image_height=image.height,
                 image=image.tobytes(),
-                stop_phrases={'<|im_end|>'})
+                completion_token_limit=256,
+                stop_phrases={'<|im_end|>'},
+                frequency_penalty=2)
             answer = completion.completion.replace('<|im_end|>', '')
             print(answer)
 
