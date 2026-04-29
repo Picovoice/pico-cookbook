@@ -72,7 +72,7 @@ pip install -r requirements.txt
 Create one Eagle speaker profile for each user you want the assistant to recognize.
 
 ```console
-python main.py \
+python enroll.py \
   --access_key ${ACCESS_KEY} \
   --eagle_speaker_profile_path ${EAGLE_SPEAKER_PROFILE_PATH}
 ```

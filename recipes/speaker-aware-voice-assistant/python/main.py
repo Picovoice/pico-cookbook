@@ -242,7 +242,11 @@ def main() -> None:
             print_event.set()
             print_thread.join()
 
-            print_event, print_thread = print_async(get_text=lambda: "Say a voice command")
+            print('- "do something that requires admin permission" [ Will only work if you are an admin ]')
+            print('- "do something just for me" [ Will trigger a personalized response ]')
+            print('- "do something anyone can do" [ Will trigger a generic response ] ')
+
+            print_event, print_thread = print_async(get_text=lambda: "Say one of the voice commands above")
 
             pcm_voice_command = list()
             is_finalized = False
