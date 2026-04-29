@@ -1,0 +1,4 @@
+picollm~=2.1.0
+pillow~=12.2.0
+pvorca~=3.0.0
+pvspeaker~=1.0.5
