@@ -310,6 +310,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void synthesizeAndPlayback(String text) {
+        if (text.isBlank()) {
+            synthesizeAndPlayback(NO_MEMO_ERROR_PHRASE);
+            updateUIState(UIState.WAKE_WORD);
+            return;
+        }
+
         ttsSynthesizeExecutor.submit(() -> {
             try {
                 OrcaAudio audio = orca.synthesize(text, new OrcaSynthesizeParams.Builder().build());
@@ -350,7 +356,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void summerizeMemo() {
-        if (memoText.length() == 0) {
+        if (memoText.toString().isBlank()) {
             synthesizeAndPlayback(NO_MEMO_ERROR_PHRASE);
             return;
         }
@@ -398,7 +404,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void rewriteMemo() {
-        if (memoText.length() == 0) {
+        if (memoText.toString().isBlank()) {
             synthesizeAndPlayback(NO_MEMO_ERROR_PHRASE);
             return;
         }
