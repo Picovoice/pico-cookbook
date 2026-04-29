@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -26,6 +27,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -251,6 +253,15 @@ public class MainActivity extends AppCompatActivity {
                 return position > 0;
             }
 
+            @NonNull
+            @Override
+            public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                TextView tv = (TextView) super.getView(position, null, parent);
+                tv.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+                tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
+                return tv;
+            }
+
             @Override
             public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
                 if (!this.isEnabled(position)) {
@@ -260,7 +271,10 @@ public class MainActivity extends AppCompatActivity {
                     return tv;
                 }
 
-                return super.getDropDownView(position, null, parent);
+                TextView tv = (TextView) super.getDropDownView(position, null, parent);
+                tv.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+                tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
+                return tv;
             }
         };
         sourceLanguageSpinner.setAdapter(sourceLanguageAdapter);
@@ -280,6 +294,15 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
+            @NonNull
+            @Override
+            public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                TextView tv = (TextView) super.getView(position, null, parent);
+                tv.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+                tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
+                return tv;
+            }
+
             @Override
             public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
                 if (!this.isEnabled(position)) {
@@ -289,7 +312,10 @@ public class MainActivity extends AppCompatActivity {
                     return tv;
                 }
 
-                return super.getDropDownView(position, null, parent);
+                TextView tv = (TextView) super.getDropDownView(position, null, parent);
+                tv.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+                tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
+                return tv;
             }
         };
         targetLanguageSpinner.setAdapter(targetLanguageAdapter);
@@ -437,14 +463,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void onButtonPressed() {
-        engineExecutor.submit(() -> {
-            if (voiceProcessor.getIsRecording()) {
-                stopRecording();
-                flush();
-            } else {
-                startRecording();
-            }
-        });
+        if (voiceProcessor.getIsRecording()) {
+            stopRecording();
+            flush();
+        } else {
+            startRecording();
+        }
     }
 
     private void initEngines() {
@@ -589,12 +613,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void startRecording() {
         if (voiceProcessor.hasRecordAudioPermission(this)) {
-            try {
-                voiceProcessor.start(cheetah0.getFrameLength(), cheetah0.getSampleRate());
-                mainHandler.post(() -> startButton.setActivated(true));
-            } catch (VoiceProcessorException e) {
-                setError(e.getMessage());
-            }
+            mainHandler.post(() -> startButton.setActivated(true));
+            engineExecutor.submit(() -> {
+                try {
+                    voiceProcessor.start(cheetah0.getFrameLength(), cheetah0.getSampleRate());
+                } catch (VoiceProcessorException e) {
+                    setError(e.getMessage());
+                }
+            });
         } else {
             ActivityCompat.requestPermissions(
                     this,
@@ -604,12 +630,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void stopRecording() {
-        try {
-            voiceProcessor.stop();
-            mainHandler.post(() -> startButton.setActivated(false));
-        } catch (VoiceProcessorException e) {
-            setError(e.getMessage());
-        }
+        mainHandler.post(() -> startButton.setActivated(false));
+        engineExecutor.submit(() -> {
+            try {
+                voiceProcessor.stop();
+            } catch (VoiceProcessorException e) {
+                setError(e.getMessage());
+            }
+        });
     }
 
     @Override

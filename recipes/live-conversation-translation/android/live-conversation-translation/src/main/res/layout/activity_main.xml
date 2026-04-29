@@ -17,6 +17,7 @@
             android:id="@+id/statusLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
             android:gravity="center"
             android:orientation="horizontal"
             android:padding="8dp">
@@ -72,7 +73,7 @@
                     android:layout_margin="8dp"
                     android:layout_weight="1"
                     android:background="@drawable/spinner"
-                    android:padding="8dp"
+                    android:padding="4dp"
                     android:textAlignment="center" />
 
                 <Spinner
@@ -82,7 +83,7 @@
                     android:layout_margin="8dp"
                     android:layout_weight="1"
                     android:background="@drawable/spinner"
-                    android:padding="8dp"
+                    android:padding="4dp"
                     android:textAlignment="center" />
 
             </LinearLayout>
