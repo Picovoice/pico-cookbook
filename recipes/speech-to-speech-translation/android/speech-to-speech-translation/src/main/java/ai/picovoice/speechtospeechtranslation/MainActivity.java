@@ -1,30 +1,21 @@
 package ai.picovoice.speechtospeechtranslation;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.pm.PackageManager;
-import android.graphics.drawable.Drawable;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioTrack;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.Layout;
-import android.text.Spannable;
-import android.text.SpannableStringBuilder;
-import android.text.style.AlignmentSpan;
-import android.text.style.ForegroundColorSpan;
-import android.util.Log;
+import android.util.TypedValue;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.GridView;
 import android.widget.LinearLayout;
-import android.widget.ListView;
-import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -33,18 +24,13 @@ import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -69,16 +55,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
 
-    private static final String[] sourceLanguages = {
-        "automatic",
-        "de",
-        "en",
-        "es",
-        "fr",
-        "it"
-    };
-
-    private static final String[] targetLanguages = {
+    private static final String[] languages = {
         "--",
         "de",
         "en",
@@ -108,6 +85,24 @@ public class MainActivity extends AppCompatActivity {
         "it-es"
     };
 
+    private static final String[] sourceDisplayLanguages = {
+        "Automatic",
+        "German",
+        "English",
+        "Spanish",
+        "French",
+        "Italian"
+    };
+
+    private static final String[] targetDisplayLanguages = {
+            "Select Language",
+            "German",
+            "English",
+            "Spanish",
+            "French",
+            "Italian"
+    };
+
     private static final String[] dots = {
         " .  ",
         " .. ",
@@ -118,8 +113,9 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private enum State {
+        IDLE,
         LISTENING,
-        OTHER,
+        DETECTING,
         ERROR
     }
 
@@ -127,9 +123,33 @@ public class MainActivity extends AppCompatActivity {
 
     private final ExecutorService engineExecutor = Executors.newSingleThreadExecutor();
 
-    private LinearLayout selectLanguageLayout;
+    private String sourceLanguage;
 
-    private ConstraintLayout chatLayout;
+    private String targetLanguage;
+
+    private State currentState = State.IDLE;
+
+    private String currentTranscript = "";
+
+    private String activeText = "";
+
+    private int batOffset = 0;
+
+    private final float batThreshold = 0.75f;
+
+    private final ArrayList<Short> pcmBuffer = new ArrayList<Short>();
+
+    private final VoiceProcessor voiceProcessor = VoiceProcessor.getInstance();
+
+    private Bat bat = null;
+
+    private Cheetah cheetah = null;
+
+    private Zebra zebra = null;
+
+    private Orca orca = null;
+
+    private View rootView;
 
     private Spinner sourceLanguageSpinner;
 
@@ -137,119 +157,18 @@ public class MainActivity extends AppCompatActivity {
 
     private Button startButton;
 
-    private Button changeLanguageButton;
+    private LinearLayout statusLayout;
 
     private TextView statusText;
 
-    private ProgressBar statusProgress;
+    private ScrollView scrollArea;
 
-    private TextView chatText;
+    private LinearLayout chatArea;
 
-    private ScrollView chatTextScrollView;
+    private final ArrayList<LinearLayout> chatBubbles = new ArrayList<>();
 
-    private SpannableStringBuilder chatTextBuilder = null;
-
-    private int chatLastNewline = 0;
-
+    private TextView animatedDots;
     private int dotIndex = 0;
-
-    private String sourceLanguage = null;
-
-    private String targetLanguage = null;
-
-    private final VoiceProcessor voiceProcessor = VoiceProcessor.getInstance();
-    private Bat bat = null;
-    private Cheetah cheetah = null;
-    private Zebra zebra = null;
-    private Orca orca = null;
-
-    private State currentState = State.OTHER;
-    private String currentTranscript = "";
-    private int batOffset = 0;
-    private final float batThreshold = 0.75f;
-    private final ArrayList<Short> pcmBuffer = new ArrayList<Short>();
-
-    private void renderText() {
-        if (currentState == State.ERROR) {
-            return;
-        }
-
-        mainHandler.post(() -> {
-            if (chatTextBuilder != null) {
-                if (currentState != State.OTHER) {
-                    int start = chatTextBuilder.length();
-                    chatTextBuilder.append(dots[dotIndex]);
-                    chatText.setText(chatTextBuilder);
-                    chatTextBuilder.delete(start, start + dots[dotIndex].length());
-                    chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
-                } else {
-                    chatText.setText(chatTextBuilder);
-                    chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
-                }
-            }
-        });
-    }
-
-    private void animateDots() {
-        renderText();
-        dotIndex = (dotIndex + 1) % dots.length;
-        mainHandler.postDelayed(this::animateDots, 100);
-    }
-
-    private void sendText(String text) {
-        if (!text.isEmpty()) {
-            mainHandler.post(() -> {
-                int start = chatTextBuilder.length();
-                int end = start + text.length();
-                int spanColour = ContextCompat.getColor(this, R.color.colorPrimary);
-                chatTextBuilder.append(text);
-
-                chatTextBuilder.setSpan(
-                        new ForegroundColorSpan(spanColour),
-                        start,
-                        end,
-                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                renderText();
-            });
-        }
-    }
-
-    private void sendNewline(Boolean recolor) {
-        mainHandler.post(() -> {
-            chatTextBuilder.append("\n");
-            int start = chatTextBuilder.length();
-
-            if (recolor) {
-                int spanColour = ContextCompat.getColor(this, R.color.colorSecondary);
-                chatTextBuilder.setSpan(
-                        new ForegroundColorSpan(spanColour),
-                        chatLastNewline,
-                        start,
-                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            }
-            chatLastNewline = start;
-
-            renderText();
-        });
-    }
-
-    private void setStatus(String text) {
-        mainHandler.post(() -> {
-            statusProgress.setVisibility(View.VISIBLE);
-            statusText.setVisibility(View.VISIBLE);
-            statusText.setText(text);
-        });
-    }
-
-    private void setError(String text) {
-        currentState = State.ERROR;
-        mainHandler.post(() -> {
-            setStatus("Error");
-            sendText(text);
-            statusProgress.setVisibility(View.GONE);
-            sendNewline(true);
-        });
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -262,44 +181,126 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        selectLanguageLayout = findViewById(R.id.selectLanguageLayout);
-        chatLayout = findViewById(R.id.chatLayout);
+        voiceProcessor.addFrameListener(this::frameListener);
+
+        rootView = findViewById(R.id.root);
+
+        initAnimatedDots();
+        initStatusLayout();
+        initSpinners();
+        initChatArea();
+        startRecording();
+
+        rootView.invalidate();
+    }
+
+    private void initAnimatedDots() {
+        animatedDots = findViewById(R.id.animatedDots);
+
+        animateDots();
+    }
+
+    private void animateDots() {
+        dotIndex = (dotIndex + 1) % dots.length;
+        animatedDots.setText(dots[dotIndex]);
+        mainHandler.postDelayed(this::animateDots, 100);
+
+        renderActiveText();
+    }
+
+    private void renderActiveText() {
+        mainHandler.post(() -> {
+            if (!chatBubbles.isEmpty()) {
+                LinearLayout chatBubble = chatBubbles.get(chatBubbles.size() - 1);
+                TextView bottomText = chatBubble.findViewById(R.id.bottomText);
+
+                if (voiceProcessor.getIsRecording()) {
+                    bottomText.setText(String.format("%s%s", activeText, dots[dotIndex]));
+                } else {
+                    bottomText.setText(activeText);
+                }
+            }
+        });
+    }
+
+    private void initStatusLayout() {
+        statusLayout = findViewById(R.id.statusLayout);
+        statusText = findViewById(R.id.statusText);
+        statusLayout.setVisibility(View.GONE);
+    }
+
+    private void setStatus(String text) {
+        mainHandler.post(() -> {
+            statusText.setText(text);
+            statusLayout.setVisibility(View.VISIBLE);
+            animatedDots.setVisibility(View.VISIBLE);
+            rootView.invalidate();
+        });
+    }
+
+    private void setError(String text) {
+        currentState = State.ERROR;
+        mainHandler.post(() -> {
+            int colorDanger = getResources().getColor(R.color.colorDanger);
+            animatedDots.setVisibility(View.GONE);
+            statusText.setText(text);
+            statusText.setTextColor(colorDanger);
+            statusLayout.setVisibility(View.VISIBLE);
+            rootView.invalidate();
+        });
+    }
+
+    private void initSpinners() {
         sourceLanguageSpinner = findViewById(R.id.sourceLanguage);
         targetLanguageSpinner = findViewById(R.id.targetLanguage);
         startButton = findViewById(R.id.startButton);
-        changeLanguageButton = findViewById(R.id.changeLanguageButton);
-        statusText = findViewById(R.id.statusText);
-        statusProgress = findViewById(R.id.statusProgress);
-        chatText = findViewById(R.id.chatText);
-        chatTextScrollView = findViewById(R.id.chatScrollView);
-        chatTextBuilder = new SpannableStringBuilder();
 
-        voiceProcessor.addFrameListener(this::frameListener);
-        startButton.setEnabled(false);
-        startButton.invalidate();
-
-        ArrayAdapter<String> sourceLanguageAdapter = new ArrayAdapter<>(
+        ArrayAdapter<String> sourceLanguageAdapter = new ArrayAdapter<String>(
                 this,
                 android.R.layout.simple_list_item_1,
-                sourceLanguages
-        );
+                sourceDisplayLanguages
+        ) {
+            @NonNull
+            @Override
+            public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                TextView tv = (TextView) super.getView(position, null, parent);
+                tv.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+                tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
+                return tv;
+            }
+
+            @Override
+            public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                TextView tv = (TextView) super.getDropDownView(position, null, parent);
+                tv.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+                tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
+                return tv;
+            }
+        };
         sourceLanguageSpinner.setAdapter(sourceLanguageAdapter);
 
         ArrayAdapter<String> targetLanguageAdapter = new ArrayAdapter<String>(
                 this,
                 android.R.layout.simple_list_item_1,
-                targetLanguages
+                targetDisplayLanguages
         ) {
             @Override
             public boolean isEnabled(int position) {
-                if (sourceLanguage == null) {
-                    return position > 0;
-                } else if (position > 0) {
-                    String pair = String.format("%s-%s", sourceLanguage, targetLanguages[position]);
+                if (position > 0 && sourceLanguage != null) {
+                    String pair = String.format("%s-%s", sourceLanguage, languages[position]);
                     return Arrays.asList(languagePairs).contains(pair);
                 } else {
-                    return false;
+                    return position > 0;
                 }
+            }
+
+            @NonNull
+            @Override
+            public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                TextView tv = (TextView) super.getView(position, null, parent);
+                tv.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+                tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
+                return tv;
             }
 
             @Override
@@ -311,28 +312,41 @@ public class MainActivity extends AppCompatActivity {
                     return tv;
                 }
 
-                return super.getDropDownView(position, null, parent);
+                TextView tv = (TextView) super.getDropDownView(position, null, parent);
+                tv.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+                tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
+                return tv;
             }
         };
         targetLanguageSpinner.setAdapter(targetLanguageAdapter);
-
-        animateDots();
 
         sourceLanguageSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
                 if (position > 0) {
-                    sourceLanguage = sourceLanguages[position];
-                    targetLanguageSpinner.setSelection(0);
+                    sourceLanguage = languages[position];
+                    if (currentState != State.DETECTING || targetLanguage == null) {
+                        targetLanguageSpinner.setSelection(0);
+                        rootView.invalidate();
+
+                        engineExecutor.submit(() -> {
+                            clearChatArea();
+                            deleteEngines();
+                        });
+                    } else {
+                        onLanguageSelected();
+                    }
                 } else {
                     this.onNothingSelected(parentView);
                 }
-
             }
 
             @Override
             public void onNothingSelected(AdapterView<?> parentView) {
                 sourceLanguage = null;
+                targetLanguageSpinner.setSelection(0);
+                clearChatArea();
+                rootView.invalidate();
             }
         });
 
@@ -340,108 +354,172 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
                 if (position > 0) {
-                    targetLanguage = targetLanguages[position];
-                    startButton.setEnabled(true);
-                    startButton.invalidate();
+                    targetLanguage = languages[position];
+                    rootView.invalidate();
+                    onLanguageSelected();
                 } else {
-                    targetLanguage = null;
-                    startButton.setEnabled(false);
-                    startButton.invalidate();
+                    this.onNothingSelected(parentView);
                 }
             }
 
             @Override
             public void onNothingSelected(AdapterView<?> parentView) {
                 targetLanguage = null;
+                rootView.invalidate();
+            }
+        });
+
+        startButton.setOnClickListener(v -> {
+            onButtonPressed();
+        });
+    }
+
+    private void initChatArea() {
+        scrollArea = findViewById(R.id.scrollArea);
+        chatArea = findViewById(R.id.chatArea);
+    }
+
+    private void clearChatArea() {
+        mainHandler.post(() -> {
+            for (LinearLayout chatBubble : chatBubbles) {
+                chatArea.removeView(chatBubble);
             }
 
+            chatBubbles.clear();
+        });
+    }
+
+    private void appendChatBubble() {
+        mainHandler.post(() -> {
+            LayoutInflater inflater = LayoutInflater.from(this);
+            LinearLayout chatBubble = (LinearLayout) inflater.inflate(
+                    R.layout.chat_bubble,
+                    chatArea,
+                    false);
+            LinearLayout top = chatBubble.findViewById(R.id.top);
+            LinearLayout bottom = chatBubble.findViewById(R.id.bottom);
+
+            top.setVisibility(View.GONE);
+            bottom.setVisibility(View.VISIBLE);
+
+            chatArea.addView(chatBubble);
+            chatBubbles.add(chatBubble);
+            rootView.invalidate();
+
+            if (chatBubbles.size() > 1) {
+                LinearLayout prevChatBubble = chatBubbles.get(chatBubbles.size() - 2);
+                TextView bottomText = prevChatBubble.findViewById(R.id.bottomText);
+
+                bottomText.setText(activeText);
+                activeText = "";
+            }
+
+            scrollArea.post(() -> {
+                scrollArea.fullScroll(View.FOCUS_DOWN);
+            });
+        });
+    }
+
+    private void sendText(String text) {
+        if (text.isEmpty()) {
+            return;
+        }
+
+        mainHandler.post(() -> {
+            activeText += text;
+            renderActiveText();
+
+            scrollArea.post(() -> {
+                scrollArea.fullScroll(View.FOCUS_DOWN);
+            });
+        });
+    }
+
+    private void swapText() {
+        mainHandler.post(() -> {
+            LinearLayout chatBubble = chatBubbles.get(chatBubbles.size() - 1);
+            LinearLayout top = chatBubble.findViewById(R.id.top);
+            TextView topText = chatBubble.findViewById(R.id.topText);
+
+            topText.setText(activeText);
+            top.setVisibility(View.VISIBLE);
+            rootView.invalidate();
+
+            activeText = "";
+            renderActiveText();
+
+            scrollArea.post(() -> {
+                scrollArea.fullScroll(View.FOCUS_DOWN);
+            });
+        });
+    }
+
+    private void onLanguageSelected() {
+            setStatus("Loading");
+            clearChatArea();
+            engineExecutor.submit(this::initEngines);
+    }
+
+    private void onButtonPressed() {
+        if (voiceProcessor.getIsRecording()) {
+            stopRecording();
+            flush();
+        } else {
+            startRecording();
+        }
+    }
+
+    private void initEngines() {
+        mainHandler.post(() -> {
+            sourceLanguageSpinner.setEnabled(false);
+            targetLanguageSpinner.setEnabled(false);
+            rootView.invalidate();
         });
 
-        startButton.setOnClickListener(parent -> {
-            selectLanguageLayout.setVisibility(View.GONE);
-            chatLayout.setVisibility(View.VISIBLE);
-            changeLanguageButton.setEnabled(false);
+        deleteEngines();
 
-            voiceProcessor.addErrorListener(error -> {
-                setError(error.getMessage());
-            });
-
-            engineExecutor.submit(() -> {
-                initEngines();
-                start();
-                mainHandler.post(() -> {
-                    changeLanguageButton.setEnabled(true);
-                    changeLanguageButton.invalidate();
-                });
-            });
-        });
-
-        changeLanguageButton.setOnClickListener(view -> {
-            mainHandler.post(() -> chatText.setText(""));
-            currentState = State.OTHER;
-            currentTranscript = "";
-            chatTextBuilder.clear();
-            chatTextBuilder.clearSpans();
-            chatLastNewline = 0;
-            sourceLanguage = null;
-            targetLanguage = null;
-
-            sourceLanguageSpinner.setSelection(0);
-            targetLanguageSpinner.setSelection(0);
-            startButton.setEnabled(false);
-            sourceLanguageSpinner.invalidate();
-            targetLanguageSpinner.invalidate();
-            startButton.invalidate();
+        if (sourceLanguage != null) {
+            setStatus(String.format("Loading Cheetah %s", sourceLanguage));
 
             try {
-                voiceProcessor.stop();
-            } catch (VoiceProcessorException e) {
+                String model_path = String.format("cheetah_params_%s.pv", sourceLanguage);
+                cheetah = new Cheetah.Builder()
+                        .setAccessKey(ACCESS_KEY)
+                        .setModelPath(model_path)
+                        .setEnableAutomaticPunctuation(true)
+                        .setEnableTextNormalization(true)
+                        .build(getApplicationContext());
+            } catch (CheetahException e) {
                 setError(e.getMessage());
                 return;
             }
 
-            if (bat != null) {
-                bat.delete();
-                bat = null;
+            setStatus(String.format("Loading Zebra %s-%s", sourceLanguage, targetLanguage));
+
+            try {
+                String model_path = String.format("zebra_params_%s_%s.pv", sourceLanguage, targetLanguage);
+                zebra = new Zebra.Builder()
+                        .setAccessKey(ACCESS_KEY)
+                        .setModelPath(model_path)
+                        .build(getApplicationContext());
+            } catch (ZebraException e) {
+                setError(e.getMessage());
+                return;
             }
 
-            if (cheetah != null) {
-                cheetah.delete();
-                cheetah = null;
+            setStatus(String.format("Loading Orca %s", targetLanguage));
+
+            try {
+                String model_path = String.format("orca_params_%s_female.pv", targetLanguage);
+                orca = new Orca.Builder()
+                        .setAccessKey(ACCESS_KEY)
+                        .setModelPath(model_path)
+                        .build(getApplicationContext());
+            } catch (OrcaException e) {
+                setError(e.getMessage());
+                return;
             }
-
-            if (zebra != null) {
-                zebra.delete();
-                zebra = null;
-            }
-
-            if (orca != null) {
-                orca.delete();
-                orca = null;
-            }
-
-            selectLanguageLayout.setVisibility(View.VISIBLE);
-            chatLayout.setVisibility(View.GONE);
-        });
-    }
-
-    private void initEngines() {
-        setStatus(String.format("Loading Orca %s", targetLanguage));
-
-        try {
-            String model_path = String.format("orca_params_%s_female.pv", targetLanguage);
-            orca = new Orca.Builder()
-                    .setAccessKey(ACCESS_KEY)
-                    .setModelPath(model_path)
-                    .build(getApplicationContext());
-        } catch (OrcaException e) {
-            setError(e.getMessage());
-            return;
-        }
-
-        pcmBuffer.clear();
-
-        if (sourceLanguage == null) {
+        } else {
             setStatus("Loading Bat");
 
             try {
@@ -449,43 +527,75 @@ public class MainActivity extends AppCompatActivity {
                         .setAccessKey(ACCESS_KEY)
                         .build(getApplicationContext());
                 batOffset = 0;
+                pcmBuffer.clear();
             } catch (BatException e) {
                 setError(e.getMessage());
             }
-        } else {
-            initEnginesDelayed();
+        }
+
+        startListening();
+
+        mainHandler.post(() -> {
+            if (cheetah != null) {
+                statusLayout.setVisibility(View.GONE);
+            } else {
+                setStatus("Detecting source language");
+            }
+            sourceLanguageSpinner.setEnabled(true);
+            targetLanguageSpinner.setEnabled(true);
+            rootView.invalidate();
+        });
+    }
+
+    private void deleteEngines() {
+        if (bat != null) {
+            bat.delete();
+            bat = null;
+        }
+
+        if (cheetah != null) {
+            cheetah.delete();
+            cheetah = null;
+        }
+
+        if (zebra != null) {
+            zebra.delete();
+            zebra = null;
+        }
+
+        if (orca != null) {
+            orca.delete();
+            orca = null;
         }
     }
 
-    private void initEnginesDelayed() {
-        setStatus(String.format("Loading Zebra %s-%s", sourceLanguage, targetLanguage));
-
-        try {
-            String model_path = String.format("zebra_params_%s_%s.pv", sourceLanguage, targetLanguage);
-            zebra = new Zebra.Builder()
-                    .setAccessKey(ACCESS_KEY)
-                    .setModelPath(model_path)
-                    .build(getApplicationContext());
-        } catch (ZebraException e) {
-            setError(e.getMessage());
-            return;
+    private void startRecording() {
+        if (voiceProcessor.hasRecordAudioPermission(this)) {
+            mainHandler.post(() -> startButton.setActivated(true));
+            engineExecutor.submit(() -> {
+                try {
+                    voiceProcessor.start(512, 16000);
+                } catch (VoiceProcessorException e) {
+                    setError(e.getMessage());
+                }
+            });
+        } else {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.RECORD_AUDIO},
+                    0);
         }
+    }
 
-        setStatus(String.format("Loading Cheetah %s", sourceLanguage));
-
-        try {
-            String model_path = String.format("cheetah_params_%s.pv", sourceLanguage);
-            cheetah = new Cheetah.Builder()
-                    .setAccessKey(ACCESS_KEY)
-                    .setModelPath(model_path)
-                    .setEnableAutomaticPunctuation(true)
-                    .build(getApplicationContext());
-        } catch (CheetahException e) {
-            setError(e.getMessage());
-            return;
-        }
-
-        setStatus(String.format("Listening for %s", sourceLanguage));
+    private void stopRecording() {
+        mainHandler.post(() -> startButton.setActivated(false));
+        engineExecutor.submit(() -> {
+            try {
+                voiceProcessor.stop();
+            } catch (VoiceProcessorException e) {
+                setError(e.getMessage());
+            }
+        });
     }
 
     @Override
@@ -498,40 +608,19 @@ public class MainActivity extends AppCompatActivity {
         if (grantResults.length == 0 || grantResults[0] == PackageManager.PERMISSION_DENIED) {
             setError("Recording permission not granted");
         } else {
-            start();
+            startRecording();
         }
-    }
-
-    private void start() {
-        if (currentState == State.ERROR) {
-            return;
-        }
-
-        if (voiceProcessor.hasRecordAudioPermission(this)) {
-            try {
-                if (bat != null) {
-                    voiceProcessor.start(512, bat.getSampleRate());
-                } else {
-                    voiceProcessor.start(cheetah.getFrameLength(), cheetah.getSampleRate());
-                }
-            } catch (VoiceProcessorException e) {
-                setError(e.getMessage());
-            }
-        } else {
-            ActivityCompat.requestPermissions(
-                    this,
-                    new String[]{Manifest.permission.RECORD_AUDIO},
-                    0);
-        }
-
-        startListening();
     }
 
     private void frameListener(short[] frame) {
-        if (currentState != State.LISTENING) {
-            return;
+        if (currentState == State.LISTENING) {
+            engineExecutor.submit(() -> listen(frame));
+        } else if (currentState == State.DETECTING) {
+            engineExecutor.submit(() -> detect(frame));
         }
+    }
 
+    private void detect(short[] frame) {
         for (short elem : frame) {
             pcmBuffer.add(elem);
         }
@@ -566,56 +655,35 @@ public class MainActivity extends AppCompatActivity {
                     setStatus(String.format("Cannot translate %s to %s", sourceLanguage, targetLanguage));
 
                     sourceLanguage = null;
+                } else {
+                    int sourceSelection = Arrays.asList(languages).indexOf(sourceLanguage);
+                    mainHandler.post(() -> sourceLanguageSpinner.setSelection(sourceSelection));
                 }
             }
-
-            if (sourceLanguage != null) {
-                setStatus(String.format("Detected %s", sourceLanguage));
-
-                bat.delete();
-                bat = null;
-
-                engineExecutor.submit(this::initEnginesDelayed);
-            }
-
-            return;
-        }
-
-        if (cheetah != null) {
-            listen();
         }
     }
 
     private void startListening() {
-        if (currentState == State.ERROR) {
-            return;
-        }
-
-        if (bat != null) {
-            setStatus("Detecting source language");
+        if (cheetah != null) {
+            appendChatBubble();
+            currentState = State.LISTENING;
         } else {
-            setStatus(String.format("Listening for %s", sourceLanguage));
+            currentState = State.DETECTING;
         }
-
-        currentState = State.LISTENING;
     }
 
-    private void listen() {
-        if (currentState == State.ERROR) {
-            return;
-        }
-
+    private void listen(short[] frame) {
         try {
             boolean isFlushed = false;
             while (pcmBuffer.size() >= cheetah.getFrameLength()) {
-                short[] frame = new short[cheetah.getFrameLength()];
+                short[] queueFrame = new short[cheetah.getFrameLength()];
                 for (int i = 0; i < cheetah.getFrameLength(); i++) {
-                    frame[i] = pcmBuffer.get(i);
+                    queueFrame[i] = pcmBuffer.get(i);
                 }
 
                 pcmBuffer.subList(0, cheetah.getFrameLength()).clear();
 
-                CheetahTranscript transcript = cheetah.process(frame);
+                CheetahTranscript transcript = cheetah.process(queueFrame);
                 currentTranscript += transcript.getTranscript();
                 sendText(transcript.getTranscript());
                 if (!transcript.getTranscript().isEmpty()) {
@@ -632,65 +700,71 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            if (isFlushed) {
-                sendNewline(true);
-                startTranslating();
-                pcmBuffer.clear();
+            pcmBuffer.clear();
+            CheetahTranscript transcript = cheetah.process(frame);
+            currentTranscript += transcript.getTranscript();
+            sendText(transcript.getTranscript());
+
+            if (transcript.getIsEndpoint() || isFlushed) {
+                flush();
             }
         } catch (CheetahException e) {
             setError(e.getMessage());
         }
     }
 
-    private void startTranslating() {
-        if (currentState == State.ERROR) {
-            return;
-        }
-
-        setStatus(String.format("Translating to %s", targetLanguage));
-        currentState = State.OTHER;
-
-        String transcript = currentTranscript;
-        currentTranscript = "";
-
+    private void flush() {
         engineExecutor.submit(() -> {
-            try {
-                String translation = zebra.translate(
-                        transcript.substring(0, Math.min(
-                                transcript.length(),
-                                zebra.getMaxCharacterLimit())));
+            if (currentState != State.LISTENING) {
+                return;
+            }
 
-                startSpeaking(translation);
-            } catch (ZebraException e) {
+            try {
+                CheetahTranscript flush = cheetah.flush();
+                currentTranscript += flush.getTranscript();
+                sendText(flush.getTranscript());
+
+                if (!currentTranscript.isEmpty()) {
+                    swapText();
+                    currentState = State.IDLE;
+                    engineExecutor.submit(this::translate);
+                }
+            } catch (CheetahException e) {
                 setError(e.getMessage());
             }
         });
     }
 
-    private void startSpeaking(String text) {
-        if (currentState == State.ERROR) {
-            return;
+    private void translate() {
+        String inputText = currentTranscript;
+        currentTranscript = "";
+
+        try {
+            String outputText = zebra.translate(
+                    inputText.substring(0, Math.min(
+                            inputText.length(),
+                            zebra.getMaxCharacterLimit())));
+
+            speak(outputText);
+        } catch (ZebraException e) {
+            setError(e.getMessage());
         }
+    }
 
-        setStatus(String.format("Synthesizing %s speech", sourceLanguage));
-        currentState = State.OTHER;
-
+    private void speak(String outputText) {
         try {
             OrcaSynthesizeParams params = new OrcaSynthesizeParams.Builder()
                     .build();
-            OrcaAudio audio = orca.synthesize(text, params);
 
-            setStatus(String.format("Speaking in %s", sourceLanguage));
+            OrcaAudio audio = orca.synthesize(outputText, params);
 
-            playAudio(audio);
-
-            startListening();
+            playAudio(audio, this::startListening);
         } catch (OrcaException e) {
             setError(e.getMessage());
         }
     }
 
-    private void playAudio(OrcaAudio audio) {
+    private void playAudio(OrcaAudio audio, Runnable after) {
         AudioAttributes audioAttributes = new AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -728,10 +802,10 @@ public class MainActivity extends AppCompatActivity {
             }, (long) (words[i].getStartSec() * 1000));
         }
 
-        mainHandler.postDelayed(() -> {
-            sendNewline(false);
-            sendNewline(false);
-        }, (long) (words[words.length - 1].getEndSec() * 1000));
+        OrcaWord lastWord = words[words.length - 1];
+        mainHandler.postDelayed(
+                after,
+                (long) (lastWord.getEndSec() * 1000));
 
         short[] pcm = audio.getPcm();
         ttsOutput.write(pcm, 0, pcm.length);
