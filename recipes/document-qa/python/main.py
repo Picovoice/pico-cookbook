@@ -104,8 +104,8 @@ def chunk_document(
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
 
-    if chunk_overlap >= chunk_size:
-        raise ValueError("`chunk_overlap` must be smaller than `chunk_size`.")
+    if chunk_overlap >= (chunk_size // 2):
+        raise ValueError(f"`chunk_overlap` must be smaller than {chunk_size // 2}.")
 
     chunks = list()
     start = 0
