@@ -8,7 +8,6 @@ import android.media.AudioTrack;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -217,7 +216,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setStatus(String text) {
-        Log.d("PICOVOICE", text);
         mainHandler.post(() -> {
             statusText.setText(text);
             statusLayout.setVisibility(View.VISIBLE);
@@ -226,7 +224,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setError(String text) {
-        Log.e("PICOVOICE", text);
         currentState = State.ERROR;
         mainHandler.post(() -> {
             int colorDanger = getResources().getColor(R.color.colorDanger);
@@ -656,9 +653,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void frameListener(short[] frame) {
         if (currentState == State.LISTENING_SOURCE) {
-            mainHandler.post(() -> listenSource(frame));
+            engineExecutor.submit(() -> listenSource(frame));
         } else if (currentState == State.LISTENING_TARGET) {
-            mainHandler.post(() -> listenTarget(frame));
+            engineExecutor.submit(() -> listenTarget(frame));
         }
     }
 
