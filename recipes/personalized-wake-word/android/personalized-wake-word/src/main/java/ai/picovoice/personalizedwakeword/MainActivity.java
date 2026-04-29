@@ -24,6 +24,7 @@ import ai.picovoice.porcupine.Porcupine;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "PICOVOICE";
     private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
+    private static final String WAKE_WORD_FILE = "${YOUR_WAKE_WORD_HERE}.ppn";
     private static final float EAGLE_THRESHOLD = 0.75f;
 
     private TextView titleText, statusText, resultText;
@@ -165,12 +166,14 @@ public class MainActivity extends AppCompatActivity {
 
             porcupine = new Porcupine.Builder()
                     .setAccessKey(ACCESS_KEY)
-                    .setKeyword(Porcupine.BuiltInKeyword.PORCUPINE)
+                    .setKeywordPath(WAKE_WORD_FILE)
+                    .setSensitivity(0.5f)
                     .build(this);
 
             eagleProfiler = new EagleProfiler.Builder()
                     .setAccessKey(ACCESS_KEY)
-                    .setMinEnrollmentChunks(3)
+                    .setMinEnrollmentChunks(4)
+                    .setVoiceThreshold(0.1f)
                     .build(this);
 
             enrollMaxSamples = eagleProfiler.getFrameLength() * 64;
@@ -193,11 +196,13 @@ public class MainActivity extends AppCompatActivity {
 
             porcupine = new Porcupine.Builder()
                     .setAccessKey(ACCESS_KEY)
-                    .setKeyword(Porcupine.BuiltInKeyword.PORCUPINE)
+                    .setKeywordPath(WAKE_WORD_FILE)
+                    .setSensitivity(0.5f)
                     .build(this);
 
             eagle = new Eagle.Builder()
                     .setAccessKey(ACCESS_KEY)
+                    .setVoiceThreshold(0.0f)
                     .build(this);
 
             slidingBuffer = new short[eagle.getMinProcessSamples()];

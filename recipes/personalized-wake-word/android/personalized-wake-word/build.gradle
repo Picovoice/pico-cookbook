@@ -29,23 +29,23 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
-//    signingConfigs {
-//        release {
-//            storePassword properties.getProperty("storePassword")
-//            storeFile file(properties.getProperty("storeFile", ".dummy.jks"))
-//            keyAlias properties.getProperty("keyAlias")
-//            keyPassword properties.getProperty("keyPassword")
-//        }
-//    }
+    signingConfigs {
+        release {
+            storePassword properties.getProperty("storePassword")
+            storeFile file(properties.getProperty("storeFile", ".dummy.jks"))
+            keyAlias properties.getProperty("keyAlias")
+            keyPassword properties.getProperty("keyPassword")
+        }
+    }
     buildTypes {
-//        debug {
-//            signingConfig signingConfigs.debug
-//        }
-//        release {
-//            minifyEnabled false
-//            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-//            signingConfig signingConfigs.release
-//        }
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -64,5 +64,5 @@ dependencies {
 
     implementation 'ai.picovoice:android-voice-processor:1.0.2'
     implementation 'ai.picovoice:porcupine-android:4.0.0'
-    implementation 'ai.picovoice:eagle-android:3.0.0'
+    implementation 'ai.picovoice:eagle-android:3.0.1'
 }
