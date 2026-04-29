@@ -23,6 +23,7 @@ millisec
 mixtral
 newwin
 numpy
+personalizedwakeword
 pico
 picollm
 picovoice
