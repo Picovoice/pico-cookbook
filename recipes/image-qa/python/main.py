@@ -4,6 +4,7 @@ import sys
 from argparse import ArgumentParser
 from threading import (
     Event,
+    Lock,
     Thread
 )
 from time import (
@@ -19,6 +20,7 @@ from typing import (
 import picollm
 import pvcheetah
 import pvorca
+from PIL import Image
 from pvorca import Orca
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
@@ -122,6 +124,10 @@ def main() -> None:
         required=True,
         help='Absolute path to the picoLLM VLM model file (`.pllm`).')
     parser.add_argument(
+        '--image_path',
+        required=True,
+        help='Absolute path to the image file.')
+    parser.add_argument(
         '--picollm_device',
         default="best",
         help="String representation of the device to use for picoLLM inference. If set to `best`, picoLLM picks the "
@@ -138,6 +144,7 @@ def main() -> None:
 
     access_key = args.access_key
     picollm_model_path = args.picollm_model_path
+    image_path = args.image_path
     endpoint_duration_sec = args.endpoint_duration_sec
     picollm_device = args.picollm_device
 
@@ -172,8 +179,45 @@ def main() -> None:
 
         print()
 
+        image = Image.open(image_path).convert("RGB")
+
         while True:
-            pass
+            question = ""
+            question_lock = Lock()
+
+            def get_question() -> str:
+                with question_lock:
+                    display_question = "(listening)" if question == "" else question
+                    return f"[Q] {display_question}"
+
+            question_event, question_thread = print_async(get_question)
+
+            while True:
+                partial, is_endpoint = cheetah.process(recorder.read())
+                with question_lock:
+                    question += partial
+
+                if is_endpoint:
+                    remainder = cheetah.flush()
+                    with question_lock:
+                        question += remainder
+
+                    question_event.set()
+                    question_thread.join()
+
+                    recorder.stop()
+                    break
+
+            completion = vlm.generate_with_image(
+                prompt=question,
+                image_width=image.width,
+                image_height=image.height,
+                image=image.tobytes(),
+                stop_phrases={'<|im_end|>'})
+            answer = completion.completion.replace('<|im_end|>', '')
+            print(answer)
+
+            recorder.start()
     except KeyboardInterrupt:
         pass
     finally:
