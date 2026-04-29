@@ -116,7 +116,7 @@ def sanitize_for_orca(text: str, valid_characters: Set[str]) -> str:
     return text
 
 
-def stream_answer(
+def stream_ocr_result(
         ocr: PicoLLM,
         orca: Orca,
         speaker: PvSpeaker,
@@ -125,8 +125,8 @@ def stream_answer(
     text_queue: queue.Queue[Optional[str]] = queue.Queue()
     tts_error_queue: queue.Queue[BaseException] = queue.Queue()
 
-    answer = ""
-    answer_lock = Lock()
+    extracted_text = ""
+    extracted_text_lock = Lock()
 
     pending_speech_text = ""
     pending_speech_lock = Lock()
@@ -136,15 +136,15 @@ def stream_answer(
 
     sentence_end_pattern = re.compile(r"([.!?;:])\s+")
 
-    def get_answer() -> str:
-        with answer_lock:
-            if len(answer) == 0:
+    def get_extracted_text() -> str:
+        with extracted_text_lock:
+            if len(extracted_text) == 0:
                 with progress_lock:
                     if len(progress) > 0:
                         return progress
-                return "[A] (thinking)"
+                return "[OCR] (reading image)"
 
-            return f"[A] {answer}"
+            return f"[OCR] {extracted_text}"
 
     def update_progress(x: float) -> None:
         nonlocal progress
@@ -216,16 +216,20 @@ def stream_answer(
             if stream is not None:
                 stream.close()
 
-    def on_llm_stream(text: str) -> None:
-        nonlocal answer
+    def on_ocr_stream(text: str) -> None:
+        nonlocal extracted_text
         nonlocal pending_speech_text
 
-        text = text.replace('<|im_end|>', '')
+        text = (
+            text
+            .replace('<|im_end|>', '')
+            .replace('<｜end▁of▁sentence｜>', '')
+        )
         if len(text) == 0:
             return
 
-        with answer_lock:
-            answer += text
+        with extracted_text_lock:
+            extracted_text += text
 
         with pending_speech_lock:
             pending_speech_text += text
@@ -237,7 +241,7 @@ def stream_answer(
 
             text_queue.put(speakable_text)
 
-    answer_event, answer_thread = print_async(get_answer)
+    ocr_event, ocr_thread = print_async(get_extracted_text)
     tts_thread = Thread(target=tts_worker, daemon=True)
     tts_thread.start()
 
@@ -246,16 +250,21 @@ def stream_answer(
             image_width=image.width,
             image_height=image.height,
             image=image.tobytes(),
-            stream_callback=on_llm_stream,
-            prompt_progress_callback=update_progress,)
+            stream_callback=on_ocr_stream,
+            prompt_progress_callback=update_progress)
 
-        final_answer = completion.completion.strip().replace('<｜end▁of▁sentence｜>', '')
+        final_text = (
+            completion.completion
+            .strip()
+            .replace('<|im_end|>', '')
+            .replace('<｜end▁of▁sentence｜>', '')
+        )
 
-        with answer_lock:
-            if len(final_answer) > 0:
-                answer = final_answer
-            elif len(answer.strip()) == 0:
-                answer = "I don't know."
+        with extracted_text_lock:
+            if len(final_text) > 0:
+                extracted_text = final_text
+            elif len(extracted_text.strip()) == 0:
+                extracted_text = "No text was detected."
 
         remaining_speech_text = pop_speakable_text(force=True)
         if len(remaining_speech_text) > 0:
@@ -267,17 +276,17 @@ def stream_answer(
         if not tts_error_queue.empty():
             raise tts_error_queue.get()
 
-        answer_event.set()
-        answer_thread.join()
+        ocr_event.set()
+        ocr_thread.join()
 
-        with answer_lock:
-            return answer.strip()
+        with extracted_text_lock:
+            return extracted_text.strip()
 
     except BaseException:
         text_queue.put(None)
         tts_thread.join(timeout=1.0)
-        answer_event.set()
-        answer_thread.join()
+        ocr_event.set()
+        ocr_thread.join()
         raise
 
 
@@ -290,11 +299,11 @@ def main() -> None:
     parser.add_argument(
         '--picollm_model_path',
         required=True,
-        help='Absolute path to the picoLLM VLM model file (`.pllm`).')
+        help='Absolute path to the picoLLM OCR model file (`.pllm`).')
     parser.add_argument(
         '--image_path',
         required=True,
-        help='Absolute path to the image file.')
+        help='Absolute path to the image file to read.')
     parser.add_argument(
         '--picollm_device',
         default="best",
@@ -319,7 +328,7 @@ def main() -> None:
             access_key=access_key,
             model_path=picollm_model_path,
             device=picollm_device)
-        print(f"[OK] picoLLM Inference [V{ocr.version}]")
+        print(f"[OK] picoLLM OCR [V{ocr.version}]")
 
         orca = pvorca.create(access_key=access_key)
         print(f"[OK] Orca Streaming Text-to-Speech [V{orca.version}]")
@@ -331,7 +340,7 @@ def main() -> None:
 
         image = Image.open(image_path).convert("RGB")
 
-        stream_answer(
+        stream_ocr_result(
             ocr=ocr,
             orca=orca,
             speaker=speaker,

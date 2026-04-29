@@ -14,7 +14,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ## Usage
 
-These instructions assume your current working directory is `recipes/image-qa/python`.
+These instructions assume your current working directory is `recipes/image-to-speech/python`.
 
 ### 1. Create a Virtual Environment
 
