@@ -1,0 +1,893 @@
+/*
+    Copyright 2026 Picovoice Inc.
+
+    You may not use this file except in compliance with the license. A copy of the license is
+    located in the "LICENSE" file accompanying this source.
+
+    Unless required by applicable law or agreed to in writing, software distributed under the
+    License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+    express or implied. See the License for the specific language governing permissions and
+    limitations under the License.
+*/
+
+package ai.picovoice.documentqa;
+
+import android.Manifest;
+import android.annotation.SuppressLint;
+import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
+import android.media.AudioFormat;
+import android.media.AudioTrack;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.style.ForegroundColorSpan;
+import android.view.View;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.ProgressBar;
+import android.widget.ScrollView;
+import android.widget.TextView;
+
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.res.ResourcesCompat;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import ai.picovoice.android.voiceprocessor.VoiceProcessor;
+import ai.picovoice.android.voiceprocessor.VoiceProcessorException;
+import ai.picovoice.cheetah.Cheetah;
+import ai.picovoice.cheetah.CheetahException;
+import ai.picovoice.cheetah.CheetahTranscript;
+import ai.picovoice.orca.Orca;
+import ai.picovoice.orca.OrcaException;
+import ai.picovoice.orca.OrcaSynthesizeParams;
+import ai.picovoice.picollm.PicoLLM;
+import ai.picovoice.picollm.PicoLLMCompletion;
+import ai.picovoice.picollm.PicoLLMDialog;
+import ai.picovoice.picollm.PicoLLMException;
+import ai.picovoice.picollm.PicoLLMGenerateParams;
+
+public class MainActivity extends AppCompatActivity {
+
+    private enum UIState {
+        INIT,
+        LOADING_MODEL,
+        STT,
+        LLM_TTS
+    }
+
+    private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
+
+    private static final String LLM_IT_MODEL_FILE = "llama-3.2-1b-instruct-385.pllm";
+
+    private static final String LLM_EMBED_MODEL_FILE = "embeddinggemma-300m-375.pllm";
+
+    private static final String STT_MODEL_FILE = "cheetah_params.pv";
+
+    private static final String TTS_MODEL_FILE = "orca_params_female.pv";
+
+    private static final String SYSTEM_PROMPT = null;
+
+    private static final int COMPLETION_TOKEN_LIMIT = 128;
+
+    private static final int TTS_WARMUP_SECONDS = 1;
+
+    private static final String[] STOP_PHRASES = new String[]{
+            "</s>",             // Llama-2, Mistral, and Mixtral
+            "<end_of_turn>",    // Gemma
+            "<|endoftext|>",    // Phi-2
+            "<|eot_id|>",       // Llama-3
+            "<|end|>", "<|user|>", "<|assistant|>", // Phi-3
+    };
+
+    private final VoiceProcessor voiceProcessor = VoiceProcessor.getInstance();
+
+    private Cheetah cheetah;
+    private PicoLLM picollmEmbedding;
+
+    private PicoLLM picollmChat;
+
+    private Orca orca;
+
+    ArrayList<String> chunks;
+    ArrayList<float[]> embeddings;
+
+    private PicoLLMDialog dialog;
+
+    private PicoLLMCompletion finalCompletion;
+
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    private final ExecutorService engineExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService ttsSynthesizeExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService ttsPlaybackExecutor = Executors.newSingleThreadExecutor();
+
+    private AudioTrack ttsOutput;
+
+    private UIState currentState = UIState.INIT;
+
+    private StringBuilder llmPromptText = new StringBuilder();
+
+    private ConstraintLayout loadModelLayout;
+    private ConstraintLayout chatLayout;
+
+    private Button loadModelButton;
+    private TextView loadModelText;
+    private ProgressBar loadModelProgress;
+
+    private TextView chatText;
+
+    private ScrollView chatTextScrollView;
+
+    private TextView statusText;
+
+    private ProgressBar statusProgress;
+
+    private ImageButton loadNewModelButton;
+
+    private ImageButton clearTextButton;
+
+    private SpannableStringBuilder chatTextBuilder;
+
+    private int spanColour;
+
+    @SuppressLint({"DefaultLocale", "SetTextI18n"})
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.main_layout);
+
+        loadModelLayout = findViewById(R.id.loadModelLayout);
+        chatLayout = findViewById(R.id.chatLayout);
+
+        loadModelText = findViewById(R.id.loadModelText);
+        loadModelProgress = findViewById(R.id.loadModelProgress);
+        loadModelButton = findViewById(R.id.loadModelButton);
+
+        loadModelButton.setOnClickListener(view -> {
+            // TODO: Should we expand this mimetype?
+            modelSelection.launch(new String[]{"text/plain"});
+        });
+
+        spanColour = ContextCompat.getColor(this, R.color.colorPrimary);
+
+        updateUIState(UIState.INIT);
+
+        chatText = findViewById(R.id.chatText);
+        chatTextScrollView = findViewById(R.id.chatScrollView);
+        statusText = findViewById(R.id.statusText);
+        statusProgress = findViewById(R.id.statusProgress);
+
+        loadNewModelButton = findViewById(R.id.loadNewModelButton);
+        loadNewModelButton.setOnClickListener(view -> {
+            // TODO: Change to "load new document button"
+            // TODO: Cleanup engines
+            updateUIState(UIState.INIT);
+            mainHandler.post(() -> chatText.setText(""));
+        });
+
+        clearTextButton = findViewById(R.id.clearButton);
+        clearTextButton.setOnClickListener(view -> {
+            chatTextBuilder = new SpannableStringBuilder();
+            mainHandler.post(() -> {
+                chatText.setText("");
+                clearTextButton.setEnabled(false);
+                clearTextButton.setImageDrawable(
+                        ResourcesCompat.getDrawable(getResources(),
+                                R.drawable.clear_button_disabled,
+                                null));
+            });
+
+            try {
+                dialog = picollmChat.getDialogBuilder().setSystem(SYSTEM_PROMPT).build();
+            } catch (PicoLLMException e) {
+                updateUIState(UIState.STT);
+                mainHandler.post(() -> chatText.setText(e.toString()));
+            }
+        });
+    }
+
+    ActivityResultLauncher<String[]> modelSelection = registerForActivityResult(
+            new ActivityResultContracts.OpenDocument(),
+            new ActivityResultCallback<Uri>() {
+                @SuppressLint("SetTextI18n")
+                @Override
+                public void onActivityResult(Uri selectedUri) {
+                    updateUIState(UIState.LOADING_MODEL);
+
+                    if (selectedUri == null) {
+                        updateUIState(UIState.INIT);
+                        mainHandler.post(() -> loadModelText.setText("No file selected"));
+                        return;
+                    }
+
+                    engineExecutor.submit(() -> {
+//                        File llmModelFile = extractModelFile(selectedUri);
+//                        if (llmModelFile == null || !llmModelFile.exists()) {
+//                            updateUIState(UIState.INIT);
+//                            mainHandler.post(() -> loadModelText.setText("Unable to access selected file"));
+//                            return;
+//                        }
+
+                        initEngines(selectedUri);
+                    });
+                }
+            });
+
+    private ArrayList<String> chunkDocument(Uri uri) {
+        final int chunkSize = 1200;
+        final int chunkOverlap = 250;
+
+        // TODO: Sub and strip newlines?
+
+        StringBuilder textBuilder = new StringBuilder();
+        try {
+            InputStream in = getContentResolver().openInputStream(uri);
+            BufferedReader r = new BufferedReader(new InputStreamReader(in));
+            for (String line; (line = r.readLine()) != null; ) {
+                textBuilder.append(line).append('\n');
+            }
+        } catch (Exception e) {
+            onEngineInitError(e.getMessage());
+            return null;
+        }
+
+        String text = textBuilder.toString();
+        ArrayList<String> chunks = new ArrayList<>();
+        int start = 0;
+
+        while (start < text.length()) {
+            int end = Math.min(start + chunkSize, text.length());
+
+            if (end < text.length()) {
+                int paragraphBreak = text.lastIndexOf("\n\n", start);
+                if (paragraphBreak <= end && paragraphBreak > (start + (chunkSize / 2))) {
+                    end = paragraphBreak;
+                }
+            }
+
+            String chunk = text.substring(start, end);
+            if (chunk.length() > 0) {
+                chunks.add(chunk);
+            }
+
+            if (end >= text.length()) {
+                break;
+            }
+
+            start = Math.max(0, end - chunkOverlap);
+        }
+
+        return chunks;
+    }
+
+    private float[] normalizeVector(float[] vector) {
+        double sum = 0;
+        for (float x : vector) {
+            sum += x * x;
+        }
+        float norm = (float) Math.pow(sum, 0.5);
+
+        float[] normalizedVector = new float[vector.length];
+        for (int i = 0; i < vector.length; i++) {
+            normalizedVector[i] = vector[i] / norm;
+        }
+        return normalizedVector;
+    }
+
+    private float dotProduct(float[] a, float[] b) {
+        float sum = 0;
+        for (int i = 0; i < Math.min(a.length, b.length); i++) {
+            sum += a[i] * b[i];
+        }
+        return sum;
+    }
+
+    private float[] generateEmbedding(String prompt) throws PicoLLMException {
+        float[] embeddingRaw = picollmEmbedding.generateEmbeddings(prompt);
+        return normalizeVector(embeddingRaw);
+    }
+
+    private ArrayList<float[]> generateEmbeddings(ArrayList<String> chunks) throws PicoLLMException {
+        ArrayList<float[]> embeddings = new ArrayList<>();
+
+        for (int i = 0; i < chunks.size(); i++) {
+            String statusText = "Generating embeddings " + (i + 1) + "/" + chunks.size();
+            mainHandler.post(() -> loadModelText.setText(statusText));
+            embeddings.add(generateEmbedding(chunks.get(i)));
+        }
+
+        return embeddings;
+    }
+
+    private ArrayList<String> retrieveChunks(String question) throws PicoLLMException {
+        final int topk = 3;
+
+        float[] questionEmbedding = generateEmbedding(question);
+
+        float[] scores = new float[embeddings.size()];
+        for (int i = 0; i < embeddings.size(); i++) {
+            scores[i] = dotProduct(questionEmbedding, embeddings.get(i));
+        }
+
+        float[] topks = new float[topk];
+        int[] indices = new int[topk];
+
+        Arrays.fill(topks, -Float.MAX_VALUE);
+
+        for (int i = 0; i < scores.length; i++) {
+            float element = scores[i];
+            int indice = i;
+
+            if (element > topks[topk - 1]) {
+                for (int j = 0; j < topk; j++) {
+                    if (element > topks[j]) {
+                        final float prev_topk = topks[j];
+                        topks[j] = element;
+                        element = prev_topk;
+
+                        final int prev_topk_indice = indices[j];
+                        indices[j] = indice;
+                        indice = prev_topk_indice;
+                    }
+                }
+            }
+        }
+
+        ArrayList<String> retrievedChunks = new ArrayList<>();
+        for (int i = 0; i < indices.length; i++) {
+            retrievedChunks.add(chunks.get(indices[i]));
+        }
+
+        return retrievedChunks;
+    }
+
+    private void initEngines(Uri documentUri) {
+        mainHandler.post(() -> loadModelText.setText("Loading Cheetah..."));
+        try {
+            cheetah = new Cheetah.Builder()
+                    .setAccessKey(ACCESS_KEY)
+                    .setModelPath(STT_MODEL_FILE)
+                    .setEnableAutomaticPunctuation(true)
+                    .build(getApplicationContext());
+        } catch (CheetahException e) {
+            onEngineInitError(e.getMessage());
+            return;
+        }
+
+        mainHandler.post(() -> loadModelText.setText("Loading picoLLM (embedding)..."));
+        File llmEmbeddingModelFile = extractModelFile(LLM_EMBED_MODEL_FILE);
+        try {
+            picollmEmbedding = new PicoLLM.Builder()
+                    .setAccessKey(ACCESS_KEY)
+                    .setModelPath(llmEmbeddingModelFile.getAbsolutePath())
+                    .build();
+        } catch (PicoLLMException e) {
+            onEngineInitError(e.getMessage());
+            return;
+        }
+
+        mainHandler.post(() -> loadModelText.setText("Loading picoLLM (chat)..."));
+        File llmChatModelFile = extractModelFile(LLM_IT_MODEL_FILE);
+        try {
+            picollmChat = new PicoLLM.Builder()
+                    .setAccessKey(ACCESS_KEY)
+                    .setModelPath(llmChatModelFile.getAbsolutePath())
+                    .build();
+            dialog = picollmChat.getDialogBuilder().setSystem(SYSTEM_PROMPT).build();
+        } catch (PicoLLMException e) {
+            onEngineInitError(e.getMessage());
+            return;
+        }
+
+        mainHandler.post(() -> loadModelText.setText("Loading Orca..."));
+        try {
+            orca = new Orca.Builder()
+                    .setAccessKey(ACCESS_KEY)
+                    .setModelPath(TTS_MODEL_FILE)
+                    .build(getApplicationContext());
+        } catch (OrcaException e) {
+            onEngineInitError(e.getMessage());
+            return;
+        }
+
+        mainHandler.post(() -> loadModelText.setText("Reading document..."));
+        try {
+            // TODO: Cache and load embeddings if filename matches existing, prompt user with dialog
+            /*
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+            builder.setMessage("Chached embeddings found for file, would you like to use them?")
+                    .setTitle("Use Cache?");
+
+            builder.setPositiveButton("Use Cache", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int id) {
+                }
+            });
+            builder.setNegativeButton("Generate New", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int id) {
+                }
+            });
+
+            AlertDialog dialog = builder.create();
+            dialog.show();
+            */
+
+            chunks = chunkDocument(documentUri);
+            embeddings = generateEmbeddings(chunks);
+        } catch (PicoLLMException e) {
+            onEngineInitError(e.getMessage());
+            return;
+        }
+
+        chatTextBuilder = new SpannableStringBuilder();
+        updateUIState(UIState.STT);
+
+        voiceProcessor.addFrameListener(this::runWakeWordSTT);
+
+        voiceProcessor.addErrorListener(error -> {
+            onEngineProcessError(error.getMessage());
+        });
+
+        startSTTListening();
+    }
+
+    private void runWakeWordSTT(short[] frame) {
+        if (currentState == UIState.STT) {
+            try {
+                CheetahTranscript result = cheetah.process(frame);
+                llmPromptText.append(result.getTranscript());
+                mainHandler.post(() -> {
+                    chatTextBuilder.append(result.getTranscript());
+                    chatText.setText(chatTextBuilder);
+                    chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+                });
+
+                if (result.getIsEndpoint()) {
+                    CheetahTranscript finalResult = cheetah.flush();
+                    llmPromptText.append(finalResult.getTranscript());
+                    mainHandler.post(() -> {
+                        chatTextBuilder.append(
+                                String.format("%s\n\n", finalResult.getTranscript())
+                        );
+                        chatText.setText(chatTextBuilder);
+                        chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+                    });
+
+                    runLLM(llmPromptText.toString());
+                }
+            } catch (CheetahException e) {
+                onEngineProcessError(e.getMessage());
+            }
+        }
+    }
+
+    private String buildPrompt(String question, ArrayList<String> retrievedChunks) {
+    
+    }
+
+    private void runLLM(String question) {
+        if (question.length() == 0) {
+            return;
+        }
+
+        ArrayList<String> retrievedChunks;
+        try {
+            retrievedChunks = retrieveChunks(question);
+        } catch (PicoLLMException e) {
+            onEngineProcessError(e.getMessage());
+            return;
+        }
+        String prompt = buildPrompt(question, retrievedChunks);;
+
+        AtomicBoolean isQueueingTokens = new AtomicBoolean(false);
+        CountDownLatch tokensReadyLatch = new CountDownLatch(1);
+        ConcurrentLinkedQueue<String> tokenQueue = new ConcurrentLinkedQueue<>();
+
+        AtomicBoolean isQueueingPcm = new AtomicBoolean(false);
+        CountDownLatch pcmReadyLatch = new CountDownLatch(1);
+        ConcurrentLinkedQueue<short[]> pcmQueue = new ConcurrentLinkedQueue<>();
+
+        updateUIState(UIState.LLM_TTS);
+
+        finalCompletion = null;
+
+        mainHandler.post(() -> {
+            int start = chatTextBuilder.length();
+            chatTextBuilder.append("picoLLM:\n\n");
+            chatTextBuilder.setSpan(
+                    new ForegroundColorSpan(spanColour),
+                    start,
+                    start + 8,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            chatText.setText(chatTextBuilder);
+        });
+
+        engineExecutor.submit(() -> {
+            try {
+                isQueueingTokens.set(true);
+
+                dialog.addHumanRequest(prompt);
+                finalCompletion = picollmChat.generate(
+                        dialog.getPrompt(),
+                        new PicoLLMGenerateParams.Builder()
+                                .setStreamCallback(token -> {
+                                    if (token != null && token.length() > 0) {
+                                        boolean containsStopPhrase = false;
+                                        for (String k : STOP_PHRASES) {
+                                            if (token.contains(k)) {
+                                                containsStopPhrase = true;
+                                                break;
+                                            }
+                                        }
+
+                                        if (!containsStopPhrase && currentState == UIState.LLM_TTS) {
+                                            tokenQueue.add(token);
+                                            tokensReadyLatch.countDown();
+
+                                            mainHandler.post(() -> {
+                                                chatTextBuilder.append(token);
+                                                chatText.setText(chatTextBuilder);
+                                                chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+                                            });
+                                        }
+                                    }
+                                })
+                                .setCompletionTokenLimit(COMPLETION_TOKEN_LIMIT)
+                                .setStopPhrases(STOP_PHRASES)
+                                .build());
+                dialog.addLLMResponse(finalCompletion.getCompletion());
+
+                isQueueingTokens.set(false);
+
+                mainHandler.post(() -> {
+                    clearTextButton.setEnabled(true);
+                    clearTextButton.setImageDrawable(
+                            ResourcesCompat.getDrawable(getResources(),
+                                    R.drawable.clear_button,
+                                    null));
+                    chatTextBuilder.append("\n\n");
+                });
+//                if (finalCompletion.getEndpoint() == PicoLLMCompletion.Endpoint.INTERRUPTED) {
+//                    llmPromptText = new StringBuilder();
+//                    updateUIState(UIState.STT);
+//                } else {
+//                    updateUIState(UIState.STT);
+//                }
+
+            } catch (PicoLLMException e) {
+                onEngineProcessError(e.getMessage());
+            }
+        });
+
+        ttsSynthesizeExecutor.submit(() -> {
+            Orca.OrcaStream orcaStream;
+            try {
+                orcaStream = orca.streamOpen(new OrcaSynthesizeParams.Builder().build());
+            } catch (OrcaException e) {
+                onEngineProcessError(e.getMessage());
+                return;
+            }
+
+            short[] warmupPcm;
+            if (TTS_WARMUP_SECONDS > 0) {
+                warmupPcm = new short[0];
+            }
+
+            try {
+                tokensReadyLatch.await();
+            } catch (InterruptedException e) {
+                onEngineProcessError(e.getMessage());
+                return;
+            }
+
+            isQueueingPcm.set(true);
+            while (isQueueingTokens.get() || !tokenQueue.isEmpty()) {
+                String token = tokenQueue.poll();
+                if (token != null && token.length() > 0) {
+                    try {
+                        short[] pcm = orcaStream.synthesize(token);
+
+                        if (pcm != null && pcm.length > 0) {
+                            if (warmupPcm != null) {
+                                int offset = warmupPcm.length;
+                                warmupPcm = Arrays.copyOf(warmupPcm, offset + pcm.length);
+                                System.arraycopy(pcm, 0, warmupPcm, offset, pcm.length);
+                                if (warmupPcm.length > TTS_WARMUP_SECONDS * orca.getSampleRate()) {
+                                    pcmQueue.add(warmupPcm);
+                                    pcmReadyLatch.countDown();
+                                    warmupPcm = null;
+                                }
+                            } else {
+                                pcmQueue.add(pcm);
+                                pcmReadyLatch.countDown();
+                            }
+                        }
+                    } catch (OrcaException e) {
+                        onEngineProcessError(e.getMessage());
+                        return;
+                    }
+                }
+            }
+
+            try {
+                short[] flushedPcm = orcaStream.flush();
+
+                if (flushedPcm != null && flushedPcm.length > 0) {
+                    if (warmupPcm != null) {
+                        int offset = warmupPcm.length;
+                        warmupPcm = Arrays.copyOf(warmupPcm, offset + flushedPcm.length);
+                        System.arraycopy(flushedPcm, 0, warmupPcm, offset, flushedPcm.length);
+                        pcmQueue.add(warmupPcm);
+                        pcmReadyLatch.countDown();
+                    }
+                    else {
+                        pcmQueue.add(flushedPcm);
+                        pcmReadyLatch.countDown();
+                    }
+                }
+            } catch (OrcaException e) {
+                onEngineProcessError(e.getMessage());
+            }
+
+            isQueueingPcm.set(false);
+
+            orcaStream.close();
+        });
+
+        ttsPlaybackExecutor.submit(() -> {
+            try {
+                AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build();
+
+                AudioFormat audioFormat = new AudioFormat.Builder()
+                        .setSampleRate(orca.getSampleRate())
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build();
+
+                ttsOutput = new AudioTrack(
+                        audioAttributes,
+                        audioFormat,
+                        AudioTrack.getMinBufferSize(
+                                orca.getSampleRate(),
+                                AudioFormat.CHANNEL_OUT_MONO,
+                                AudioFormat.ENCODING_PCM_16BIT),
+                        AudioTrack.MODE_STREAM,
+                        0);
+
+                ttsOutput.play();
+            } catch (Exception e) {
+                onEngineProcessError(e.getMessage());
+                return;
+            }
+
+            try {
+                pcmReadyLatch.await();
+            } catch (InterruptedException e) {
+                onEngineProcessError(e.getMessage());
+                return;
+            }
+
+            while (isQueueingPcm.get() || !pcmQueue.isEmpty()) {
+                short[] pcm = pcmQueue.poll();
+                if (pcm != null && pcm.length > 0 && ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
+                    ttsOutput.write(pcm, 0, pcm.length);
+                }
+            }
+
+            if (ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
+                ttsOutput.flush();
+                ttsOutput.stop();
+            }
+            ttsOutput.release();
+
+            updateUIState(UIState.STT);
+        });
+    }
+
+    private File extractModelFile(String filename) {
+        File modelFile = new File(getApplicationContext().getFilesDir(), filename);
+
+        try (InputStream is = getApplicationContext().getAssets().open(filename);
+             OutputStream os = new FileOutputStream(modelFile)) {
+            byte[] buffer = new byte[8192];
+            int numBytesRead;
+            while ((numBytesRead = is.read(buffer)) != -1) {
+                os.write(buffer, 0, numBytesRead);
+            }
+        } catch (IOException e) {
+            return null;
+        }
+
+        return modelFile;
+    }
+
+    private void onEngineInitError(String message) {
+        updateUIState(UIState.INIT);
+        mainHandler.post(() -> loadModelText.setText(message));
+    }
+
+    private void onEngineProcessError(String message) {
+        updateUIState(UIState.STT);
+        mainHandler.post(() -> chatText.setText(message));
+    }
+
+    private void startSTTListening() {
+        if (voiceProcessor.hasRecordAudioPermission(this)) {
+            try {
+                voiceProcessor.start(cheetah.getFrameLength(), cheetah.getSampleRate());
+            } catch (VoiceProcessorException e) {
+                onEngineProcessError(e.getMessage());
+            }
+        } else {
+            requestRecordPermission();
+        }
+    }
+
+    private void requestRecordPermission() {
+        ActivityCompat.requestPermissions(
+                this,
+                new String[]{Manifest.permission.RECORD_AUDIO},
+                0);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            @NonNull String[] permissions,
+            @NonNull int[] grantResults
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (grantResults.length == 0 || grantResults[0] == PackageManager.PERMISSION_DENIED) {
+            onEngineProcessError("Recording permission not granted");
+        } else {
+            startSTTListening();
+        }
+    }
+
+    private void updateUIState(UIState state) {
+        mainHandler.post(() -> {
+            switch (state) {
+                case INIT:
+                    loadModelLayout.setVisibility(View.VISIBLE);
+                    chatLayout.setVisibility(View.INVISIBLE);
+                    loadModelButton.setEnabled(true);
+                    loadModelButton.setBackground(
+                            ResourcesCompat.getDrawable(
+                                    getResources(),
+                                    R.drawable.button_background,
+                                    null));
+                    loadModelProgress.setVisibility(View.INVISIBLE);
+                    loadModelText.setText(getResources().getString(R.string.intro_text));
+                    break;
+                case LOADING_MODEL:
+                    loadModelLayout.setVisibility(View.VISIBLE);
+                    chatLayout.setVisibility(View.INVISIBLE);
+                    loadModelButton.setEnabled(false);
+                    loadModelButton.setBackground(
+                            ResourcesCompat.getDrawable(
+                                    getResources(),
+                                    R.drawable.button_disabled,
+                                    null));
+                    loadModelProgress.setVisibility(View.VISIBLE);
+                    loadModelText.setText("Loading model...");
+                    break;
+                case STT:
+                    loadModelLayout.setVisibility(View.INVISIBLE);
+                    chatLayout.setVisibility(View.VISIBLE);
+
+                    loadNewModelButton.setImageDrawable(
+                            ResourcesCompat.getDrawable(
+                                    getResources(),
+                                    R.drawable.arrow_back_button_disabled,
+                                    null));
+                    loadNewModelButton.setEnabled(false);
+                    statusProgress.setVisibility(View.GONE);
+                    statusText.setVisibility(View.VISIBLE);
+                    statusText.setText("Listening...");
+
+                    int start = chatTextBuilder.length();
+                    chatTextBuilder.append("You:\n\n");
+                    chatTextBuilder.setSpan(
+                            new ForegroundColorSpan(spanColour),
+                            start,
+                            start + 4,
+                            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    chatText.setText(chatTextBuilder);
+
+                    clearTextButton.setEnabled(true);
+                    clearTextButton.setImageDrawable(
+                            ResourcesCompat.getDrawable(getResources(),
+                                    R.drawable.clear_button,
+                                    null));
+                    break;
+                case LLM_TTS:
+                    loadModelLayout.setVisibility(View.INVISIBLE);
+                    chatLayout.setVisibility(View.VISIBLE);
+
+                    loadNewModelButton.setImageDrawable(
+                            ResourcesCompat.getDrawable(
+                                    getResources(),
+                                    R.drawable.arrow_back_button_disabled,
+                                    null));
+                    loadNewModelButton.setEnabled(false);
+                    chatText.setText("");
+                    statusProgress.setVisibility(View.VISIBLE);
+                    statusText.setVisibility(View.VISIBLE);
+                    statusText.setText("Generating...");
+                    clearTextButton.setEnabled(false);
+                    clearTextButton.setImageDrawable(
+                            ResourcesCompat.getDrawable(
+                                    getResources(),
+                                    R.drawable.clear_button_disabled,
+                                    null));
+                    break;
+                default:
+                    break;
+            }
+
+            currentState = state;
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        engineExecutor.shutdownNow();
+        ttsSynthesizeExecutor.shutdownNow();
+        ttsPlaybackExecutor.shutdownNow();
+
+        if (cheetah != null) {
+            cheetah.delete();
+            cheetah = null;
+        }
+
+        if (picollmEmbedding != null) {
+            picollmEmbedding.delete();
+            picollmEmbedding = null;
+        }
+
+        if (picollmChat != null) {
+            picollmChat.delete();
+            picollmChat = null;
+        }
+
+        if (orca != null) {
+            orca.delete();
+            orca = null;
+        }
+
+        if (voiceProcessor != null) {
+            voiceProcessor.clearFrameListeners();
+            voiceProcessor.clearErrorListeners();
+        }
+    }
+}
