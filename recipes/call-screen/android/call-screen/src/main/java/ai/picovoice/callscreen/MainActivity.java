@@ -24,6 +24,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
+import android.text.style.CharacterStyle;
 import android.text.style.ForegroundColorSpan;
 import android.util.Log;
 import android.view.View;
@@ -65,11 +66,14 @@ import ai.picovoice.orca.OrcaAudio;
 import ai.picovoice.orca.OrcaException;
 import ai.picovoice.orca.OrcaSynthesizeParams;
 import ai.picovoice.orca.OrcaWord;
+import ai.picovoice.rhino.Rhino;
+import ai.picovoice.rhino.RhinoException;
+import ai.picovoice.rhino.RhinoInference;
 
 public class MainActivity extends AppCompatActivity {
 
     private enum UIState {
-        LOADING,
+        BEFORE_DEMO,
         CALL_SCREEN,
         ERROR
     }
@@ -80,13 +84,14 @@ public class MainActivity extends AppCompatActivity {
         LISTEN_TO_USER
     }
 
-    // TODO: REPLACE THIS WITH ${YOUR_ACCESS_KEY_HERE}
     private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
 
     private static final String STT_MODEL_FILE = "cheetah_params.pv";
     private static final String TTS_MODEL_FILE = "orca_params_female.pv";
+    // TODO: add instructions that this file must be generated then moved here
+    private static final String RHINO_CONTEXT_FILE = "call-screen-demo.rhn";
 
-    private static final String USERNAME = "Default Username";
+    private static final String USERNAME = "User";
 
     private static final String PUNCTUATION = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
 
@@ -94,19 +99,20 @@ public class MainActivity extends AppCompatActivity {
 
     private final VoiceProcessor voiceProcessor = VoiceProcessor.getInstance();
 
-    // private Rhino rhino;
+    private Rhino rhino;
     private Cheetah cheetah;
     private Orca orca;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private final ExecutorService textExecutor = Executors.newSingleThreadExecutor();
-    // private final ExecutorService ttsSynthesizeExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService ttsPlaybackExecutor = Executors.newSingleThreadExecutor();
+
+    private SpannableTextAnimation animation;
 
     private AudioTrack ttsOutput;
 
-    private UIState uiState = UIState.LOADING;
+    private UIState uiState;
     private AppState appState = AppState.SPEAKING_TO_CALLER;
 
     private ConstraintLayout loadingLayout;
@@ -114,22 +120,27 @@ public class MainActivity extends AppCompatActivity {
     private ConstraintLayout errorLayout;
 
     private TextView loadingText;
+    private Button startButton;
 
-    // TODO: not sure what we'll need for this?
-    private TextView chatText;
-    private ScrollView chatTextScrollView;
+    private TextView callerText;
+    private ScrollView callerScrollView;
+    private SpannableStringBuilder callerTextBuilder;
+    private TextView userText;
+    private ScrollView userScrollView;
+    private SpannableStringBuilder userTextBuilder;
     private TextView stateText;
-    private SpannableStringBuilder textBuilder;
     private int spanColour;
+    private int callerColour;
 
     private TextView errorText;
 
     private String username;
-    private Action action = Action.GREET;
 
     @SuppressLint({"DefaultLocale", "SetTextI18n"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        mainHandler.post(() -> loadingText.setText("Loading..."));
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_layout);
 
@@ -138,15 +149,26 @@ public class MainActivity extends AppCompatActivity {
         errorLayout = findViewById(R.id.errorLayout);
 
         loadingText = findViewById(R.id.loadingText);
+        startButton = findViewById(R.id.startButton);
 
-        chatText = findViewById(R.id.chatText);
-        chatTextScrollView = findViewById(R.id.chatScrollView);
+        callerScrollView = findViewById(R.id.callerScrollView);
+        callerText = findViewById(R.id.callerText);
+        userScrollView = findViewById(R.id.userScrollView);
+        userText = findViewById(R.id.userText);
         stateText = findViewById(R.id.stateText);
         spanColour = ContextCompat.getColor(this, R.color.colorPrimary);
-
+        callerColour = ContextCompat.getColor(this, R.color.colorCaller);
+    
         errorText = findViewById(R.id.errorText);
 
+        if (USERNAME == "${YOUR_USERNAME_HERE}") {
+            mainHandler.post(() -> errorText.setText("Invalid username " + USERNAME));
+            updateUIState(UIState.ERROR);
+            return;
+        }
         username = USERNAME;
+
+        updateUIState(UIState.BEFORE_DEMO);
 
         initEngines();
     }
@@ -175,79 +197,148 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // TODO: load rhino? -> we don't need it yet
+        mainHandler.post(() -> loadingText.setText("Loading Rhino..."));
+        try {
+            rhino = new Rhino.Builder()
+                    .setAccessKey(ACCESS_KEY)
+                    .setContextPath(RHINO_CONTEXT_FILE)
+                    .build(getApplicationContext());
+        } catch (RhinoException e) {
+            onEngineInitError(e.getMessage());
+            return;
+        }
 
-        textBuilder = new SpannableStringBuilder(); // was this double init'd?
+        callerTextBuilder = new SpannableStringBuilder();
+        userTextBuilder = new SpannableStringBuilder();
 
-        // TODO: how large are frames? should we construct the listener after we get app permissions?
+        mainHandler.post(() -> loadingText.setText("Loading Voice Processor..."));
+
+        if (voiceProcessor.hasRecordAudioPermission(this)) {
+            enableStartButton();
+        } else {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.RECORD_AUDIO},
+                    0);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+        int requestCode,
+        @NonNull String[] permissions,
+        @NonNull int[] grantResults
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (grantResults.length == 0 || grantResults[0] == PackageManager.PERMISSION_DENIED) {
+            onEngineProcessError("Recording permission not granted");
+        } else {
+            enableStartButton();
+        }
+    }
+
+    private void enableStartButton() {
         voiceProcessor.addFrameListener(this::frameListener);
         voiceProcessor.addErrorListener(error -> {
             onEngineProcessError(error.getMessage());
         });
 
-        if (voiceProcessor.hasRecordAudioPermission(this)) {
+        mainHandler.post(() -> loadingText.setText("Press the `Start Demo` button to begin."));
+        startButton.setOnClickListener(view -> {
+            // TODO: fix double click; this is not working
+            view.setEnabled(false);
+
+            mainHandler.post(() -> {
+                loadingLayout.setAlpha(1f);
+                chatLayout.setAlpha(0f);
+                chatLayout.setVisibility(View.VISIBLE);
+
+                loadingLayout.animate().alpha(0f).setDuration(400);
+                chatLayout.animate().alpha(1f).setDuration(400);
+            });
+
+            try {
+                Thread.sleep(400);
+            } catch (InterruptedException e) { }
+
             updateUIState(UIState.CALL_SCREEN);
-            speakToCaller();
-        } else {
-            requestRecordPermission();
-        }
+            speakToCaller(Action.GREET);
+
+            view.setEnabled(true);
+        });
     }
 
     private void frameListener(short[] frame) {
-        if (uiState == UIState.LOADING) {
-            return;
-        } else if (uiState == UIState.CALL_SCREEN) {
-            // listen for user to speak, but only when app state is listening, not when app state is speaking.
-            if (appState == AppState.SPEAKING_TO_CALLER) {
-                
-            } else if (appState == AppState.LISTEN_TO_CALLER) {
-                // TODO: this
-                /*
-                try {
-                    CheetahTranscript result = cheetah.process(frame);
-                    llmPromptText.append(result.getTranscript());
-                    mainHandler.post(() -> {
-                        textBuilder.append(result.getTranscript());
-                        chatText.setText(textBuilder);
-                        chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
-                    });
+        if (uiState == UIState.CALL_SCREEN && appState == AppState.LISTEN_TO_CALLER) {
+            try {
+                CheetahTranscript result = cheetah.process(frame);
 
-                    if (result.getIsEndpoint()) {
-                        CheetahTranscript finalResult = cheetah.flush();
-                        llmPromptText.append(finalResult.getTranscript());
-                        mainHandler.post(() -> {
-                            chatTextBuilder.append(
-                                    String.format("%s\n\n", finalResult.getTranscript())
-                            );
-                            chatText.setText(chatTextBuilder);
-                            chatTextScrollView.fullScroll(ScrollView.FOCUS_DOWN);
-                        });
+                appendStyledText(
+                        callerTextBuilder,
+                        result.getTranscript(),
+                        new ForegroundColorSpan(callerColour));
 
-                        runLLM(llmPromptText.toString());
-                    }
-                } catch (CheetahException e) {
-                    onEngineProcessError(e.getMessage());
+                if (result.getIsEndpoint()) {
+                    CheetahTranscript finalResult = cheetah.flush();
+                    appendStyledText(
+                            callerTextBuilder,
+                            finalResult.getTranscript() + "\n",
+                            new ForegroundColorSpan(callerColour));
+
+                    animation.end();
+                    animation = null;
+                    giveUserOptions();
                 }
-                */
-            } else {
-                // TODO: this!
+            } catch (CheetahException e) {
+                onEngineProcessError(e.getMessage());
             }
-        } else if (uiState == UIState.ERROR) {
-            return;
-        }
+        } else if (uiState == UIState.CALL_SCREEN && appState == AppState.LISTEN_TO_USER) {
+            try {
+                boolean finalized = rhino.process(frame);
+
+                if (finalized) {
+                    RhinoInference inference = rhino.getInference();
+
+                    if (inference.getIsUnderstood() && (inference.getIntent().equals("chooseAction"))) {
+                        Action action = Action.fromString(inference.getSlots().get("action"));
+
+                        appendStyledText(
+                                userTextBuilder,
+                                action.toString() + "\n",
+                                new ForegroundColorSpan(spanColour));
+
+                        animation.end();
+                        animation = null;
+
+                        new Thread(() -> {
+                            speakToCaller(action);
+                        }).start();
+                    } else {
+                        appendStyledText(
+                                userTextBuilder,
+                                "Unknown Action\n" + "[" + username.toUpperCase() + "] ",
+                                new ForegroundColorSpan(spanColour));
+                    }
+                }
+            } catch (RhinoException e) {
+                onEngineProcessError(e.getMessage());
+            }
+        } 
     }
 
     private void onEngineInitError(String message) {
         updateUIState(UIState.ERROR);
-        mainHandler.post(() -> errorText.setText(message));
+        mainHandler.post(() -> errorText.setText("Engine Init error: " + message));
     }
 
     private void onEngineProcessError(String message) {
         updateUIState(UIState.ERROR);
-        mainHandler.post(() -> errorText.setText(message));
+        mainHandler.post(() -> errorText.setText("Engine Process error: " + message));
     }
 
-    private void speakToCaller() {
+    private void speakToCaller(Action action) {
+        updateAppState(AppState.SPEAKING_TO_CALLER);
+
         OrcaAudio audio;
         try {
             audio = orca.synthesize(
@@ -259,28 +350,72 @@ public class MainActivity extends AppCompatActivity {
         }
 
         textExecutor.submit(() -> {
+            double start_s = (double)System.nanoTime() / 1_000_000_000.0;
+
+            mainHandler.post(() -> {
+                callerTextBuilder.append("[AI] ");
+                callerText.setText(callerTextBuilder);
+                callerScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+            });
+
             OrcaWord[] words = audio.getWordArray();
             for (int i = 0; i < words.length; i++) {
                 OrcaWord word = words[i];
 
-                // TODO: is this the correct now? Surely...
-                double now_s = (double)System.nanoTime() / 1_000_000_000.0;
-
+                double now_s = (double)System.nanoTime() / 1_000_000_000.0 - start_s;
                 try {
                     Thread.sleep((long)((word.getStartSec() - now_s) * 1000.0));
                 } catch (InterruptedException e) {
                     return;
                 }
 
-                boolean end_in_space =
+                boolean no_trailing_space =
                     i == (words.length - 1) ||
                     (words[i+1].getWord().length() == 1 && PUNCTUATION.indexOf(words[i+1].getWord().charAt(0)) != -1);
-                String suffix = end_in_space ? " " : "";
+                String suffix = no_trailing_space ? "" : " ";
 
                 mainHandler.post(() -> {
-                    textBuilder.append(word.getWord() + suffix);
-                    chatText.setText(textBuilder);
+                    callerTextBuilder.append(word.getWord() + suffix);
+                    callerText.setText(callerTextBuilder);
+                    callerScrollView.fullScroll(ScrollView.FOCUS_DOWN);
                 });
+            }
+
+            mainHandler.post(() -> {
+                callerTextBuilder.append("\n");
+                callerText.setText(callerTextBuilder);
+                callerScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+            });
+
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                return;
+            }
+
+            if (action.isTerminal()) {
+                try {
+                    Thread.sleep(700);
+                } catch (InterruptedException e) { }
+
+                mainHandler.post(() -> {
+                    loadingText.setText("Press the `Start Demo` button if you'd like to try again.");
+
+                    chatLayout.setAlpha(1f);
+                    loadingLayout.setAlpha(0f);
+                    loadingLayout.setVisibility(View.VISIBLE);
+
+                    chatLayout.animate().alpha(0f).setDuration(500);
+                    loadingLayout.animate().alpha(1f).setDuration(500);
+                });
+
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) { }
+
+                updateUIState(UIState.BEFORE_DEMO);
+            } else {
+                listenForCaller();
             }
         });
 
@@ -315,7 +450,7 @@ public class MainActivity extends AppCompatActivity {
 
             short[] pcm = audio.getPcm();
             if (pcm != null && pcm.length > 0 && ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
-                ttsOutput.write(pcm, 0, pcm.length);
+                int written = ttsOutput.write(pcm, 0, pcm.length);
             }
 
             if (ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
@@ -324,59 +459,82 @@ public class MainActivity extends AppCompatActivity {
             }
             ttsOutput.release();
         });
-
-        // TODO: introduce a callback once printing & speaking is done, in order to trigger the listening.
-
-        System.out.println("GABE :: Demo complete for now...\n");
-        
-        appState = AppState.LISTEN_TO_CALLER;
     }
 
     private void listenForCaller() {
+        animation = new SpannableTextAnimation(callerTextBuilder, callerText, callerScrollView);
+
+        appendStyledText(callerTextBuilder, "[CALLER] ", new ForegroundColorSpan(callerColour));
+
+        mainHandler.post(() -> {
+            callerScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+        });
+
         try {
+            if (voiceProcessor.getIsRecording()) {
+                voiceProcessor.stop();
+            }
+
             voiceProcessor.start(cheetah.getFrameLength(), cheetah.getSampleRate());
         } catch (VoiceProcessorException e) {
             onEngineProcessError(e.getMessage());
         }
+
+        animation.start();
+
+        updateAppState(AppState.LISTEN_TO_CALLER);
     }
 
-    private void speakToUser() {
-        // TODO: implement this
-    }
+    private void giveUserOptions() {
+        userTextBuilder.append("[AI] Select one of the call-assist actions below.\n");
+        userTextBuilder.append(Action.all());
+        appendStyledText(userTextBuilder, "[" + username.toUpperCase() + "] ", new ForegroundColorSpan(spanColour));
 
-    private void requestRecordPermission() {
-        ActivityCompat.requestPermissions(
-                this,
-                new String[]{Manifest.permission.RECORD_AUDIO},
-                0);
-    }
+        animation = new SpannableTextAnimation(userTextBuilder, userText, userScrollView);
 
-    @Override
-    public void onRequestPermissionsResult(
-            int requestCode,
-            @NonNull String[] permissions,
-            @NonNull int[] grantResults
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (grantResults.length == 0 || grantResults[0] == PackageManager.PERMISSION_DENIED) {
-            onEngineProcessError("Recording permission not granted");
-        } else {
-            updateUIState(UIState.CALL_SCREEN);
-            listenForCaller();
+        try {
+            if (voiceProcessor.getIsRecording()) {
+                voiceProcessor.stop();
+            }
+
+            voiceProcessor.start(rhino.getFrameLength(), rhino.getSampleRate());
+        } catch (VoiceProcessorException e) {
+            onEngineProcessError(e.getMessage());
         }
+
+        animation.start();
+
+        updateAppState(AppState.LISTEN_TO_USER);
+    }
+
+    private void appendStyledText(SpannableStringBuilder textBuilder, String text, CharacterStyle span) {
+        textBuilder.append(text);
+        textBuilder.setSpan(
+            span,
+            textBuilder.length() - text.length(),
+            textBuilder.length(),
+            Spannable.SPAN_INCLUSIVE_EXCLUSIVE);
     }
 
     private void updateUIState(UIState state) {
         mainHandler.post(() -> {
+            loadingLayout.setAlpha(1f);
+            chatLayout.setAlpha(1f);
+            errorLayout.setAlpha(1f);
+
             switch (state) {
-                case LOADING:
+                case BEFORE_DEMO:
                     loadingLayout.setVisibility(View.VISIBLE);
                     chatLayout.setVisibility(View.INVISIBLE);
                     errorLayout.setVisibility(View.INVISIBLE);
-
-                    loadingText.setText("Loading model...");
                     break;
                 case CALL_SCREEN:
+                    callerTextBuilder.clear();
+                    userTextBuilder.clear();
+                    callerText.setText("");
+                    userText.setText("");
+                    stateText.setText("");
+
                     loadingLayout.setVisibility(View.INVISIBLE);
                     chatLayout.setVisibility(View.VISIBLE);
                     errorLayout.setVisibility(View.INVISIBLE);
@@ -394,13 +552,38 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void updateAppState(AppState state) {
+        mainHandler.post(() -> {
+            switch (state) {
+                case LISTEN_TO_CALLER:
+                    stateText.setText("AI: Listening to caller");
+                    break;
+                case SPEAKING_TO_CALLER:
+                    stateText.setText("AI: Speaking to caller");
+                    break;
+                case LISTEN_TO_USER:
+                    stateText.setText("AI: Listening for " + username + "'s command");
+                    break;
+                default:
+                    stateText.setText("AI: Unknown state");
+                    break;
+            }
+
+            appState = state;
+        });
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
 
         textExecutor.shutdownNow();
-        // ttsSynthesizeExecutor.shutdownNow();
         ttsPlaybackExecutor.shutdownNow();
+
+        if (animation != null) {
+            animation.end();
+            animation = null;
+        }
 
         if (cheetah != null) {
             cheetah.delete();
@@ -412,7 +595,10 @@ public class MainActivity extends AppCompatActivity {
             orca = null;
         }
 
-        // TODO: add rhino
+        if (rhino != null) {
+            rhino.delete();
+            rhino = null;
+        }
 
         if (voiceProcessor != null) {
             voiceProcessor.clearFrameListeners();

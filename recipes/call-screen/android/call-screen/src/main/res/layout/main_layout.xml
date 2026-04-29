@@ -15,11 +15,19 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            app:layout_constraintGuide_percent="0.80" />
+            app:layout_constraintGuide_percent="0.60" />
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/buttonGuidelineHorizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            app:layout_constraintGuide_percent="0.45" />
         <TextView
             android:id="@+id/loadingText"
             android:text="Loading..."
-            android:textSize="17sp"
+            android:textSize="30sp"
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="32dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textAlignment="center"
@@ -28,6 +36,18 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toTopOf="@+id/loadingGuidelineHorizontal"
             app:layout_constraintTop_toTopOf="parent" />
+        <Button
+            android:id="@+id/startButton"
+            android:background="@drawable/button_background"
+            android:textColor="#FFFFFF"
+            android:text="@string/startButtonText"
+            android:textSize="30sp"
+            android:padding="28dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/buttonGuidelineHorizontal" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -36,40 +56,29 @@
         android:layout_height="match_parent"
         android:visibility="visible">
 
-        <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/guidelineHorizontal"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            app:layout_constraintGuide_percent="0.95" />
-
-        <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/guidelineVertical"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            app:layout_constraintGuide_percent="0.70" />
-
         <ScrollView
-            android:id="@+id/chatScrollView"
+            android:id="@+id/callerScrollView"
             android:layout_height="0dp"
             android:layout_width="0dp"
             android:layout_marginStart="24dp"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="24dp"
             android:layout_marginEnd="24dp"
             android:paddingTop="8dp"
             android:paddingBottom="35dp"
             android:gravity="center"
             android:background="@drawable/chat_text_background"
+            app:layout_constraintVertical_chainStyle="spread"
             app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/userScrollView"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toTopOf="@+id/statusContainer">
+            app:layout_constraintVertical_weight="1">
 
             <TextView
-                android:id="@+id/chatText"
+                android:id="@+id/callerText"
                 android:layout_height="wrap_content"
                 android:layout_width="match_parent"
+                android:fontFamily="monospace"
                 android:textSize="18sp"
                 android:padding="10dp"
                 android:text=""
@@ -79,11 +88,48 @@
         
         </ScrollView>
 
-        <!-- TODO: update state to show state machine state -->
+        <ScrollView
+            android:id="@+id/userScrollView"
+            android:layout_height="0dp"
+            android:layout_width="0dp"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="24dp"
+            android:layout_marginEnd="24dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="35dp"
+            android:gravity="center"
+            android:background="@drawable/chat_text_background"
+            app:layout_constraintTop_toBottomOf="@+id/callerScrollView"
+            app:layout_constraintBottom_toTopOf="@+id/stateContainer"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintVertical_weight="1">
+
+            <TextView
+                android:id="@+id/userText"
+                android:layout_height="wrap_content"
+                android:layout_width="match_parent"
+                android:fontFamily="monospace"
+                android:textSize="18sp"
+                android:padding="10dp"
+                android:text=""
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"/>
+        
+        </ScrollView>
+
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/guidelineHorizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            app:layout_constraintGuide_percent="0.96" />
+
         <LinearLayout
             android:id="@+id/stateContainer"
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="100dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="@+id/chatScrollView"
             app:layout_constraintEnd_toEndOf="@+id/chatScrollView"
@@ -115,6 +161,7 @@
         <TextView
             android:id="@+id/errorText"
             android:text=""
+            android:textColor="@color/colorDanger"
             android:textSize="17sp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

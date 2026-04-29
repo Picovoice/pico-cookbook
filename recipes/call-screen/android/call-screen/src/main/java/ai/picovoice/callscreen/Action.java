@@ -1,14 +1,20 @@
 package ai.picovoice.callscreen;
 
 public enum Action {
-    GREET,
-    CONNECT_CALL,
-    DECLINE_CALL,
-    ASK_FOR_DETAILS,
-    ASK_TO_TEXT,
-    ASK_TO_EMAIL,
-    ASK_TO_CALL_BACK,
-    BLOCK_CALLER;
+    GREET("Greet"),
+    CONNECT_CALL("Connect Call"),
+    DECLINE_CALL("Decline Call"),
+    ASK_FOR_DETAILS("Ask for Details"),
+    ASK_TO_TEXT("Ask to Text"),
+    ASK_TO_EMAIL("Ask to Email"),
+    ASK_TO_CALL_BACK("Ask to Call Back"),
+    BLOCK_CALLER("Block Caller");
+
+    private final String value;
+
+    Action(String value) {
+        this.value = value;
+    }
 
     public String prompt(String username) {
         switch (this) {
@@ -53,5 +59,28 @@ public enum Action {
             case BLOCK_CALLER: return true;
             default: return true;
         }
+    }
+
+    public static String all() {
+        String result = "";
+        for (Action action : values()) {
+            result += "  " + action.value + "\n";
+        }
+        return result;
+    }
+
+    public static Action fromString(String s) {
+        for (Action action : values()) {
+            if (action.value.equals(s)) {
+                return action;
+            }
+        }
+
+        throw new IllegalArgumentException("Provided string is not an Action: " + s);
+    }
+
+    @Override
+    public String toString() {
+        return this.value;
     }
 }
