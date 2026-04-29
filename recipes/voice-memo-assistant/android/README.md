@@ -1,5 +1,7 @@
 # Voice Memo Assistant in Android
 
+Record, rewrite, summarize, and replay voice memos hands-free, powered by on-device voice AI.
+
 ## Compatibility
 
 - Android 5.0 (SDK 21+)
@@ -41,17 +43,23 @@ Download `llama-3.2-1b-instruct-385.pllm` from [Picovoice Console](https://conso
 Run the setup script to download and copy the models for [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/)
 and [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/).
 
-It will also copy the models for [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/),
+It will also copy the models provided for [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/),
 [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) and [picoLLM Inference](https://picovoice.ai/docs/picollm/)
-to the assets folder:
+to the assets folder.
+
+Lastly, it will place your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable
+in [MainActivity.java](voice-memo-assistant/src/main/java/ai/picovoice/voicememoassistant/MainActivity.java).
 
 ```console
-python setup.py --keyword_path ${PATH_TO_PPN} --context_path ${PATH_TO_RHN} --picollm_model_path ${PATH_TO_PLLM}
+python setup.py \
+    --access_key ${ACCESS_KEY} \
+    --keyword_path ${PATH_TO_PPN} \
+    --context_path ${PATH_TO_RHN} \
+    --picollm_model_path ${PATH_TO_PLLM}
 ```
 
 ### 5. Run the demo
 
 1. Open the `voice-memo-assistant` project in Android Studio.
-2. Copy your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable in [MainActivity.java](voice-memo-assistant/src/main/java/ai/picovoice/voicememoassistant/MainActivity.java).
-3. Connect a device or launch an Android simulator.
-4. Build and run the demo.
+2. Connect a device or launch an Android simulator.
+3. Build and run the demo.

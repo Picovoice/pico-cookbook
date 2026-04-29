@@ -95,6 +95,10 @@ def clone_repo(animal: str, major: str, minor: str) -> str:
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
+        '--access_key',
+        required=True,
+        help='`AccessKey` obtained from `Picovoice Console` (https://console.picovoice.ai/).')
+    parser.add_argument(
         '--keyword_path',
         required=True,
         help='Absolute path to the Porcupine model file (`.ppn`).')
@@ -126,6 +130,19 @@ def main() -> None:
     shutil.copy(args.keyword_path, os.path.join(public_folder, "porcupine_model.ppn"))
     shutil.copy(args.context_path, os.path.join(public_folder, "rhino_model.rhn"))
     shutil.copy(args.picollm_model_path, os.path.join(public_folder, "picollm_model.pllm"))
+
+    main_activity_path = os.path.join(
+        os.path.dirname(__file__),
+        "voice-memo-assistant",
+        "src",
+        "main",
+        "java/ai/picovoice/voicememoassistant",
+        "MainActivity.java")
+    with open(main_activity_path, 'r') as main_activity_file:
+        main_activity_contents = main_activity_file.read()
+    main_activity_contents = main_activity_contents.replace("${YOUR_ACCESS_KEY_HERE}", args.access_key)
+    with open(main_activity_path, 'w') as main_activity_file:
+        main_activity_file.write(main_activity_contents)
 
 
 if __name__ == '__main__':
