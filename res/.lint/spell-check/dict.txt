@@ -49,6 +49,7 @@ subwin
 tock
 tock
 venv
+voicememoassistant
 wakeword
 xcodeproj
 xcworkspace

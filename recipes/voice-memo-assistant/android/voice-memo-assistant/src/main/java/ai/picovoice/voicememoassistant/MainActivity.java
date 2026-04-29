@@ -265,7 +265,7 @@ public class MainActivity extends AppCompatActivity {
                             synthesizeAndPlayback(text);
                         } else if (Objects.equals(inference.getIntent(), "summarizeRecording")) {
                             updateUIState(UIState.SUMMARIZE_RECORDING);
-                            summerizeMemo();
+                            summarizeMemo();
                         } else if (Objects.equals(inference.getIntent(), "rewriteRecording")) {
                             updateUIState(UIState.REWRITE_RECORDING);
                             rewriteMemo();
@@ -355,7 +355,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void summerizeMemo() {
+    private void summarizeMemo() {
         if (memoText.toString().isBlank()) {
             synthesizeAndPlayback(NO_MEMO_ERROR_PHRASE);
             return;
@@ -599,10 +599,10 @@ public class MainActivity extends AppCompatActivity {
                     volumeMeterView.setVisibility(View.GONE);
                     statusProgress.setVisibility(View.VISIBLE);
                     statusText.setVisibility(View.VISIBLE);
-                    statusText.setText("Summerizing...");
+                    statusText.setText("Summarizing...");
 
                     if (memoText.length() > 0) {
-                        modifiedTextViewTitle.setText("Summerized:");
+                        modifiedTextViewTitle.setText("Summarized:");
                         modifiedTextViewTitle.setVisibility(View.VISIBLE);
                         modifiedLinearLayout.setVisibility(View.VISIBLE);
                         modifiedTextView.setText("");
