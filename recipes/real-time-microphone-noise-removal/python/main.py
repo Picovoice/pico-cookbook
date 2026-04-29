@@ -53,8 +53,7 @@ class WavWriter(object):
 
 
 def main() -> None:
-    parser = ArgumentParser(
-        description="Record microphone audio and save both raw and Koala noise-suppressed WAV files.")
+    parser = ArgumentParser()
     parser.add_argument(
         "--access_key",
         required=True,
