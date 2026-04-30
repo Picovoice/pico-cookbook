@@ -63,25 +63,34 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="80dp"
-                android:orientation="horizontal"
-                android:weightSum="2">
+                android:orientation="horizontal">
 
                 <Spinner
                     android:id="@+id/sourceLanguage"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_margin="8dp"
-                    android:layout_weight="1"
+                    android:layout_weight="10"
                     android:background="@drawable/spinner"
                     android:padding="4dp"
                     android:textAlignment="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_weight="0.001"
+                    android:text="→"
+                    android:textAlignment="center"
+                    android:textColor="@color/colorSecondary"
+                    android:textSize="44dp" />
 
                 <Spinner
                     android:id="@+id/targetLanguage"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_margin="8dp"
-                    android:layout_weight="1"
+                    android:layout_weight="10"
                     android:background="@drawable/spinner"
                     android:padding="4dp"
                     android:textAlignment="center" />

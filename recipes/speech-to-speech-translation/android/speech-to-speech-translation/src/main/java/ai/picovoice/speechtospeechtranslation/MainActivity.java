@@ -539,7 +539,7 @@ public class MainActivity extends AppCompatActivity {
             if (cheetah != null) {
                 statusLayout.setVisibility(View.GONE);
             } else {
-                setStatus("Detecting source language");
+                setStatus("Speak in the source language");
             }
             sourceLanguageSpinner.setEnabled(true);
             targetLanguageSpinner.setEnabled(true);
