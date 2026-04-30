@@ -1,6 +1,15 @@
-## See It In Action!
+# Document Q&A in Android
 
-[![LLM VA in Action](https://img.youtube.com/vi/5JkDVbkedBU/0.jpg)](https://www.youtube.com/watch?v=5JkDVbkedBU)
+Ask questions about a local document using speech and receive spoken answers, powered by on-device AI.
+
+This demo indexes a local text document, retrieves the most relevant chunks using picoLLM embeddings, answers questions
+with a picoLLM chat model, and speaks the answer with Orca Streaming Text-to-Speech.
+
+## Components
+
+- [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/)
+- [picoLLM Inference](https://picovoice.ai/docs/picollm/)
+- [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/)
 
 ## Compatibility
 
@@ -8,11 +17,10 @@
 
 ## AccessKey
 
-AccessKey is your authentication and authorization token for deploying Picovoice SDKs, including picoLLM. Anyone who is
-using Picovoice needs to have a valid AccessKey. You must keep your AccessKey secret. You would need internet
-connectivity to validate your AccessKey with Picovoice license servers even though the LLM inference is running 100%
-offline and completely free for open-weight models. Everyone who signs up for
-[Picovoice Console](https://console.picovoice.ai/) receives a unique AccessKey.
+AccessKey is your authentication and authorization token for deploying Picovoice SDKs. Anyone who is using Picovoice
+needs to have a valid AccessKey. You must keep your AccessKey secret. You would need internet connectivity to validate
+your AccessKey with Picovoice license servers, even though the inference is running 100% offline. Everyone who signs up
+for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessKey.
 
 ## picoLLM Model
 
@@ -27,43 +35,22 @@ adb push ~/model.pllm /sdcard/Downloads/
 
 ## Usage
 
-1. Open the `DocumentQA` project in Android Studio.
-2. Copy your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable in [MainActivity.java](document-qa/src/main/java/ai/picovoice/llmvoiceassistant/MainActivity.java).
-3. Connect a device or launch an Android simulator.
-4. Build and run the demo.
-5. Press the `Load Model` button and select the model file (`.pllm`) from your device's storage.
-6. Say "Picovoice", then you'll be able to prompt the voice assistant.
+These instructions assume your current working directory is `recipes/document-qa/android`.
 
-## Custom Wake Word
+### 1. Download the LLMs
 
-The demo's default wake phrase is `Picovoice`. You can generate your custom (branded) wake word using
-Picovoice Console by following [Porcupine Wake Word documentation (https://picovoice.ai/docs/porcupine/).
-Once you have the model trained, add it to your project by following these steps:
+Download `llama-3.2-1b-instruct-385.pllm` and `embeddinggemma-300m-375.pllm` from
+[Picovoice Console](https://console.picovoice.ai/).
 
-1. Download the custom wake word file (`.ppn`)
-2. Add it to the `${ANDROID_APP}/src/main/assets` directory of your Android project
-3. Create an instance of Porcupine using the .setKeywordPaths builder method and the keyword path (relative to the assets directory or absolute path to the file on device):
+### 2. Add LLMs to the Project
 
-```java
-porcupine = new Porcupine.Builder()
-        .setAccessKey("${ACCESS_KEY}")
-        .setKeywordPath("${KEYWORD_FILE_PATH}")
-        .build(getApplicationContext());
-```
+Copy your downloaded picoLLM model files into the assets folder, located at `/src/main/assets`.
 
-## Profiling
+### 3. Add AccessKey to MainActivity.java
 
-Profiling data is automatically printed in the app's `logcat`.
+Open the project in Android Studio and open `MainActivity.java`. Change the value of the `ACCESS_KEY` variable to your Picovoice AccessKey.
 
-### Real-time Factor (RTF)
+### 4. Run the Demo with Android Studio
 
-RTF is a standard metric for measuring the speed of speech processing (e.g., wake word, speech-to-text, and
-text-to-speech). RTF is the CPU time divided by the processed (recognized or synthesized) audio length.
-Hence, a lower RTF means a more efficient engine.
-
-### Token per Second (TPS)
-
-Token per second is the standard metric for measuring the speed of LLM inference engines. TPS is the number of
-generated tokens divided by the compute time used to create them. A higher TPS is better.
-
+With an Android device connected or an Android simulator running, build and run the demo using Android Studio.
 
