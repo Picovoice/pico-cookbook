@@ -15,6 +15,7 @@ getmaxyx
 getpid
 iife
 libpv
+liveconversationtranslation
 llmvoiceassistant
 logcat
 logit
