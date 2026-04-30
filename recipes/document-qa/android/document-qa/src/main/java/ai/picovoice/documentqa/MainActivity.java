@@ -14,6 +14,7 @@ package ai.picovoice.documentqa;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
@@ -22,9 +23,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.renderscript.ScriptGroup;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.style.ForegroundColorSpan;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -42,13 +45,20 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -66,7 +76,6 @@ import ai.picovoice.orca.Orca;
 import ai.picovoice.orca.OrcaException;
 import ai.picovoice.orca.OrcaSynthesizeParams;
 import ai.picovoice.picollm.PicoLLM;
-import ai.picovoice.picollm.PicoLLMCompletion;
 import ai.picovoice.picollm.PicoLLMDialog;
 import ai.picovoice.picollm.PicoLLMException;
 import ai.picovoice.picollm.PicoLLMGenerateParams;
@@ -93,6 +102,10 @@ public class MainActivity extends AppCompatActivity {
     private static final int COMPLETION_TOKEN_LIMIT = 128;
 
     private static final int TTS_WARMUP_SECONDS = 1;
+
+    private static final int CHUNK_SIZE = 600;  // 1200
+    private static final int CHUNK_OVERLAP = 150;  // 250
+    private static final int TOPK = 1;
 
     private static final String[] STOP_PHRASES = new String[]{
             "</s>",             // Llama-2, Mistral, and Mixtral
@@ -143,7 +156,7 @@ public class MainActivity extends AppCompatActivity {
 
     private ImageButton loadNewModelButton;
 
-    private ImageButton clearTextButton;
+//    private ImageButton clearTextButton;
 
     private SpannableStringBuilder chatTextBuilder;
 
@@ -179,23 +192,26 @@ public class MainActivity extends AppCompatActivity {
         loadNewModelButton = findViewById(R.id.loadNewModelButton);
         loadNewModelButton.setOnClickListener(view -> {
             // TODO: Change to "load new document button"
-            // TODO: Cleanup engines
             updateUIState(UIState.INIT);
+
+            cleanupEngines();
+            chunks = new ArrayList<>();
+            embeddings = new ArrayList<>();
             mainHandler.post(() -> chatText.setText(""));
         });
 
-        clearTextButton = findViewById(R.id.clearButton);
-        clearTextButton.setOnClickListener(view -> {
-            chatTextBuilder = new SpannableStringBuilder();
-            mainHandler.post(() -> {
-                chatText.setText("");
-                clearTextButton.setEnabled(false);
-                clearTextButton.setImageDrawable(
-                        ResourcesCompat.getDrawable(getResources(),
-                                R.drawable.clear_button_disabled,
-                                null));
-            });
-        });
+//        clearTextButton = findViewById(R.id.clearButton);
+//        clearTextButton.setOnClickListener(view -> {
+//            chatTextBuilder = new SpannableStringBuilder();
+//            mainHandler.post(() -> {
+//                chatText.setText("");
+//                clearTextButton.setEnabled(false);
+//                clearTextButton.setImageDrawable(
+//                        ResourcesCompat.getDrawable(getResources(),
+//                                R.drawable.clear_button_disabled,
+//                                null));
+//            });
+//        });
     }
 
     ActivityResultLauncher<String[]> modelSelection = registerForActivityResult(
@@ -213,22 +229,12 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     engineExecutor.submit(() -> {
-//                        File llmModelFile = extractModelFile(selectedUri);
-//                        if (llmModelFile == null || !llmModelFile.exists()) {
-//                            updateUIState(UIState.INIT);
-//                            mainHandler.post(() -> loadModelText.setText("Unable to access selected file"));
-//                            return;
-//                        }
-
                         initEngines(selectedUri);
                     });
                 }
             });
 
     private ArrayList<String> chunkDocument(Uri uri) {
-        final int chunkSize = 1200;
-        final int chunkOverlap = 250;
-
         // TODO: Sub and strip newlines?
 
         StringBuilder textBuilder = new StringBuilder();
@@ -248,11 +254,11 @@ public class MainActivity extends AppCompatActivity {
         int start = 0;
 
         while (start < text.length()) {
-            int end = Math.min(start + chunkSize, text.length());
+            int end = Math.min(start + CHUNK_SIZE, text.length());
 
             if (end < text.length()) {
                 int paragraphBreak = text.lastIndexOf("\n\n", start);
-                if (paragraphBreak <= end && paragraphBreak > (start + (chunkSize / 2))) {
+                if (paragraphBreak <= end && paragraphBreak > (start + (CHUNK_SIZE / 2))) {
                     end = paragraphBreak;
                 }
             }
@@ -266,7 +272,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
             }
 
-            start = Math.max(0, end - chunkOverlap);
+            start = Math.max(0, end - CHUNK_OVERLAP);
         }
 
         return chunks;
@@ -312,8 +318,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private ArrayList<String> retrieveChunks(String question) throws PicoLLMException {
-        final int topk = 3;
-
         float[] questionEmbedding = generateEmbedding(question);
 
         float[] scores = new float[embeddings.size()];
@@ -321,8 +325,8 @@ public class MainActivity extends AppCompatActivity {
             scores[i] = dotProduct(questionEmbedding, embeddings.get(i));
         }
 
-        float[] topks = new float[topk];
-        int[] indices = new int[topk];
+        float[] topks = new float[TOPK];
+        int[] indices = new int[TOPK];
 
         Arrays.fill(topks, -Float.MAX_VALUE);
 
@@ -330,8 +334,8 @@ public class MainActivity extends AppCompatActivity {
             float element = scores[i];
             int indice = i;
 
-            if (element > topks[topk - 1]) {
-                for (int j = 0; j < topk; j++) {
+            if (element > topks[TOPK - 1]) {
+                for (int j = 0; j < TOPK; j++) {
                     if (element > topks[j]) {
                         final float prev_topk = topks[j];
                         topks[j] = element;
@@ -360,6 +364,7 @@ public class MainActivity extends AppCompatActivity {
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(STT_MODEL_FILE)
                     .setEnableAutomaticPunctuation(true)
+                    .setEndpointDuration(1)
                     .build(getApplicationContext());
         } catch (CheetahException e) {
             onEngineInitError(e.getMessage());
@@ -402,34 +407,150 @@ public class MainActivity extends AppCompatActivity {
         }
 
         mainHandler.post(() -> loadModelText.setText("Reading document..."));
+        boolean hasCache = loadCachedEmbeddings(documentUri);
+        if (hasCache) {
+            mainHandler.post(() -> {
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+
+                builder.setMessage("Cached embeddings found for file, would you like to use them?")
+                        .setTitle("Use Cache?");
+
+                builder.setPositiveButton("Use Cache", (dialog, id) -> {
+                    engineExecutor.submit(() -> {
+                        initUI();
+                        startSTTListening();
+                    });
+                });
+                builder.setNegativeButton("Generate New", (dialog, id) -> {
+                    engineExecutor.submit(() -> {
+                        generateNewEmbeddings(documentUri);
+                        initUI();
+                        startSTTListening();
+                    });
+                });
+
+                AlertDialog dialog = builder.create();
+                dialog.show();
+            });
+        } else {
+            generateNewEmbeddings(documentUri);
+            initUI();
+            startSTTListening();
+        }
+    }
+
+    boolean loadCachedEmbeddings(Uri documentUri) {
+        int filenameHash = documentUri.getLastPathSegment().hashCode();
+        String cacheFilename = String.format("%d.json", filenameHash);
+        File cacheFile = new File(getApplicationContext().getFilesDir(), cacheFilename);
+
+        if (!cacheFile.exists()) {
+            return false;
+        }
+
+        Log.i("PICOVOICE", String.format("Loading cached embeddings for `%s` from `%s`", documentUri, cacheFile));
+
         try {
-            // TODO: Cache and load embeddings if filename matches existing, prompt user with dialog
-            /*
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
 
-            builder.setMessage("Chached embeddings found for file, would you like to use them?")
-                    .setTitle("Use Cache?");
+            try (InputStream is = new FileInputStream(cacheFile);
+                 InputStreamReader reader = new InputStreamReader(is)) {
+                StringBuilder jsonStringBuilder = new StringBuilder();
 
-            builder.setPositiveButton("Use Cache", new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog, int id) {
+                char[] buffer = new char[1];
+                while (reader.read(buffer) != -1) {
+                    jsonStringBuilder.append(buffer);
+                    buffer = new char[1];
                 }
-            });
-            builder.setNegativeButton("Generate New", new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog, int id) {
+                reader.close();
+                is.close();
+
+                JSONObject embeddingsJson = new JSONObject(jsonStringBuilder.toString());
+                if (embeddingsJson.getInt("chunkSize") != CHUNK_SIZE) {
+                    Log.i("PICOVOICE", String.format("Mismatched chunk size in cache %d vs %d", embeddingsJson.getInt("chunkSize"), CHUNK_SIZE));
+                    return false;
                 }
-            });
+                if (embeddingsJson.getInt("chunkOverlap") != CHUNK_OVERLAP) {
+                    Log.i("PICOVOICE", String.format("Mismatched chunk size in cache %d vs %d", embeddingsJson.getInt("chunkOverlap"), CHUNK_OVERLAP));
+                    return false;
+                }
 
-            AlertDialog dialog = builder.create();
-            dialog.show();
-            */
+                ArrayList<float[]> cachedEmbeddings = new ArrayList<>();
+                JSONArray cachedEmbeddingsJson = embeddingsJson.getJSONArray("embeddings");
+                for (int i = 0; i < cachedEmbeddingsJson.length(); i++) {
+                    JSONArray cachedEmbeddingsIJSON = cachedEmbeddingsJson.getJSONArray(i);
+                    float[] cachedEmbeddingsI = new float[cachedEmbeddingsIJSON.length()];
+                    for (int j = 0; j < cachedEmbeddingsIJSON.length(); j++) {
+                        cachedEmbeddingsI[j] = (float) cachedEmbeddingsIJSON.getDouble(i);
+                    }
+                    cachedEmbeddings.add(cachedEmbeddingsI);
+                }
 
+                ArrayList<String> cachedChunks = new ArrayList<>();
+                JSONArray cachedChunksJson = embeddingsJson.getJSONArray("chunks");
+                for (int i = 0; i < cachedChunksJson.length(); i++) {
+                    cachedChunks.add(cachedChunksJson.getString(i));
+                }
+
+                embeddings = cachedEmbeddings;
+                chunks = cachedChunks;
+                return true;
+            } catch (IOException e) {
+                Log.i("PICOVOICE", String.format("Failed to load embeddings: %s", e));
+                return false;
+            }
+        } catch (JSONException e) {
+            Log.i("PICOVOICE", String.format("Failed to load embeddings: %s", e));
+            return false;
+        }
+    }
+
+    void saveCachedEmbeddings(Uri documentUri) {
+        int filenameHash = documentUri.getLastPathSegment().hashCode();
+        String cacheFilename = String.format("%d.json", filenameHash);
+        File cacheFile = new File(getApplicationContext().getFilesDir(), cacheFilename);
+
+        Log.i("PICOVOICE", String.format("Saving embeddings for `%s` to `%s`", documentUri, cacheFile));
+
+        try {
+            JSONObject embeddingsJson = new JSONObject();
+            embeddingsJson.put("chunkSize", CHUNK_SIZE);
+            embeddingsJson.put("chunkOverlap", CHUNK_OVERLAP);
+
+            JSONArray embeddingsJsonArray = new JSONArray();
+            for (int i = 0; i < embeddings.size(); i++) {
+                JSONArray embeddingsJsonArrayI = new JSONArray(embeddings.get(i));
+                embeddingsJsonArray.put(embeddingsJsonArrayI);
+            }
+            embeddingsJson.put("embeddings", embeddingsJsonArray);
+
+            JSONArray chunksJsonArray = new JSONArray();
+            for (int i = 0; i < chunks.size(); i++) {
+                chunksJsonArray.put(chunks.get(i));
+            }
+            embeddingsJson.put("chunks", chunksJsonArray);
+
+            try (OutputStream os = new FileOutputStream(cacheFile)) {
+                os.write(embeddingsJson.toString().getBytes());
+            } catch (IOException e) {
+                Log.i("PICOVOICE", String.format("Failed to save embeddings: %s", e));
+            }
+        } catch (JSONException e) {
+            Log.i("PICOVOICE", String.format("Failed to save embeddings: %s", e));
+        }
+    }
+
+    private void generateNewEmbeddings(Uri documentUri) {
+        try {
             chunks = chunkDocument(documentUri);
             embeddings = generateEmbeddings(chunks);
+            saveCachedEmbeddings(documentUri);
         } catch (PicoLLMException e) {
             onEngineInitError(e.getMessage());
             return;
         }
+    }
 
+    private void initUI() {
         chatTextBuilder = new SpannableStringBuilder();
         updateUIState(UIState.STT);
 
@@ -438,8 +559,6 @@ public class MainActivity extends AppCompatActivity {
         voiceProcessor.addErrorListener(error -> {
             onEngineProcessError(error.getMessage());
         });
-
-        startSTTListening();
     }
 
     private void runWakeWordSTT(short[] frame) {
@@ -566,11 +685,11 @@ public class MainActivity extends AppCompatActivity {
                 isQueueingTokens.set(false);
 
                 mainHandler.post(() -> {
-                    clearTextButton.setEnabled(true);
-                    clearTextButton.setImageDrawable(
-                            ResourcesCompat.getDrawable(getResources(),
-                                    R.drawable.clear_button,
-                                    null));
+//                    clearTextButton.setEnabled(true);
+//                    clearTextButton.setImageDrawable(
+//                            ResourcesCompat.getDrawable(getResources(),
+//                                    R.drawable.clear_button,
+//                                    null));
                     chatTextBuilder.append("\n\n");
                 });
 
@@ -802,9 +921,9 @@ public class MainActivity extends AppCompatActivity {
                     loadNewModelButton.setImageDrawable(
                             ResourcesCompat.getDrawable(
                                     getResources(),
-                                    R.drawable.arrow_back_button_disabled,
+                                    R.drawable.arrow_back_button,
                                     null));
-                    loadNewModelButton.setEnabled(false);
+                    loadNewModelButton.setEnabled(true);
                     statusProgress.setVisibility(View.GONE);
                     statusText.setVisibility(View.VISIBLE);
                     statusText.setText("Listening...");
@@ -818,11 +937,11 @@ public class MainActivity extends AppCompatActivity {
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                     chatText.setText(chatTextBuilder);
 
-                    clearTextButton.setEnabled(true);
-                    clearTextButton.setImageDrawable(
-                            ResourcesCompat.getDrawable(getResources(),
-                                    R.drawable.clear_button,
-                                    null));
+//                    clearTextButton.setEnabled(true);
+//                    clearTextButton.setImageDrawable(
+//                            ResourcesCompat.getDrawable(getResources(),
+//                                    R.drawable.clear_button,
+//                                    null));
                     break;
                 case LLM_TTS:
                     loadModelLayout.setVisibility(View.INVISIBLE);
@@ -838,12 +957,12 @@ public class MainActivity extends AppCompatActivity {
                     statusProgress.setVisibility(View.VISIBLE);
                     statusText.setVisibility(View.VISIBLE);
                     statusText.setText("Generating...");
-                    clearTextButton.setEnabled(false);
-                    clearTextButton.setImageDrawable(
-                            ResourcesCompat.getDrawable(
-                                    getResources(),
-                                    R.drawable.clear_button_disabled,
-                                    null));
+//                    clearTextButton.setEnabled(false);
+//                    clearTextButton.setImageDrawable(
+//                            ResourcesCompat.getDrawable(
+//                                    getResources(),
+//                                    R.drawable.clear_button_disabled,
+//                                    null));
                     break;
                 default:
                     break;
@@ -861,6 +980,10 @@ public class MainActivity extends AppCompatActivity {
         ttsSynthesizeExecutor.shutdownNow();
         ttsPlaybackExecutor.shutdownNow();
 
+        cleanupEngines();
+    }
+
+    void cleanupEngines() {
         if (cheetah != null) {
             cheetah.delete();
             cheetah = null;

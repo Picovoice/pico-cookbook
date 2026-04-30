@@ -37,16 +37,17 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/loadModelText"
             android:layout_marginTop="15dp"/>
+
         <Button
             android:id="@+id/loadModelButton"
-            android:background="@drawable/button_background"
-            android:textColor="#FFFFFF"
-            android:text="Load Model"
-            android:padding="10dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:layout_constraintStart_toStartOf="parent"
+            android:background="@drawable/button_background"
+            android:padding="10dp"
+            android:text="Load File"
+            android:textColor="#FFFFFF"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/modelGuidelineHorizontal" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -110,15 +111,16 @@
             app:layout_constraintBottom_toBottomOf="@+id/chatScrollView"/>
 
         <ImageButton
-            android:background="#EEEEEE"
-            android:layout_marginEnd="10dp"
-            android:layout_marginBottom="5dp"
             android:id="@+id/clearButton"
             android:layout_width="wrap_content"
             android:layout_height="30dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginBottom="5dp"
+            android:background="#EEEEEE"
             android:src="@drawable/clear_button"
-            app:layout_constraintEnd_toEndOf="@+id/chatScrollView"
-            app:layout_constraintBottom_toBottomOf="@+id/chatScrollView"/>
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@+id/chatScrollView"
+            app:layout_constraintEnd_toEndOf="@+id/chatScrollView" />
 
         <LinearLayout
             android:id="@+id/statusContainer"
