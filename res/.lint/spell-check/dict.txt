@@ -6,6 +6,7 @@ colour
 compat
 dbfs
 declatory
+documentqa
 dotdotdot
 dotnet
 dtype
@@ -16,6 +17,7 @@ frombytes
 getmaxyx
 getpid
 iife
+indice
 libpv
 liveconversationtranslation
 llmvoiceassistant
@@ -55,6 +57,8 @@ speakerawarewakeword
 subwin
 tock
 tock
+TOPK
+topks
 uids
 venv
 voicememoassistant

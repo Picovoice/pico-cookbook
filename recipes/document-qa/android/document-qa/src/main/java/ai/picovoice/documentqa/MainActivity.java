@@ -473,10 +473,10 @@ public class MainActivity extends AppCompatActivity {
                 ArrayList<float[]> cachedEmbeddings = new ArrayList<>();
                 JSONArray cachedEmbeddingsJson = embeddingsJson.getJSONArray("embeddings");
                 for (int i = 0; i < cachedEmbeddingsJson.length(); i++) {
-                    JSONArray cachedEmbeddingsIJSON = cachedEmbeddingsJson.getJSONArray(i);
-                    float[] cachedEmbeddingsI = new float[cachedEmbeddingsIJSON.length()];
-                    for (int j = 0; j < cachedEmbeddingsIJSON.length(); j++) {
-                        cachedEmbeddingsI[j] = (float) cachedEmbeddingsIJSON.getDouble(i);
+                    JSONArray cachedEmbeddingsJsonI = cachedEmbeddingsJson.getJSONArray(i);
+                    float[] cachedEmbeddingsI = new float[cachedEmbeddingsJsonI.length()];
+                    for (int j = 0; j < cachedEmbeddingsJsonI.length(); j++) {
+                        cachedEmbeddingsI[j] = (float) cachedEmbeddingsJsonI.getDouble(i);
                     }
                     cachedEmbeddings.add(cachedEmbeddingsI);
                 }
