@@ -266,7 +266,11 @@ def main() -> None:
             print_thread.join()
 
             is_understood = False
-            print_event, print_thread = print_async(get_text=lambda: "Say a voice command")
+            print("- Start (recording, memo, it)")
+            print("- Read (recording, memo, it)")
+            print("- Summarize (recording, memo, it)")
+            print("- Rewrite (recording, memo, it)")
+            print_event, print_thread = print_async(get_text=lambda: "Say one of the voice commands above")
 
             while not is_understood:
                 while not rhino.process(recorder.read()):
@@ -290,6 +294,8 @@ def main() -> None:
 
                 if inference.intent == 'startMemo':
                     recorder.start()
+
+                    print('When done, stop recording by saying "Stop Recording".')
 
                     memo = ""
                     recording_lock = Lock()
@@ -335,6 +341,7 @@ def main() -> None:
                         print_event.set()
                         print_thread.join()
                         memo = completion.completion.strip('<|eot_id|>')
+                        print(f"Summarized memo: {memo}")
                     else:
                         synthesize_and_playback(orca=orca, speaker=speaker, text="Please record a memo first.")
                 elif inference.intent == 'rewriteMemo':
@@ -348,6 +355,7 @@ def main() -> None:
                         print_event.set()
                         print_thread.join()
                         memo = completion.completion.strip('<|eot_id|>')
+                        print(f"Rewritten memo: {memo}")
                     else:
                         synthesize_and_playback(orca=orca, speaker=speaker, text="Please record a memo first.")
 

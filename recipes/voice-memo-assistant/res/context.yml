@@ -3,11 +3,11 @@ context:
     startMemo:
       - Start (@memo)
     readMemo:
-      - read (@memo)
+      - Read (@memo)
     summarizeMemo:
-      - summarize (@memo)
+      - Summarize (@memo)
     rewriteMemo:
-      - rewrite (@memo)
+      - Rewrite (@memo)
   slots: {}
   macros:
     memo:
