@@ -15,7 +15,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ## Usage
 
-These instructions assume your current working directory is `recipes/personalized-wake-word/python`.
+These instructions assume your current working directory is `recipes/personalized-wake-word/android`.
 
 ### 1. Train a Wake Word Model
 
@@ -24,7 +24,7 @@ train a wake word model on [Picovoice Console](https://console.picovoice.ai/) in
 
 ### 2. Add Wake Word to the Project
 
-Copy your downloaded wake word file into the assets folder, located at `${ANDROID_PROJECT}/src/main/assets`.
+Copy your downloaded wake word file into the assets folder, located at `/src/main/assets`.
 
 ### 3. Add Wake Word and AccessKey to MainActivity.java
 
