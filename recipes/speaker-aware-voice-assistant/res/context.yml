@@ -1,0 +1,10 @@
+context:
+  expressions:
+    adminOnly:
+      - do something that requires admin permission
+    speakerPersonalized:
+      - do something just for me
+    generic:
+      - do something anyone can do
+  slots: {}
+  macros: {}
