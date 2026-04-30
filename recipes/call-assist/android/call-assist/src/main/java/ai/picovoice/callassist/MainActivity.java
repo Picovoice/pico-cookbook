@@ -2,11 +2,18 @@ package ai.picovoice.callassist;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
+import android.media.AudioFormat;
+import android.media.AudioTrack;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
@@ -22,6 +29,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -29,12 +37,20 @@ import ai.picovoice.android.voiceprocessor.VoiceProcessor;
 import ai.picovoice.android.voiceprocessor.VoiceProcessorException;
 import ai.picovoice.cheetah.Cheetah;
 import ai.picovoice.cheetah.CheetahException;
+import ai.picovoice.cheetah.CheetahTranscript;
 import ai.picovoice.orca.Orca;
+import ai.picovoice.orca.OrcaAudio;
 import ai.picovoice.orca.OrcaException;
+import ai.picovoice.orca.OrcaSynthesizeParams;
+import ai.picovoice.orca.OrcaWord;
 import ai.picovoice.picollm.PicoLLM;
+import ai.picovoice.picollm.PicoLLMCompletion;
+import ai.picovoice.picollm.PicoLLMDialog;
 import ai.picovoice.picollm.PicoLLMException;
+import ai.picovoice.picollm.PicoLLMGenerateParams;
 import ai.picovoice.rhino.Rhino;
 import ai.picovoice.rhino.RhinoException;
+import ai.picovoice.rhino.RhinoInference;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -50,7 +66,57 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TTS_MODEL_FILE = "orca_params_en_female.pv";
 
-    
+    private static final String[] dots = {
+        " .  ",
+        " .. ",
+        " ...",
+        "  ..",
+        "   .",
+        "    "
+    };
+
+    private static final String systemPrompt =
+        "Extract call information.\n\n" +
+        "Return exactly two lines:\n" +
+        "caller: <one short value>\n" +
+        "reason: <one short value>\n\n" +
+        "Rules:\n" +
+        "- Use exactly one value for caller.\n" +
+        "- Use exactly one value for reason.\n" +
+        "- Do not list alternatives.\n" +
+        "- Do not use commas.\n" +
+        "- Do not explain.\n" +
+        "- If the caller says a company or organization, use that as caller.\n" +
+        "- If the caller says only a generic role like customer service, use that as caller.\n" +
+        "- If the caller does not say who they are, use unknown.\n" +
+        "- If the caller does not say why they are calling, use unknown.\n" +
+        "- Use lowercase unless the caller gives a proper name.\n\n" +
+        "Examples:\n" +
+        "Caller said: \"I'm calling from the bank.\"\n" +
+        "caller: bank\n" +
+        "reason: unknown\n\n" +
+        "Caller said: \"This is UPS with a package delivery.\"\n" +
+        "caller: UPS\n" +
+        "reason: package delivery\n\n" +
+        "Caller said: \"This is customer service.\"\n" +
+        "caller: customer service\n" +
+        "reason: unknown\n\n" +
+        "Caller said: \"I'm calling about your credit card.\"\n" +
+        "caller: unknown\n" +
+        "reason: credit card\n\n" +
+        "Caller said: \"Hello, can you hear me?\"\n" +
+        "caller: unknown\n" +
+        "reason: unknown\n";
+
+    private static final String[] stopPhrases = {
+            "<|eot_id|>"
+    };
+
+    private enum State {
+        IDLE,
+        TRANSCRIBE,
+        COMMAND,
+    };
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -66,9 +132,29 @@ public class MainActivity extends AppCompatActivity {
 
     private Orca orca;
 
+    private State currentState = State.IDLE;
+
+    private String activeText = "";
+
+    private String callerTranscript = "";
+
+    private int dotIndex = 0;
+
     private LinearLayout statusLayout;
 
     private TextView statusText;
+
+    private VolumeMeterView volumeMeterView;
+
+    private ProgressBar progressBar;
+
+    private TextView activeTextView = null;
+
+    private ScrollView scrollArea;
+
+    private LinearLayout chatArea;
+
+    private LinearLayout tooltipView = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,16 +167,26 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        initStatusLayout();
+        initLayout();
+        animateDots();
 
         voiceProcessor.addFrameListener(this::frameListener);
         engineExecutor.submit(this::initEngines);
+        engineExecutor.submit(this::actionGreet);
     }
 
-    private void initStatusLayout() {
+    private void initLayout() {
         statusLayout = findViewById(R.id.statusLayout);
         statusText = findViewById(R.id.statusText);
+        volumeMeterView = findViewById(R.id.volumeMeterView);
+        progressBar = findViewById(R.id.statusProgress);
+        scrollArea = findViewById(R.id.scrollArea);
+        chatArea = findViewById(R.id.chatArea);
+        tooltipView = findViewById(R.id.tooltipView);
+
         statusLayout.setVisibility(View.GONE);
+        volumeMeterView.setVisibility(View.GONE);
+        tooltipView.setVisibility(View.GONE);
     }
 
     private void setStatus(String text) {
@@ -109,6 +205,72 @@ public class MainActivity extends AppCompatActivity {
             statusLayout.setVisibility(View.VISIBLE);
             statusLayout.invalidate();
         });
+    }
+
+    private void setVolumeMeterState(boolean active) {
+        mainHandler.post(() -> {
+            if (active) {
+                volumeMeterView.setVisibility(View.VISIBLE);
+                progressBar.setVisibility(View.GONE);
+            } else {
+                volumeMeterView.setVisibility(View.GONE);
+                progressBar.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    private void animateDots() {
+        dotIndex = (dotIndex + 1) % dots.length;
+        mainHandler.postDelayed(this::animateDots, 100);
+
+        renderActiveText();
+    }
+
+    private void renderActiveText() {
+        mainHandler.post(() -> {
+            if (activeTextView != null) {
+                activeTextView.setText(String.format("%s%s", activeText, dots[dotIndex]));
+            }
+        });
+    }
+
+    private void renderCallerTranscript() {
+        mainHandler.post(() -> {
+            activeText = String.format("[Caller] %s", callerTranscript);
+            renderActiveText();
+        });
+    }
+
+    private void sendText(String text) {
+        Log.d("PICOVOICE", String.format("`%s`", text));
+        mainHandler.post(() -> activeText += text);
+        renderActiveText();
+        mainHandler.post(() -> scrollArea.post(() -> scrollArea.fullScroll(View.FOCUS_DOWN)));
+    }
+
+    private void flushText(TextView nextView) {
+        mainHandler.post(() -> {
+            if (activeTextView != null) {
+                activeTextView.setText(activeText);
+            }
+
+            activeText = "";
+            activeTextView = nextView;
+        });
+    }
+
+    private TextView spawnText(String text, int colorId) {
+        int color = getResources().getColor(colorId);
+        TextView tv = new TextView(getApplicationContext());
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
+        tv.setText(text);
+        tv.setTextColor(color);
+
+        mainHandler.post(() -> {
+            chatArea.addView(tv);
+        });
+
+        return tv;
     }
 
     private void initEngines() {
@@ -141,6 +303,7 @@ public class MainActivity extends AppCompatActivity {
             picollm = new PicoLLM.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(llmModelFile.getAbsolutePath())
+                    .setDevice("cpu:2")
                     .build();
         } catch (PicoLLMException e) {
             setError(e.getMessage());
@@ -160,7 +323,9 @@ public class MainActivity extends AppCompatActivity {
 
         startRecording();
 
-        mainHandler.post(() -> statusLayout.setVisibility(View.GONE));
+        mainHandler.post(() -> {
+            statusLayout.setVisibility(View.GONE);
+        });
     }
 
     private File extractModelFile(String filename) {
@@ -210,6 +375,270 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void frameListener(short[] frame) {
+        volumeMeterView.processFrame(frame);
 
+        if (currentState == State.TRANSCRIBE) {
+            engineExecutor.submit(() -> listenCaller(frame));
+        } else if (currentState == State.COMMAND) {
+            engineExecutor.submit(() -> listenUser(frame));
+        }
+    }
+
+    private void actionGreet() {
+        setVolumeMeterState(false);
+        String outputText = Action.GREET.prompt(USERNAME);
+        TextView speakingView = spawnText("", R.color.colorSecondary);
+        flushText(speakingView);
+
+        sendText("[AI] ");
+        speak(outputText, () -> {
+            flushText(null);
+            engineExecutor.submit(this::transcribeCaller);
+        });
+    }
+
+    private void actionAskForDetails() {
+        setVolumeMeterState(false);
+        String outputText = Action.ASK_FOR_DETAILS.prompt(USERNAME);
+        TextView speakingView = spawnText("", R.color.colorSecondary);
+        flushText(speakingView);
+
+        sendText("[AI] ");
+        speak(outputText, () -> {
+            flushText(null);
+            engineExecutor.submit(this::transcribeCaller);
+        });
+    }
+
+    private void actionTerminal(Action action) {
+        setVolumeMeterState(false);
+        String outputText = action.prompt(USERNAME);
+        TextView speakingView = spawnText("", R.color.colorSecondary);
+        flushText(speakingView);
+
+        sendText("[AI] ");
+        speak(outputText, () -> {
+            flushText(null);
+        });
+    }
+
+    private void transcribeCaller() {
+        setVolumeMeterState(true);
+        TextView callerView = spawnText("", R.color.colorCaller);
+        flushText(callerView);
+
+        sendText("[CALLER] ");
+        setVolumeMeterState(true);
+        callerTranscript = "";
+        currentState = State.TRANSCRIBE;
+    }
+
+    private void processCaller() {
+        setVolumeMeterState(false);
+        TextView summaryView = spawnText("", R.color.colorPrimary);
+        flushText(summaryView);
+        sendText("[AI] ");
+
+        String transcript = callerTranscript;
+
+        try {
+            PicoLLMDialog dialog = picollm.getDialogBuilder()
+                    .setSystem(systemPrompt)
+                    .build();
+            dialog.addHumanRequest(String.format("Caller Said: \"%s\"\n", transcript));
+            String prompt = dialog.getPrompt();
+            PicoLLMCompletion completion = picollm.generate(
+                    prompt,
+                    new PicoLLMGenerateParams.Builder()
+                            .setStopPhrases(stopPhrases)
+                            .setNumTopChoices(1)
+                            .build());
+            String completionText = completion.getCompletion().strip().replace("<|eot_id|>", "");
+            String[] caller_reason = extractCallerReason(completionText);
+
+            engineExecutor.submit(() -> processCallerReason(caller_reason[0], caller_reason[1]));
+        } catch (PicoLLMException e) {
+            setError(e.getMessage());
+        }
+    }
+
+    private String[] extractCallerReason(String text) {
+        String[] lines = text.split("\n");
+        if (lines.length != 2) {
+            return new String[] { "unknown", "unknown" };
+        }
+
+        if (!lines[0].toLowerCase().startsWith("caller: ")) {
+            return new String[] { "unknown", "unknown" };
+        }
+
+        if (!lines[1].toLowerCase().startsWith("reason: ")) {
+            return new String[] { "unknown", "unknown" };
+        }
+
+        String caller = lines[0].substring(8).strip();
+        String reason = lines[1].substring(8).strip();
+
+        if (caller.isEmpty() || reason.isEmpty()) {
+            return new String[] { "unknown", "unknown" };
+        }
+
+        return new String[] { caller, reason };
+    }
+
+    private void processCallerReason(String caller, String reason) {
+        if (caller.equals("unknown") || reason.equals("unknown")) {
+            String responseText = formatAskForDetails(caller, reason);
+            sendText(responseText);
+
+            engineExecutor.submit(this::actionAskForDetails);
+        } else {
+            String outputText = String.format(
+                    "%s is trying to speak to you about %s.",
+                    caller,
+                    reason);
+            speak(outputText, () -> {
+                flushText(null);
+                setVolumeMeterState(true);
+                tooltipView.setVisibility(View.VISIBLE);
+                scrollArea.post(() -> scrollArea.fullScroll(View.FOCUS_DOWN));
+                currentState = State.COMMAND;
+            });
+        }
+    }
+
+    private String formatAskForDetails(String caller, String reason) {
+        if (caller.equals("unknown") && reason.equals("unknown")) {
+            return "Unknown caller with no specific reason. I will ask for more information.";
+        } else if (caller.equals("unknown")) {
+            return String.format(
+                    "Unknown caller is trying to speak with you about `%s`. I will ask for their identity.",
+                    reason);
+        } else if (reason.equals("unknown")) {
+            return String.format(
+                    "`%s` is trying to speak with you. I will ask for their reason.",
+                    caller);
+        } else {
+            return null;
+        }
+    }
+
+    private void listenCaller(short[] frame) {
+        try {
+            CheetahTranscript transcript = cheetah.process(frame);
+            callerTranscript += transcript.getTranscript();
+            renderCallerTranscript();
+
+            if (transcript.getIsEndpoint()) {
+                currentState = State.IDLE;
+                CheetahTranscript flush = cheetah.flush();
+                callerTranscript += flush.getTranscript();
+                renderCallerTranscript();
+
+                engineExecutor.submit(this::processCaller);
+            }
+        } catch (CheetahException e) {
+            setError(e.getMessage());
+        }
+    }
+
+    private void listenUser(short[] frame) {
+        try {
+            boolean isComplete = rhino.process(frame);
+            if (isComplete) {
+                RhinoInference inference = rhino.getInference();
+                if (inference.getIsUnderstood() && inference.getIntent().equals("chooseAction")) {
+                    Action action = Action.fromString(inference.getSlots().get("action"));
+                    currentState = State.IDLE;
+                    mainHandler.post(() -> tooltipView.setVisibility(View.GONE));
+
+                    Log.d("PICOVOICE", action.toString());
+                    if (action.equals(Action.GREET)) {
+                        engineExecutor.submit(this::actionGreet);
+                    } else if (action.equals(Action.CONNECT_CALL)) {
+                        engineExecutor.submit(() -> actionTerminal(action));
+                    } else if (action.equals(Action.DECLINE_CALL)) {
+                        engineExecutor.submit(() -> actionTerminal(action));
+                    } else if (action.equals(Action.ASK_FOR_DETAILS)) {
+                        engineExecutor.submit(this::actionAskForDetails);
+                    } else if (action.equals(Action.ASK_TO_TEXT)) {
+                        engineExecutor.submit(() -> actionTerminal(action));
+                    } else if (action.equals(Action.ASK_TO_EMAIL)) {
+                        engineExecutor.submit(() -> actionTerminal(action));
+                    } else if (action.equals(Action.ASK_TO_CALL_BACK)) {
+                        engineExecutor.submit(() -> actionTerminal(action));
+                    } else if (action.equals(Action.BLOCK_CALLER)) {
+                        engineExecutor.submit(() -> actionTerminal(action));
+                    }
+                }
+            }
+        } catch (RhinoException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void speak(String outputText, Runnable after) {
+        try {
+            OrcaSynthesizeParams params = new OrcaSynthesizeParams.Builder()
+                    .build();
+
+            OrcaAudio audio = orca.synthesize(outputText, params);
+
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build();
+
+            AudioFormat audioFormat = new AudioFormat.Builder()
+                    .setSampleRate(orca.getSampleRate())
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .build();
+
+            AudioTrack ttsOutput = new AudioTrack(
+                    audioAttributes,
+                    audioFormat,
+                    AudioTrack.getMinBufferSize(
+                            orca.getSampleRate(),
+                            AudioFormat.CHANNEL_OUT_MONO,
+                            AudioFormat.ENCODING_PCM_16BIT),
+                    AudioTrack.MODE_STREAM,
+                    0);
+
+            ttsOutput.play();
+
+            OrcaWord[] words = audio.getWordArray();
+            for (int i = 0; i < words.length; i++) {
+                String suffix = "";
+                if (i < words.length - 1 && !words[i + 1].getWord().matches("\\p{Punct}")) {
+                    suffix = " ";
+                }
+
+                String text = words[i].getWord() + suffix;
+
+                mainHandler.postDelayed(() -> {
+                    sendText(text);
+                }, (long) (words[i].getStartSec() * 1000));
+            }
+
+            if (after != null) {
+                OrcaWord lastWord = words[words.length - 1];
+                mainHandler.postDelayed(
+                        after,
+                        (long) (lastWord.getEndSec() * 1000));
+            }
+
+            short[] pcm = audio.getPcm();
+            ttsOutput.write(pcm, 0, pcm.length);
+
+            if (ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
+                ttsOutput.flush();
+                ttsOutput.stop();
+            }
+
+            ttsOutput.release();
+        } catch (OrcaException e) {
+            setError(e.getMessage());
+        }
     }
 }

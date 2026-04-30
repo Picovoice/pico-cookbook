@@ -4,4 +4,5 @@
     <color name="colorPrimaryDark">#25187E</color>
     <color name="colorDanger">#ff0e0e</color>
     <color name="colorSecondary">#76838e</color>
+    <color name="colorCaller">#73bd82</color>
 </resources>
