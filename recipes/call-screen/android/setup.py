@@ -131,7 +131,7 @@ def main() -> None:
         DEMO,
         "src",
         "main",
-        f"java/ai/picovoice/{DEMO.replace("-", "")}",
+        f"java/ai/picovoice/{DEMO.replace('-', '')}",
         "MainActivity.java")
     with open(main_activity_path, 'r') as main_activity_file:
         main_activity_contents = main_activity_file.read()
