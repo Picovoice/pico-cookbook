@@ -392,11 +392,19 @@ public class MainActivity extends AppCompatActivity {
                     R.layout.chat_bubble,
                     chatArea,
                     false);
+            TextView languagePair = chatBubble.findViewById(R.id.languagePair);
             LinearLayout top = chatBubble.findViewById(R.id.top);
             LinearLayout bottom = chatBubble.findViewById(R.id.bottom);
             int gravity = alignRight ? Gravity.RIGHT : Gravity.LEFT;
             top.setGravity(gravity);
             bottom.setGravity(gravity);
+
+            if (alignRight) {
+                languagePair.setText(String.format("%s → %s", targetLanguage, sourceLanguage));
+                languagePair.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_END);
+            } else {
+                languagePair.setText(String.format("%s → %s", sourceLanguage, targetLanguage));
+            }
 
             top.setVisibility(View.GONE);
             bottom.setVisibility(View.VISIBLE);
@@ -660,12 +668,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startListeningSource() {
-        appendChatBubble(true);
+        appendChatBubble(false);
         currentState = State.LISTENING_SOURCE;
     }
 
     private void startListeningTarget() {
-        appendChatBubble(false);
+        appendChatBubble(true);
         currentState = State.LISTENING_TARGET;
     }
 
