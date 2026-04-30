@@ -51,6 +51,7 @@ sdcard
 sigwinch
 socialtext
 spannable
+speakerawarewakeword
 subwin
 tock
 tock
