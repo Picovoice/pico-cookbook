@@ -14,16 +14,19 @@ package ai.picovoice.speakerawarewakeword;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.OvershootInterpolator;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -49,18 +52,18 @@ public class MainActivity extends AppCompatActivity {
     private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
     private static final String WAKE_WORD_FILE = "${YOUR_WAKE_WORD_HERE}.ppn";
     private static final float EAGLE_THRESHOLD = 0.75f;
+    private static final int EAGLE_MIN_ENROLLMENT_CHUNKS = 4;
+    private static final int MAX_SPEAKERS = 10;
 
-    // UI Elements
     private TextView titleText, statusText;
-    private View layoutGreeting, layoutDashboard;
-    private LinearLayout chipContainer;
-    private TextView tvGreetingPrefix, tvSpeakerName, tvGreetingSuffix, btnAddSpeaker;
+    private View layoutGreeting, layoutEnroll;
+    private ViewGroup speakerChipContainer;
+    private TextView greetingPrefixText, greetingSpeakerNameText, btnAddSpeaker;
     private ProgressBar enrollProgressBar;
     private Button btnStartEnroll, btnStartTest, btnClearAll, btnCancel;
     private View buttonContainer;
     private VolumeMeterView volumeMeterView;
 
-    // Multi-Speaker Data
     private final List<EagleProfile> speakerProfiles = new ArrayList<>();
     private final List<String> speakerNames = new ArrayList<>();
     private String pendingSpeakerName = "";
@@ -84,6 +87,19 @@ public class MainActivity extends AppCompatActivity {
     private int enrollValidSamples = 0;
     private short[] slidingBuffer;
 
+    private static final String[] SPEAKER_PALETTE = {
+            "#377dff", // Blue
+            "#10B981", // Emerald Green
+            "#8B5CF6", // Violet
+            "#EC4899", // Pink
+            "#F59E0B", // Amber
+            "#06B6D4", // Cyan
+            "#EF4444", // Red
+            "#84CC16", // Lime
+            "#6366F1", // Indigo
+            "#F43F5E"  // Rose
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -92,14 +108,13 @@ public class MainActivity extends AppCompatActivity {
         titleText = findViewById(R.id.titleText);
         statusText = findViewById(R.id.statusText);
 
-        layoutDashboard = findViewById(R.id.layoutDashboard);
-        chipContainer = findViewById(R.id.chipContainer);
+        layoutEnroll = findViewById(R.id.layoutEnroll);
+        speakerChipContainer = findViewById(R.id.speakerChipContainer);
         btnAddSpeaker = findViewById(R.id.btnAddSpeaker);
 
         layoutGreeting = findViewById(R.id.layoutGreeting);
-        tvGreetingPrefix = findViewById(R.id.tvGreetingPrefix);
-        tvSpeakerName = findViewById(R.id.tvSpeakerName);
-        tvGreetingSuffix = findViewById(R.id.tvGreetingSuffix);
+        greetingPrefixText = findViewById(R.id.greetingPrefixText);
+        greetingSpeakerNameText = findViewById(R.id.greetingSpeakerNameText);
 
         enrollProgressBar = findViewById(R.id.enrollProgressBar);
 
@@ -112,7 +127,7 @@ public class MainActivity extends AppCompatActivity {
         volumeMeterView = findViewById(R.id.volumeMeterView);
 
         btnStartEnroll.setOnClickListener(v -> promptForSpeakerName());
-        btnAddSpeaker.setOnClickListener(v -> promptForSpeakerName()); // New stylish Add chip
+        btnAddSpeaker.setOnClickListener(v -> promptForSpeakerName());
         btnStartTest.setOnClickListener(v -> checkPermissionsAndStart(AppState.TESTING));
         btnClearAll.setOnClickListener(v -> clearAllProfiles());
         btnCancel.setOnClickListener(v -> cancelActiveSession());
@@ -121,13 +136,32 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void promptForSpeakerName() {
+        if (speakerProfiles.size() >= MAX_SPEAKERS) {
+            Toast.makeText(
+                    this,
+                    "Maximum of " + MAX_SPEAKERS + " speakers reached.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Speaker Name");
 
         final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
         input.setHint("Speaker " + (speakerProfiles.size() + 1));
-        builder.setView(input);
+
+        android.widget.FrameLayout container = new android.widget.FrameLayout(this);
+        android.widget.FrameLayout.LayoutParams params = new android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        int margin = (int) (12 * getResources().getDisplayMetrics().density);
+        params.setMargins(margin, 0, margin, 0);
+        input.setLayoutParams(params);
+        container.addView(input);
+
+        builder.setView(container);
 
         builder.setPositiveButton("Enroll", (dialog, which) -> {
             pendingSpeakerName = input.getText().toString().trim();
@@ -143,7 +177,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void clearAllProfiles() {
         for (EagleProfile profile : speakerProfiles) {
-            profile.delete(); // Free memory
+            profile.delete();
         }
         speakerProfiles.clear();
         speakerNames.clear();
@@ -212,9 +246,11 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
 
-                        final String recognizedName = (bestScore >= EAGLE_THRESHOLD && bestIndex != -1) ? speakerNames.get(bestIndex) : null;
-                        if (recognizedName != null) {
-                            runOnUiThread(() -> showGreeting(recognizedName));
+                        if (bestScore >= EAGLE_THRESHOLD && bestIndex != -1) {
+                            final String speakerName = speakerNames.get(bestIndex);
+                            final int speakerColour = Color.parseColor(SPEAKER_PALETTE[bestIndex]);
+
+                            runOnUiThread(() -> showGreeting(speakerName, speakerColour));
                         }
                     }
                 }
@@ -262,11 +298,11 @@ public class MainActivity extends AppCompatActivity {
 
             eagleProfiler = new EagleProfiler.Builder()
                     .setAccessKey(ACCESS_KEY)
-                    .setMinEnrollmentChunks(4)
-                    .setVoiceThreshold(0.1f)
+                    .setMinEnrollmentChunks(EAGLE_MIN_ENROLLMENT_CHUNKS)
+                    .setVoiceThreshold(.0f)
                     .build(this);
 
-            enrollMaxSamples = eagleProfiler.getFrameLength() * 64;
+            enrollMaxSamples = eagleProfiler.getFrameLength() * 96;
             enrollSlidingBuffer = new short[enrollMaxSamples];
             enrollValidSamples = 0;
 
@@ -347,18 +383,21 @@ public class MainActivity extends AppCompatActivity {
         updateUIForState();
     }
 
-    private void showGreeting(String speakerName) {
+    private void showGreeting(String speakerName, int speakerColour) {
         volumeMeterView.setVisibility(View.GONE);
         statusText.setVisibility(View.GONE);
         btnCancel.setVisibility(View.GONE);
 
         layoutGreeting.setVisibility(View.VISIBLE);
 
-        tvGreetingPrefix.setVisibility(View.VISIBLE);
-        tvGreetingSuffix.setVisibility(View.VISIBLE);
-        tvSpeakerName.setText(speakerName);
-        tvSpeakerName.setBackground(getResources().getDrawable(R.drawable.speaker_pill_bg, getTheme()));
-        tvSpeakerName.setTextColor(getResources().getColor(R.color.white, getTheme()));
+        greetingPrefixText.setVisibility(View.VISIBLE);
+        GradientDrawable bg = (GradientDrawable) getResources()
+                .getDrawable(R.drawable.speaker_pill_bg, getTheme())
+                .mutate();
+        bg.setColor(speakerColour);
+        greetingSpeakerNameText.setBackground(bg);
+        greetingSpeakerNameText.setText(" " + speakerName + " ");
+        greetingSpeakerNameText.setTextColor(getResources().getColor(R.color.white, getTheme()));
 
         layoutGreeting.setScaleX(0.8f);
         layoutGreeting.setScaleY(0.8f);
@@ -377,47 +416,47 @@ public class MainActivity extends AppCompatActivity {
         }, 2500);
     }
 
-    /**
-     * Dynamically builds the horizontal list of speaker pills.
-     */
     private void renderSpeakerChips() {
-        chipContainer.removeAllViews();
+        speakerChipContainer.removeAllViews();
 
         float density = getResources().getDisplayMetrics().density;
         int paddingH = (int) (16 * density);
         int paddingV = (int) (8 * density);
-        int marginEnd = (int) (8 * density);
 
-        for (String name : speakerNames) {
+        for (int i = 0; i < speakerNames.size(); i++) {
             TextView chip = new TextView(this);
-            chip.setText(name);
+            chip.setText(speakerNames.get(i));
             chip.setTextColor(getResources().getColor(R.color.white, getTheme()));
-            chip.setBackground(getResources().getDrawable(R.drawable.speaker_pill_bg, getTheme()));
+
+            GradientDrawable bg = (GradientDrawable) getResources()
+                    .getDrawable(R.drawable.speaker_pill_bg, getTheme())
+                    .mutate();
+            bg.setColor(Color.parseColor(SPEAKER_PALETTE[i]));
+            chip.setBackground(bg);
+
             chip.setTextSize(16f);
             chip.setTypeface(null, android.graphics.Typeface.BOLD);
             chip.setPadding(paddingH, paddingV, paddingH, paddingV);
 
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-            );
-            params.setMarginEnd(marginEnd);
-            chip.setLayoutParams(params);
+            speakerChipContainer.addView(chip);
+        }
 
-            chipContainer.addView(chip);
+        if (speakerProfiles.size() < MAX_SPEAKERS) {
+            speakerChipContainer.addView(btnAddSpeaker);
         }
     }
 
     private void updateUIForState() {
         boolean hasProfiles = !speakerProfiles.isEmpty();
+
         if (currentState == AppState.ENROLLING) {
             titleText.setVisibility(View.GONE);
             statusText.setVisibility(View.VISIBLE);
-            statusText.setText("Hi " + pendingSpeakerName + "!\nSay the wake word until\nthe circle is full");
+            statusText.setText("Hello " + pendingSpeakerName + "\n\nSay the wake word until\nthe circle is full");
             enrollProgressBar.setVisibility(View.VISIBLE);
             enrollProgressBar.setProgress(0);
 
-            layoutDashboard.setVisibility(View.GONE);
+            layoutEnroll.setVisibility(View.GONE);
             buttonContainer.setVisibility(View.GONE);
             layoutGreeting.setVisibility(View.GONE);
             volumeMeterView.setVisibility(View.VISIBLE);
@@ -431,7 +470,7 @@ public class MainActivity extends AppCompatActivity {
             statusText.setText("Listening for wake word...");
             enrollProgressBar.setVisibility(View.GONE);
 
-            layoutDashboard.setVisibility(View.GONE);
+            layoutEnroll.setVisibility(View.GONE);
             buttonContainer.setVisibility(View.GONE);
             layoutGreeting.setVisibility(View.GONE);
             volumeMeterView.setVisibility(View.VISIBLE);
@@ -440,7 +479,7 @@ public class MainActivity extends AppCompatActivity {
             btnCancel.setVisibility(View.VISIBLE);
 
         } else {
-            titleText.setVisibility(hasProfiles ? View.GONE : View.VISIBLE);
+            titleText.setVisibility(View.VISIBLE);
             statusText.setVisibility(hasProfiles ? View.GONE : View.VISIBLE);
             statusText.setText("Ready to Enroll");
 
@@ -452,14 +491,14 @@ public class MainActivity extends AppCompatActivity {
             buttonContainer.setVisibility(View.VISIBLE);
 
             if (hasProfiles) {
-                layoutDashboard.setVisibility(View.VISIBLE);
+                layoutEnroll.setVisibility(View.VISIBLE);
                 renderSpeakerChips();
 
                 btnStartEnroll.setVisibility(View.GONE);
                 btnStartTest.setVisibility(View.VISIBLE);
                 btnClearAll.setVisibility(View.VISIBLE);
             } else {
-                layoutDashboard.setVisibility(View.GONE);
+                layoutEnroll.setVisibility(View.GONE);
 
                 btnStartEnroll.setVisibility(View.VISIBLE);
                 btnStartTest.setVisibility(View.GONE);
