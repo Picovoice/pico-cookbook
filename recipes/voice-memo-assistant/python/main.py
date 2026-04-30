@@ -26,6 +26,36 @@ from pvorca import Orca
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
 
+SUMMARY_TEMPLATE = """Summarize the memo below. Return only the summary.
+Rules:
+- Do not say "Here is the rewritten memo".
+- Do not add any prefix, label, intro, explanation, or quotes.
+- Do not explain your changes.
+- Keep the important details.
+- Fix obvious transcription errors only when the meaning is clear.
+- Do not add new information.
+- Use one short sentence.
+
+Memo:
+{memo}
+
+Summarized memo:"""
+
+REWRITE_TEMPLATE = """Rewrite the memo below. Return only the rewritten memo.
+Rules:
+- Do not say "Here is the summarized memo".
+- Do not add any prefix, label, intro, explanation, or quotes.
+- Do not explain your changes.
+- Fix grammar, punctuation, casing, repeated words, filler words, and false starts.
+- Preserve the original meaning.
+- Do not summarize.
+- Do not add new information.
+
+Memo:
+{memo}
+
+Rewritten memo:"""
+
 
 def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str = '\n') -> Tuple[Event, Thread]:
     stop_event = Event()
@@ -247,99 +277,8 @@ def main() -> None:
 
                 inference = rhino.get_inference()
                 is_understood = inference.is_understood
-                if is_understood:
-                    if inference.intent == 'startMemo':
-                        recorder.start()
 
-                        memo = ""
-                        recording_lock = Lock()
-
-                        def get_recording() -> str:
-                            with recording_lock:
-                                display_text = "(listening)" if recording_lock == "" else memo
-                                return f"[MEMO] {display_text}"
-
-                        text_event, text_thread = print_async(get_recording)
-
-                        while True:
-                            partial, is_endpoint = cheetah.process(recorder.read())
-                            with recording_lock:
-                                memo += partial
-                            if is_endpoint:
-                                remainder = cheetah.flush()
-                                with recording_lock:
-                                    memo += remainder
-                                    memo += ' '
-
-                            if memo.lower().strip(' .').endswith('stop recording'):
-                                with recording_lock:
-                                    memo = memo.rstrip(' .')[:-len('stop recording')]
-                                text_event.set()
-                                text_thread.join()
-                                break
-
-                        recorder.stop()
-                    elif inference.intent == 'readMemo':
-                        if memo is not None:
-                            synthesize_and_playback(orca=orca, speaker=speaker, text=memo)
-                        else:
-                            synthesize_and_playback(orca=orca, speaker=speaker, text="Please record a memo first.")
-                    elif inference.intent == 'summarizeMemo':
-                        if memo is not None:
-                            dialog = llm.get_dialog()
-                            dialog.add_human_request(f"""Summarize the memo below. Return only the summary.
-Rules:
-- Do not say "Here is the rewritten memo".
-- Do not add any prefix, label, intro, explanation, or quotes.
-- Do not explain your changes.
-- Keep the important details.
-- Fix obvious transcription errors only when the meaning is clear.
-- Do not add new information.
-- Use one short sentence.
-
-Memo:
-{memo}
-
-Summarized memo:""")
-                            print_event, print_thread = print_async(get_text=lambda: "Summarizing memo")
-                            completion = llm.generate(
-                                prompt=dialog.prompt(),
-                                stop_phrases={'<|eot_id|>'})
-                            print_event.set()
-                            print_thread.join()
-                            memo = completion.completion.strip('<|eot_id|>')
-                        else:
-                            synthesize_and_playback(orca=orca, speaker=speaker, text="Please record a memo first.")
-                    elif inference.intent == 'rewriteMemo':
-                        if memo is not None:
-                            dialog = llm.get_dialog()
-                            dialog.add_human_request(f"""Rewrite the memo below. Return only the rewritten memo.
-Rules:
-- Do not say "Here is the summarized memo".
-- Do not add any prefix, label, intro, explanation, or quotes.
-- Do not explain your changes.
-- Fix grammar, punctuation, casing, repeated words, filler words, and false starts.
-- Preserve the original meaning.
-- Do not summarize.
-- Do not add new information.
-
-Memo:
-{memo}
-
-Rewritten memo:""")
-                            print_event, print_thread = print_async(get_text=lambda: "Rewriting memo")
-                            completion = llm.generate(
-                                prompt=dialog.prompt(),
-                                stop_phrases={'<|eot_id|>'})
-                            print_event.set()
-                            print_thread.join()
-                            memo = completion.completion.strip('<|eot_id|>')
-                        else:
-                            synthesize_and_playback(orca=orca, speaker=speaker, text="Please record a memo first.")
-
-                    recorder.start()
-                    print_event, print_thread = print_async(get_text=lambda: "Say the wake word")
-                else:
+                if not is_understood:
                     synthesize_and_playback(
                         orca=orca,
                         speaker=speaker,
@@ -347,6 +286,73 @@ Rewritten memo:""")
 
                     recorder.start()
                     print_event, print_thread = print_async(get_text=lambda: "Say a voice command")
+                    continue
+
+                if inference.intent == 'startMemo':
+                    recorder.start()
+
+                    memo = ""
+                    recording_lock = Lock()
+
+                    def get_recording() -> str:
+                        with recording_lock:
+                            display_text = "(listening)" if recording_lock == "" else memo
+                            return f"[MEMO] {display_text}"
+
+                    text_event, text_thread = print_async(get_recording)
+
+                    while True:
+                        partial, is_endpoint = cheetah.process(recorder.read())
+                        with recording_lock:
+                            memo += partial
+                        if is_endpoint:
+                            remainder = cheetah.flush()
+                            with recording_lock:
+                                memo += remainder
+                                memo += ' '
+
+                        if memo.lower().strip(' .').endswith('stop recording'):
+                            with recording_lock:
+                                memo = memo.rstrip(' .')[:-len('stop recording')]
+                            text_event.set()
+                            text_thread.join()
+                            break
+
+                    recorder.stop()
+                elif inference.intent == 'readMemo':
+                    if memo is not None:
+                        synthesize_and_playback(orca=orca, speaker=speaker, text=memo)
+                    else:
+                        synthesize_and_playback(orca=orca, speaker=speaker, text="Please record a memo first.")
+                elif inference.intent == 'summarizeMemo':
+                    if memo is not None:
+                        dialog = llm.get_dialog()
+                        dialog.add_human_request(SUMMARY_TEMPLATE.format(memo=memo))
+                        print_event, print_thread = print_async(get_text=lambda: "Summarizing memo")
+                        completion = llm.generate(
+                            prompt=dialog.prompt(),
+                            stop_phrases={'<|eot_id|>'})
+                        print_event.set()
+                        print_thread.join()
+                        memo = completion.completion.strip('<|eot_id|>')
+                    else:
+                        synthesize_and_playback(orca=orca, speaker=speaker, text="Please record a memo first.")
+                elif inference.intent == 'rewriteMemo':
+                    if memo is not None:
+                        dialog = llm.get_dialog()
+                        dialog.add_human_request(REWRITE_TEMPLATE.format(memo=memo))
+                        print_event, print_thread = print_async(get_text=lambda: "Rewriting memo")
+                        completion = llm.generate(
+                            prompt=dialog.prompt(),
+                            stop_phrases={'<|eot_id|>'})
+                        print_event.set()
+                        print_thread.join()
+                        memo = completion.completion.strip('<|eot_id|>')
+                    else:
+                        synthesize_and_playback(orca=orca, speaker=speaker, text="Please record a memo first.")
+
+                recorder.start()
+                print_event, print_thread = print_async(get_text=lambda: "Say the wake word")
     except KeyboardInterrupt:
         pass
     finally:
