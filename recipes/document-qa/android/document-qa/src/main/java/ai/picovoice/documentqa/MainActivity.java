@@ -23,7 +23,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.renderscript.ScriptGroup;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.style.ForegroundColorSpan;
@@ -52,13 +51,11 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -142,9 +139,9 @@ public class MainActivity extends AppCompatActivity {
     private ConstraintLayout loadModelLayout;
     private ConstraintLayout chatLayout;
 
-    private Button loadModelButton;
-    private TextView loadModelText;
-    private ProgressBar loadModelProgress;
+    private Button loadDocumentButton;
+    private TextView loadDocumentText;
+    private ProgressBar loadDocumentProgress;
 
     private TextView chatText;
 
@@ -156,9 +153,9 @@ public class MainActivity extends AppCompatActivity {
 
     private VolumeMeterView volumeMeterView;
 
-    private ImageButton loadNewModelButton;
+    private ImageButton loadNewDocumentButton;
 
-    private ImageButton clearTextButton;
+    private ImageButton skipButton;
 
     private SpannableStringBuilder chatTextBuilder;
 
@@ -173,12 +170,11 @@ public class MainActivity extends AppCompatActivity {
         loadModelLayout = findViewById(R.id.loadModelLayout);
         chatLayout = findViewById(R.id.chatLayout);
 
-        loadModelText = findViewById(R.id.loadModelText);
-        loadModelProgress = findViewById(R.id.loadModelProgress);
-        loadModelButton = findViewById(R.id.loadModelButton);
+        loadDocumentText = findViewById(R.id.loadDocumentText);
+        loadDocumentProgress = findViewById(R.id.loadDocumentProgress);
+        loadDocumentButton = findViewById(R.id.loadDocumentButton);
 
-        loadModelButton.setOnClickListener(view -> {
-            // TODO: Should we expand this mimetype?
+        loadDocumentButton.setOnClickListener(view -> {
             modelSelection.launch(new String[]{"text/plain"});
         });
 
@@ -192,9 +188,8 @@ public class MainActivity extends AppCompatActivity {
         statusProgress = findViewById(R.id.statusProgress);
         volumeMeterView = findViewById(R.id.volumeMeterView);
 
-        loadNewModelButton = findViewById(R.id.loadNewModelButton);
-        loadNewModelButton.setOnClickListener(view -> {
-            // TODO: Change to "load new document button"
+        loadNewDocumentButton = findViewById(R.id.loadNewDocumentButton);
+        loadNewDocumentButton.setOnClickListener(view -> {
             try {
                 voiceProcessor.stop();
             } catch (VoiceProcessorException e) {
@@ -202,20 +197,16 @@ public class MainActivity extends AppCompatActivity {
             }
             updateUIState(UIState.INIT);
 
-            engineExecutor.submit(() -> {
-                cleanupEngines();
-            });
+            engineExecutor.submit(this::cleanupEngines);
 
             chunks = new ArrayList<>();
             embeddings = new ArrayList<>();
             mainHandler.post(() -> chatText.setText(""));
         });
 
-        clearTextButton = findViewById(R.id.clearButton);
-        clearTextButton.setOnClickListener(view -> {
-            mainHandler.post(() -> {
-                interrupt();
-            });
+        skipButton = findViewById(R.id.skipButton);
+        skipButton.setOnClickListener(view -> {
+            mainHandler.post(this::interrupt);
         });
     }
 
@@ -229,7 +220,7 @@ public class MainActivity extends AppCompatActivity {
 
                     if (selectedUri == null) {
                         updateUIState(UIState.INIT);
-                        mainHandler.post(() -> loadModelText.setText("No file selected"));
+                        mainHandler.post(() -> loadDocumentText.setText("No file selected"));
                         return;
                     }
 
@@ -269,7 +260,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             String chunk = text.substring(start, end);
-            if (chunk.length() > 0) {
+            if (!chunk.isEmpty()) {
                 chunks.add(chunk);
             }
 
@@ -315,7 +306,7 @@ public class MainActivity extends AppCompatActivity {
 
         for (int i = 0; i < chunks.size(); i++) {
             String statusText = "Generating embeddings " + (i + 1) + "/" + chunks.size();
-            mainHandler.post(() -> loadModelText.setText(statusText));
+            mainHandler.post(() -> loadDocumentText.setText(statusText));
             embeddings.add(generateEmbedding(chunks.get(i)));
         }
 
@@ -355,15 +346,15 @@ public class MainActivity extends AppCompatActivity {
         }
 
         ArrayList<String> retrievedChunks = new ArrayList<>();
-        for (int i = 0; i < indices.length; i++) {
-            retrievedChunks.add(chunks.get(indices[i]));
+        for (int index : indices) {
+            retrievedChunks.add(chunks.get(index));
         }
 
         return retrievedChunks;
     }
 
     private void initEngines(Uri documentUri) {
-        mainHandler.post(() -> loadModelText.setText("Loading Cheetah..."));
+        mainHandler.post(() -> loadDocumentText.setText("Loading Cheetah..."));
         try {
             cheetah = new Cheetah.Builder()
                     .setAccessKey(ACCESS_KEY)
@@ -376,7 +367,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        mainHandler.post(() -> loadModelText.setText("Loading picoLLM (embedding)..."));
+        mainHandler.post(() -> loadDocumentText.setText("Loading picoLLM (embedding)..."));
         File llmEmbeddingModelFile = extractModelFile(LLM_EMBED_MODEL_FILE);
         try {
             picollmEmbedding = new PicoLLM.Builder()
@@ -388,7 +379,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        mainHandler.post(() -> loadModelText.setText("Loading picoLLM (chat)..."));
+        mainHandler.post(() -> loadDocumentText.setText("Loading picoLLM (chat)..."));
         File llmChatModelFile = extractModelFile(LLM_IT_MODEL_FILE);
         try {
             picollmChat = new PicoLLM.Builder()
@@ -400,7 +391,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        mainHandler.post(() -> loadModelText.setText("Loading Orca..."));
+        mainHandler.post(() -> loadDocumentText.setText("Loading Orca..."));
         try {
             orca = new Orca.Builder()
                     .setAccessKey(ACCESS_KEY)
@@ -411,7 +402,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        mainHandler.post(() -> loadModelText.setText("Reading document..."));
+        mainHandler.post(() -> loadDocumentText.setText("Reading document..."));
         boolean hasCache = loadCachedEmbeddings(documentUri);
         if (hasCache) {
             mainHandler.post(() -> {
@@ -622,7 +613,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void runLLM(String question) {
-        if (question.length() == 0) {
+        if (question.isEmpty()) {
             return;
         }
 
@@ -664,7 +655,7 @@ public class MainActivity extends AppCompatActivity {
                         prompt,
                         new PicoLLMGenerateParams.Builder()
                                 .setStreamCallback(token -> {
-                                    if (token != null && token.length() > 0) {
+                                    if (token != null && !token.isEmpty()) {
                                         boolean containsStopPhrase = false;
                                         for (String k : STOP_PHRASES) {
                                             if (token.contains(k)) {
@@ -692,8 +683,8 @@ public class MainActivity extends AppCompatActivity {
                 isQueueingTokens.set(false);
 
                 mainHandler.post(() -> {
-                    clearTextButton.setEnabled(true);
-                    clearTextButton.setImageDrawable(
+                    skipButton.setEnabled(true);
+                    skipButton.setImageDrawable(
                             ResourcesCompat.getDrawable(getResources(),
                                     R.drawable.clear_button,
                                     null));
@@ -730,7 +721,7 @@ public class MainActivity extends AppCompatActivity {
             isQueueingPcm.set(true);
             while (isQueueingTokens.get() || !tokenQueue.isEmpty()) {
                 String token = tokenQueue.poll();
-                if (token != null && token.length() > 0) {
+                if (token != null && !token.isEmpty()) {
                     try {
                         short[] pcm = orcaStream.synthesize(token);
 
@@ -864,7 +855,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void onEngineInitError(String message) {
         updateUIState(UIState.INIT);
-        mainHandler.post(() -> loadModelText.setText(message));
+        mainHandler.post(() -> loadDocumentText.setText(message));
     }
 
     private void onEngineProcessError(String message) {
@@ -911,37 +902,37 @@ public class MainActivity extends AppCompatActivity {
                 case INIT:
                     loadModelLayout.setVisibility(View.VISIBLE);
                     chatLayout.setVisibility(View.INVISIBLE);
-                    loadModelButton.setEnabled(true);
-                    loadModelButton.setBackground(
+                    loadDocumentButton.setEnabled(true);
+                    loadDocumentButton.setBackground(
                             ResourcesCompat.getDrawable(
                                     getResources(),
                                     R.drawable.button_background,
                                     null));
-                    loadModelProgress.setVisibility(View.INVISIBLE);
-                    loadModelText.setText(getResources().getString(R.string.intro_text));
+                    loadDocumentProgress.setVisibility(View.INVISIBLE);
+                    loadDocumentText.setText(getResources().getString(R.string.intro_text));
                     break;
                 case LOADING_MODEL:
                     loadModelLayout.setVisibility(View.VISIBLE);
                     chatLayout.setVisibility(View.INVISIBLE);
-                    loadModelButton.setEnabled(false);
-                    loadModelButton.setBackground(
+                    loadDocumentButton.setEnabled(false);
+                    loadDocumentButton.setBackground(
                             ResourcesCompat.getDrawable(
                                     getResources(),
                                     R.drawable.button_disabled,
                                     null));
-                    loadModelProgress.setVisibility(View.VISIBLE);
-                    loadModelText.setText("Loading model...");
+                    loadDocumentProgress.setVisibility(View.VISIBLE);
+                    loadDocumentText.setText("Loading model...");
                     break;
                 case STT:
                     loadModelLayout.setVisibility(View.INVISIBLE);
                     chatLayout.setVisibility(View.VISIBLE);
 
-                    loadNewModelButton.setImageDrawable(
+                    loadNewDocumentButton.setImageDrawable(
                             ResourcesCompat.getDrawable(
                                     getResources(),
                                     R.drawable.arrow_back_button,
                                     null));
-                    loadNewModelButton.setEnabled(true);
+                    loadNewDocumentButton.setEnabled(true);
                     volumeMeterView.setVisibility(View.VISIBLE);
                     statusProgress.setVisibility(View.GONE);
                     statusText.setVisibility(View.VISIBLE);
@@ -956,8 +947,8 @@ public class MainActivity extends AppCompatActivity {
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                     chatText.setText(chatTextBuilder);
 
-                    clearTextButton.setEnabled(false);
-                    clearTextButton.setImageDrawable(
+                    skipButton.setEnabled(false);
+                    skipButton.setImageDrawable(
                             ResourcesCompat.getDrawable(
                                     getResources(),
                                     R.drawable.clear_button_disabled,
@@ -967,19 +958,19 @@ public class MainActivity extends AppCompatActivity {
                     loadModelLayout.setVisibility(View.INVISIBLE);
                     chatLayout.setVisibility(View.VISIBLE);
 
-                    loadNewModelButton.setImageDrawable(
+                    loadNewDocumentButton.setImageDrawable(
                             ResourcesCompat.getDrawable(
                                     getResources(),
                                     R.drawable.arrow_back_button_disabled,
                                     null));
-                    loadNewModelButton.setEnabled(false);
+                    loadNewDocumentButton.setEnabled(false);
                     chatText.setText("");
                     volumeMeterView.setVisibility(View.GONE);
                     statusProgress.setVisibility(View.VISIBLE);
                     statusText.setVisibility(View.VISIBLE);
                     statusText.setText("Generating...");
-                    clearTextButton.setEnabled(false);
-                    clearTextButton.setImageDrawable(
+                    skipButton.setEnabled(false);
+                    skipButton.setImageDrawable(
                             ResourcesCompat.getDrawable(
                                     getResources(),
                                     R.drawable.clear_button_disabled,

@@ -16,7 +16,7 @@
             android:orientation="horizontal"
             app:layout_constraintGuide_percent="0.80" />
         <TextView
-            android:id="@+id/loadModelText"
+            android:id="@+id/loadDocumentText"
             android:text="@string/intro_text"
             android:textSize="17sp"
             android:layout_width="wrap_content"
@@ -28,18 +28,18 @@
             app:layout_constraintBottom_toTopOf="@+id/modelGuidelineHorizontal"
             app:layout_constraintTop_toTopOf="parent" />
         <ProgressBar
-            android:id="@+id/loadModelProgress"
+            android:id="@+id/loadDocumentProgress"
             android:visibility="invisible"
             android:indeterminateTint="@color/colorPrimary"
             android:layout_width="50dp"
             android:layout_height="50dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/loadModelText"
+            app:layout_constraintTop_toBottomOf="@+id/loadDocumentText"
             android:layout_marginTop="15dp"/>
 
         <Button
-            android:id="@+id/loadModelButton"
+            android:id="@+id/loadDocumentButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:background="@drawable/button_background"
@@ -100,7 +100,7 @@
 
         <ImageButton
             android:background="#EEEEEE"
-            android:id="@+id/loadNewModelButton"
+            android:id="@+id/loadNewDocumentButton"
             android:src="@drawable/arrow_back_button"
             android:layout_marginStart="10dp"
             android:layout_marginBottom="5dp"
@@ -111,7 +111,7 @@
             app:layout_constraintBottom_toBottomOf="@+id/chatScrollView"/>
 
         <ImageButton
-            android:id="@+id/clearButton"
+            android:id="@+id/skipButton"
             android:layout_width="wrap_content"
             android:layout_height="30dp"
             android:layout_marginEnd="10dp"
