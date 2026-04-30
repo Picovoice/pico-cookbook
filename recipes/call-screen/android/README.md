@@ -15,11 +15,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ## Usage
 
-### 1. Configure the demo
-
-1. Open the `CallScreen` project in Android Studio. 
-2. Copy your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable in [MainActivity.java](call-screen/src/main/java/ai/picovoice/callscreen/MainActivity.java).
-3. Type your name in the `USERNAME` variable in [MainActivity.java](call-screen/src/main/java/ai/picovoice/callscreen/MainActivity.java).
+### 1. Open the `CallScreen` project in Android Studio
 
 ### 2. Train the Speech-to-Intent Model
 

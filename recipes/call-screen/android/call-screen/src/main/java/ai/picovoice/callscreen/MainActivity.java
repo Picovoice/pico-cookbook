@@ -126,6 +126,7 @@ public class MainActivity extends AppCompatActivity {
     private ScrollView callerScrollView;
     private SpannableStringBuilder callerTextBuilder;
     private TextView userText;
+    private ScrollView userScrollView;
     private SpannableStringBuilder userTextBuilder;
     private boolean givingOptions = false;
     private TextView stateText;
@@ -157,6 +158,7 @@ public class MainActivity extends AppCompatActivity {
         callerScrollView = findViewById(R.id.callerScrollView);
         callerText = findViewById(R.id.callerText);
         callerTextBuilder = new SpannableStringBuilder();
+        userScrollView = findViewById(R.id.userScrollView);
         userText = findViewById(R.id.userText);
         userTextBuilder = new SpannableStringBuilder();
         stateText = findViewById(R.id.stateText);
@@ -560,9 +562,16 @@ public class MainActivity extends AppCompatActivity {
         });
 
         userTextBuilder.clear();
-        userTextBuilder.append("Select one of the call-assist actions below:\n");
+        userTextBuilder.append("Select a call-assist action:\n");
         userTextBuilder.append(Action.all());
         appendStyledText(userTextBuilder, "[" + username.toUpperCase() + "] ", new ForegroundColorSpan(spanColour));
+
+        mainHandler.post(() -> {
+            userText.setText(userTextBuilder);
+            userText.post(() -> {
+                userScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+            });
+        });
 
         animation = new SpannableTextAnimation(userTextBuilder, userText);
 
@@ -640,7 +649,7 @@ public class MainActivity extends AppCompatActivity {
                     stateText.setText("AI: Listening for " + username + "'s command");
                     break;
                 default:
-                    stateText.setText("AI: Unknown state");
+                    Log.e("PICOVOICE", "Unknown AppState");
                     break;
             }
 

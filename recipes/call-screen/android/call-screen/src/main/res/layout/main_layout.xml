@@ -46,7 +46,7 @@
             android:id="@+id/startButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="-36dp"
+            android:layout_marginTop="-38dp"
             android:background="@drawable/button_background"
             android:text="@string/startButtonText"
             android:textAllCaps="false"
@@ -75,7 +75,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            app:layout_constraintGuide_percent="0.50" />
+            app:layout_constraintGuide_percent="0.40" />
 
         <ScrollView
             android:id="@+id/callerScrollView"
@@ -110,26 +110,40 @@
 
         </ScrollView>
 
-        <TextView
-            android:id="@+id/userText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:breakStrategy="simple"
-            android:fontFamily="monospace"
-            android:hyphenationFrequency="none"
+        <ScrollView
+            android:id="@+id/userScrollView"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:layout_marginStart="24dp"
             android:layout_marginEnd="24dp"
-            android:padding="10dp"
-            android:text=""
-            android:textSize="18sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/callerScrollView" />
+            app:layout_constraintTop_toBottomOf="@+id/callerScrollView"
+            app:layout_constraintBottom_toTopOf="@+id/stateContainer">
+
+            <TextView
+                android:id="@+id/userText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:breakStrategy="simple"
+                android:fontFamily="monospace"
+                android:hyphenationFrequency="none"
+                android:paddingTop="10dp"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp"
+                android:text=""
+                android:textSize="17sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+
+        </ScrollView>
 
         <LinearLayout
             android:id="@+id/stateContainer"
             android:layout_width="match_parent"
-            android:layout_height="140dp"
+            android:layout_height="120dp"
             android:gravity="center"
             android:orientation="vertical"
             app:layout_constraintBottom_toBottomOf="parent" >
@@ -138,7 +152,7 @@
                 android:id="@+id/stateText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="10dp"
                 android:text="State:"
                 android:textSize="20sp"
                 app:layout_constraintBottom_toTopOf="@+id/volumeMeterView"
