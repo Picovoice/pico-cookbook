@@ -254,6 +254,7 @@ public class MainActivity extends AppCompatActivity {
         sourceLanguageSpinner = findViewById(R.id.sourceLanguage);
         targetLanguageSpinner = findViewById(R.id.targetLanguage);
         startButton = findViewById(R.id.startButton);
+        startButton.setEnabled(false);
 
         ArrayAdapter<String> sourceLanguageAdapter = new ArrayAdapter<String>(
                 this,
@@ -473,6 +474,7 @@ public class MainActivity extends AppCompatActivity {
         mainHandler.post(() -> {
             sourceLanguageSpinner.setEnabled(false);
             targetLanguageSpinner.setEnabled(false);
+            startButton.setEnabled(false);
             rootView.invalidate();
         });
 
@@ -530,6 +532,7 @@ public class MainActivity extends AppCompatActivity {
                 pcmBuffer.clear();
             } catch (BatException e) {
                 setError(e.getMessage());
+                return;
             }
         }
 
@@ -543,6 +546,7 @@ public class MainActivity extends AppCompatActivity {
             }
             sourceLanguageSpinner.setEnabled(true);
             targetLanguageSpinner.setEnabled(true);
+            startButton.setEnabled(true);
             rootView.invalidate();
         });
     }
