@@ -86,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
-    private static final String USERNAME = "${YOUR_USERNAME_HERE}";
+    private static final String USERNAME = "${YOUR_NAME_HERE}";
 
     private static final String STT_MODEL_FILE = "cheetah_params.pv";
     private static final String TTS_MODEL_FILE = "orca_params_female.pv";

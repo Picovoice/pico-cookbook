@@ -29,7 +29,23 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 4. Click Import YAML in the top-right corner.
 5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
 6. Select the **Android** platform and download the generated Rhino context file (`.rhn`).
-7. Copy the downloaded Rhino context file into [call-screen/src/main/assets](call-screen/src/main/assets) and rename it to `call_screen_demo_android.rhn`.
+
+### 3. Download the Required Models
+
+Run the setup script to download and copy the models for [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/)
+and [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/).
+
+It will also copy the models provided for [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) to the assets folder.
+
+Lastly, it will place your `AccessKey` from Picovoice Console and name into the `ACCESS_KEY` and `USERNAME` variables
+in [MainActivity.java](voice-memo-assistant/src/main/java/ai/picovoice/voicememoassistant/MainActivity.java).
+
+```console
+python setup.py \
+    --access_key ${ACCESS_KEY} \
+    --name ${NAME} \
+    --context_path ${PATH_TO_RHN}
+```
 
 ### 3. Run the Android Studio project
 
