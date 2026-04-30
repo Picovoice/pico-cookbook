@@ -52,6 +52,7 @@ sigwinch
 socialtext
 spannable
 speakerawarewakeword
+speechtospeechtranslation
 subwin
 tock
 tock
