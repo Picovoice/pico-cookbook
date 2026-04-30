@@ -118,7 +118,6 @@
             android:layout_marginBottom="5dp"
             android:background="#EEEEEE"
             android:src="@drawable/clear_button"
-            android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="@+id/chatScrollView"
             app:layout_constraintEnd_toEndOf="@+id/chatScrollView" />
 
@@ -131,11 +130,19 @@
             app:layout_constraintEnd_toEndOf="@+id/chatScrollView"
             android:orientation="horizontal"
             android:gravity="center">
+
             <ProgressBar
                 android:id="@+id/statusProgress"
                 android:indeterminateTint="@color/colorPrimary"
                 android:layout_width="50dp"
                 android:layout_height="50dp"
+                android:layout_marginEnd="10dp"/>
+
+            <ai.picovoice.documentqa.VolumeMeterView
+                android:id="@+id/volumeMeterView"
+                android:layout_width="wrap_content"
+                android:layout_height="50dp"
+                android:visibility="gone"
                 android:layout_marginEnd="10dp"/>
 
             <TextView

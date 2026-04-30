@@ -154,9 +154,11 @@ public class MainActivity extends AppCompatActivity {
 
     private ProgressBar statusProgress;
 
+    private VolumeMeterView volumeMeterView;
+
     private ImageButton loadNewModelButton;
 
-//    private ImageButton clearTextButton;
+    private ImageButton clearTextButton;
 
     private SpannableStringBuilder chatTextBuilder;
 
@@ -188,30 +190,33 @@ public class MainActivity extends AppCompatActivity {
         chatTextScrollView = findViewById(R.id.chatScrollView);
         statusText = findViewById(R.id.statusText);
         statusProgress = findViewById(R.id.statusProgress);
+        volumeMeterView = findViewById(R.id.volumeMeterView);
 
         loadNewModelButton = findViewById(R.id.loadNewModelButton);
         loadNewModelButton.setOnClickListener(view -> {
             // TODO: Change to "load new document button"
+            try {
+                voiceProcessor.stop();
+            } catch (VoiceProcessorException e) {
+                onEngineProcessError(e.getMessage());
+            }
             updateUIState(UIState.INIT);
 
-            cleanupEngines();
+            engineExecutor.submit(() -> {
+                cleanupEngines();
+            });
+
             chunks = new ArrayList<>();
             embeddings = new ArrayList<>();
             mainHandler.post(() -> chatText.setText(""));
         });
 
-//        clearTextButton = findViewById(R.id.clearButton);
-//        clearTextButton.setOnClickListener(view -> {
-//            chatTextBuilder = new SpannableStringBuilder();
-//            mainHandler.post(() -> {
-//                chatText.setText("");
-//                clearTextButton.setEnabled(false);
-//                clearTextButton.setImageDrawable(
-//                        ResourcesCompat.getDrawable(getResources(),
-//                                R.drawable.clear_button_disabled,
-//                                null));
-//            });
-//        });
+        clearTextButton = findViewById(R.id.clearButton);
+        clearTextButton.setOnClickListener(view -> {
+            mainHandler.post(() -> {
+                interrupt();
+            });
+        });
     }
 
     ActivityResultLauncher<String[]> modelSelection = registerForActivityResult(
@@ -562,6 +567,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void runWakeWordSTT(short[] frame) {
+        volumeMeterView.processFrame(frame);
+
         if (currentState == UIState.STT) {
             try {
                 CheetahTranscript result = cheetah.process(frame);
@@ -685,11 +692,11 @@ public class MainActivity extends AppCompatActivity {
                 isQueueingTokens.set(false);
 
                 mainHandler.post(() -> {
-//                    clearTextButton.setEnabled(true);
-//                    clearTextButton.setImageDrawable(
-//                            ResourcesCompat.getDrawable(getResources(),
-//                                    R.drawable.clear_button,
-//                                    null));
+                    clearTextButton.setEnabled(true);
+                    clearTextButton.setImageDrawable(
+                            ResourcesCompat.getDrawable(getResources(),
+                                    R.drawable.clear_button,
+                                    null));
                     chatTextBuilder.append("\n\n");
                 });
 
@@ -827,6 +834,17 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void interrupt() {
+        try {
+            picollmChat.interrupt();
+            if (ttsOutput != null && ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
+                ttsOutput.stop();
+            }
+        } catch (PicoLLMException e) {
+            onEngineProcessError(e.getMessage());
+        }
+    }
+
     private File extractModelFile(String filename) {
         File modelFile = new File(getApplicationContext().getFilesDir(), filename);
 
@@ -924,6 +942,7 @@ public class MainActivity extends AppCompatActivity {
                                     R.drawable.arrow_back_button,
                                     null));
                     loadNewModelButton.setEnabled(true);
+                    volumeMeterView.setVisibility(View.VISIBLE);
                     statusProgress.setVisibility(View.GONE);
                     statusText.setVisibility(View.VISIBLE);
                     statusText.setText("Listening...");
@@ -937,11 +956,12 @@ public class MainActivity extends AppCompatActivity {
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                     chatText.setText(chatTextBuilder);
 
-//                    clearTextButton.setEnabled(true);
-//                    clearTextButton.setImageDrawable(
-//                            ResourcesCompat.getDrawable(getResources(),
-//                                    R.drawable.clear_button,
-//                                    null));
+                    clearTextButton.setEnabled(false);
+                    clearTextButton.setImageDrawable(
+                            ResourcesCompat.getDrawable(
+                                    getResources(),
+                                    R.drawable.clear_button_disabled,
+                                    null));
                     break;
                 case LLM_TTS:
                     loadModelLayout.setVisibility(View.INVISIBLE);
@@ -954,15 +974,16 @@ public class MainActivity extends AppCompatActivity {
                                     null));
                     loadNewModelButton.setEnabled(false);
                     chatText.setText("");
+                    volumeMeterView.setVisibility(View.GONE);
                     statusProgress.setVisibility(View.VISIBLE);
                     statusText.setVisibility(View.VISIBLE);
                     statusText.setText("Generating...");
-//                    clearTextButton.setEnabled(false);
-//                    clearTextButton.setImageDrawable(
-//                            ResourcesCompat.getDrawable(
-//                                    getResources(),
-//                                    R.drawable.clear_button_disabled,
-//                                    null));
+                    clearTextButton.setEnabled(false);
+                    clearTextButton.setImageDrawable(
+                            ResourcesCompat.getDrawable(
+                                    getResources(),
+                                    R.drawable.clear_button_disabled,
+                                    null));
                     break;
                 default:
                     break;
