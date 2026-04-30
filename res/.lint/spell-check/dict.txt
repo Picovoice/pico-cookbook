@@ -46,6 +46,7 @@ samplerate
 sdcard
 sigwinch
 spannable
+speakerawarewakeword
 subwin
 tock
 tock
