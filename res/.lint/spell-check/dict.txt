@@ -5,6 +5,7 @@ appendleft
 colour
 compat
 dbfs
+deepseek
 dotdotdot
 dotnet
 dtype
@@ -43,11 +44,13 @@ pvrecorder
 pvrhino
 pvspeaker
 pvzebra
+qwen
 samplerate
 sdcard
 sigwinch
 spannable
 subwin
+tobytes
 tock
 tock
 uids
