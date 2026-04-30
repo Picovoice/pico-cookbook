@@ -1,0 +1,16 @@
+context:
+  expressions:
+    startMemo:
+      - Start (@memo)
+    readMemo:
+      - Read (@memo)
+    summarizeMemo:
+      - Summarize (@memo)
+    rewriteMemo:
+      - Rewrite (@memo)
+  slots: {}
+  macros:
+    memo:
+      - recording
+      - memo
+      - it

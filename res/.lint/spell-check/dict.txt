@@ -52,6 +52,7 @@ tock
 tock
 uids
 venv
+voicememoassistant
 wakeword
 xcodeproj
 xcworkspace
