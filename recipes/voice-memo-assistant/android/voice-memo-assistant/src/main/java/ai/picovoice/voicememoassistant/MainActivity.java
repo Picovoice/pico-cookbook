@@ -255,18 +255,18 @@ public class MainActivity extends AppCompatActivity {
                 if (isComplete) {
                     RhinoInference inference = rhino.getInference();
                     if (inference.getIsUnderstood()) {
-                        if (Objects.equals(inference.getIntent(), "startRecording")) {
+                        if (Objects.equals(inference.getIntent(), "startMemo")) {
                             memoText = new StringBuilder();
                             enhancedText = "";
                             updateUIState(UIState.START_RECORDING);
-                        } else if (Objects.equals(inference.getIntent(), "readRecording")) {
+                        } else if (Objects.equals(inference.getIntent(), "readMemo")) {
                             updateUIState(UIState.READ_RECORDING);
                             String text = !enhancedText.isEmpty() ? enhancedText : NO_MEMO_ERROR_PHRASE;
                             synthesizeAndPlayback(text);
-                        } else if (Objects.equals(inference.getIntent(), "summarizeRecording")) {
+                        } else if (Objects.equals(inference.getIntent(), "summarizeMemo")) {
                             updateUIState(UIState.SUMMARIZE_RECORDING);
                             summarizeMemo();
-                        } else if (Objects.equals(inference.getIntent(), "rewriteRecording")) {
+                        } else if (Objects.equals(inference.getIntent(), "rewriteMemo")) {
                             updateUIState(UIState.REWRITE_RECORDING);
                             rewriteMemo();
                         }
