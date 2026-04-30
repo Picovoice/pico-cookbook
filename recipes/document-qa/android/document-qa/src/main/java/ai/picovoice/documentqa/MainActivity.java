@@ -90,8 +90,6 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TTS_MODEL_FILE = "orca_params_female.pv";
 
-    private static final String SYSTEM_PROMPT = null;
-
     private static final int COMPLETION_TOKEN_LIMIT = 128;
 
     private static final int TTS_WARMUP_SECONDS = 1;
@@ -115,10 +113,6 @@ public class MainActivity extends AppCompatActivity {
 
     ArrayList<String> chunks;
     ArrayList<float[]> embeddings;
-
-    private PicoLLMDialog dialog;
-
-    private PicoLLMCompletion finalCompletion;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -201,13 +195,6 @@ public class MainActivity extends AppCompatActivity {
                                 R.drawable.clear_button_disabled,
                                 null));
             });
-
-            try {
-                dialog = picollmChat.getDialogBuilder().setSystem(SYSTEM_PROMPT).build();
-            } catch (PicoLLMException e) {
-                updateUIState(UIState.STT);
-                mainHandler.post(() -> chatText.setText(e.toString()));
-            }
         });
     }
 
@@ -398,7 +385,6 @@ public class MainActivity extends AppCompatActivity {
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(llmChatModelFile.getAbsolutePath())
                     .build();
-            dialog = picollmChat.getDialogBuilder().setSystem(SYSTEM_PROMPT).build();
         } catch (PicoLLMException e) {
             onEngineInitError(e.getMessage());
             return;
@@ -486,8 +472,27 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private String buildPrompt(String question, ArrayList<String> retrievedChunks) {
-    
+    private String buildPrompt(String question, ArrayList<String> retrievedChunks) throws PicoLLMException {
+        StringBuilder context = new StringBuilder();
+        for (int i = 0; i < retrievedChunks.size(); i++) {
+            context.append(String.format("[Excerpt %d]\n%s", i + 1, retrievedChunks.get(i)));
+        }
+
+        String systemPrompt =
+                "You are a document question-answering assistant. " +
+                "Answer only using the provided document excerpts. " +
+                "If the answer is not in the excerpts, say that you do not know from the provided document. " +
+                "Do not give legal advice. " +
+                "Keep the answer concise. " +
+                "Do not use Markdown formatting. " +
+                "Do not use bullet points. " +
+                "Use plain text only.";
+        PicoLLMDialog dialog = picollmChat.getDialogBuilder().setSystem(systemPrompt).build();
+
+        String prompt = String.format("Document excerpts:\n\n%s\n\nQuestion:\n%s", context.toString(), question);
+        dialog.addHumanRequest(prompt);
+
+        return dialog.getPrompt();
     }
 
     private void runLLM(String question) {
@@ -502,7 +507,6 @@ public class MainActivity extends AppCompatActivity {
             onEngineProcessError(e.getMessage());
             return;
         }
-        String prompt = buildPrompt(question, retrievedChunks);;
 
         AtomicBoolean isQueueingTokens = new AtomicBoolean(false);
         CountDownLatch tokensReadyLatch = new CountDownLatch(1);
@@ -513,8 +517,6 @@ public class MainActivity extends AppCompatActivity {
         ConcurrentLinkedQueue<short[]> pcmQueue = new ConcurrentLinkedQueue<>();
 
         updateUIState(UIState.LLM_TTS);
-
-        finalCompletion = null;
 
         mainHandler.post(() -> {
             int start = chatTextBuilder.length();
@@ -531,9 +533,9 @@ public class MainActivity extends AppCompatActivity {
             try {
                 isQueueingTokens.set(true);
 
-                dialog.addHumanRequest(prompt);
-                finalCompletion = picollmChat.generate(
-                        dialog.getPrompt(),
+                String prompt = buildPrompt(question, retrievedChunks);
+                picollmChat.generate(
+                        prompt,
                         new PicoLLMGenerateParams.Builder()
                                 .setStreamCallback(token -> {
                                     if (token != null && token.length() > 0) {
@@ -560,7 +562,6 @@ public class MainActivity extends AppCompatActivity {
                                 .setCompletionTokenLimit(COMPLETION_TOKEN_LIMIT)
                                 .setStopPhrases(STOP_PHRASES)
                                 .build());
-                dialog.addLLMResponse(finalCompletion.getCompletion());
 
                 isQueueingTokens.set(false);
 
@@ -572,13 +573,8 @@ public class MainActivity extends AppCompatActivity {
                                     null));
                     chatTextBuilder.append("\n\n");
                 });
-//                if (finalCompletion.getEndpoint() == PicoLLMCompletion.Endpoint.INTERRUPTED) {
-//                    llmPromptText = new StringBuilder();
-//                    updateUIState(UIState.STT);
-//                } else {
-//                    updateUIState(UIState.STT);
-//                }
 
+                llmPromptText = new StringBuilder();
             } catch (PicoLLMException e) {
                 onEngineProcessError(e.getMessage());
             }
