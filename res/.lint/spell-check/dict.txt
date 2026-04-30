@@ -5,9 +5,11 @@ appendleft
 colour
 compat
 dbfs
+declatory
 dotdotdot
 dotnet
 dtype
+embeddinggemma
 endoftext
 endwin
 frombytes
@@ -47,6 +49,7 @@ pvzebra
 samplerate
 sdcard
 sigwinch
+socialtext
 spannable
 subwin
 tock
