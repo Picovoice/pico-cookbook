@@ -13,7 +13,8 @@
         android:layout_height="match_parent"
         android:gravity="center"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:padding="24dp"
+        tools:visibility="invisible">
 
         <TextView
             android:id="@+id/titleText"
@@ -37,7 +38,7 @@
             android:id="@+id/loadModelProgress"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:layout_marginTop="30dp"
+            android:layout_marginTop="36dp"
             android:indeterminateTint="@color/colorPrimary"
             android:visibility="invisible" />
 
@@ -45,7 +46,7 @@
             android:id="@+id/startButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="-32dp"
+            android:layout_marginTop="-36dp"
             android:background="@drawable/button_background"
             android:text="@string/startButtonText"
             android:textAllCaps="false"
@@ -58,8 +59,8 @@
             android:layout_marginTop="30dp"
             android:text=""
             android:textAlignment="center"
-            android:textStyle="bold"
-            android:textColor="@color/colorDanger" />
+            android:textColor="@color/colorDanger"
+            android:textStyle="bold" />
 
     </LinearLayout>
 
@@ -68,6 +69,13 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="visible">
+
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/callerGuidelineHorizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            app:layout_constraintGuide_percent="0.50" />
 
         <ScrollView
             android:id="@+id/callerScrollView"
@@ -80,15 +88,14 @@
             android:gravity="center"
             android:paddingTop="8dp"
             android:paddingBottom="35dp"
-            app:layout_constraintBottom_toTopOf="@+id/userScrollView"
+            app:layout_constraintBottom_toTopOf="@+id/callerGuidelineHorizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_chainStyle="spread"
-            app:layout_constraintVertical_weight="4">
+            app:layout_constraintTop_toTopOf="parent">
 
             <TextView
                 android:id="@+id/callerText"
+                android:layout_marginTop="-8dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:breakStrategy="simple"
@@ -103,38 +110,21 @@
 
         </ScrollView>
 
-        <ScrollView
-            android:id="@+id/userScrollView"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
+        <TextView
+            android:id="@+id/userText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:breakStrategy="simple"
+            android:fontFamily="monospace"
+            android:hyphenationFrequency="none"
             android:layout_marginStart="24dp"
-            android:layout_marginTop="24dp"
             android:layout_marginEnd="24dp"
-            android:background="@drawable/chat_text_background"
-            android:gravity="center"
-            android:paddingTop="8dp"
-            android:paddingBottom="35dp"
-            app:layout_constraintBottom_toTopOf="@+id/stateContainer"
+            android:padding="10dp"
+            android:text=""
+            android:textSize="18sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/callerScrollView"
-            app:layout_constraintVertical_weight="5">
-
-            <TextView
-                android:id="@+id/userText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:breakStrategy="simple"
-                android:fontFamily="monospace"
-                android:hyphenationFrequency="none"
-                android:padding="10dp"
-                android:text=""
-                android:textSize="18sp"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
-        </ScrollView>
+            app:layout_constraintTop_toBottomOf="@+id/callerScrollView" />
 
         <LinearLayout
             android:id="@+id/stateContainer"
@@ -142,7 +132,6 @@
             android:layout_height="140dp"
             android:gravity="center"
             android:orientation="vertical"
-            app:layout_constraintTop_toBottomOf="@+id/userScrollView"
             app:layout_constraintBottom_toBottomOf="parent" >
 
             <TextView

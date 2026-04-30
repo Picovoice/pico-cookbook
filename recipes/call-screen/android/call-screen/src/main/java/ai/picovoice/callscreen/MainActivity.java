@@ -126,8 +126,8 @@ public class MainActivity extends AppCompatActivity {
     private ScrollView callerScrollView;
     private SpannableStringBuilder callerTextBuilder;
     private TextView userText;
-    private ScrollView userScrollView;
     private SpannableStringBuilder userTextBuilder;
+    private boolean givingOptions = false;
     private TextView stateText;
     private VolumeMeterView volumeMeterView;
     private int spanColour;
@@ -157,7 +157,6 @@ public class MainActivity extends AppCompatActivity {
         callerScrollView = findViewById(R.id.callerScrollView);
         callerText = findViewById(R.id.callerText);
         callerTextBuilder = new SpannableStringBuilder();
-        userScrollView = findViewById(R.id.userScrollView);
         userText = findViewById(R.id.userText);
         userTextBuilder = new SpannableStringBuilder();
         stateText = findViewById(R.id.stateText);
@@ -280,6 +279,27 @@ public class MainActivity extends AppCompatActivity {
                 updateUIState(UIState.CALL_SCREEN);
                 view.setEnabled(true);
 
+                callerTextBuilder.append("[SYSTEM] ");
+
+                animation = new SpannableTextAnimation(callerTextBuilder, callerText, callerScrollView);
+                animation.start();
+
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) { }
+
+                callerTextBuilder.append("Connecting caller");
+
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) { }
+
+                animation.end();
+                animation = null;
+
+                callerTextBuilder.clear();
+                callerTextBuilder.append("[SYSTEM] Caller connected.\n");
+
                 speakToCaller(Action.GREET);
 
                 startButtonInProgress = false;
@@ -338,8 +358,33 @@ public class MainActivity extends AppCompatActivity {
                         animation.end();
                         animation = null;
 
+                        givingOptions = false;
+
                         new Thread(() -> {
                             speakToCaller(action);
+                        }).start();
+
+                        new Thread(() -> {
+                            try {
+                                Thread.sleep(1200);
+                            } catch (InterruptedException e) { }
+
+                            mainHandler.post(() -> {
+                                userText.setAlpha(1f);
+                                userText.animate().alpha(0f).setDuration(400);
+                            });
+
+                            try {
+                                Thread.sleep(400);
+                            } catch (InterruptedException e) { }
+
+                            mainHandler.post(() -> {
+                                if (!givingOptions) {
+                                    userTextBuilder.clear();
+                                    userText.setText(userTextBuilder);
+                                    userText.setAlpha(1f);
+                                }
+                            });
                         }).start();
                     } else {
                         animation.appendTimed("Unknown Action", 1000);
@@ -416,7 +461,7 @@ public class MainActivity extends AppCompatActivity {
 
             if (action.isTerminal()) {
                 try {
-                    Thread.sleep(700);
+                    Thread.sleep(1500);
                 } catch (InterruptedException e) { }
 
                 mainHandler.post(() -> {
@@ -426,12 +471,12 @@ public class MainActivity extends AppCompatActivity {
                     loadingLayout.setAlpha(0f);
                     loadingLayout.setVisibility(View.VISIBLE);
 
-                    chatLayout.animate().alpha(0f).setDuration(500);
-                    loadingLayout.animate().alpha(1f).setDuration(500);
+                    chatLayout.animate().alpha(0f).setDuration(600);
+                    loadingLayout.animate().alpha(1f).setDuration(600);
                 });
 
                 try {
-                    Thread.sleep(500);
+                    Thread.sleep(600);
                 } catch (InterruptedException e) { }
 
                 updateUIState(UIState.BEFORE_DEMO);
@@ -508,11 +553,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void giveUserOptions() {
-        userTextBuilder.append("[AI] Select one of the call-assist actions below.\n");
+        mainHandler.post(() -> {
+            givingOptions = true;
+            userText.animate().cancel();
+            userText.setAlpha(1f);
+        });
+
+        userTextBuilder.clear();
+        userTextBuilder.append("Select one of the call-assist actions below:\n");
         userTextBuilder.append(Action.all());
         appendStyledText(userTextBuilder, "[" + username.toUpperCase() + "] ", new ForegroundColorSpan(spanColour));
 
-        animation = new SpannableTextAnimation(userTextBuilder, userText, userScrollView);
+        animation = new SpannableTextAnimation(userTextBuilder, userText);
 
         try {
             if (voiceProcessor.getIsRecording()) {
