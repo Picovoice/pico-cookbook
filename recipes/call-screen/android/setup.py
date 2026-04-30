@@ -135,9 +135,11 @@ def main() -> None:
         "MainActivity.java")
     with open(main_activity_path, 'r') as main_activity_file:
         main_activity_contents = main_activity_file.read()
-    main_activity_contents = main_activity_contents
+    main_activity_contents = (
+        main_activity_contents
         .replace("${YOUR_ACCESS_KEY_HERE}", args.access_key)
         .replace("${YOUR_NAME_HERE}", args.name)
+    )
     with open(main_activity_path, 'w') as main_activity_file:
         main_activity_file.write(main_activity_contents)
 

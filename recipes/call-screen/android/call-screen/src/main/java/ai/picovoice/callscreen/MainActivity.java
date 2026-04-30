@@ -89,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String USERNAME = "${YOUR_NAME_HERE}";
 
     private static final String STT_MODEL_FILE = "cheetah_params.pv";
-    private static final String TTS_MODEL_FILE = "orca_params_female.pv";
+    private static final String TTS_MODEL_FILE = "orca_params_en_female.pv";
     private static final String RHINO_CONTEXT_FILE = "call_screen_demo_android.rhn";
 
     private static final String PUNCTUATION = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";

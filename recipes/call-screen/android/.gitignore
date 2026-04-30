@@ -9,3 +9,6 @@
 release
 test_resources
 *.pllm
+
+/cheetah/
+/orca/

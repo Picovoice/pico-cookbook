@@ -41,6 +41,8 @@ Lastly, it will place your `AccessKey` from Picovoice Console and name into the 
 in [MainActivity.java](voice-memo-assistant/src/main/java/ai/picovoice/voicememoassistant/MainActivity.java).
 
 ```console
+cd pico-cookbook/recipes/call-screen/android
+
 python setup.py \
     --access_key ${ACCESS_KEY} \
     --name ${NAME} \
