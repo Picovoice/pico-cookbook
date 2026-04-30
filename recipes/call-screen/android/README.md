@@ -38,7 +38,7 @@ and [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/).
 It will also copy the models provided for [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) to the assets folder.
 
 Lastly, it will place your `AccessKey` from Picovoice Console and name into the `ACCESS_KEY` and `USERNAME` variables
-in [MainActivity.java](voice-memo-assistant/src/main/java/ai/picovoice/voicememoassistant/MainActivity.java).
+in [MainActivity.java](call-screen/src/main/java/ai/picovoice/callscreen/MainActivity.java).
 
 ```console
 cd pico-cookbook/recipes/call-screen/android
