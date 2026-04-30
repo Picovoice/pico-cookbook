@@ -9,5 +9,5 @@ Detect wake words and recognize who said them, powered by on-device voice AI.
 
 ## Implementations
 
-- [Python](python)
 - [Android](android)
+- [Python](python)
