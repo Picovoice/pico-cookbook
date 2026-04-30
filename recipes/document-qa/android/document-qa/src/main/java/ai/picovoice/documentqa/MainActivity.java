@@ -847,6 +847,7 @@ public class MainActivity extends AppCompatActivity {
                 os.write(buffer, 0, numBytesRead);
             }
         } catch (IOException e) {
+            onEngineInitError("Unable to load file: " + e.getMessage());
             return null;
         }
 
