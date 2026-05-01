@@ -685,6 +685,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void speak(String outputText, Runnable after) {
+        mainHandler.post(() -> {
+            progressBar.setVisibility(View.GONE);
+        });
+
         try {
             OrcaSynthesizeParams params = new OrcaSynthesizeParams.Builder()
                     .build();

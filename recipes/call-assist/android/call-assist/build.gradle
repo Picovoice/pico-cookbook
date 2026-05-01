@@ -24,7 +24,7 @@ android {
 
     defaultConfig {
         applicationId "ai.picovoice.callassist"
-        minSdkVersion 30
+        minSdkVersion 26
         targetSdkVersion defaultTargetSdkVersion
         versionCode 1
         versionName "1.0"

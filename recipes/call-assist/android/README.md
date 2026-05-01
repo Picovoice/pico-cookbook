@@ -15,7 +15,7 @@ call content to the cloud.
 
 ## Compatibility
 
-- Android 5.0 (SDK 21+)
+- Android 5.0 (SDK 26+)
 
 ## AccessKey
 
@@ -51,12 +51,12 @@ Lastly, it will place your `AccessKey` from Picovoice Console and name into the 
 in [MainActivity.java](call-assist/src/main/java/ai/picovoice/callassist/MainActivity.java).
 
 ```console
-cd pico-cookbook/recipes/call-screen/android
+cd pico-cookbook/recipes/call-assist/android
 
 python setup.py \
     --access_key ${ACCESS_KEY} \
     --name ${NAME} \
-    --context_path ${PATH_TO_RHN}
+    --context_path ${PATH_TO_RHN} \
     --picollm_model_path ${PATH_TO_PLLM}
 ```
 
