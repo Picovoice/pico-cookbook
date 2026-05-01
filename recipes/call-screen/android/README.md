@@ -15,9 +15,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ## Usage
 
-### 1. Open the `CallScreen` project in Android Studio
-
-### 2. Train the Speech-to-Intent Model
+### 1. Train the Speech-to-Intent Model
 
 1. Open [Picovoice Console](https://console.picovoice.ai/)
 2. Go to Rhino Speech-to-Intent.
@@ -26,7 +24,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
 6. Select the **Android** platform and download the generated Rhino context file (`.rhn`).
 
-### 3. Download the Required Models
+### 2. Download the Required Models
 
 Run the setup script to download and copy the models for [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/)
 and [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/).
@@ -47,6 +45,7 @@ python setup.py \
 
 ### 3. Run the Android Studio project
 
-1. Connect a device or launch an Android simulator.
-2. Build and run the demo.
-3. Tap the `Start Demo` button in the demo.
+1. Open the `CallScreen` project in Android Studio
+2. Connect a device or launch an Android simulator.
+3. Build and run the demo.
+4. Tap the `Start Demo` button in the demo.
