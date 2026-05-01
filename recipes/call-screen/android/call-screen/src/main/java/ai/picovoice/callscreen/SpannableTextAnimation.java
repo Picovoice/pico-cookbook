@@ -5,6 +5,7 @@ import android.os.Looper;
 import android.text.style.ForegroundColorSpan;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
+import android.util.Log;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -107,15 +108,13 @@ public class SpannableTextAnimation {
     }
 
     /// @brief returns a string if an error occurred.
-    public String end() {
+    public void end() {
         exitThread = true;
 
         try {
             animationThread.get();
-        } catch (ExecutionException e) {
-            return "animation thread failed with " + e;
-        } catch (InterruptedException e) {
-            return "animation thread failed with " + e;
+        } catch (ExecutionException | InterruptedException e) {
+            Log.e("PICOVOICE", "Animation thread failed with: ", e);
         }
 
         animationExecutor.shutdownNow();
@@ -127,7 +126,5 @@ public class SpannableTextAnimation {
                 scrollView.fullScroll(ScrollView.FOCUS_DOWN);
             }
         });
-
-        return null;
     }
 }
