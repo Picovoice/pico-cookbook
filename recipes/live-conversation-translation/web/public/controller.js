@@ -118,6 +118,11 @@ window.onload = () => {
     }
   };
 
+  if (typeof Picovoice === 'undefined') {
+    writeError("You must run `yarn build` before running yarn start");
+    return;
+  }
+
   initButton.onclick = async () => {
     initButton.disabled = true;
     status.innerText = "Loading"
