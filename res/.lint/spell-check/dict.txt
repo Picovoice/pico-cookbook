@@ -2,6 +2,8 @@ addch
 addstr
 alireza
 appendleft
+callassist
+callscreen
 colour
 compat
 dbfs
@@ -66,4 +68,3 @@ voicememoassistant
 wakeword
 xcodeproj
 xcworkspace
-callscreen
