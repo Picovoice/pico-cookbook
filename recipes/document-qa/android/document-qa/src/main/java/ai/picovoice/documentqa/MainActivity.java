@@ -100,9 +100,9 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int TTS_WARMUP_SECONDS = 1;
 
-    private static final int CHUNK_SIZE = 600;  // 1200
-    private static final int CHUNK_OVERLAP = 150;  // 250
-    private static final int TOPK = 1;
+    private static final int CHUNK_SIZE = 300;
+    private static final int CHUNK_OVERLAP = 200;
+    private static final int TOPK = 4;
 
     private static final String[] STOP_PHRASES = new String[]{
             "</s>",             // Llama-2, Mistral, and Mixtral
