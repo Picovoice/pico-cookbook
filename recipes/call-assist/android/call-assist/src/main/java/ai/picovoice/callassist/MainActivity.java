@@ -11,6 +11,8 @@ import android.os.Looper;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
+import android.view.ViewTreeObserver;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
@@ -148,13 +150,21 @@ public class MainActivity extends AppCompatActivity {
 
     private ProgressBar progressBar;
 
+    private Button startButton;
+
     private TextView activeTextView = null;
+
+    private LinearLayout chatLayout;
 
     private ScrollView scrollArea;
 
     private LinearLayout chatArea;
 
-    private LinearLayout tooltipView = null;
+    private TextView sumamryView;
+
+    private LinearLayout tooltipView;
+
+    private TextView userResponseView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -172,7 +182,6 @@ public class MainActivity extends AppCompatActivity {
 
         voiceProcessor.addFrameListener(this::frameListener);
         engineExecutor.submit(this::initEngines);
-        engineExecutor.submit(this::actionGreet);
     }
 
     private void initLayout() {
@@ -180,13 +189,52 @@ public class MainActivity extends AppCompatActivity {
         statusText = findViewById(R.id.statusText);
         volumeMeterView = findViewById(R.id.volumeMeterView);
         progressBar = findViewById(R.id.statusProgress);
+        startButton = findViewById(R.id.startButton);
+        chatLayout = findViewById(R.id.chatLayout);
         scrollArea = findViewById(R.id.scrollArea);
         chatArea = findViewById(R.id.chatArea);
+        sumamryView = findViewById(R.id.summaryView);
         tooltipView = findViewById(R.id.tooltipView);
+        userResponseView = findViewById(R.id.userResponseView);
 
         statusLayout.setVisibility(View.GONE);
         volumeMeterView.setVisibility(View.GONE);
+        startButton.setVisibility(View.GONE);
+        chatLayout.setVisibility(View.GONE);
+        sumamryView.setVisibility(View.GONE);
         tooltipView.setVisibility(View.GONE);
+        userResponseView.setVisibility(View.GONE);
+
+        startButton.setOnClickListener(v -> {
+            mainHandler.post(() -> {
+                startButton.setVisibility(View.GONE);
+                chatLayout.setVisibility(View.VISIBLE);
+                engineExecutor.submit(this::actionGreet);
+            });
+        });
+
+        scrollArea.getChildAt(0).getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            int prevHeight = 0;
+
+            @Override
+            public void onGlobalLayout() {
+                int currentHeight = scrollArea.getChildAt(0).getHeight();
+                if (currentHeight != prevHeight) {
+                    prevHeight = currentHeight;
+                    scrollArea.post(() -> scrollArea.fullScroll(View.FOCUS_DOWN));
+                }
+            }
+        });
+    }
+
+    private void restartDemo() {
+        chatArea.removeAllViews();
+        statusLayout.setVisibility(View.GONE);
+        volumeMeterView.setVisibility(View.GONE);
+        progressBar.setVisibility(View.GONE);
+        tooltipView.setVisibility(View.GONE);
+        startButton.setVisibility(View.VISIBLE);
+        chatLayout.setVisibility(View.GONE);
     }
 
     private void setStatus(String text) {
@@ -212,9 +260,11 @@ public class MainActivity extends AppCompatActivity {
             if (active) {
                 volumeMeterView.setVisibility(View.VISIBLE);
                 progressBar.setVisibility(View.GONE);
+                startButton.setVisibility(View.GONE);
             } else {
                 volumeMeterView.setVisibility(View.GONE);
                 progressBar.setVisibility(View.VISIBLE);
+                startButton.setVisibility(View.GONE);
             }
         });
     }
@@ -230,6 +280,7 @@ public class MainActivity extends AppCompatActivity {
         mainHandler.post(() -> {
             if (activeTextView != null) {
                 activeTextView.setText(String.format("%s%s", activeText, dots[dotIndex]));
+                activeTextView.setVisibility(View.VISIBLE);
             }
         });
     }
@@ -242,10 +293,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void sendText(String text) {
-        Log.d("PICOVOICE", String.format("`%s`", text));
         mainHandler.post(() -> activeText += text);
         renderActiveText();
-        mainHandler.post(() -> scrollArea.post(() -> scrollArea.fullScroll(View.FOCUS_DOWN)));
     }
 
     private void flushText(TextView nextView) {
@@ -325,6 +374,8 @@ public class MainActivity extends AppCompatActivity {
 
         mainHandler.post(() -> {
             statusLayout.setVisibility(View.GONE);
+            progressBar.setVisibility(View.GONE);
+            startButton.setVisibility(View.VISIBLE);
         });
     }
 
@@ -419,6 +470,7 @@ public class MainActivity extends AppCompatActivity {
         sendText("[AI] ");
         speak(outputText, () -> {
             flushText(null);
+            mainHandler.postDelayed(this::restartDemo, 1000);
         });
     }
 
@@ -435,8 +487,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void processCaller() {
         setVolumeMeterState(false);
-        TextView summaryView = spawnText("", R.color.colorPrimary);
-        flushText(summaryView);
+        flushText(sumamryView);
         sendText("[AI] ");
 
         String transcript = callerTranscript;
@@ -501,7 +552,8 @@ public class MainActivity extends AppCompatActivity {
                 flushText(null);
                 setVolumeMeterState(true);
                 tooltipView.setVisibility(View.VISIBLE);
-                scrollArea.post(() -> scrollArea.fullScroll(View.FOCUS_DOWN));
+                flushText(userResponseView);
+                sendText(String.format("[%s]", USERNAME));
                 currentState = State.COMMAND;
             });
         }
@@ -550,9 +602,13 @@ public class MainActivity extends AppCompatActivity {
                 if (inference.getIsUnderstood() && inference.getIntent().equals("chooseAction")) {
                     Action action = Action.fromString(inference.getSlots().get("action"));
                     currentState = State.IDLE;
-                    mainHandler.post(() -> tooltipView.setVisibility(View.GONE));
+                    flushText(null);
+                    mainHandler.post(() -> {
+                        sumamryView.setVisibility(View.GONE);
+                        tooltipView.setVisibility(View.GONE);
+                        userResponseView.setVisibility(View.GONE);
+                    });
 
-                    Log.d("PICOVOICE", action.toString());
                     if (action.equals(Action.GREET)) {
                         engineExecutor.submit(this::actionGreet);
                     } else if (action.equals(Action.CONNECT_CALL)) {

@@ -15,7 +15,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
-        
+
         <LinearLayout
             android:id="@+id/statusLayout"
             android:layout_width="match_parent"
@@ -34,102 +34,133 @@
 
         </LinearLayout>
 
-        <ScrollView
-            android:id="@+id/scrollArea"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="1">
+            android:layout_weight="1"
+            android:orientation="vertical">
 
             <LinearLayout
+                android:id="@+id/chatLayout"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="160dp"
+                android:layout_margin="8dp"
+                android:background="@drawable/chat_text_background"
                 android:orientation="vertical">
 
-                <LinearLayout
-                    android:id="@+id/chatArea"
+                <ScrollView
+                    android:id="@+id/scrollArea"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:layout_weight="1">
 
-                </LinearLayout>
+                    <LinearLayout
+                        android:id="@+id/chatArea"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="8dp">
 
-                <LinearLayout
-                    android:id="@+id/tooltipView"
+                    </LinearLayout>
+                </ScrollView>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/summaryView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                android:text="[AI] ..."
+                android:textColor="@color/colorPrimary"
+                android:textSize="20dp" />
+
+            <LinearLayout
+                android:id="@+id/tooltipView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                android:orientation="vertical">
+
+                <TextView
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:orientation="vertical">
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="16dp"
+                    android:text="Say one of the following commands:"
+                    android:textColor="@color/colorSecondary" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginLeft="16dp"
-                        android:text="Say one of the following commands:"
-                        android:textColor="@color/colorSecondary" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="32dp"
+                    android:text="- Greet"
+                    android:textColor="@color/colorSecondary" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginLeft="32dp"
-                        android:text="- Greet"
-                        android:textColor="@color/colorSecondary" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="32dp"
+                    android:text="- Connect Call"
+                    android:textColor="@color/colorSecondary" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginLeft="32dp"
-                        android:text="- Connect Call"
-                        android:textColor="@color/colorSecondary" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="32dp"
+                    android:text="- Decline Call"
+                    android:textColor="@color/colorSecondary" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginLeft="32dp"
-                        android:text="- Decline Call"
-                        android:textColor="@color/colorSecondary" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="32dp"
+                    android:text="- Ask for Details"
+                    android:textColor="@color/colorSecondary" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginLeft="32dp"
-                        android:text="- Ask for Details"
-                        android:textColor="@color/colorSecondary" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="32dp"
+                    android:text="- Ask to Text"
+                    android:textColor="@color/colorSecondary" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginLeft="32dp"
-                        android:text="- Ask to Text"
-                        android:textColor="@color/colorSecondary" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="32dp"
+                    android:text="- Ask to Email"
+                    android:textColor="@color/colorSecondary" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginLeft="32dp"
-                        android:text="- Ask to Email"
-                        android:textColor="@color/colorSecondary" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="32dp"
+                    android:text="- Ask to Call Back"
+                    android:textColor="@color/colorSecondary" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginLeft="32dp"
-                        android:text="- Ask to Call Back"
-                        android:textColor="@color/colorSecondary" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginLeft="32dp"
-                        android:text="- Block Caller"
-                        android:textColor="@color/colorSecondary" />
-                </LinearLayout>
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="32dp"
+                    android:text="- Block Caller"
+                    android:textColor="@color/colorSecondary" />
 
             </LinearLayout>
-        </ScrollView>
+
+            <TextView
+                android:id="@+id/userResponseView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                android:text="[AI] ..."
+                android:textColor="@color/colorPrimary"
+                android:textSize="20dp" />
+
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="32dp"
+            android:layout_marginBottom="8dp"
             android:gravity="center"
             android:orientation="horizontal"
             android:paddingBottom="32dp">
@@ -146,6 +177,16 @@
                 android:layout_height="50dp"
                 android:layout_marginTop="10dp"
                 android:indeterminateTint="@color/colorPrimary" />
+
+            <Button
+                android:id="@+id/startButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/button_background"
+                android:text="Start Demo"
+                android:textAllCaps="false"
+                android:textColor="#ffffff" />
         </LinearLayout>
 
     </LinearLayout>
