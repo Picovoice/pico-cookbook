@@ -142,17 +142,21 @@ public class MainActivity extends AppCompatActivity {
 
     private int dotIndex = 0;
 
-    private LinearLayout statusLayout;
+    private int retryCount = 0;
 
-    private TextView statusText;
+    private final int retryLimit = 2;
 
-    private VolumeMeterView volumeMeterView;
+    private TextView activeTextView = null;
 
-    private ProgressBar progressBar;
+    private LinearLayout loadingLayout;
+
+    private TextView loadingText;
+
+    private ProgressBar loadingProgress;
 
     private Button startButton;
 
-    private TextView activeTextView = null;
+    private LinearLayout mainLayout;
 
     private LinearLayout chatLayout;
 
@@ -160,11 +164,15 @@ public class MainActivity extends AppCompatActivity {
 
     private LinearLayout chatArea;
 
-    private TextView sumamryView;
+    private TextView summaryView;
 
     private LinearLayout tooltipView;
 
     private TextView userResponseView;
+
+    private VolumeMeterView volumeMeterView;
+
+    private ProgressBar progressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -185,33 +193,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initLayout() {
-        statusLayout = findViewById(R.id.statusLayout);
-        statusText = findViewById(R.id.statusText);
-        volumeMeterView = findViewById(R.id.volumeMeterView);
-        progressBar = findViewById(R.id.statusProgress);
+        loadingLayout = findViewById(R.id.loadingLayout);
+        loadingText = findViewById(R.id.loadingText);
+        loadingProgress = findViewById(R.id.loadingProgress);
         startButton = findViewById(R.id.startButton);
+
+        mainLayout= findViewById(R.id.mainLayout);
         chatLayout = findViewById(R.id.chatLayout);
         scrollArea = findViewById(R.id.scrollArea);
         chatArea = findViewById(R.id.chatArea);
-        sumamryView = findViewById(R.id.summaryView);
+        summaryView = findViewById(R.id.summaryView);
         tooltipView = findViewById(R.id.tooltipView);
         userResponseView = findViewById(R.id.userResponseView);
+        volumeMeterView = findViewById(R.id.volumeMeterView);
+        progressBar = findViewById(R.id.statusProgress);
 
-        statusLayout.setVisibility(View.GONE);
-        volumeMeterView.setVisibility(View.GONE);
+        mainLayout.setVisibility(View.GONE);
         startButton.setVisibility(View.GONE);
-        chatLayout.setVisibility(View.GONE);
-        sumamryView.setVisibility(View.GONE);
-        tooltipView.setVisibility(View.GONE);
-        userResponseView.setVisibility(View.GONE);
 
-        startButton.setOnClickListener(v -> {
-            mainHandler.post(() -> {
-                startButton.setVisibility(View.GONE);
-                chatLayout.setVisibility(View.VISIBLE);
-                engineExecutor.submit(this::actionGreet);
-            });
-        });
+        startButton.setOnClickListener(v -> startDemo());
 
         scrollArea.getChildAt(0).getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             int prevHeight = 0;
@@ -227,31 +227,71 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void restartDemo() {
-        chatArea.removeAllViews();
-        statusLayout.setVisibility(View.GONE);
-        volumeMeterView.setVisibility(View.GONE);
-        progressBar.setVisibility(View.GONE);
-        tooltipView.setVisibility(View.GONE);
-        startButton.setVisibility(View.VISIBLE);
-        chatLayout.setVisibility(View.GONE);
+    private void startDemo() {
+        mainHandler.post(() -> {
+            startButton.setEnabled(false);
+            chatArea.removeAllViews();
+            chatArea.setVisibility(View.VISIBLE);
+            summaryView.setVisibility(View.GONE);
+            tooltipView.setVisibility(View.GONE);
+            userResponseView.setVisibility(View.GONE);
+            progressBar.setVisibility(View.GONE);
+            volumeMeterView.setVisibility(View.GONE);
+
+            loadingLayout.setAlpha(1f);
+            mainLayout.setAlpha(0f);
+            mainLayout.setVisibility(View.VISIBLE);
+
+            loadingLayout.animate().alpha(0f).setDuration(400);
+            mainLayout.animate().alpha(1f).setDuration(400);
+
+            mainHandler.postDelayed(() -> {
+                loadingLayout.setVisibility(View.GONE);
+                engineExecutor.submit(this::actionGreet);
+            }, 400);
+        });
+    }
+
+    private void stopDemo() {
+        mainHandler.post(() -> {
+            summaryView.setVisibility(View.GONE);
+            tooltipView.setVisibility(View.GONE);
+            userResponseView.setVisibility(View.GONE);
+            progressBar.setVisibility(View.GONE);
+            volumeMeterView.setVisibility(View.GONE);
+        });
+        mainHandler.postDelayed(() -> {
+            loadingLayout.setAlpha(0f);
+            chatLayout.setAlpha(1f);
+            loadingLayout.setVisibility(View.VISIBLE);
+
+            loadingLayout.animate().alpha(1f).setDuration(400);
+            mainLayout.animate().alpha(0f).setDuration(400);
+
+            mainHandler.postDelayed(() -> {
+                mainLayout.setVisibility(View.GONE);
+                startButton.setEnabled(true);
+            }, 400);
+        }, 1600);
     }
 
     private void setStatus(String text) {
         mainHandler.post(() -> {
-            statusText.setText(text);
-            statusLayout.setVisibility(View.VISIBLE);
-            statusLayout.invalidate();
+            loadingText.setText(text);
         });
     }
 
     private void setError(String text) {
         mainHandler.post(() -> {
             int colorDanger = getResources().getColor(R.color.colorDanger);
-            statusText.setText(text);
-            statusText.setTextColor(colorDanger);
-            statusLayout.setVisibility(View.VISIBLE);
-            statusLayout.invalidate();
+            loadingText.setText(text);
+            loadingText.setTextColor(colorDanger);
+            startButton.setVisibility(View.GONE);
+            progressBar.setVisibility(View.GONE);
+            mainLayout.setVisibility(View.GONE);
+            loadingLayout.setAlpha(1f);
+            loadingLayout.setVisibility(View.VISIBLE);
+            loadingLayout.invalidate();
         });
     }
 
@@ -260,11 +300,9 @@ public class MainActivity extends AppCompatActivity {
             if (active) {
                 volumeMeterView.setVisibility(View.VISIBLE);
                 progressBar.setVisibility(View.GONE);
-                startButton.setVisibility(View.GONE);
             } else {
                 volumeMeterView.setVisibility(View.GONE);
                 progressBar.setVisibility(View.VISIBLE);
-                startButton.setVisibility(View.GONE);
             }
         });
     }
@@ -372,9 +410,9 @@ public class MainActivity extends AppCompatActivity {
 
         startRecording();
 
+        setStatus("Press the Start Demo button to begin.");
         mainHandler.post(() -> {
-            statusLayout.setVisibility(View.GONE);
-            progressBar.setVisibility(View.GONE);
+            loadingProgress.setVisibility(View.GONE);
             startButton.setVisibility(View.VISIBLE);
         });
     }
@@ -470,7 +508,7 @@ public class MainActivity extends AppCompatActivity {
         sendText("[AI] ");
         speak(outputText, () -> {
             flushText(null);
-            mainHandler.postDelayed(this::restartDemo, 1000);
+            stopDemo();
         });
     }
 
@@ -487,7 +525,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void processCaller() {
         setVolumeMeterState(false);
-        flushText(sumamryView);
+        flushText(summaryView);
         sendText("[AI] ");
 
         String transcript = callerTranscript;
@@ -539,10 +577,22 @@ public class MainActivity extends AppCompatActivity {
 
     private void processCallerReason(String caller, String reason) {
         if (caller.equals("unknown") || reason.equals("unknown")) {
-            String responseText = formatAskForDetails(caller, reason);
-            sendText(responseText);
+            if (retryCount < retryLimit) {
+                String responseText = formatAskForDetails(caller, reason);
+                sendText(responseText);
 
-            engineExecutor.submit(this::actionAskForDetails);
+                retryCount += 1;
+                engineExecutor.submit(this::actionAskForDetails);
+            } else {
+                retryCount = 0;
+                String outputText = String.format(
+                        "Couldn't understand caller's identity and agenda after %d inquiries. Declining their call.",
+                        retryLimit);
+                speak(outputText, () -> {
+                    flushText(null);
+                    engineExecutor.submit(() -> actionTerminal(Action.DECLINE_CALL));
+                });
+            }
         } else {
             String outputText = String.format(
                     "%s is trying to speak to you about %s.",
@@ -554,6 +604,7 @@ public class MainActivity extends AppCompatActivity {
                 tooltipView.setVisibility(View.VISIBLE);
                 flushText(userResponseView);
                 sendText(String.format("[%s]", USERNAME));
+                retryCount = 0;
                 currentState = State.COMMAND;
             });
         }
@@ -604,7 +655,7 @@ public class MainActivity extends AppCompatActivity {
                     currentState = State.IDLE;
                     flushText(null);
                     mainHandler.post(() -> {
-                        sumamryView.setVisibility(View.GONE);
+                        summaryView.setVisibility(View.GONE);
                         tooltipView.setVisibility(View.GONE);
                         userResponseView.setVisibility(View.GONE);
                     });
@@ -629,7 +680,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         } catch (RhinoException e) {
-            throw new RuntimeException(e);
+            setError(e.getMessage());
         }
     }
 
