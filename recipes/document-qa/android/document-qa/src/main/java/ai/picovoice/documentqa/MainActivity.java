@@ -231,8 +231,6 @@ public class MainActivity extends AppCompatActivity {
             });
 
     private ArrayList<String> chunkDocument(Uri uri) {
-        // TODO: Sub and strip newlines?
-
         StringBuilder textBuilder = new StringBuilder();
         try {
             InputStream in = getContentResolver().openInputStream(uri);
