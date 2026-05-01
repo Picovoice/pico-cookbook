@@ -1,0 +1,2 @@
+rootProject.name = "CallScreen"
+include ':call-screen'
