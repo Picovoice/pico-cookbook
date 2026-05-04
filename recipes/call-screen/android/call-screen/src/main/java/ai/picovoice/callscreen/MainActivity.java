@@ -421,9 +421,9 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        textExecutor.submit(() -> {
-            double start_s = (double)System.nanoTime() / 1_000_000_000.0;
+        final double start_s = (double)System.nanoTime() / 1_000_000_000.0;
 
+        Future<?> textFuture = textExecutor.submit(() -> {
             mainHandler.post(() -> {
                 callerTextBuilder.append("[AI] ");
                 callerText.setText(callerTextBuilder);
@@ -435,8 +435,10 @@ public class MainActivity extends AppCompatActivity {
                 OrcaWord word = words[i];
 
                 double now_s = (double)System.nanoTime() / 1_000_000_000.0 - start_s;
+                long sleepMs = (long)((word.getStartSec() - now_s) * 1000.0)
+                sleepMs = sleepMs < 0 ? 0 : sleepMs;
                 try {
-                    Thread.sleep((long)((word.getStartSec() - now_s) * 1000.0));
+                    Thread.sleep(sleepMs);
                 } catch (InterruptedException e) { }
 
                 boolean no_trailing_space =
@@ -487,7 +489,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        ttsPlaybackExecutor.submit(() -> {
+        Future<?> playbackFuture = ttsPlaybackExecutor.submit(() -> {
             try {
                 AudioAttributes audioAttributes = new AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -527,6 +529,14 @@ public class MainActivity extends AppCompatActivity {
             }
             ttsOutput.release();
         });
+
+        try {
+            textFuture.get();
+            playbackFuture.get();
+        } catch (ExecutionException e) {
+            Throwable threadException = e.getCause();
+            Log.e("PICOVOICE", "Thread failed", threadException);
+        } catch (InterruptedException e) { }
     }
 
     private void listenForCaller() {
