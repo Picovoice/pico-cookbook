@@ -18,7 +18,6 @@ import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioTrack;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -29,33 +28,21 @@ import android.text.style.ForegroundColorSpan;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import androidx.activity.result.ActivityResultCallback;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.content.res.ResourcesCompat;
 import android.widget.LinearLayout;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.Future;
 
 import ai.picovoice.android.voiceprocessor.VoiceProcessor;
 import ai.picovoice.android.voiceprocessor.VoiceProcessorException;
@@ -421,9 +408,9 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        textExecutor.submit(() -> {
-            double start_s = (double)System.nanoTime() / 1_000_000_000.0;
+        final double start_s = (double)System.nanoTime() / 1_000_000_000.0;
 
+        Future<?> textFuture = textExecutor.submit(() -> {
             mainHandler.post(() -> {
                 callerTextBuilder.append("[AI] ");
                 callerText.setText(callerTextBuilder);
@@ -435,8 +422,10 @@ public class MainActivity extends AppCompatActivity {
                 OrcaWord word = words[i];
 
                 double now_s = (double)System.nanoTime() / 1_000_000_000.0 - start_s;
+                long sleepMs = (long)((word.getStartSec() - now_s) * 1000.0);
+                sleepMs = sleepMs < 0 ? 0 : sleepMs;
                 try {
-                    Thread.sleep((long)((word.getStartSec() - now_s) * 1000.0));
+                    Thread.sleep(sleepMs);
                 } catch (InterruptedException e) { }
 
                 boolean no_trailing_space =
@@ -487,7 +476,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        ttsPlaybackExecutor.submit(() -> {
+        Future<?> playbackFuture = ttsPlaybackExecutor.submit(() -> {
             try {
                 AudioAttributes audioAttributes = new AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -527,6 +516,14 @@ public class MainActivity extends AppCompatActivity {
             }
             ttsOutput.release();
         });
+
+        try {
+            textFuture.get();
+            playbackFuture.get();
+        } catch (ExecutionException e) {
+            Throwable threadException = e.getCause();
+            Log.e("PICOVOICE", "Thread failed", threadException);
+        } catch (InterruptedException e) { }
     }
 
     private void listenForCaller() {
