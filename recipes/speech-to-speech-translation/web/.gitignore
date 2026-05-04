@@ -1,0 +1,16 @@
+.DS_Store
+.idea/
+.rts2_cache/
+.venv
+*.log
+*.pllm
+bat
+cheetah
+dist/
+node_modules
+orca
+public/index.js
+public/models/*
+types/*.d.ts*
+venv
+zebra
