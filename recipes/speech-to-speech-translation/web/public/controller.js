@@ -118,9 +118,18 @@ window.onload = () => {
     } else if (mode === "detecting") {
       initBlock.style.display = 'none';
       chatBlock.style.display = 'flex';
+    } else if (mode === "loading") {
       changeLanguageButton.disabled = true;
+      if (state.upperTextElem) {
+        state.upperTextElem.innerText = "";
+      }
     }
   };
+
+  if (typeof Picovoice === 'undefined') {
+    writeError("You must run `yarn build` before running yarn start");
+    return;
+  }
 
   initButton.onclick = async () => {
     initButton.disabled = true;
@@ -137,12 +146,17 @@ window.onload = () => {
         target,
         sendState
       );
-      initBlock.style.display = 'none';
-      chatBlock.style.display = 'flex';
-      status.innerText = "Loading complete.";
+      if (start !== null) {
+        initBlock.style.display = 'none';
+        chatBlock.style.display = 'flex';
+        status.innerText = "Loading complete.";
 
-      await start();
-      changeLanguageButton.disabled = false;
+        if (result.lastElementChild !== null) {
+          result.removeChild(result.lastElementChild);
+        }
+        await start();
+        changeLanguageButton.disabled = false;
+      }
     } catch (e) {
       writeError(e.message);
     } finally {
@@ -151,6 +165,7 @@ window.onload = () => {
   };
 
   changeLanguageButton.onclick = async () => {
+    await Picovoice.setInterruptFlag();
     await Picovoice.release();
 
     result.innerHTML = "";
@@ -160,7 +175,6 @@ window.onload = () => {
 
     initButton.disabled = false;
     status.innerText = "Not loaded."
-
   };
 
   const enableInitButton = () => {

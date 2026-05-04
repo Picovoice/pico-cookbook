@@ -102,15 +102,22 @@ const BufferedBatEngine = {
   }
 }
 
+let interruptFlag = false;
+const setInterruptFlag = async () => {
+  interruptFlag = true;
+};
+
 const init = async (
   accessKey: string,
   sourceLanguage: string | null,
   targetLanguage: string,
   sendState: (mode: string, text: string) => void,
-): Promise<() => Promise<void>> => {
+): Promise<null | (() => Promise<void>)> => {
   if (sourceLanguage === "automatic") {
     sourceLanguage = null;
   }
+
+  interruptFlag = false;
 
   if (sourceLanguage === null) {
     const scoresCallback = (
@@ -128,10 +135,10 @@ const init = async (
         }
 
         if ((maxLanguage !== BatLanguages.UNKNOWN) && (maxLanguageScore > 0.75)) {
-          const detectedSourceLanguage = batLanguageToString(maxLanguage) || "";
+          const detectedSourceLanguage = batLanguageToString(maxLanguage);
           sendState("prompt", `Detected "${detectedSourceLanguage}"`);
 
-          if (LANGUAGE_PAIRS[detectedSourceLanguage].includes(targetLanguage)) {
+          if (detectedSourceLanguage !== null && LANGUAGE_PAIRS[detectedSourceLanguage].includes(targetLanguage)) {
             sourceLanguage = detectedSourceLanguage;
           } else {
             sendState("status", `Cannot translate from \`${detectedSourceLanguage}\` to \`${targetLanguage}\`.`);
@@ -156,9 +163,18 @@ const init = async (
     sendState("status", `Detecting language`);
     sendState("prompt", `Detecting language`);
     sendState("listen", "right");
+    sendState("transcript", "[DETECTING LANGUAGE] ");
     sendState("detecting", "");
 
     while (sourceLanguage === null) {
+      if (interruptFlag) {
+        if (bat !== null) {
+          await WebVoiceProcessor.unsubscribe(bat);
+          bat.release();
+          bat = null;
+          return null;
+        }
+      }
       await new Promise(r => setTimeout(r, 250));
     }
   }
@@ -167,6 +183,8 @@ const init = async (
     bat.release();
     bat = null;
   }
+
+  sendState("loading", "");
 
   const startListening = async () => {
     const language = sourceLanguage;
@@ -302,19 +320,31 @@ const init = async (
 
 const release = async () => {
   WebVoiceProcessor.reset();
-  object!.audio.clear();
-  object!.cheetah.release();
-  object!.zebra.release();
-  object!.orca.release();
+
+  if (object && object!.audio) {
+    object!.audio.clear();
+  }
+
+  if (object && object!.cheetah) {
+    object!.cheetah.release();
+  }
+  if (object && object!.zebra) {
+    object!.zebra.release();
+  }
+
+  if (object && object!.orca) {
+    object!.orca.release();
+  }
 
   object = null;
 
   cheetahPcmBuffer = new Int16Array();
   batPcmBuffer = new Int16Array();
-}
+};
 
 export default {
   init,
   release,
+  setInterruptFlag,
   LANGUAGE_PAIRS
 };
