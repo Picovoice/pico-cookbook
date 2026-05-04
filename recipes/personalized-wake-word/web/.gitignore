@@ -8,7 +8,7 @@ node_modules
 porcupine
 eagle
 public/index.js
-public/models/*
-public/keywords/*
+public/models/*.pv
+public/keywords/*.ppn
 types/*.d.ts*
 venv
