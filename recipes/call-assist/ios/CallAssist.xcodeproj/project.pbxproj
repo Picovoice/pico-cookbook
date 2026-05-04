@@ -1,0 +1,437 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		343769072FA56D8900E01072 /* Cheetah in Frameworks */ = {isa = PBXBuildFile; productRef = 343769062FA56D8900E01072 /* Cheetah */; };
+		3437690A2FA56DFA00E01072 /* Orca in Frameworks */ = {isa = PBXBuildFile; productRef = 343769092FA56DFA00E01072 /* Orca */; };
+		3437690D2FA56EAA00E01072 /* Rhino in Frameworks */ = {isa = PBXBuildFile; productRef = 3437690C2FA56EAA00E01072 /* Rhino */; };
+		343769112FA5715100E01072 /* ios_voice_processor in Frameworks */ = {isa = PBXBuildFile; productRef = 343769102FA5715100E01072 /* ios_voice_processor */; };
+		3462B5672FA9053700B9D697 /* cheetah_params.pv in Resources */ = {isa = PBXBuildFile; fileRef = 3462B5662FA9053700B9D697 /* cheetah_params.pv */; };
+		3462B5692FA9054600B9D697 /* orca_params_en_female.pv in Resources */ = {isa = PBXBuildFile; fileRef = 3462B5682FA9054600B9D697 /* orca_params_en_female.pv */; };
+		3462B56B2FA9128B00B9D697 /* picollm_model.pllm in Resources */ = {isa = PBXBuildFile; fileRef = 3462B56A2FA9128B00B9D697 /* picollm_model.pllm */; };
+		3462B56D2FA9129200B9D697 /* rhino_model.rhn in Resources */ = {isa = PBXBuildFile; fileRef = 3462B56C2FA9129200B9D697 /* rhino_model.rhn */; };
+		3495DDEE2FA5766A0011D5E9 /* PicoLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 3495DDED2FA5766A0011D5E9 /* PicoLLM */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		343768DB2FA55DD100E01072 /* CallAssist.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CallAssist.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3462B5662FA9053700B9D697 /* cheetah_params.pv */ = {isa = PBXFileReference; lastKnownFileType = file; name = cheetah_params.pv; path = cheetah/lib/common/cheetah_params.pv; sourceTree = "<group>"; };
+		3462B5682FA9054600B9D697 /* orca_params_en_female.pv */ = {isa = PBXFileReference; lastKnownFileType = file; name = orca_params_en_female.pv; path = orca/lib/common/orca_params_en_female.pv; sourceTree = "<group>"; };
+		3462B56A2FA9128B00B9D697 /* picollm_model.pllm */ = {isa = PBXFileReference; lastKnownFileType = file; path = picollm_model.pllm; sourceTree = "<group>"; };
+		3462B56C2FA9129200B9D697 /* rhino_model.rhn */ = {isa = PBXFileReference; lastKnownFileType = file; path = rhino_model.rhn; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		343768DD2FA55DD100E01072 /* CallAssist */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CallAssist;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		343768D82FA55DD100E01072 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3495DDEE2FA5766A0011D5E9 /* PicoLLM in Frameworks */,
+				3437690D2FA56EAA00E01072 /* Rhino in Frameworks */,
+				343769072FA56D8900E01072 /* Cheetah in Frameworks */,
+				343769112FA5715100E01072 /* ios_voice_processor in Frameworks */,
+				3437690A2FA56DFA00E01072 /* Orca in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		343768D22FA55DD100E01072 = {
+			isa = PBXGroup;
+			children = (
+				3462B56C2FA9129200B9D697 /* rhino_model.rhn */,
+				3462B56A2FA9128B00B9D697 /* picollm_model.pllm */,
+				3462B5682FA9054600B9D697 /* orca_params_en_female.pv */,
+				3462B5662FA9053700B9D697 /* cheetah_params.pv */,
+				343768DD2FA55DD100E01072 /* CallAssist */,
+				343768DC2FA55DD100E01072 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		343768DC2FA55DD100E01072 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				343768DB2FA55DD100E01072 /* CallAssist.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		343768DA2FA55DD100E01072 /* CallAssist */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 343768E62FA55DD300E01072 /* Build configuration list for PBXNativeTarget "CallAssist" */;
+			buildPhases = (
+				343768D72FA55DD100E01072 /* Sources */,
+				343768D82FA55DD100E01072 /* Frameworks */,
+				343768D92FA55DD100E01072 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				343768DD2FA55DD100E01072 /* CallAssist */,
+			);
+			name = CallAssist;
+			packageProductDependencies = (
+				343769062FA56D8900E01072 /* Cheetah */,
+				343769092FA56DFA00E01072 /* Orca */,
+				3437690C2FA56EAA00E01072 /* Rhino */,
+				343769102FA5715100E01072 /* ios_voice_processor */,
+				3495DDED2FA5766A0011D5E9 /* PicoLLM */,
+			);
+			productName = CallAssist;
+			productReference = 343768DB2FA55DD100E01072 /* CallAssist.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		343768D32FA55DD100E01072 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					343768DA2FA55DD100E01072 = {
+						CreatedOnToolsVersion = 16.4;
+					};
+				};
+			};
+			buildConfigurationList = 343768D62FA55DD100E01072 /* Build configuration list for PBXProject "CallAssist" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 343768D22FA55DD100E01072;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				343769052FA56D8900E01072 /* XCRemoteSwiftPackageReference "cheetah" */,
+				343769082FA56DFA00E01072 /* XCRemoteSwiftPackageReference "orca" */,
+				3437690B2FA56EAA00E01072 /* XCRemoteSwiftPackageReference "rhino" */,
+				3437690E2FA56ECB00E01072 /* XCRemoteSwiftPackageReference "picollm" */,
+				3437690F2FA5715100E01072 /* XCRemoteSwiftPackageReference "ios-voice-processor" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 343768DC2FA55DD100E01072 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				343768DA2FA55DD100E01072 /* CallAssist */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		343768D92FA55DD100E01072 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3462B56D2FA9129200B9D697 /* rhino_model.rhn in Resources */,
+				3462B56B2FA9128B00B9D697 /* picollm_model.pllm in Resources */,
+				3462B5692FA9054600B9D697 /* orca_params_en_female.pv in Resources */,
+				3462B5672FA9053700B9D697 /* cheetah_params.pv in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		343768D72FA55DD100E01072 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		343768E42FA55DD300E01072 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		343768E52FA55DD300E01072 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		343768E72FA55DD300E01072 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.picovoice.CallAssist;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		343768E82FA55DD300E01072 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.picovoice.CallAssist;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		343768D62FA55DD100E01072 /* Build configuration list for PBXProject "CallAssist" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				343768E42FA55DD300E01072 /* Debug */,
+				343768E52FA55DD300E01072 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		343768E62FA55DD300E01072 /* Build configuration list for PBXNativeTarget "CallAssist" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				343768E72FA55DD300E01072 /* Debug */,
+				343768E82FA55DD300E01072 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		343769052FA56D8900E01072 /* XCRemoteSwiftPackageReference "cheetah" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/picovoice/cheetah";
+			requirement = {
+				kind = exactVersion;
+				version = 4.0.1;
+			};
+		};
+		343769082FA56DFA00E01072 /* XCRemoteSwiftPackageReference "orca" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/picovoice/orca";
+			requirement = {
+				kind = exactVersion;
+				version = 3.0.0;
+			};
+		};
+		3437690B2FA56EAA00E01072 /* XCRemoteSwiftPackageReference "rhino" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/picovoice/rhino";
+			requirement = {
+				kind = exactVersion;
+				version = 4.0.0;
+			};
+		};
+		3437690E2FA56ECB00E01072 /* XCRemoteSwiftPackageReference "picollm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/picovoice/picollm";
+			requirement = {
+				kind = exactVersion;
+				version = 2.1.0;
+			};
+		};
+		3437690F2FA5715100E01072 /* XCRemoteSwiftPackageReference "ios-voice-processor" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/picovoice/ios-voice-processor";
+			requirement = {
+				kind = exactVersion;
+				version = 1.2.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		343769062FA56D8900E01072 /* Cheetah */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 343769052FA56D8900E01072 /* XCRemoteSwiftPackageReference "cheetah" */;
+			productName = Cheetah;
+		};
+		343769092FA56DFA00E01072 /* Orca */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 343769082FA56DFA00E01072 /* XCRemoteSwiftPackageReference "orca" */;
+			productName = Orca;
+		};
+		3437690C2FA56EAA00E01072 /* Rhino */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3437690B2FA56EAA00E01072 /* XCRemoteSwiftPackageReference "rhino" */;
+			productName = Rhino;
+		};
+		343769102FA5715100E01072 /* ios_voice_processor */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3437690F2FA5715100E01072 /* XCRemoteSwiftPackageReference "ios-voice-processor" */;
+			productName = ios_voice_processor;
+		};
+		3495DDED2FA5766A0011D5E9 /* PicoLLM */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3437690E2FA56ECB00E01072 /* XCRemoteSwiftPackageReference "picollm" */;
+			productName = PicoLLM;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 343768D32FA55DD100E01072 /* Project object */;
+}
