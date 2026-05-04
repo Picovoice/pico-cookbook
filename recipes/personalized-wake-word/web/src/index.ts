@@ -1,5 +1,9 @@
 import { PorcupineWorker } from '@picovoice/porcupine-web';
-import { EagleProfilerWorker, EagleWorker, EagleProfile } from '@picovoice/eagle-web';
+import {
+  EagleProfilerWorker,
+  EagleWorker,
+  EagleProfile,
+} from '@picovoice/eagle-web';
 import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 import { PvEngine } from '@picovoice/web-voice-processor/dist/types/types';
 
@@ -32,14 +36,14 @@ const MAX_DB = 0.0;
 
 const customAudioEngine: PvEngine = {
   onmessage: async (event: MessageEvent) => {
-    if (event.data.command !== "process") return;
+    if (event.data.command !== 'process') return;
     const frame: Int16Array = event.data.inputFrame;
 
     let sum = 0;
     for (let i = 0; i < frame.length; i++) {
       sum += Math.pow(frame[i], 2);
     }
-    const rms = (sum / frame.length) / Math.pow(32767, 2);
+    const rms = sum / frame.length / Math.pow(32767, 2);
     const db = 10 * Math.log10(Math.max(rms, 1e-9));
     const normalized = (db - MIN_DB) / (MAX_DB - MIN_DB);
     const normalizedVolume = Math.max(0.0, Math.min(1.0, normalized));
@@ -48,28 +52,34 @@ const customAudioEngine: PvEngine = {
       callbacks.onVolume(normalizedVolume);
     }
 
-    if (currentState === "ENROLLING") {
+    if (currentState === 'ENROLLING') {
       enrollSlidingBuffer!.copyWithin(0, frame.length);
       enrollSlidingBuffer!.set(frame, enrollMaxSamples - frame.length);
-      enrollValidSamples = Math.min(enrollMaxSamples, enrollValidSamples + frame.length);
-    } else if (currentState === "TESTING") {
+      enrollValidSamples = Math.min(
+        enrollMaxSamples,
+        enrollValidSamples + frame.length
+      );
+    } else if (currentState === 'TESTING') {
       testSlidingBuffer!.copyWithin(0, frame.length);
       testSlidingBuffer!.set(frame, testSlidingBuffer!.length - frame.length);
     }
-  }
+  },
 };
 
 const porcupineKeywordCallback = async (): Promise<void> => {
   try {
-    if (currentState === "ENROLLING") {
+    if (currentState === 'ENROLLING') {
       const eagleFrameLength = eagleProfiler!.frameLength;
       const startIndex = enrollMaxSamples - enrollValidSamples;
       const numChunks = Math.floor(enrollValidSamples / eagleFrameLength);
 
       let progress = 0;
       for (let i = 0; i < numChunks; i++) {
-        const chunkStart = startIndex + (i * eagleFrameLength);
-        const chunk = enrollSlidingBuffer!.slice(chunkStart, chunkStart + eagleFrameLength);
+        const chunkStart = startIndex + i * eagleFrameLength;
+        const chunk = enrollSlidingBuffer!.slice(
+          chunkStart,
+          chunkStart + eagleFrameLength
+        );
         progress = await eagleProfiler!.enroll(chunk);
       }
 
@@ -86,9 +96,11 @@ const porcupineKeywordCallback = async (): Promise<void> => {
           callbacks.onEnrollComplete();
         }
       }
-    } else if (currentState === "TESTING") {
-      const scores = await eagle!.process(testSlidingBuffer!, [speakerProfile!]);
-      const score = (scores && scores.length > 0) ? scores[0] : 0;
+    } else if (currentState === 'TESTING') {
+      const scores = await eagle!.process(testSlidingBuffer!, [
+        speakerProfile!,
+      ]);
+      const score = scores && scores.length > 0 ? scores[0] : 0;
       const isVerified = score >= EAGLE_THRESHOLD;
 
       if (callbacks?.onWakeWordRecognized) {
@@ -107,7 +119,11 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
   try {
     const porcupineModel = { publicPath: 'models/porcupine_params.pv' };
     const eagleModel = { publicPath: 'models/eagle_params.pv' };
-    const keyword = { publicPath: 'keywords/keyword.ppn', label: 'wake word', sensitivity: 0.5 };
+    const keyword = {
+      publicPath: 'keywords/keyword.ppn',
+      label: 'wake word',
+      sensitivity: 0.5,
+    };
 
     porcupine = await PorcupineWorker.create(
       accessKey,
@@ -116,21 +132,13 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
       porcupineModel
     );
 
-    eagleProfiler = await EagleProfilerWorker.create(
-      accessKey,
-      eagleModel,
-      {
-        minEnrollmentChunks: 4,
-        voiceThreshold: 0.1
-      }
-    );
-    eagle = await EagleWorker.create(
-      accessKey,
-      eagleModel,
-      {
-        voiceThreshold: 0.0
-      }
-    );
+    eagleProfiler = await EagleProfilerWorker.create(accessKey, eagleModel, {
+      minEnrollmentChunks: 4,
+      voiceThreshold: 0.1,
+    });
+    eagle = await EagleWorker.create(accessKey, eagleModel, {
+      voiceThreshold: 0.0,
+    });
 
     enrollMaxSamples = porcupine.sampleRate * 2;
     enrollSlidingBuffer = new Int16Array(enrollMaxSamples);
@@ -147,7 +155,7 @@ const startEnrollment = async (): Promise<void> => {
   if (WebVoiceProcessor.isRecording) {
     await stop();
   }
-  currentState = "ENROLLING";
+  currentState = 'ENROLLING';
   await eagleProfiler!.reset();
   enrollValidSamples = 0;
   enrollSlidingBuffer!.fill(0);
@@ -160,7 +168,7 @@ const startTesting = async (): Promise<void> => {
   if (WebVoiceProcessor.isRecording) {
     await stop();
   }
-  currentState = "TESTING";
+  currentState = 'TESTING';
   testSlidingBuffer!.fill(0);
 
   await WebVoiceProcessor.subscribe(porcupine!);
@@ -168,7 +176,7 @@ const startTesting = async (): Promise<void> => {
 };
 
 const stop = async (): Promise<void> => {
-  currentState = "IDLE";
+  currentState = 'IDLE';
   await WebVoiceProcessor.unsubscribe(porcupine!);
   await WebVoiceProcessor.unsubscribe(customAudioEngine);
 };
@@ -196,5 +204,5 @@ export default {
   startEnrollment,
   startTesting,
   stop,
-  release
+  release,
 };
