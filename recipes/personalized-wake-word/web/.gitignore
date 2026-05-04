@@ -1,0 +1,14 @@
+.DS_Store
+.idea/
+.rts2_cache/
+.venv
+*.log
+dist/
+node_modules
+porcupine
+eagle
+public/index.js
+public/models/*
+public/keywords/*
+types/*.d.ts*
+venv
