@@ -128,7 +128,6 @@ class ViewModel: ObservableObject {
     private var timer: Timer?
 
     @Published var listenState: ListenState = .idle
-    private var callerTranscript: String = ""
     private let retryLimit = 2
     private var retryCount = 0
 
@@ -335,17 +334,15 @@ class ViewModel: ObservableObject {
         do {
             let (transcript, endpoint) = try cheetah!.process(frame)
             sendText(content: transcript, mode: .caller)
-            callerTranscript += transcript
 
             if endpoint {
                 let flush = try cheetah!.flush()
                 sendText(content: flush, mode: .caller)
-                callerTranscript += flush
                 flushText(mode: .caller)
                 setListenState(state: .idle)
 
-                processCaller(transcript: callerTranscript)
-                callerTranscript = ""
+                sendText(content: "[\(USERNAME)]", mode: .user)
+                setListenState(state: .command)
             }
         } catch {
             setStatusText(text: error.localizedDescription)
@@ -422,11 +419,6 @@ class ViewModel: ObservableObject {
                     stopDemo(delay: 1.0)
                 })
         }
-    }
-
-    func processCaller(transcript: String) {
-        sendText(content: "[\(USERNAME)]", mode: .user)
-        setListenState(state: .command)
     }
 
     func speak(text: String, mode: TextMode, after: (() -> Void)?) {
