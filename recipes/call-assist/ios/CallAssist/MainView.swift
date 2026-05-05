@@ -27,6 +27,7 @@ extension Color {
 
 extension Font {
     static let twenty = Font.system(size: 20)
+    static let fourteen = Font.system(size: 14)
 }
 
 struct MainView: View {
@@ -47,7 +48,7 @@ struct MainView: View {
                     }
                 }.frame(minHeight: 200, alignment: .top)
             }
-            .frame(maxHeight: 200)
+            .frame(maxWidth: .infinity, maxHeight: 200)
             .padding(8)
             .defaultScrollAnchor(.bottom)
             .background(Color.offWhite)
@@ -67,15 +68,15 @@ struct MainView: View {
                 Text("Say one of the following commands")
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .foregroundStyle(.gray)
-                    .font(.footnote)
+                    .font(.fourteen)
                 
                 ForEach(ACTIONS, id: \.self) {item in
                     Text("- \(item)")
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .foregroundStyle(.gray)
-                        .font(.footnote)
+                        .font(.fourteen)
                         .padding(.leading, 10)
-                        .padding(.top, -12)
+                        .padding(.top, -10)
                 }
                 
                 Text(viewModel.withDots(item: viewModel.userTextHistory))
