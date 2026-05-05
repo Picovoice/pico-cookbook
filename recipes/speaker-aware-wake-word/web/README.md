@@ -1,6 +1,6 @@
-# Personalized Wake Word on the Web
+# Speaker Aware Wake Word on the Web
 
-Personalized wake word detection that activates only for the enrolled speaker, powered by on-device voice AI.
+Detect wake words and recognize who said them, powered by on-device voice AI.
 
 ## Compatibility
 
@@ -18,7 +18,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ## Usage
 
-These instructions assume your current working directory is `recipes/personalized-wake-word/web`.
+These instructions assume your current working directory is `recipes/speaker-aware-wake-word/web`.
 
 ### 1. Train a Wake Word Model
 
