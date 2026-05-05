@@ -11,3 +11,4 @@ Detect wake words and recognize who said them, powered by on-device voice AI.
 
 - [Android](android)
 - [Python](python)
+- [Web](web)

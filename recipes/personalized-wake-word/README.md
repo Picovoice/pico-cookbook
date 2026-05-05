@@ -9,5 +9,6 @@ Personalized wake word detection that activates only for the enrolled speaker, p
 
 ## Implementations
 
-- [Python](python)
 - [Android](android)
+- [Python](python)
+- [Web](web)
