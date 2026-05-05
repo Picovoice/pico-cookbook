@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Speaker Aware Wake Word</title>
+    <script src="index.js"></script>
+    <script src="controller.js"></script>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1 id="titleText">Speaker Aware Wake Word</h1>
+
+      <div id="initContainer">
+        <input type="text" id="accessKey" placeholder="Enter AccessKey" />
+        <button id="btnInit">Start Enrollment</button>
+      </div>
+
+      <div
+        id="appContainer"
+        class="hidden"
+        style="
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        "
+      >
+        <div id="statusText">Ready to Enroll</div>
+
+        <div id="layoutDashboard" class="hidden">
+            <div class="dashboard-title">Enrolled Profiles</div>
+            <div id="chipContainer"></div>
+        </div>
+
+        <div id="layoutGreeting" class="hidden">
+            <span id="tvGreetingPrefix">Hello </span>
+            <span id="tvSpeakerName">Speaker 1</span>
+            <span id="tvGreetingSuffix">!</span>
+        </div>
+
+        <progress
+          id="enrollProgress"
+          value="0"
+          max="100"
+          class="hidden"
+        ></progress>
+
+        <div id="volumeMeter" class="hidden">
+          <div class="volume-bar" id="bar1"></div>
+          <div class="volume-bar" id="bar2"></div>
+          <div class="volume-bar" id="bar3"></div>
+        </div>
+
+        <div id="buttonContainer">
+          <button id="btnStartEnroll">Start Enrollment</button>
+          <button id="btnStartTest" class="hidden">Start Testing</button>
+        </div>
+
+        <button id="btnClearAll" class="text-btn hidden">Clear Profiles & Start Over</button>
+        <button id="btnCancel" class="text-btn hidden">Cancel</button>
+      </div>
+    </div>
+  </body>
+</html>
