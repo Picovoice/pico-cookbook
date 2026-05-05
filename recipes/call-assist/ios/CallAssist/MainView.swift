@@ -20,47 +20,50 @@ let ACTIONS = [
     "Block Caller"
 ]
 
+extension Color {
+    static let lightGray = Color(red: 0.8, green: 0.8, blue: 0.8)
+    static let offWhite = Color(red: 0.93, green: 0.93, blue: 0.93)
+}
+
+extension Font {
+    static let twenty = Font.system(size: 20)
+}
+
 struct MainView: View {
     @ObservedObject var viewModel: ViewModel
 
     var body: some View {
         VStack {
-            Text("Main Page")
+            ScrollView {
+                VStack {
+                    ForEach(
+                        Array(viewModel.callerTextHistory.enumerated()), id: \.offset)
+                    { index, item in
+                        Text(viewModel.withDots(item: item))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .foregroundStyle((index % 2 == 1) ? .green : .gray)
+                            .monospacedDigit()
+                            .font(.twenty)
+                    }
+                }.frame(minHeight: 200, alignment: .top)
+            }
+            .frame(maxHeight: 200)
+            .padding(8)
+            .defaultScrollAnchor(.bottom)
+            .background(Color.offWhite)
+            .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.lightGray, lineWidth: 1)
+            )
+            
+            Text(viewModel.withDots(item: viewModel.aiTextHistory))
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .foregroundStyle(.blue)
-                .font(.largeTitle)
-                .padding(16)
-                .bold()
-            ForEach(
-                Array(viewModel.callerTextHistory.enumerated()), id: \.offset)
-            { index, item in
-                Text(item.content)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .foregroundStyle((index % 2 == 1) ? .green : .gray)
-                    .monospacedDigit()
-            }
+                .monospacedDigit()
+                .font(.twenty)
             
-            if viewModel.textMode == .caller {
-                Text(viewModel.renderedText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .foregroundStyle((viewModel.callerTextHistory.count % 2 == 1) ? .green : .gray)
-                    .monospacedDigit()
-            }
-            
-            if viewModel.textMode == .ai {
-                Text(viewModel.renderedText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .foregroundStyle(.blue)
-                    .monospacedDigit()
-            }
-            
-            if viewModel.textMode == .user {
-                Text(viewModel.aiTextHistory)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .foregroundStyle(.blue)
-                    .monospacedDigit()
-            }
-            
-            if viewModel.textMode == .user {
+            if viewModel.listenState == .command {
                 Text("Say one of the following commands")
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .foregroundStyle(.gray)
@@ -75,12 +78,13 @@ struct MainView: View {
                         .padding(.top, -12)
                 }
                 
-                Text(viewModel.renderedText)
+                Text(viewModel.withDots(item: viewModel.userTextHistory))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .foregroundStyle(.blue)
                     .monospacedDigit()
+                    .font(.twenty)
             }
-        }
-        .padding()
+        }.frame(maxHeight: .infinity, alignment: .top)
+            .padding()
     }
 }

@@ -36,7 +36,7 @@ struct LoadingView: View {
                         RoundedRectangle(
                             cornerRadius: 8))
             }.padding(16)
-                .disabled(!viewModel.enginesLoaded)
+                .disabled(!viewModel.enginesLoaded && viewModel.viewState == .loading)
         }
         .padding()
     }

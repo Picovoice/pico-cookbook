@@ -24,12 +24,13 @@ enum ListenState {
 }
 
 enum TextMode {
-    case none, caller, ai, user
+    case caller, ai, user
 }
 
-struct CallerText : Identifiable {
+struct DottedText : Identifiable {
     let id: UUID = UUID()
-    let content: String
+    var content: String = ""
+    var withDots: Bool = true
 }
 
 let DOTS = [
@@ -119,16 +120,18 @@ class ViewModel: ObservableObject {
     @Published var statusText: String = ""
     @Published var enginesLoaded: Bool = false
 
-    @Published var callerTextHistory = [CallerText]()
-    @Published var aiTextHistory = ""
+    @Published var callerTextHistory = [DottedText]()
+    @Published var aiTextHistory = DottedText()
+    @Published var userTextHistory = DottedText()
     private var activeText = ""
-    @Published var renderedText = ""
-    @Published var textMode: TextMode = .none
-    private var dotIndex = 0
+
+    @Published var dotIndex = 0
     private var timer: Timer? = nil
     
-    private var listenState: ListenState = .idle
+    @Published var listenState: ListenState = .idle
     private var callerTranscript: String = ""
+    private let retryLimit = 2
+    private var retryCount = 0
     
     private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
     
@@ -148,37 +151,38 @@ class ViewModel: ObservableObject {
         }
     }
     
-    func sendText(content: String, mode: TextMode = .none) {
+    func sendText(content: String, mode: TextMode) {
         DispatchQueue.main.async { [self] in
-            if textMode == .none && mode != .none {
-                textMode = mode
+            if mode == .caller {
+                if callerTextHistory.isEmpty || !callerTextHistory.last!.withDots {
+                    callerTextHistory.append(DottedText())
+                }
+
+                callerTextHistory[callerTextHistory.count - 1].content += content
+            } else if mode == .ai {
+                if !aiTextHistory.withDots {
+                    aiTextHistory = DottedText()
+                }
+                
+                aiTextHistory.content += content
+            } else if mode == .user {
+                if !userTextHistory.withDots {
+                    userTextHistory = DottedText()
+                }
+                
+                userTextHistory.content += content
             }
-            
-            activeText += content
-            renderText()
         }
     }
     
-    func flushText() {
+    func flushText(mode: TextMode) {
         DispatchQueue.main.async { [self] in
-            if textMode == .caller {
-                callerTextHistory.append(CallerText(content: activeText))
-            } else if textMode == .ai {
-                aiTextHistory = activeText
-            }
-
-            textMode = .none
-            activeText = ""
-            renderText()
-        }
-    }
-
-    func renderText() {
-        DispatchQueue.main.async { [self] in
-            if (activeText.isEmpty) {
-                renderedText = ""
-            } else {
-                renderedText = activeText + DOTS[dotIndex]
+            if mode == .caller {
+                callerTextHistory[callerTextHistory.count - 1].withDots = false
+            } else if mode == .ai {
+                aiTextHistory.withDots = false
+            } else if mode == .user {
+                userTextHistory.withDots = false
             }
         }
     }
@@ -186,22 +190,46 @@ class ViewModel: ObservableObject {
     func startDemo() {
         DispatchQueue.main.async { [self] in
             callerTextHistory.removeAll()
-            aiTextHistory = ""
+            aiTextHistory = DottedText()
+            userTextHistory = DottedText()
+            retryCount = 0
+
             viewState = .main
             actionGreet()
         }
     }
-    
-    func stopDemo() {
+
+    func stopDemo(delay: Float = 0.0) {
         DispatchQueue.main.async { [self] in
-            viewState = .loading
+            Task {
+                do {
+                    try await Task.sleep(for: .milliseconds(Int(delay * 1000)))
+                } catch {}
+                
+                viewState = .loading
+            }
+        }
+    }
+
+    func setListenState(state: ListenState) {
+        DispatchQueue.main.async { [self] in
+            listenState = state
+        }
+    }
+    
+    func withDots(item: DottedText) -> String {
+        if item.content.isEmpty {
+            return ""
+        } else if item.withDots {
+            return item.content + DOTS[dotIndex]
+        } else {
+            return item.content
         }
     }
     
     init() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             self!.dotIndex = (self!.dotIndex + 1) % DOTS.count
-            self!.renderText()
         }
 
         loadEngines()
@@ -229,7 +257,7 @@ class ViewModel: ObservableObject {
                     throw NSError(domain: "picollm_model not found", code: 0)
                 }
                 picollm = try PicoLLM(accessKey: ACCESS_KEY, modelPath: picollmModelPath, device: "cpu:2")
-                
+
                 setStatusText(text: "Loading Rhino...")
                 guard let rhinoModelPath = Bundle(for: type(of: self)).path(forResource: "rhino_model", ofType: "rhn") else {
                     throw NSError(domain: "rhino_model not found", code: 0)
@@ -324,15 +352,15 @@ class ViewModel: ObservableObject {
     func listenCaller(frame: [Int16]) {
         do {
             let (transcript, endpoint) = try cheetah!.process(frame)
-            sendText(content: transcript)
+            sendText(content: transcript, mode: .caller)
             callerTranscript += transcript
             
             if endpoint {
                 let flush = try cheetah!.flush()
-                sendText(content: flush)
+                sendText(content: flush, mode: .caller)
                 callerTranscript += flush
-                flushText()
-                listenState = .idle
+                flushText(mode: .caller)
+                setListenState(state: .idle)
                 
                 processCaller(transcript: callerTranscript)
                 callerTranscript = ""
@@ -347,27 +375,27 @@ class ViewModel: ObservableObject {
             if try rhino!.process(pcm: frame) {
                 let inference = try rhino!.getInference()
                 if inference.isUnderstood && inference.intent == "chooseAction" {
-                    listenState = .idle
-                    let action = Action(rawValue: inference.slots["action"]!)
+                    setListenState(state: .idle)
+                    flushText(mode: .user)
+                    
+                    let action = Action(rawValue: inference.slots["action"]!)!
                     switch action {
                     case .GREET:
                         actionGreet()
                     case .CONNECT_CALL:
-                        actionTerminal(action: action!)
+                        actionTerminal(action: action)
                     case .DECLINE_CALL:
-                        actionTerminal(action: action!)
+                        actionTerminal(action: action)
                     case .ASK_FOR_DETAILS:
                         actionAskForDetails()
                     case .ASK_TO_TEXT:
-                        actionTerminal(action: action!)
+                        actionTerminal(action: action)
                     case .ASK_TO_EMAIL:
-                        actionTerminal(action: action!)
+                        actionTerminal(action: action)
                     case .ASK_TO_CALL_BACK:
-                        actionTerminal(action: action!)
+                        actionTerminal(action: action)
                     case .BLOCK_CALLER:
-                        actionTerminal(action: action!)
-                    case nil:
-                        listenState = .command
+                        actionTerminal(action: action)
                     }
                 }
             }
@@ -378,38 +406,38 @@ class ViewModel: ObservableObject {
     
     func actionGreet() {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
-            flushText()
             sendText(content: "[AI] ", mode: .caller)
             speak(
                 text: Action.GREET.prompt(name: USERNAME),
+                mode: .caller,
                 after: { [self] in
                     sendText(content: "[CALLER] ", mode: .caller)
-                    listenState = .caller
+                    setListenState(state: .caller)
                 })
         }
     }
     
     func actionAskForDetails() {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
-            flushText()
             sendText(content: "[AI] ", mode: .caller)
             speak(
                 text: Action.ASK_FOR_DETAILS.prompt(name: USERNAME),
+                mode: .caller,
                 after: { [self] in
                     sendText(content: "[CALLER] ", mode: .caller)
-                    listenState = .caller
+                    setListenState(state: .caller)
                 })
         }
     }
     
     func actionTerminal(action: Action) {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
-            flushText()
             sendText(content: "[AI] ", mode: .caller)
             speak(
                 text: action.prompt(name: USERNAME),
+                mode: .caller,
                 after: { [self] in
-                    stopDemo()
+                    stopDemo(delay: 1.0)
                 })
         }
     }
@@ -465,19 +493,48 @@ class ViewModel: ObservableObject {
     
     func processCallerReason(caller: String, reason: String) {
         if caller == "unknown" || reason == "unknown" {
-            actionGreet()
+            if (retryCount < retryLimit) {
+                let outputText = formatAskForDetails(caller: caller, reason: reason)
+                sendText(content: outputText, mode: .ai)
+                flushText(mode: .ai)
+                
+                retryCount += 1
+                actionAskForDetails()
+            } else {
+                retryCount = 0
+                let outputText = "Couldn't understand caller's identity and agenda after \(retryLimit) inquiries. Declining their call."
+                speak(
+                    text: outputText,
+                    mode: .ai,
+                    after: {[self] in
+                        actionTerminal(action: Action.DECLINE_CALL)
+                    })
+            }
         } else {
             speak(
                 text: "\(caller) is trying to speak to you about \(reason)",
+                mode: .ai,
                 after: {[self] in
                     sendText(content: "[\(USERNAME)] ", mode: .user)
-                    listenState = .command
+                    setListenState(state: .command)
                 }
             )
         }
     }
     
-    func speak(text: String, after: (() -> Void)?) {
+    func formatAskForDetails(caller: String, reason: String) -> String {
+        if caller == "unknown" && reason == "unknown" {
+            return "Unknown caller with no specified reason. I will ask for more information.";
+        } else if caller == "unknown" {
+            return "Unknown caller is trying to speak to you about `\(reason)`. I will ask for their identity."
+        } else if reason == "unknown" {
+            return "`\(caller)` is trying to speak with you. I will ask for their reason."
+        } else {
+            return ""
+        }
+    }
+    
+    func speak(text: String, mode: TextMode, after: (() -> Void)?) {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             Task {
                 do {
@@ -491,17 +548,17 @@ class ViewModel: ObservableObject {
                         try await Task.sleep(for: .milliseconds(duration))
                         currentTime = word.startSec
                         
-                        sendText(content: word.word)
+                        sendText(content: word.word, mode: mode)
                         
                         if index + 1 < audio.wordArray.count && !audio.wordArray[index + 1].word.first!.isPunctuation {
-                            sendText(content: " ")
+                            sendText(content: " ", mode: mode)
                         }
                     }
                     
                     let duration = Int((audio.wordArray.last!.endSec - currentTime) * 1000)
                     try await Task.sleep(for: .milliseconds(duration))
 
-                    flushText()
+                    flushText(mode: mode)
                 } catch {
                     setStatusText(text: error.localizedDescription)
                 }

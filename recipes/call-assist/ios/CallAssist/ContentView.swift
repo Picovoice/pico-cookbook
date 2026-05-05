@@ -13,14 +13,16 @@ struct ContentView: View {
     @StateObject var viewModel = ViewModel()
     
     var body: some View {
-        Group {
+        ZStack {
             switch viewModel.viewState {
             case .loading:
                 LoadingView(viewModel: viewModel)
             case .main:
                 MainView(viewModel: viewModel)
             }
-        }
+        }.animation(
+            .easeInOut(duration: 0.5),
+            value: viewModel.viewState)
     }
 }
 
