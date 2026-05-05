@@ -16,29 +16,45 @@ struct SelectLanguageView: View {
 
     var body: some View {
         VStack(alignment: .center) {
-            Text("Speech To Speech Translation Demo")
+            Text("Speech To Speech Translation")
 
             Spacer()
             
-            List {
+            if viewModel.chatState != ChatState.SELECTING {
+                ChatView(viewModel: viewModel)
+            }
+            
+            Spacer()
+            
+            Text(viewModel.statusText)
+            
+            HStack {
+                Spacer()
                 Picker("Source Language", selection: $viewModel.selectedSourceLanguage,
                        content: {
-                    Text("en").tag("en")
-                    Text("fr").tag("fr")
-                    Text("de").tag("de")
-                    Text("es").tag("es")
+                    ForEach(Array(LANGUAGE_PAIRS.keys).sorted(), id: \.self) { key in
+                        Text(LANGUAGE_DISPLAY[key] ?? "").tag(key)
+                    }
                 })
+                .onChange(of: $viewModel.selectedSourceLanguage.wrappedValue) { () in  viewModel.selectedSourceLanguageChange()
+                }
+                Spacer()
                 Picker("Target Language", selection: $viewModel.selectedTargetLanguage,
                        content: {
-                    Text("en").tag("en")
-                    Text("fr").tag("fr")
-                    Text("de").tag("de")
-                    Text("es").tag("es")
+                    Text("Select Language").tag("invalid")
+                    ForEach(0..<LANGUAGE_PAIRS[$viewModel.selectedSourceLanguage.wrappedValue]!.count, id: \.self) { i in
+                        let lang = LANGUAGE_PAIRS[$viewModel.selectedSourceLanguage.wrappedValue]![i]
+                        Text(LANGUAGE_DISPLAY[lang] ?? "").tag(lang)
+                    }
                 })
+                .onChange(of: $viewModel.selectedTargetLanguage.wrappedValue) { () in
+                    viewModel.selectedTargetLanguageChange()
+                }
+                Spacer()
             }
             
             Button(action: viewModel.startDemo) {
-                Text("Start")
+                Text("Pause")
                     .background(Constants.btnColor(viewModel.enableLoadModelButton))
                     .foregroundColor(.white)
                     .padding(.horizontal, 35.0)
@@ -48,8 +64,6 @@ struct SelectLanguageView: View {
             )
             .padding(12)
             .disabled(!viewModel.enableLoadModelButton)
-
-            Spacer()
         }.frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity).background(Color.white)
     }
 }

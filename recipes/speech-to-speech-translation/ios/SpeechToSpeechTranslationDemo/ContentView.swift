@@ -15,11 +15,7 @@ struct ContentView: View {
     @State var showSidebar = false
 
     var body: some View {
-        if viewModel.chatState == ChatState.SELECTING {
-            SelectLanguageView(viewModel: viewModel)
-        } else {
-            ChatView(viewModel: viewModel)
-        }
+        SelectLanguageView(viewModel: viewModel)
     }
 }
 

@@ -11,64 +11,72 @@ import SwiftUI
 
 struct ChatView: View {
     @ObservedObject var viewModel: ViewModel
-
+    
     var body: some View {
         let isError = viewModel.errorMessage.count > 0
-
+        
         ZStack {
             VStack(alignment: .center) {
-                Text("Speech To Speech Translation Demo")
-
-                Spacer()
-
                 resultsBox
-
+                
                 Spacer()
-
+                
                 HStack(alignment: .center) {
                     Spacer()
                     if !viewModel.enableGenerateButton {
                         ProgressView(value: 0).progressViewStyle(CircularProgressViewStyle())
                     }
-                    Text(viewModel.statusText).padding(.horizontal, 12)
                     Spacer()
                 }
                 .padding(.horizontal, 24)
-
+                
                 if isError {
-                   Text(viewModel.errorMessage)
-                       .padding()
-                       .foregroundColor(Color.white)
-                       .frame(maxWidth: .infinity)
-                       .background(Constants.dangerRed)
-                       .font(.body)
-                       .opacity(viewModel.errorMessage.isEmpty ? 0 : 1)
-                       .cornerRadius(10)
+                    Text(viewModel.errorMessage)
+                        .padding()
+                        .foregroundColor(Color.white)
+                        .frame(maxWidth: .infinity)
+                        .background(Constants.dangerRed)
+                        .font(.body)
+                        .opacity(viewModel.errorMessage.isEmpty ? 0 : 1)
+                        .cornerRadius(10)
                 }
             }
             .padding(.bottom, 32)
             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity).background(Color.white)
         }
     }
-
+    
     var resultsBox: some View {
         VStack {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading) {
                         ForEach(0..<viewModel.chatText.count, id: \.self) { i in
-                            let speaker = viewModel.chatText[i].speaker
-                            let msg = viewModel.chatText[i].msg
-                            (
-                                Text("\(speaker)\n\n").foregroundColor(Constants.activeBlue)
-                                +
-                                Text("\(msg)\n\n")
-                            )
+                            let transcript = viewModel.chatText[i].transcript
+                            let translated = viewModel.chatText[i].translated
+                            
+                            VStack(spacing: 0) {
+                                Text(transcript)
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 8)
+                                if (translated != nil) {
+                                    Text(translated!)
+                                        .foregroundColor(Constants.activeBlue)
+                                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                                        .padding(.horizontal, 8)
+                                        .padding(.bottom, 8)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .background(Constants.backgroundGrey)
+                            .cornerRadius(3.0)
+                            .padding(.bottom, 8)
                         }
                     }
                     .padding(12)
                     .id(0)
-                }.onChange(of: viewModel.chatText) { _ in
+                }.onChange(of: viewModel.chatText) { () in
                     proxy.scrollTo(0, anchor: .bottom)
                 }
             }
@@ -78,35 +86,12 @@ struct ChatView: View {
                 alignment: .topLeading
             )
             .font(.body)
-
-            HStack {
-                Button(action: viewModel.unloadEngines) {
-                    Image(systemName: "arrow.left")
-                        .imageScale(.large)
-                }
-                .padding(.horizontal, 12)
-                .disabled(!viewModel.enableGenerateButton)
-                Spacer()
-                Button(action: viewModel.clearText) {
-                    Image(systemName: "arrow.counterclockwise")
-                        .imageScale(.large)
-                }
-                .padding(.horizontal, 12)
-                .disabled(
-                    viewModel.errorMessage.count > 0 ||
-                    !viewModel.enableGenerateButton ||
-                    viewModel.chatText.isEmpty)
-            }
-            .padding(.bottom, 12)
         }
         .frame(
             maxWidth: .infinity,
             maxHeight: .infinity,
             alignment: .topLeading
         )
-        .background(Constants.backgroundGrey)
-        .cornerRadius(3.0)
-        .padding(24)
     }
 }
 

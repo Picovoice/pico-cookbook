@@ -27,6 +27,53 @@ enum ChatState {
     case ERROR
 }
 
+let LANGUAGE_DISPLAY: [String:String] = [
+    "automatic": "Automatic",
+    "de": "German",
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "it": "Italian"
+]
+
+let LANGUAGE_PAIRS: [String:[String]] = [
+  "automatic": [
+    "de",
+    "en",
+    "es",
+    "fr",
+    "it",
+  ],
+  "de": [
+    "en",
+    "es",
+    "fr",
+    "it",
+  ],
+  "en": [
+    "de",
+    "es",
+    "fr",
+    "it",
+  ],
+  "es": [
+    "de",
+    "en",
+    "fr",
+    "it",
+  ],
+  "fr": [
+    "de",
+    "en",
+    "es",
+  ],
+  "it": [
+    "de",
+    "en",
+    "es",
+  ]
+]
+
 class ViewModel: ObservableObject {
 
     private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
@@ -37,13 +84,12 @@ class ViewModel: ObservableObject {
     private var orca: Orca?
 
     private var audioStream: AudioPlayerStream?
-    
+
     @Published var chatState: ChatState = .SELECTING
 
-    @Published var selectedSourceLanguage: String = "en"
-    @Published var selectedTargetLanguage: String = "de"
-    
-    
+    @Published var selectedSourceLanguage: String = "automatic"
+    @Published var selectedTargetLanguage: String = "invalid"
+
     static let modelLoadStatusTextDefault = """
 Start by loading a `.pllm` model file.
 
@@ -56,7 +102,7 @@ You can download directly to your device or airdrop from a Mac.
 
     @Published var enginesLoaded = false
 
-    static let statusTextDefault = "Say `Picovoice`!"
+    static let statusTextDefault = ""
     @Published var statusText = statusTextDefault
 
     @Published var promptText = ""
@@ -72,6 +118,17 @@ You can download directly to your device or airdrop from a Mac.
 //        }
     }
 
+    public func selectedSourceLanguageChange() {
+        selectedTargetLanguage = "invalid"
+    }
+    
+    public func selectedTargetLanguageChange() {
+//        unloadEngines() // TODO: Need to handle this correctly, causes crash!
+        if selectedTargetLanguage != "invalid" {
+            startDemo()
+        }
+    }
+    
     public func startDemo() {
         chatState = .LOADING
         loadEngines()
@@ -79,22 +136,22 @@ You can download directly to your device or airdrop from a Mac.
 
     public func loadEngines() {
         errorMessage = ""
-        modelLoadStatusText = ""
+        statusText = ""
         enableLoadModelButton = false
-
-        let sourceLanguage = "en"
-        let targetLanguage = "de"
-
+        
+        let sourceLanguage = selectedSourceLanguage
+        let targetLanguage = selectedTargetLanguage
+        
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             let setStatusText = {(_ msg: String) in
                 DispatchQueue.main.async { [self] in
-                    modelLoadStatusText = msg
+                    statusText = msg
                 }
             }
             do {
                 setStatusText("Loading Cheetah \(sourceLanguage)...")
                 let cheetahModelPath = Bundle(for: type(of: self)).path(forResource: "cheetah_params_\(sourceLanguage)", ofType: "pv")!
-                cheetah = try Cheetah(accessKey: ACCESS_KEY, modelPath: cheetahModelPath)
+                cheetah = try Cheetah(accessKey: ACCESS_KEY, modelPath: cheetahModelPath, endpointDuration: 1.0)
 
                 setStatusText("Loading Zebra \(sourceLanguage)_\(targetLanguage)...")
                 let zebraModelPath = Bundle(for: type(of: self)).path(forResource: "zebra_params_\(sourceLanguage)_\(targetLanguage)", ofType: "pv")!
@@ -112,21 +169,16 @@ You can download directly to your device or airdrop from a Mac.
                 VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
                 startAudioRecording()
 
+                setStatusText(ViewModel.statusTextDefault)
                 DispatchQueue.main.async { [self] in
                     chatState = .LISTENING
+                    chatText.append(Message(transcript: ""))
                 }
             } catch {
                 DispatchQueue.main.async { [self] in
                     unloadEngines()
                     errorMessage = "\(error.localizedDescription)"
                 }
-            }
-
-            DispatchQueue.main.async { [self] in
-                selectedModelUrl!.stopAccessingSecurityScopedResource()
-
-                modelLoadStatusText = ViewModel.modelLoadStatusTextDefault
-                enableLoadModelButton = true
             }
         }
     }
@@ -151,8 +203,10 @@ You can download directly to your device or airdrop from a Mac.
 
         errorMessage = ""
         promptText = ""
-        chatText.removeAll()
         enginesLoaded = false
+        chatText.removeAll()
+
+        chatState = .SELECTING
     }
 
     private func startAudioRecording() {
@@ -176,16 +230,6 @@ You can download directly to your device or airdrop from a Mac.
             }
         }
     }
-
-    private var completionQueue = DispatchQueue(label: "text-stream-queue")
-    private var completionArray: [String] = []
-
-    private let stopPhrases = [
-        "</s>",  // Llama-2, Mistral, and Mixtral
-        "<end_of_turn>",  // Gemma
-        "<|endoftext|>",  // Phi-2
-        "<|eot_id|>"  // Llama-3
-    ]
 
 //    private func streamCallback(completion: String) {
 //        DispatchQueue.main.async { [self] in
@@ -301,6 +345,52 @@ You can download directly to your device or airdrop from a Mac.
 //            }
 //        }
 //    }
+    private func translateAndSpeak() {
+        DispatchQueue.main.async { [self] in
+            chatState = .TRANSLATING
+        }
+        
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            Task {
+                do {
+                    let translation = try self.zebra!.translate(text: chatText[chatText.count - 1].transcript)
+                    
+                    let audio = try orca!.synthesize(text: translation)
+                    
+                    try audioStream!.playStreamPCM(audio.pcm)
+                    
+                    var currentTime: Float = 0.0
+                    for (index, word) in audio.wordArray.enumerated() {
+                        let duration = Int((word.startSec - currentTime) * 1000)
+                        try await Task.sleep(for: .milliseconds(duration))
+                        currentTime = word.startSec
+                        
+                        DispatchQueue.main.async { [self] in
+                            chatText[chatText.count - 1].appendTranslated(text: word.word)
+                        }
+                        
+                        if index + 1 < audio.wordArray.count && !audio.wordArray[index + 1].word.first!.isPunctuation {
+                            DispatchQueue.main.async { [self] in
+                                chatText[chatText.count - 1].appendTranslated(text: " ")
+                            }
+                        }
+                    }
+                    
+                    let duration = Int((audio.wordArray.last!.endSec - currentTime) * 1000)
+                    try await Task.sleep(for: .milliseconds(duration))
+                    
+                    DispatchQueue.main.async { [self] in
+                        chatState = .LISTENING
+                        chatText.append(Message(transcript: ""))
+                    }
+                } catch {
+                    DispatchQueue.main.async { [self] in
+                        errorMessage = "\(error.localizedDescription)"
+                    }
+                }
+            }
+        }
+    }
 
     public func interrupt() {
         do {
@@ -312,18 +402,24 @@ You can download directly to your device or airdrop from a Mac.
         }
     }
 
-    public func clearText() {
-        promptText = ""
-        chatText.removeAll()
-    }
-
     private func audioCallback(frame: [Int16]) {
         do {
             if chatState == .LISTENING {
                 let partialTranscript = try self.cheetah!.process(frame)
-                chatText.append(Message(speaker: "user", msg: partialTranscript.0))
-            } else if chatState == .TRANSLATING {
-            } else if chatState == .SPEAKING {
+                DispatchQueue.main.async { [self] in
+                    chatText[chatText.count - 1].appendTranscript(text: partialTranscript.0)
+                }
+                
+                if partialTranscript.1 {
+                    let finalTranscript = try self.cheetah!.flush()
+                    DispatchQueue.main.async { [self] in
+                        chatText[chatText.count - 1].appendTranscript(text: finalTranscript)
+                    }
+                    
+                    if !chatText[chatText.count - 1].transcript.isEmpty {
+                        translateAndSpeak()
+                    }
+                }
             }
         } catch {
             DispatchQueue.main.async { [self] in
@@ -340,10 +436,18 @@ You can download directly to your device or airdrop from a Mac.
 }
 
 struct Message: Equatable {
-    var speaker: String
-    var msg: String
+    var transcript: String
+    var translated: String?
 
-    mutating func append(text: String) {
-        self.msg.append(text)
+    mutating func appendTranscript(text: String) {
+        self.transcript.append(text)
+    }
+    
+    mutating func appendTranslated(text: String) {
+        if self.translated != nil {
+            self.translated!.append(text)
+        } else {
+            self.translated = text
+        }
     }
 }
