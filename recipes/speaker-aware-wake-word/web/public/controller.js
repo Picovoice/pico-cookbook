@@ -13,7 +13,6 @@ window.onload = () => {
   const layoutGreeting = document.getElementById('layoutGreeting');
   const tvSpeakerName = document.getElementById('tvSpeakerName');
   const tvGreetingPrefix = document.getElementById('tvGreetingPrefix');
-  const tvGreetingSuffix = document.getElementById('tvGreetingSuffix');
 
   const enrollProgress = document.getElementById('enrollProgress');
   const volumeMeter = document.getElementById('volumeMeter');
@@ -27,11 +26,24 @@ window.onload = () => {
   const btnClearAll = document.getElementById('btnClearAll');
   const btnCancel = document.getElementById('btnCancel');
 
+  const nameModalOverlay = document.getElementById('nameModalOverlay');
+  const speakerNameInput = document.getElementById('speakerNameInput');
+  const btnModalCancel = document.getElementById('btnModalCancel');
+  const btnModalEnroll = document.getElementById('btnModalEnroll');
+
   const MAX_SPEAKERS = 10;
   const EAGLE_THRESHOLD = 0.75;
   const SPEAKER_PALETTE = [
-    '#377dff', '#8B5CF6', '#10B981', '#EC4899', '#F59E0B',
-    '#06B6D4', '#EF4444', '#84CC16', '#6366F1', '#F43F5E'
+    '#377dff',
+    '#10B981',
+    '#8B5CF6',
+    '#EC4899',
+    '#F59E0B',
+    '#06B6D4',
+    '#EF4444',
+    '#84CC16',
+    '#F43F5E',
+    '#6366F1',
   ];
 
   let speakerProfiles = [];
@@ -39,9 +51,21 @@ window.onload = () => {
   let pendingSpeakerName = '';
   let currentState = 'IDLE';
 
-  const toTitleCase = (str) => {
-    return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
-  };
+  function showError(message) {
+    errorText.innerText = message;
+    errorText.classList.remove('hidden');
+  }
+
+  function clearError() {
+    errorText.innerText = '';
+    errorText.classList.add('hidden');
+  }
+
+  if (typeof Picovoice === 'undefined') {
+    showError('You must run `yarn build` before running `yarn start`');
+    btnInit.disabled = true;
+    return;
+  }
 
   const callbacks = {
     onVolume: volume => {
@@ -53,12 +77,12 @@ window.onload = () => {
     onEnrollProgress: progress => {
       enrollProgress.value = progress;
     },
-    onEnrollComplete: (profile) => {
+    onEnrollComplete: profile => {
       speakerProfiles.push(profile);
       speakerNames.push(pendingSpeakerName);
       updateUIForState('IDLE');
     },
-    onWakeWordRecognized: (scores) => {
+    onWakeWordRecognized: scores => {
       let bestScore = 0;
       let bestIndex = -1;
       if (scores) {
@@ -70,18 +94,20 @@ window.onload = () => {
         }
       }
 
-      const isVerified = (bestScore >= EAGLE_THRESHOLD && bestIndex !== -1);
-      showGreeting(isVerified ? speakerNames[bestIndex] : null, isVerified ? bestIndex : -1);
+      if (bestIndex !== -1 && bestScore >= EAGLE_THRESHOLD) {
+        showGreeting(speakerNames[bestIndex], SPEAKER_PALETTE[bestIndex]);
+      }
     },
     onError: err => {
-      alert('Error: ' + err);
+      showError(err);
     },
   };
 
   btnInit.onclick = async () => {
+    clearError();
     const accessKey = accessKeyInput.value.trim();
     if (!accessKey) {
-      alert('Please enter an AccessKey');
+      showError('Please enter an AccessKey');
       return;
     }
 
@@ -119,32 +145,55 @@ window.onload = () => {
 
   function promptForSpeakerName() {
     if (speakerProfiles.length >= MAX_SPEAKERS) {
-        alert(`Maximum of ${MAX_SPEAKERS} speakers reached.`);
-        return;
-    }
-    let name = prompt("Enter Speaker Name:", `Speaker ${speakerProfiles.length + 1}`);
-    if (name === null) {
-        updateUIForState('IDLE');
-        return;
+      showError(`Maximum of ${MAX_SPEAKERS} speakers reached.`);
+      return;
     }
 
-    pendingSpeakerName = toTitleCase(name.trim() || `Speaker ${speakerProfiles.length + 1}`);
+    const defaultName = `Speaker ${speakerProfiles.length + 1}`;
+    speakerNameInput.value = '';
+    speakerNameInput.placeholder = defaultName;
+
+    nameModalOverlay.classList.remove('hidden');
+    speakerNameInput.focus();
+  }
+
+  const submitModal = () => {
+    pendingSpeakerName = speakerNameInput.value.trim();
+    if (!pendingSpeakerName) {
+      pendingSpeakerName = speakerNameInput.placeholder;
+    }
+
+    nameModalOverlay.classList.add('hidden');
+
     Picovoice.startEnrollment();
     updateUIForState('ENROLLING');
-  }
+  };
+
+  btnModalEnroll.onclick = submitModal;
+
+  btnModalCancel.onclick = () => {
+    nameModalOverlay.classList.add('hidden');
+    updateUIForState('IDLE');
+  };
+
+  speakerNameInput.addEventListener('keypress', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitModal();
+    }
+  });
 
   function updateUIForState(newState) {
     currentState = newState;
     const hasProfiles = speakerProfiles.length > 0;
 
-    titleText.classList.toggle('hidden', hasProfiles);
-
     if (currentState === 'ENROLLING') {
-      statusText.innerText = `Enrolling ${pendingSpeakerName}...\nSay the wake word`;
+      statusText.innerText = `Hello ${pendingSpeakerName}\n\nSay the wake word\nuntil the bar is full`;
       statusText.classList.remove('hidden');
       enrollProgress.classList.remove('hidden');
       enrollProgress.value = 0;
 
+      titleText.classList.add('hidden');
       layoutDashboard.classList.add('hidden');
       buttonContainer.classList.add('hidden');
       layoutGreeting.classList.add('hidden');
@@ -158,6 +207,7 @@ window.onload = () => {
       statusText.classList.remove('hidden');
       enrollProgress.classList.add('hidden');
 
+      titleText.classList.add('hidden');
       layoutDashboard.classList.add('hidden');
       buttonContainer.classList.add('hidden');
       layoutGreeting.classList.add('hidden');
@@ -175,6 +225,7 @@ window.onload = () => {
       btnCancel.classList.add('hidden');
       layoutGreeting.classList.add('hidden');
 
+      titleText.classList.remove('hidden');
       buttonContainer.classList.remove('hidden');
 
       if (hasProfiles) {
@@ -197,56 +248,46 @@ window.onload = () => {
   function renderSpeakerChips() {
     chipContainer.innerHTML = '';
     for (let i = 0; i < speakerNames.length; i++) {
-        const chip = document.createElement('div');
-        chip.className = 'speaker-chip';
-        chip.innerText = speakerNames[i];
-        chip.style.backgroundColor = SPEAKER_PALETTE[i];
-        chipContainer.appendChild(chip);
+      const chip = document.createElement('div');
+      chip.className = 'speaker-chip';
+      chip.innerText = speakerNames[i];
+      chip.style.backgroundColor = SPEAKER_PALETTE[i];
+      chipContainer.appendChild(chip);
     }
     if (speakerProfiles.length < MAX_SPEAKERS) {
-        const addBtn = document.createElement('div');
-        addBtn.className = 'add-chip';
-        addBtn.innerText = '+ Add';
-        addBtn.onclick = promptForSpeakerName;
-        chipContainer.appendChild(addBtn);
+      const addBtn = document.createElement('div');
+      addBtn.className = 'add-chip';
+      addBtn.innerText = '+ Add';
+      addBtn.onclick = promptForSpeakerName;
+      chipContainer.appendChild(addBtn);
     }
   }
 
-  function showGreeting(speakerName, speakerIndex) {
+  function showGreeting(speakerName, speakerColour) {
     volumeMeter.classList.add('hidden');
     statusText.classList.add('hidden');
     btnCancel.classList.add('hidden');
 
     layoutGreeting.classList.remove('hidden');
 
-    if (speakerName && speakerIndex !== -1) {
-        tvGreetingPrefix.classList.remove('hidden');
-        tvGreetingSuffix.classList.remove('hidden');
-        tvSpeakerName.innerText = speakerName;
-        tvSpeakerName.style.backgroundColor = SPEAKER_PALETTE[speakerIndex];
-        tvSpeakerName.style.color = 'white';
-    } else {
-        tvGreetingPrefix.classList.add('hidden');
-        tvGreetingSuffix.classList.add('hidden');
-        tvSpeakerName.innerText = 'Unrecognized Speaker';
-        tvSpeakerName.style.backgroundColor = 'var(--gray-light)';
-        tvSpeakerName.style.color = '#333333';
-    }
+    tvGreetingPrefix.classList.remove('hidden');
+    tvSpeakerName.innerText = speakerName;
+    tvSpeakerName.style.backgroundColor = speakerColour;
+    tvSpeakerName.style.color = 'white';
 
     setTimeout(() => layoutGreeting.classList.add('pop'), 10);
 
     setTimeout(() => {
-        layoutGreeting.classList.remove('pop');
-        setTimeout(() => {
-            layoutGreeting.classList.add('hidden');
-            if (currentState === 'TESTING') {
-                statusText.classList.remove('hidden');
-                volumeMeter.classList.remove('hidden');
-                btnCancel.classList.remove('hidden');
-                Picovoice.resumeTesting();
-            }
-        }, 300);
-    }, 2500);
+      layoutGreeting.classList.remove('pop');
+      setTimeout(() => {
+        layoutGreeting.classList.add('hidden');
+        if (currentState === 'TESTING') {
+          statusText.classList.remove('hidden');
+          volumeMeter.classList.remove('hidden');
+          btnCancel.classList.remove('hidden');
+        }
+      }, 300);
+    }, 2000);
   }
 };
 

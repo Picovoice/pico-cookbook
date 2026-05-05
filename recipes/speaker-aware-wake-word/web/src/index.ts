@@ -21,7 +21,6 @@ let eagle: EagleWorker | null = null;
 let enrolledProfiles: EagleProfile[] = [];
 
 let currentState: 'IDLE' | 'ENROLLING' | 'TESTING' = 'IDLE';
-let isProcessingResult = false;
 
 let enrollMaxSamples = 0;
 let enrollValidSamples = 0;
@@ -96,9 +95,6 @@ const porcupineKeywordCallback = async (): Promise<void> => {
         }
       }
     } else if (currentState === 'TESTING') {
-      if (isProcessingResult) return;
-      isProcessingResult = true;
-
       const scores = await eagle!.process(testSlidingBuffer!, enrolledProfiles);
 
       if (callbacks?.onWakeWordRecognized) {
@@ -109,7 +105,6 @@ const porcupineKeywordCallback = async (): Promise<void> => {
     if (callbacks?.onError) {
       callbacks.onError(e.toString());
     }
-    isProcessingResult = false;
   }
 };
 
@@ -122,7 +117,7 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
       publicPath: 'keywords/keyword.ppn',
       label: 'wake word',
       sensitivity: 0.5,
-      forceWrite: true
+      forceWrite: true,
     };
 
     porcupine = await PorcupineWorker.create(
@@ -134,7 +129,7 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
 
     eagleProfiler = await EagleProfilerWorker.create(accessKey, eagleModel, {
       minEnrollmentChunks: 4,
-      voiceThreshold: 0.1,
+      voiceThreshold: 0.0,
     });
     eagle = await EagleWorker.create(accessKey, eagleModel, {
       voiceThreshold: 0.0,
@@ -165,21 +160,19 @@ const startEnrollment = async (): Promise<void> => {
 };
 
 const startTesting = async (profiles: EagleProfile[]): Promise<void> => {
-  if (profiles.length === 0) throw new Error('No speaker profiles enrolled.');
+  if (profiles.length === 0) {
+    throw new Error('No speaker profiles enrolled.');
+  }
+
   if (WebVoiceProcessor.isRecording) {
     await stop();
   }
   currentState = 'TESTING';
   enrolledProfiles = profiles;
-  isProcessingResult = false;
   testSlidingBuffer!.fill(0);
 
   await WebVoiceProcessor.subscribe(porcupine!);
   await WebVoiceProcessor.subscribe(customAudioEngine);
-};
-
-const resumeTesting = () => {
-  isProcessingResult = false;
 };
 
 const stop = async (): Promise<void> => {
@@ -210,7 +203,6 @@ export default {
   init,
   startEnrollment,
   startTesting,
-  resumeTesting,
   stop,
   release,
 };
