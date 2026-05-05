@@ -24,7 +24,7 @@ enum ListenState {
 }
 
 enum TextMode {
-    case caller, ai, user
+    case caller, response, user
 }
 
 struct DottedText: Identifiable {
@@ -43,32 +43,32 @@ let DOTS = [
 ]
 
 enum Action: String {
-    case GREET = "Greet"
-    case CONNECT_CALL = "Connect Call"
-    case DECLINE_CALL = "Decline Call"
-    case ASK_FOR_DETAILS = "Ask for Details"
-    case ASK_TO_TEXT = "Ask to Text"
-    case ASK_TO_EMAIL = "Ask to Email"
-    case ASK_TO_CALL_BACK = "Ask to Call Back"
-    case BLOCK_CALLER = "Block Caller"
+    case greet = "Greet"
+    case connectCall = "Connect Call"
+    case declineCall = "Decline Call"
+    case askForDetails = "Ask for Details"
+    case askToText = "Ask to Text"
+    case askToEmail = "Ask to Email"
+    case askToCallBack = "Ask to Call Back"
+    case blockCaller = "Block Caller"
 
     public func prompt(name: String) -> String {
         switch self {
-        case .GREET:
+        case .greet:
             return "Hi, \(name) can't answer right now. Please say your name and why you're calling."
-        case .CONNECT_CALL:
+        case .connectCall:
             return "Okay, one moment while I connect you."
-        case .DECLINE_CALL:
+        case .declineCall:
             return "Sorry, \(name) is unavailable right now."
-        case .ASK_FOR_DETAILS:
+        case .askForDetails:
             return "Can you briefly say who you are and what this is regarding?"
-        case .ASK_TO_TEXT:
+        case .askToText:
             return "\(name) can't talk right now. Please send a text message instead."
-        case .ASK_TO_EMAIL:
+        case .askToEmail:
             return "Please send the details by email. Thank you."
-        case .ASK_TO_CALL_BACK:
+        case .askToCallBack:
             return "\(name) can't take your call right now. Please call back later."
-        case .BLOCK_CALLER:
+        case .blockCaller:
             return "This number is not accepting calls."
         }
     }
@@ -159,7 +159,7 @@ class ViewModel: ObservableObject {
                 }
 
                 callerTextHistory[callerTextHistory.count - 1].content += content
-            } else if mode == .ai {
+            } else if mode == .response {
                 if !aiTextHistory.withDots {
                     aiTextHistory = DottedText()
                 }
@@ -179,7 +179,7 @@ class ViewModel: ObservableObject {
         DispatchQueue.main.async { [self] in
             if mode == .caller {
                 callerTextHistory[callerTextHistory.count - 1].withDots = false
-            } else if mode == .ai {
+            } else if mode == .response {
                 aiTextHistory.withDots = false
             } else if mode == .user {
                 userTextHistory.withDots = false
@@ -241,27 +241,31 @@ class ViewModel: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             do {
                 setStatusText(text: "Loading Cheetah...")
-                guard let cheetahModelPath = Bundle(for: type(of: self)).path(forResource: "cheetah_params", ofType: "pv") else {
-                    throw NSError(domain: "cheetah_params not found", code: 0)
-                }
+                guard let cheetahModelPath = Bundle(for: type(of: self))
+                    .path(forResource: "cheetah_params", ofType: "pv") else {
+                        throw NSError(domain: "cheetah_params not found", code: 0)
+                    }
                 cheetah = try Cheetah(accessKey: ACCESS_KEY, modelPath: cheetahModelPath, device: "cpu:1")
 
                 setStatusText(text: "Loading Orca...")
-                guard let orcaModelPath = Bundle(for: type(of: self)).path(forResource: "orca_params_en_female", ofType: "pv") else {
-                    throw NSError(domain: "orca_params_female not found", code: 0)
-                }
+                guard let orcaModelPath = Bundle(for: type(of: self))
+                    .path(forResource: "orca_params_en_female", ofType: "pv") else {
+                        throw NSError(domain: "orca_params_female not found", code: 0)
+                    }
                 orca = try Orca(accessKey: ACCESS_KEY, modelPath: orcaModelPath, device: "cpu:1")
 
                 setStatusText(text: "Loading picoLLM...")
-                guard let picollmModelPath = Bundle(for: type(of: self)).path(forResource: "picollm_model", ofType: "pllm") else {
-                    throw NSError(domain: "picollm_model not found", code: 0)
-                }
+                guard let picollmModelPath = Bundle(for: type(of: self))
+                    .path(forResource: "picollm_model", ofType: "pllm") else {
+                        throw NSError(domain: "picollm_model not found", code: 0)
+                    }
                 picollm = try PicoLLM(accessKey: ACCESS_KEY, modelPath: picollmModelPath, device: "cpu:2")
 
                 setStatusText(text: "Loading Rhino...")
-                guard let rhinoModelPath = Bundle(for: type(of: self)).path(forResource: "rhino_model", ofType: "rhn") else {
-                    throw NSError(domain: "rhino_model not found", code: 0)
-                }
+                guard let rhinoModelPath = Bundle(for: type(of: self))
+                    .path(forResource: "rhino_model", ofType: "rhn") else {
+                        throw NSError(domain: "rhino_model not found", code: 0)
+                    }
                 rhino = try Rhino(accessKey: ACCESS_KEY, contextPath: rhinoModelPath, device: "cpu:1")
 
                 setStatusText(text: "Loading Audio Player...")
@@ -380,21 +384,21 @@ class ViewModel: ObservableObject {
 
                     let action = Action(rawValue: inference.slots["action"]!)!
                     switch action {
-                    case .GREET:
+                    case .greet:
                         actionGreet()
-                    case .CONNECT_CALL:
+                    case .connectCall:
                         actionTerminal(action: action)
-                    case .DECLINE_CALL:
+                    case .declineCall:
                         actionTerminal(action: action)
-                    case .ASK_FOR_DETAILS:
+                    case .askForDetails:
                         actionAskForDetails()
-                    case .ASK_TO_TEXT:
+                    case .askToText:
                         actionTerminal(action: action)
-                    case .ASK_TO_EMAIL:
+                    case .askToEmail:
                         actionTerminal(action: action)
-                    case .ASK_TO_CALL_BACK:
+                    case .askToCallBack:
                         actionTerminal(action: action)
-                    case .BLOCK_CALLER:
+                    case .blockCaller:
                         actionTerminal(action: action)
                     }
                 }
@@ -408,7 +412,7 @@ class ViewModel: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             sendText(content: "[AI] ", mode: .caller)
             speak(
-                text: Action.GREET.prompt(name: USERNAME),
+                text: Action.greet.prompt(name: USERNAME),
                 mode: .caller,
                 after: { [self] in
                     sendText(content: "[CALLER] ", mode: .caller)
@@ -421,7 +425,7 @@ class ViewModel: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             sendText(content: "[AI] ", mode: .caller)
             speak(
-                text: Action.ASK_FOR_DETAILS.prompt(name: USERNAME),
+                text: Action.askForDetails.prompt(name: USERNAME),
                 mode: .caller,
                 after: { [self] in
                     sendText(content: "[CALLER] ", mode: .caller)
@@ -443,7 +447,7 @@ class ViewModel: ObservableObject {
     }
 
     func processCaller(transcript: String) {
-        sendText(content: "[AI] ", mode: .ai)
+        sendText(content: "[AI] ", mode: .response)
 
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             do {
@@ -495,25 +499,26 @@ class ViewModel: ObservableObject {
         if caller == "unknown" || reason == "unknown" {
             if retryCount < retryLimit {
                 let outputText = formatAskForDetails(caller: caller, reason: reason)
-                sendText(content: outputText, mode: .ai)
-                flushText(mode: .ai)
+                sendText(content: outputText, mode: .response)
+                flushText(mode: .response)
 
                 retryCount += 1
                 actionAskForDetails()
             } else {
                 retryCount = 0
-                let outputText = "Couldn't understand caller's identity and agenda after \(retryLimit) inquiries. Declining their call."
+                let outputText = "Couldn't understand caller's identity and " +
+                    "agenda after \(retryLimit) inquiries. Declining their call."
                 speak(
                     text: outputText,
-                    mode: .ai,
+                    mode: .response,
                     after: {[self] in
-                        actionTerminal(action: Action.DECLINE_CALL)
+                        actionTerminal(action: Action.declineCall)
                     })
             }
         } else {
             speak(
                 text: "\(caller) is trying to speak to you about \(reason)",
-                mode: .ai,
+                mode: .response,
                 after: {[self] in
                     sendText(content: "[\(USERNAME)] ", mode: .user)
                     setListenState(state: .command)

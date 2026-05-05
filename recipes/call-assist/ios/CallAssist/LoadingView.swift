@@ -22,22 +22,24 @@ struct LoadingView: View {
             Text(viewModel.statusText)
                 .foregroundStyle(.gray)
                 .padding(16)
-            Button(action: {
-                withAnimation(.easeInOut) {
-                    viewModel.startDemo()
+            Button(
+                action: {
+                    withAnimation(.easeInOut) {
+                        viewModel.startDemo()
+                    }
+                },
+                label: {
+                    Text("Start Demo")
+                        .padding(.vertical, 8)
+                        .padding(8)
+                        .foregroundStyle(.white)
+                        .background(viewModel.enginesLoaded ? .blue : .gray)
+                        .clipShape(
+                            RoundedRectangle(
+                                cornerRadius: 8))
                 }
-            }) {
-                Text("Start Demo")
-                    .padding(.vertical, 8)
-                    .padding(8)
-                    .foregroundStyle(.white)
-                    .background(viewModel.enginesLoaded ? .blue : .gray)
-                    .clipShape(
-                        RoundedRectangle(
-                            cornerRadius: 8))
-            }.padding(16)
+            ).padding(16)
                 .disabled(!viewModel.enginesLoaded && viewModel.viewState == .loading)
-        }
-        .padding()
+        }.padding()
     }
 }
