@@ -27,7 +27,7 @@ enum TextMode {
     case caller, ai, user
 }
 
-struct DottedText : Identifiable {
+struct DottedText: Identifiable {
     let id: UUID = UUID()
     var content: String = ""
     var withDots: Bool = true
@@ -42,7 +42,7 @@ let DOTS = [
     "    "
 ]
 
-enum Action : String {
+enum Action: String {
     case GREET = "Greet"
     case CONNECT_CALL = "Connect Call"
     case DECLINE_CALL = "Decline Call"
@@ -51,7 +51,7 @@ enum Action : String {
     case ASK_TO_EMAIL = "Ask to Email"
     case ASK_TO_CALL_BACK = "Ask to Call Back"
     case BLOCK_CALLER = "Block Caller"
-    
+
     public func prompt(name: String) -> String {
         switch self {
         case .GREET:
@@ -126,31 +126,31 @@ class ViewModel: ObservableObject {
     private var activeText = ""
 
     @Published var dotIndex = 0
-    private var timer: Timer? = nil
-    
+    private var timer: Timer?
+
     @Published var listenState: ListenState = .idle
     private var callerTranscript: String = ""
     private let retryLimit = 2
     private var retryCount = 0
-    
-    private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
-    
-    private let USERNAME = "${YOUR_USERNAME_HERE}"
-    
-    private var cheetah: Cheetah? = nil
-    private var orca: Orca? = nil
-    private var picollm: PicoLLM? = nil
-    private var rhino: Rhino? = nil
 
-    private var audioStream: AudioPlayerStream? = nil
-    
+    private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
+
+    private let USERNAME = "${YOUR_USERNAME_HERE}"
+
+    private var cheetah: Cheetah?
+    private var orca: Orca?
+    private var picollm: PicoLLM?
+    private var rhino: Rhino?
+
+    private var audioStream: AudioPlayerStream?
+
     func setStatusText(text: String) {
         DispatchQueue.main.async { [self] in
             viewState = .loading
             statusText = text
         }
     }
-    
+
     func sendText(content: String, mode: TextMode) {
         DispatchQueue.main.async { [self] in
             if mode == .caller {
@@ -163,18 +163,18 @@ class ViewModel: ObservableObject {
                 if !aiTextHistory.withDots {
                     aiTextHistory = DottedText()
                 }
-                
+
                 aiTextHistory.content += content
             } else if mode == .user {
                 if !userTextHistory.withDots {
                     userTextHistory = DottedText()
                 }
-                
+
                 userTextHistory.content += content
             }
         }
     }
-    
+
     func flushText(mode: TextMode) {
         DispatchQueue.main.async { [self] in
             if mode == .caller {
@@ -186,7 +186,7 @@ class ViewModel: ObservableObject {
             }
         }
     }
-    
+
     func startDemo() {
         DispatchQueue.main.async { [self] in
             callerTextHistory.removeAll()
@@ -205,7 +205,7 @@ class ViewModel: ObservableObject {
                 do {
                     try await Task.sleep(for: .milliseconds(Int(delay * 1000)))
                 } catch {}
-                
+
                 viewState = .loading
             }
         }
@@ -216,7 +216,7 @@ class ViewModel: ObservableObject {
             listenState = state
         }
     }
-    
+
     func withDots(item: DottedText) -> String {
         if item.content.isEmpty {
             return ""
@@ -226,7 +226,7 @@ class ViewModel: ObservableObject {
             return item.content
         }
     }
-    
+
     init() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             self!.dotIndex = (self!.dotIndex + 1) % DOTS.count
@@ -234,7 +234,7 @@ class ViewModel: ObservableObject {
 
         loadEngines()
     }
-    
+
     func loadEngines() {
         unloadEngines()
 
@@ -245,13 +245,13 @@ class ViewModel: ObservableObject {
                     throw NSError(domain: "cheetah_params not found", code: 0)
                 }
                 cheetah = try Cheetah(accessKey: ACCESS_KEY, modelPath: cheetahModelPath, device: "cpu:1")
-                
+
                 setStatusText(text: "Loading Orca...")
                 guard let orcaModelPath = Bundle(for: type(of: self)).path(forResource: "orca_params_en_female", ofType: "pv") else {
                     throw NSError(domain: "orca_params_female not found", code: 0)
                 }
                 orca = try Orca(accessKey: ACCESS_KEY, modelPath: orcaModelPath, device: "cpu:1")
-                
+
                 setStatusText(text: "Loading picoLLM...")
                 guard let picollmModelPath = Bundle(for: type(of: self)).path(forResource: "picollm_model", ofType: "pllm") else {
                     throw NSError(domain: "picollm_model not found", code: 0)
@@ -263,15 +263,15 @@ class ViewModel: ObservableObject {
                     throw NSError(domain: "rhino_model not found", code: 0)
                 }
                 rhino = try Rhino(accessKey: ACCESS_KEY, contextPath: rhinoModelPath, device: "cpu:1")
-                
+
                 setStatusText(text: "Loading Audio Player...")
                 audioStream = try AudioPlayerStream(sampleRate: Double(self.orca!.sampleRate!))
-                
+
                 setStatusText(text: "Loading Voice Processor...")
                 VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
-                
+
                 startRecording()
-                
+
                 DispatchQueue.main.async { [self] in
                     setStatusText(text: "Press the Start Demo button to begin.")
                     enginesLoaded = true
@@ -287,34 +287,34 @@ class ViewModel: ObservableObject {
 
     func unloadEngines() {
         enginesLoaded = false
-        
+
         stopRecording()
-        
+
         audioStream = nil
         VoiceProcessor.instance.clearFrameListeners()
         VoiceProcessor.instance.clearErrorListeners()
-        
+
         if cheetah != nil {
             cheetah!.delete()
             cheetah = nil
         }
-        
+
         if orca != nil {
             orca!.delete()
             orca = nil
         }
-        
+
         if picollm != nil {
             picollm!.delete()
             picollm = nil
         }
-        
+
         if rhino != nil {
             rhino!.delete()
             rhino = nil
         }
     }
-    
+
     deinit {
         unloadEngines()
     }
@@ -330,7 +330,7 @@ class ViewModel: ObservableObject {
             }
         }
     }
-    
+
     func stopRecording() {
         do {
             try VoiceProcessor.instance.stop()
@@ -340,7 +340,7 @@ class ViewModel: ObservableObject {
             }
         }
     }
-    
+
     func audioCallback(frame: [Int16]) {
         if listenState == .caller {
             listenCaller(frame: frame)
@@ -348,20 +348,20 @@ class ViewModel: ObservableObject {
             listenCommand(frame: frame)
         }
     }
-    
+
     func listenCaller(frame: [Int16]) {
         do {
             let (transcript, endpoint) = try cheetah!.process(frame)
             sendText(content: transcript, mode: .caller)
             callerTranscript += transcript
-            
+
             if endpoint {
                 let flush = try cheetah!.flush()
                 sendText(content: flush, mode: .caller)
                 callerTranscript += flush
                 flushText(mode: .caller)
                 setListenState(state: .idle)
-                
+
                 processCaller(transcript: callerTranscript)
                 callerTranscript = ""
             }
@@ -369,7 +369,7 @@ class ViewModel: ObservableObject {
             setStatusText(text: error.localizedDescription)
         }
     }
-    
+
     func listenCommand(frame: [Int16]) {
         do {
             if try rhino!.process(pcm: frame) {
@@ -377,7 +377,7 @@ class ViewModel: ObservableObject {
                 if inference.isUnderstood && inference.intent == "chooseAction" {
                     setListenState(state: .idle)
                     flushText(mode: .user)
-                    
+
                     let action = Action(rawValue: inference.slots["action"]!)!
                     switch action {
                     case .GREET:
@@ -403,7 +403,7 @@ class ViewModel: ObservableObject {
             setStatusText(text: error.localizedDescription)
         }
     }
-    
+
     func actionGreet() {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             sendText(content: "[AI] ", mode: .caller)
@@ -416,7 +416,7 @@ class ViewModel: ObservableObject {
                 })
         }
     }
-    
+
     func actionAskForDetails() {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             sendText(content: "[AI] ", mode: .caller)
@@ -429,7 +429,7 @@ class ViewModel: ObservableObject {
                 })
         }
     }
-    
+
     func actionTerminal(action: Action) {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             sendText(content: "[AI] ", mode: .caller)
@@ -441,7 +441,7 @@ class ViewModel: ObservableObject {
                 })
         }
     }
-    
+
     func processCaller(transcript: String) {
         sendText(content: "[AI] ", mode: .ai)
 
@@ -450,7 +450,7 @@ class ViewModel: ObservableObject {
                 let dialog = try picollm!.getDialog(system: SYSTEM)
                 try dialog.addHumanRequest(content: "Caller Said: \"\(transcript)\"")
                 let prompt = try dialog.prompt()
-                
+
                 let completion = try picollm!.generate(
                     prompt: prompt,
                     stopPhrases: ["<|eot_id|>"])
@@ -464,40 +464,40 @@ class ViewModel: ObservableObject {
             }
         }
     }
-    
+
     func extractCallerReason(completion: String) -> (String, String) {
         let lines = completion.split(separator: "\n")
         if lines.count != 2 {
             return ("unknown", "unknown")
         }
-        
+
         if !lines[0].lowercased().starts(with: "caller: ") {
             return ("unknown", "unknown")
         }
-        
+
         if !lines[1].lowercased().starts(with: "reason: ") {
             return ("unknown", "unknown")
         }
-        
+
         let caller = lines[0].dropFirst(8)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let reason = lines[1].dropFirst(8)
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         if  caller.isEmpty || reason.isEmpty {
             return ("unknown", "unknown")
         }
-        
+
         return (caller, reason)
     }
-    
+
     func processCallerReason(caller: String, reason: String) {
         if caller == "unknown" || reason == "unknown" {
-            if (retryCount < retryLimit) {
+            if retryCount < retryLimit {
                 let outputText = formatAskForDetails(caller: caller, reason: reason)
                 sendText(content: outputText, mode: .ai)
                 flushText(mode: .ai)
-                
+
                 retryCount += 1
                 actionAskForDetails()
             } else {
@@ -521,10 +521,10 @@ class ViewModel: ObservableObject {
             )
         }
     }
-    
+
     func formatAskForDetails(caller: String, reason: String) -> String {
         if caller == "unknown" && reason == "unknown" {
-            return "Unknown caller with no specified reason. I will ask for more information.";
+            return "Unknown caller with no specified reason. I will ask for more information."
         } else if caller == "unknown" {
             return "Unknown caller is trying to speak to you about `\(reason)`. I will ask for their identity."
         } else if reason == "unknown" {
@@ -533,28 +533,28 @@ class ViewModel: ObservableObject {
             return ""
         }
     }
-    
+
     func speak(text: String, mode: TextMode, after: (() -> Void)?) {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             Task {
                 do {
                     let audio = try orca!.synthesize(text: text)
-                    
+
                     try audioStream!.playStreamPCM(audio.pcm)
-                    
+
                     var currentTime: Float = 0.0
                     for (index, word) in audio.wordArray.enumerated() {
                         let duration = Int((word.startSec - currentTime) * 1000)
                         try await Task.sleep(for: .milliseconds(duration))
                         currentTime = word.startSec
-                        
+
                         sendText(content: word.word, mode: mode)
-                        
+
                         if index + 1 < audio.wordArray.count && !audio.wordArray[index + 1].word.first!.isPunctuation {
                             sendText(content: " ", mode: mode)
                         }
                     }
-                    
+
                     let duration = Int((audio.wordArray.last!.endSec - currentTime) * 1000)
                     try await Task.sleep(for: .milliseconds(duration))
 
@@ -562,8 +562,8 @@ class ViewModel: ObservableObject {
                 } catch {
                     setStatusText(text: error.localizedDescription)
                 }
-                
-                if (after != nil) {
+
+                if after != nil {
                     after!()
                 }
             }

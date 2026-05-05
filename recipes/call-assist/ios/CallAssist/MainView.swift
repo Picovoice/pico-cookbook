@@ -38,8 +38,7 @@ struct MainView: View {
             ScrollView {
                 VStack {
                     ForEach(
-                        Array(viewModel.callerTextHistory.enumerated()), id: \.offset)
-                    { index, item in
+                        Array(viewModel.callerTextHistory.enumerated()), id: \.offset) { index, item in
                         Text(viewModel.withDots(item: item))
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .foregroundStyle((index % 2 == 1) ? .green : .gray)
@@ -57,19 +56,19 @@ struct MainView: View {
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(Color.lightGray, lineWidth: 1)
             )
-            
+
             Text(viewModel.withDots(item: viewModel.aiTextHistory))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .foregroundStyle(.blue)
                 .monospacedDigit()
                 .font(.twenty)
-            
+
             if viewModel.listenState == .command {
                 Text("Say one of the following commands")
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .foregroundStyle(.gray)
                     .font(.fourteen)
-                
+
                 ForEach(ACTIONS, id: \.self) {item in
                     Text("- \(item)")
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -78,7 +77,7 @@ struct MainView: View {
                         .padding(.leading, 10)
                         .padding(.top, -10)
                 }
-                
+
                 Text(viewModel.withDots(item: viewModel.userTextHistory))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .foregroundStyle(.blue)

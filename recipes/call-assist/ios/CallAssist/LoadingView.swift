@@ -11,7 +11,7 @@ import SwiftUI
 
 struct LoadingView: View {
     @ObservedObject var viewModel: ViewModel
-    
+
     var body: some View {
         VStack {
             Text("Call Assist")
