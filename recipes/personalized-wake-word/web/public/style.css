@@ -47,6 +47,20 @@ h1 {
   white-space: pre-line;
 }
 
+#errorText {
+  color: var(--error-red);
+  background-color: rgba(244, 67, 54, 0.1);
+  border: 1px solid var(--error-red);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  padding: 12px;
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
+}
+
 #initContainer {
   width: 100%;
   display: flex;

@@ -123,6 +123,7 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
       publicPath: 'keywords/keyword.ppn',
       label: 'wake word',
       sensitivity: 0.5,
+      forceWrite: true
     };
 
     porcupine = await PorcupineWorker.create(

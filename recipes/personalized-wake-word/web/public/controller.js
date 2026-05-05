@@ -19,6 +19,22 @@ window.onload = () => {
   const btnStartTest = document.getElementById('btnStartTest');
   const btnCancel = document.getElementById('btnCancel');
 
+  function showError(message) {
+    errorText.innerText = message;
+    errorText.classList.remove('hidden');
+  }
+
+  function clearError() {
+    errorText.innerText = '';
+    errorText.classList.add('hidden');
+  }
+
+  if (typeof Picovoice === 'undefined') {
+    showError("You must run `yarn build` before running `yarn start`");
+    btnInit.disabled = true;
+    return;
+  }
+
   let hasEnrolled = false;
   let currentState = 'IDLE';
 
@@ -40,14 +56,15 @@ window.onload = () => {
       showTestResult(isVerified, score);
     },
     onError: err => {
-      alert('Error: ' + err);
+      showError(err);
     },
   };
 
   btnInit.onclick = async () => {
+    clearError();
     const accessKey = accessKeyInput.value.trim();
     if (!accessKey) {
-      alert('Please enter an AccessKey');
+      showError('Please enter an AccessKey');
       return;
     }
 
