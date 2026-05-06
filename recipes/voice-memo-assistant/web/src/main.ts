@@ -13,7 +13,7 @@ export enum UIState {
   START_RECORDING = 'START_RECORDING',
   READ_RECORDING = 'READ_RECORDING',
   SUMMARIZE_RECORDING = 'SUMMARIZE_RECORDING',
-  REWRITE_RECORDING = 'REWRITE_RECORDING'
+  REWRITE_RECORDING = 'REWRITE_RECORDING',
 }
 
 type PvObject = {
@@ -31,13 +31,13 @@ type DemoCallbacks = {
   onAudioReady: (pcm: Int16Array) => void;
   onVolume: (volume: number) => void;
   onError: (error: string) => void;
-}
+};
 
 let object: PvObject | null = null;
 let currentState = UIState.INIT;
-let memoText = "";
-let enhancedText = "";
-const NO_MEMO_ERROR_PHRASE = "You need to record a memo first.";
+let memoText = '';
+let enhancedText = '';
+const NO_MEMO_ERROR_PHRASE = 'You need to record a memo first.';
 
 const MIN_DB = -40.0;
 const MAX_DB = 0.0;
@@ -63,10 +63,7 @@ const customAudioEngine = {
   },
 };
 
-const init = async (
-  accessKey: string,
-  cb: DemoCallbacks
-): Promise<void> => {
+const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
   if (object !== null) return;
 
   callbacks = cb;
@@ -77,7 +74,7 @@ const init = async (
     publicPath: 'models/porcupine_model.ppn',
     label: 'wake word',
     sensitivity: 0.5,
-    forceWrite: true
+    forceWrite: true,
   };
   const detectionCallback = async () => {
     if (currentState === UIState.WAKE_WORD) {
@@ -90,11 +87,12 @@ const init = async (
     accessKey,
     keyword,
     detectionCallback,
-    { publicPath: "models/porcupine_params.pv" });
+    { publicPath: 'models/porcupine_params.pv' }
+  );
 
   const context = {
     publicPath: 'models/rhino_model.rhn',
-    forceWrite: true
+    forceWrite: true,
   };
   const intentCallback = async (inference: RhinoInference) => {
     if (currentState === UIState.VOICE_COMMAND && inference.isFinalized) {
@@ -112,8 +110,9 @@ const init = async (
     accessKey,
     context,
     intentCallback,
-    { publicPath: "models/rhino_params.pv" },
-    { requireEndpoint: false, endpointDurationSec: 0.5 });
+    { publicPath: 'models/rhino_params.pv' },
+    { requireEndpoint: false, endpointDurationSec: 0.5 }
+  );
 
   const transcribeCallback = async (transcript: CheetahTranscript) => {
     if (currentState === UIState.START_RECORDING) {
@@ -124,7 +123,7 @@ const init = async (
       }
 
       if (transcript.isFlushed) {
-        memoText = memoText + " ";
+        memoText = memoText + ' ';
       }
 
       if (/.*(stop recording)[.\s]*$/i.test(memoText)) {
@@ -139,17 +138,17 @@ const init = async (
   const cheetah = await CheetahWorker.create(
     accessKey,
     transcribeCallback,
-    { publicPath: "models/cheetah_params.pv"} ,
+    { publicPath: 'models/cheetah_params.pv' },
     { enableAutomaticPunctuation: true, enableTextNormalization: true }
   );
 
-  const pllm = await PicoLLMWorker.create(
-    accessKey,
-    {modelFile: "models/picollm_model.pllm", cacheFileOverwrite: true}
-  );
+  const pllm = await PicoLLMWorker.create(accessKey, {
+    modelFile: 'models/picollm_model.pllm',
+    cacheFileOverwrite: true,
+  });
   const orca = await OrcaWorker.create(
     accessKey,
-    { publicPath: "models/orca_params_en_female.pv" },
+    { publicPath: 'models/orca_params_en_female.pv' },
     {}
   );
 
@@ -158,41 +157,46 @@ const init = async (
 };
 
 const handleIntent = async (intent: string | undefined) => {
-  if (intent === "startMemo") {
-    memoText = "";
-    enhancedText = "";
+  if (intent === 'startMemo') {
+    memoText = '';
+    enhancedText = '';
     setState(UIState.START_RECORDING);
     await WebVoiceProcessor.subscribe(object!.cheetah);
-  } else if (intent === "readMemo") {
+  } else if (intent === 'readMemo') {
     setState(UIState.READ_RECORDING);
     const textToRead = enhancedText || NO_MEMO_ERROR_PHRASE;
     playAudioMessage(textToRead);
-  } else if (intent === "summarizeMemo" || intent === "rewriteMemo") {
+  } else if (intent === 'summarizeMemo' || intent === 'rewriteMemo') {
     if (!memoText) {
       playAudioMessage(NO_MEMO_ERROR_PHRASE);
       resetToWakeWord();
       return;
     }
-    setState(intent === "summarizeMemo" ? UIState.SUMMARIZE_RECORDING : UIState.REWRITE_RECORDING);
+    setState(
+      intent === 'summarizeMemo'
+        ? UIState.SUMMARIZE_RECORDING
+        : UIState.REWRITE_RECORDING
+    );
     runLLMTask(intent);
   }
 };
 
 const runLLMTask = async (task: string) => {
-  enhancedText = "";
+  enhancedText = '';
   const dialog = object!.pllm.getDialog();
-  let prompt = task === "summarizeMemo"
-    ? `Summarize the memo below in one short sentence. Return only the summary.\n\nMemo:\n${memoText}\n\nSummarized memo:\n`
-    : `Rewrite the memo below to fix grammar and punctuation. Preserve the original meaning. Return only the rewritten memo.\n\nMemo:\n${memoText}\n\nRewritten memo:\n`;
+  let prompt =
+    task === 'summarizeMemo'
+      ? `Summarize the memo below in one short sentence. Return only the summary.\n\nMemo:\n${memoText}\n\nSummarized memo:\n`
+      : `Rewrite the memo below to fix grammar and punctuation. Preserve the original meaning. Return only the rewritten memo.\n\nMemo:\n${memoText}\n\nRewritten memo:\n`;
 
   dialog.addHumanRequest(prompt);
 
   await object!.pllm.generate(dialog.prompt(), {
-    stopPhrases: ["<|eot_id|>"],
-    streamCallback: (token) => {
-      enhancedText += token.replace("<|eot_id|>", "");
+    stopPhrases: ['<|eot_id|>'],
+    streamCallback: token => {
+      enhancedText += token.replace('<|eot_id|>', '');
       callbacks!.onModifiedText(enhancedText);
-    }
+    },
   });
   callbacks!.onModifiedText(enhancedText);
   resetToWakeWord();
@@ -238,9 +242,4 @@ const release = async (): Promise<void> => {
   object = null;
 };
 
-export {
-  init,
-  start,
-  getStreamSampleRate,
-  release,
-};
+export { init, start, getStreamSampleRate, release };
