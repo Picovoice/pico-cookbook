@@ -15,7 +15,7 @@ call content to the cloud.
 
 ## Compatibility
 
-- iOS 16.0+
+- iOS 17.0+
 
 ## AccessKey
 

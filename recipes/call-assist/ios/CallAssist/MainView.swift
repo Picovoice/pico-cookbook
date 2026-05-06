@@ -27,7 +27,7 @@ extension Color {
 
 extension Font {
     static let twenty = Font.system(size: 20)
-    static let fourteen = Font.system(size: 14)
+    static let fifteen = Font.system(size: 15)
 }
 
 struct MainView: View {
@@ -45,9 +45,9 @@ struct MainView: View {
                             .monospacedDigit()
                             .font(.twenty)
                     }
-                }.frame(minHeight: 200, alignment: .top)
+                }.frame(minHeight: 300, alignment: .top)
             }
-            .frame(maxWidth: .infinity, maxHeight: 200)
+            .frame(maxWidth: .infinity, maxHeight: 300)
             .padding(8)
             .defaultScrollAnchor(.bottom)
             .background(Color.offWhite)
@@ -62,18 +62,19 @@ struct MainView: View {
                 .foregroundStyle(.blue)
                 .monospacedDigit()
                 .font(.twenty)
+                .padding([.top, .bottom], 5)
 
             if viewModel.listenState == .command {
                 Text("Say one of the following commands")
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .foregroundStyle(.gray)
-                    .font(.fourteen)
+                    .font(.fifteen)
 
                 ForEach(ACTIONS, id: \.self) {item in
                     Text("- \(item)")
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .foregroundStyle(.gray)
-                        .font(.fourteen)
+                        .font(.fifteen)
                         .padding(.leading, 10)
                         .padding(.top, -10)
                 }
@@ -83,7 +84,12 @@ struct MainView: View {
                     .foregroundStyle(.blue)
                     .monospacedDigit()
                     .font(.twenty)
+                    .padding([.top, .bottom], 5)
             }
+            
+            Spacer()
+            
+            VolumeMeterView(viewModel: viewModel)
         }.frame(maxHeight: .infinity, alignment: .top)
             .padding()
     }

@@ -119,6 +119,7 @@ class ViewModel: ObservableObject {
     @Published var viewState: ViewState = .loading
     @Published var statusText: String = ""
     @Published var enginesLoaded: Bool = false
+    @Published var soundLevel: Float = 0.0
 
     @Published var callerTextHistory = [DottedText]()
     @Published var aiTextHistory = DottedText()
@@ -346,6 +347,8 @@ class ViewModel: ObservableObject {
     }
 
     func audioCallback(frame: [Int16]) {
+        computeSoundLevel(frame: frame)
+        
         if listenState == .caller {
             listenCaller(frame: frame)
         } else if listenState == .command {
@@ -353,6 +356,25 @@ class ViewModel: ObservableObject {
         }
     }
 
+    func computeSoundLevel(frame: [Int16]) {
+        let MIN_DB: Double = -40;
+        let MAX_DB: Double = 0;
+
+        var sum: Double = 0
+        for sample in frame {
+            sum += pow(Double(sample), 2)
+        }
+
+        let rms = (sum / Double(frame.count)) / pow(Double(Int16.max), 2)
+        let db: Double = 10 * log10(max(rms, 1e-9))
+        let normalized = (db - MIN_DB) / (MAX_DB - MIN_DB)
+        let clamped = max(0.0, min(1.0, normalized))
+        
+        DispatchQueue.main.async { [self] in
+            soundLevel = soundLevel * 0.5 + Float(clamped) * 0.5
+        }
+    }
+    
     func listenCaller(frame: [Int16]) {
         do {
             let (transcript, endpoint) = try cheetah!.process(frame)
