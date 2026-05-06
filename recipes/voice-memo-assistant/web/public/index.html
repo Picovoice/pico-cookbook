@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="index.js"></script>
+  <script src="controller.js"></script>
+  <style>
+    :root {
+      --brand-color: #377dff;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      background-color: #f8f9fa;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+    }
+
+    h1 { color: var(--brand-color); margin-bottom: 30px; }
+    h3 { color: #555; margin-bottom: 8px; }
+
+    .app-container {
+      width: 100%;
+      max-width: 600px;
+      padding-bottom: 150px;
+    }
+
+    .memo-box {
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      padding: 15px;
+      min-height: 120px;
+      background: #ffffff;
+      white-space: pre-wrap;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .bottom-bar {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 500px;
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      text-align: center;
+      border: 2px solid var(--brand-color);
+    }
+
+    .status-text {
+      color: var(--brand-color);
+      font-weight: 700;
+      font-size: 1.2em;
+      margin-bottom: 5px;
+    }
+
+    .tooltip {
+      color: #6c757d;
+      font-size: 0.9em;
+      margin-bottom: 10px;
+    }
+
+    #volumeMeter {
+      display: flex;
+      gap: 6px;
+      height: 40px;
+      align-items: center;
+      justify-content: center;
+      margin: 24px 0;
+    }
+
+    .volume-bar {
+      width: 8px;
+      height: 8px;
+      background-color: var(--brand-color);
+      border-radius: 4px;
+      transition: height 0.05s ease;
+    }
+
+    button {
+      background-color: var(--brand-color);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+    }
+    button:disabled { background-color: #a3c4ff; cursor: not-allowed; }
+    input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 250px;}
+  </style>
+</head>
+<body>
+  <h1>Voice Memo Assistant</h1>
+
+  <div id="initBlock" class="app-container" style="text-align: center;">
+    <label>AccessKey: <input type="text" id="accessKey"/></label><br/><br/>
+    <button id="init" disabled>Init Voice Assistant</button>
+  </div>
+
+  <div id="appBlock" class="app-container" style="display: none;">
+    <h3>Original Memo:</h3>
+    <div id="originalText" class="memo-box"></div>
+
+    <div id="modifiedContainer" style="display: none;">
+      <h3 id="modifiedTitle">Modified:</h3>
+      <div id="modifiedText" class="memo-box"></div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="status-text" id="status">Status</div>
+      <div class="tooltip" id="tooltip"></div>
+
+      <div id="volumeMeter" class="hidden">
+        <div class="volume-bar" id="bar1"></div>
+        <div class="volume-bar" id="bar2"></div>
+        <div class="volume-bar" id="bar3"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

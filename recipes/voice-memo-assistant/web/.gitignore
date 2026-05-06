@@ -1,0 +1,12 @@
+node_modules
+.rts2_cache/
+.idea/
+dist/
+*.log
+.DS_Store
+public/index.js
+*.pllm
+*.pv
+*.rhn
+*.ppn
+types/*.d.ts*
