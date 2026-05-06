@@ -1,6 +1,6 @@
-## See It In Action!
+# Voice Memo Assistant on the Web
 
-[![LLM VA in Action](https://img.youtube.com/vi/WWVSACJQknw/0.jpg)](https://www.youtube.com/watch?v=WWVSACJQknw)
+Record, rewrite, summarize, and replay voice memos hands-free, powered by on-device voice AI.
 
 ## Compatibility
 
@@ -17,57 +17,67 @@ connectivity to validate your AccessKey with Picovoice license servers even thou
 offline and completely free for open-weight models. Everyone who signs up for
 [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessKey.
 
-## picoLLM Model
-
-picoLLM Inference Engine supports many open-weight models. The models are on
-[Picovoice Console](https://console.picovoice.ai/).
-
-## Installation
-
-Install the required packages using `yarn`:
-
-```console
-yarn install
-```
-
-or using `npm`:
-
-```console
-npm install
-```
-
 ## Usage
 
-1. Build the core Picovoice SDK functionality and audio playback using `yarn`:
+These instructions assume your current working directory is `recipes/voice-memo-assistant/web`.
+
+### 1. Download the LLM
+
+Download `llama-3.2-1b-instruct-385.pllm` from [Picovoice Console](https://console.picovoice.ai/).
+
+### 2. Train the Wake Word Model
+
+1. Open [Picovoice Console](https://console.picovoice.ai/)
+2. Go to Porcupine Wake Word.
+3. Enter your desired wake phrase.
+4. Click Train.
+5. Select target platform `WASM` and download the generated wake word model file (`.ppn`).
+
+### 3. Train the Speech-to-Intent Model
+
+1. Open [Picovoice Console](https://console.picovoice.ai/)
+2. Go to Rhino Speech-to-Intent.
+3. Create an empty Rhino context.
+4. Click Import YAML in the top-right corner.
+5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
+6. Download the generated Rhino context file (`.rhn`) for target platform `WASM`.
+
+### 4. Download the Required Models
+
+Run the setup script to download and copy the models for [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/)
+and [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/).
+
+It will also copy the models provided for [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/),
+[Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) and [picoLLM Inference](https://picovoice.ai/docs/picollm/)
+to the public models folder.
+
+```console
+python setup.py \
+    --keyword_path ${PATH_TO_PPN} \
+    --context_path ${PATH_TO_RHN} \
+    --picollm_model_path ${PATH_TO_PLLM}
+```
+
+### 5. Install Dependencies
+
+```console
+yarn
+```
+
+### 6. Build the Demo
 
 ```console
 yarn build
 ```
 
-or using `npm`:
-
-```console
-npm run build
-```
-
-This builds the TypeScript files inside [src](./src), which uses `Porcupine`, `Cheetah`, `Orca` and `PicoLLM` to
-build the core functionality.
-
-2. Start the server using `yarn`:
+### 7. Run the Demo
 
 ```console
 yarn start
 ```
 
-or using `npm`:
-
-```console
-npm run start
-```
+### 8. Open the Demo page
 
 <!-- markdown-link-check-disable -->
-3. Open [localhost:5000](http://localhost:5000) in your web browser.
+- go to [localhost:5000](http://localhost:5000) in your web browser.
 <!-- markdown-link-check-enable -->
-
-4. Enter your AccessKey and upload your`picoLLM` model file which can be obtained from
-[Picovoice Console](https://console.picovoice.ai/). Then press `Init Voice Assistant`.
