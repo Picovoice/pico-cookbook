@@ -55,15 +55,14 @@ struct SelectLanguageView: View {
             
             Button(action: viewModel.startDemo) {
                 Text("Pause")
-                    .background(Constants.btnColor(viewModel.enableLoadModelButton))
+                    .background(Constants.btnColor(true))
                     .foregroundColor(.white)
                     .padding(.horizontal, 35.0)
                     .padding(.vertical, 20.0)
             }.background(
-                Capsule().fill(Constants.btnColor(viewModel.enableLoadModelButton))
+                Capsule().fill(Constants.btnColor(true))
             )
             .padding(12)
-            .disabled(!viewModel.enableLoadModelButton)
         }.frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity).background(Color.white)
     }
 }

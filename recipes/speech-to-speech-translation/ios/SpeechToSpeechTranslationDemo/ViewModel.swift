@@ -74,6 +74,8 @@ let LANGUAGE_PAIRS: [String:[String]] = [
   ]
 ]
 
+let BAT_THRESHOLD: Float32 = 0.75
+
 class ViewModel: ObservableObject {
 
     private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
@@ -85,20 +87,12 @@ class ViewModel: ObservableObject {
 
     private var audioStream: AudioPlayerStream?
 
+    private var pcmBuffer: [Int16] = []
+    
     @Published var chatState: ChatState = .SELECTING
 
     @Published var selectedSourceLanguage: String = "automatic"
     @Published var selectedTargetLanguage: String = "invalid"
-
-    static let modelLoadStatusTextDefault = """
-Start by loading a `.pllm` model file.
-
-You can download directly to your device or airdrop from a Mac.
-"""
-    @Published var modelLoadStatusText = modelLoadStatusTextDefault
-    @Published var enableLoadModelButton = true
-    @Published var showFileImporter = false
-    @Published var selectedModelUrl: URL?
 
     @Published var enginesLoaded = false
 
@@ -119,7 +113,11 @@ You can download directly to your device or airdrop from a Mac.
     }
 
     public func selectedSourceLanguageChange() {
-        selectedTargetLanguage = "invalid"
+        if chatState != .DETECTING {
+            selectedTargetLanguage = "invalid"
+        } else {
+            startDemo()
+        }
     }
     
     public func selectedTargetLanguageChange() {
@@ -131,13 +129,23 @@ You can download directly to your device or airdrop from a Mac.
     
     public func startDemo() {
         chatState = .LOADING
-        loadEngines()
+        if selectedSourceLanguage == "automatic" {
+            loadBat()
+        } else {
+            if bat != nil {
+                bat!.delete()
+            }
+            loadEngines()
+        }
     }
 
+    public func detect() {
+        
+    }
+    
     public func loadEngines() {
         errorMessage = ""
         statusText = ""
-        enableLoadModelButton = false
         
         let sourceLanguage = selectedSourceLanguage
         let targetLanguage = selectedTargetLanguage
@@ -172,6 +180,7 @@ You can download directly to your device or airdrop from a Mac.
                 setStatusText(ViewModel.statusTextDefault)
                 DispatchQueue.main.async { [self] in
                     chatState = .LISTENING
+                    chatText.removeAll()
                     chatText.append(Message(transcript: ""))
                 }
             } catch {
@@ -183,6 +192,40 @@ You can download directly to your device or airdrop from a Mac.
         }
     }
 
+    public func loadBat() {
+        errorMessage = ""
+        statusText = ""
+        
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            let setStatusText = {(_ msg: String) in
+                DispatchQueue.main.async { [self] in
+                    statusText = msg
+                }
+            }
+            do {
+                setStatusText("Loading Bat...")
+                bat = try Bat(accessKey: ACCESS_KEY)
+
+                setStatusText("Loading Voice Processor...")
+                VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
+                VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
+                startAudioRecording()
+
+                setStatusText("Detecting target language")
+                DispatchQueue.main.async { [self] in
+                    chatState = .DETECTING
+                    chatText.removeAll()
+                    chatText.append(Message(transcript: ""))
+                }
+            } catch {
+                DispatchQueue.main.async { [self] in
+                    unloadEngines()
+                    errorMessage = "\(error.localizedDescription)"
+                }
+            }
+        }
+    }
+    
     public func unloadEngines() {
         stopAudioRecording()
         VoiceProcessor.instance.clearFrameListeners()
@@ -230,121 +273,19 @@ You can download directly to your device or airdrop from a Mac.
             }
         }
     }
-
-//    private func streamCallback(completion: String) {
-//        DispatchQueue.main.async { [self] in
-//
-//            if self.stopPhrases.contains(completion) || chatState != .GENERATE {
-//                return
-//            }
-//
-//            completionQueue.async {
-//                self.completionArray.append(completion)
-//            }
-//            chatText[chatText.count - 1].append(text: completion)
-//        }
-//    }
-
-//    public func generate() {
-//        errorMessage = ""
-//
-//        enableGenerateButton = false
-//
-//        DispatchQueue.global(qos: .userInitiated).async { [self] in
-//            do {
-//
-//                DispatchQueue.main.async { [self] in
-//                    chatText.append(Message(speaker: "picoLLM:", msg: ""))
-//                }
-//
-//                let result = try picollm!.generate(
-//                    prompt: dialog!.prompt(),
-//                    completionTokenLimit: 128,
-//                    streamCallback: streamCallback)
-//
-//                try dialog!.addLLMResponse(content: result.completion)
-//
-//                DispatchQueue.main.async { [self] in
-//                    if result.endpoint == .interrupted {
-//                        statusText = "Listening..."
-//                        chatText.append(Message(speaker: "You:", msg: ""))
-//                        chatState = .STT
-//
-//                        promptText = ""
-//                        enableGenerateButton = true
-//                    } else {
-//                        statusText = ViewModel.statusTextDefault
-//                        chatState = .WAKEWORD
-//
-//                        promptText = ""
-//                        enableGenerateButton = true
-//                    }
-//                }
-//            } catch {
-//                DispatchQueue.main.async { [self] in
-//                    errorMessage = "\(error.localizedDescription)"
-//                }
-//            }
-//        }
-//
-//        DispatchQueue.global(qos: .userInitiated).async { [self] in
-//            do {
-//                audioStream!.resetAudioPlayer()
-//                let orcaStream = try self.orca!.streamOpen()
-//
-//                var warmup = true
-//                var warmupBuffer: [Int16] = []
-//
-//                var itemsRemaining = true
-//                while chatState == .GENERATE || itemsRemaining {
-//                    completionQueue.sync {
-//                        itemsRemaining = !self.completionArray.isEmpty
-//                    }
-//
-//                    if itemsRemaining {
-//                        var token = ""
-//                        completionQueue.sync {
-//                            token = completionArray[0]
-//                            completionArray.removeFirst()
-//                        }
-//
-//                        orcaProfiler.tick()
-//                        let pcm = try orcaStream.synthesize(text: token)
-//                        orcaProfiler.tock(pcm: pcm)
-//                        if pcm != nil {
-//                            if warmup {
-//                                warmupBuffer.append(contentsOf: pcm!)
-//                                if warmupBuffer.count >= (1 * orca!.sampleRate!) {
-//                                    try audioStream!.playStreamPCM(pcm!)
-//                                    warmupBuffer.removeAll()
-//                                    warmup = false
-//                                }
-//                            } else {
-//                                try audioStream!.playStreamPCM(pcm!)
-//                            }
-//                        }
-//                    }
-//                }
-//
-//                if !warmupBuffer.isEmpty {
-//                    try audioStream!.playStreamPCM(warmupBuffer)
-//                }
-//
-//                orcaProfiler.tick()
-//                let pcm = try orcaStream.flush()
-//                orcaProfiler.tock(pcm: pcm)
-//                if pcm != nil {
-//                    try audioStream!.playStreamPCM(pcm!)
-//                }
-//                print(String(format: "RTF: %.2f", orcaProfiler.rtf()))
-//                orcaStream.close()
-//            } catch {
-//                DispatchQueue.main.async { [self] in
-//                    errorMessage = "\(error.localizedDescription)"
-//                }
-//            }
-//        }
-//    }
+    
+    private func appendChatText(text: String, translated: Bool) {
+        DispatchQueue.main.async { [self] in
+            if chatText.count > 0 {
+                if translated {
+                    chatText[chatText.count - 1].appendTranslated(text: text)
+                } else {
+                    chatText[chatText.count - 1].appendTranscript(text: text)
+                }
+            }
+        }
+    }
+    
     private func translateAndSpeak() {
         DispatchQueue.main.async { [self] in
             chatState = .TRANSLATING
@@ -365,14 +306,10 @@ You can download directly to your device or airdrop from a Mac.
                         try await Task.sleep(for: .milliseconds(duration))
                         currentTime = word.startSec
                         
-                        DispatchQueue.main.async { [self] in
-                            chatText[chatText.count - 1].appendTranslated(text: word.word)
-                        }
+                        appendChatText(text: word.word, translated: true)
                         
                         if index + 1 < audio.wordArray.count && !audio.wordArray[index + 1].word.first!.isPunctuation {
-                            DispatchQueue.main.async { [self] in
-                                chatText[chatText.count - 1].appendTranslated(text: " ")
-                            }
+                            appendChatText(text: " ", translated: true)
                         }
                     }
                     
@@ -406,18 +343,48 @@ You can download directly to your device or airdrop from a Mac.
         do {
             if chatState == .LISTENING {
                 let partialTranscript = try self.cheetah!.process(frame)
-                DispatchQueue.main.async { [self] in
-                    chatText[chatText.count - 1].appendTranscript(text: partialTranscript.0)
-                }
+                appendChatText(text: partialTranscript.0, translated: false)
                 
                 if partialTranscript.1 {
                     let finalTranscript = try self.cheetah!.flush()
-                    DispatchQueue.main.async { [self] in
-                        chatText[chatText.count - 1].appendTranscript(text: finalTranscript)
-                    }
+                    appendChatText(text: finalTranscript, translated: false)
                     
-                    if !chatText[chatText.count - 1].transcript.isEmpty {
+                    if chatText.count > 0 && !chatText[chatText.count - 1].transcript.isEmpty {
                         translateAndSpeak()
+                    }
+                }
+            } else if chatState == .DETECTING {
+                var foundLanguage = BatLanguages.UNKNOWN
+                pcmBuffer.append(contentsOf: frame)
+                if (pcmBuffer.count >= Bat.frameLength) {
+                    let bufferStart = pcmBuffer.count - Int(Bat.frameLength)
+                    let bufferEnd = pcmBuffer.count
+
+                    let scores = try bat!.process(Array(pcmBuffer[bufferStart..<bufferEnd]))
+                    if (scores != nil) {
+                        for (identified, confidence) in scores! {
+                            if confidence >= BAT_THRESHOLD {
+                                foundLanguage = identified
+                            }
+                        }
+                    }
+                }
+                
+                if foundLanguage != BatLanguages.UNKNOWN {
+                    if LANGUAGE_PAIRS.keys.contains(foundLanguage.toString()) &&
+                        LANGUAGE_PAIRS[foundLanguage.toString()]!.contains(selectedTargetLanguage) {
+                        
+                        stopAudioRecording()
+                        VoiceProcessor.instance.clearFrameListeners()
+                        VoiceProcessor.instance.clearErrorListeners()
+                        
+                        DispatchQueue.main.async { [self] in
+                            selectedSourceLanguage = foundLanguage.toString()
+                        }
+                    } else {
+                        DispatchQueue.main.async { [self] in
+                            statusText = "Cannot translated from \(foundLanguage.toString()) to \(selectedTargetLanguage)"
+                        }
                     }
                 }
             }
