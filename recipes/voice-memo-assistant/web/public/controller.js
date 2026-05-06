@@ -2,56 +2,53 @@ window.onload = () => {
   const accessKey = document.getElementById("accessKey");
   const initButton = document.getElementById("init");
 
-  const status = document.getElementById("status");
+  const topStatusBlock = document.getElementById("topStatusBlock");
+  const topStatus = document.getElementById("topStatus");
   const tooltip = document.getElementById("tooltip");
   const originalText = document.getElementById("originalText");
   const modifiedText = document.getElementById("modifiedText");
   const modifiedTitle = document.getElementById("modifiedTitle");
 
-  const volumeMeter = document.getElementById("volumeMeter");
+
   const bar1 = document.getElementById("bar1");
   const bar2 = document.getElementById("bar2");
   const bar3 = document.getElementById("bar3");
 
   let audioStream;
 
-  const updateUI = (state) => {
+const updateUI = (state) => {
     switch(state) {
-      case 2: // WAKE_WORD
-        status.innerText = "Say 'Picovoice' to wake up!";
-        tooltip.innerText = "";
-        volumeMeter.classList.remove('hidden');
+      case 'WAKE_WORD':
+        tooltip.innerText = "Listening for the wake word...";
+        meterContainer.style.display = "flex";
         break;
-      case 3: // VOICE_COMMAND
-        status.innerText = "Listening for command...";
-        tooltip.innerText = "Say 'start memo', 'read memo', 'summarize memo', or 'rewrite memo'";
-        volumeMeter.classList.remove('hidden');
+      case 'VOICE_COMMAND':
+        tooltip.innerText = "Commands: 'start memo', 'read memo', 'summarize memo', 'rewrite memo'";
+        meterContainer.style.display = "flex";
         break;
-      case 4: // START_RECORDING
-        status.innerText = "Recording Memo...";
+      case 'START_RECORDING':
         tooltip.innerText = "Say 'stop recording' to end.";
-        volumeMeter.classList.remove('hidden');
+        meterContainer.style.display = "flex";
 
         modifiedContainer.style.display = "none";
         modifiedText.innerText = "";
         break;
-      case 5: // READ_RECORDING
-        status.innerText = "Speaking...";
-        tooltip.innerText = "";
-        volumeMeter.classList.add('hidden');
+      case 'READ_RECORDING':
+        tooltip.innerText = "Reading memo aloud...";
+        meterContainer.style.display = "none";
         break;
-      case 6: // SUMMARIZE_RECORDING
-        status.innerText = "Summarizing via PicoLLM...";
+      case 'SUMMARIZE_RECORDING':
+        tooltip.innerText = "Generating summary...";
         modifiedTitle.innerText = "Summarized:";
-        volumeMeter.classList.add('hidden');
+        meterContainer.style.display = "none";
 
         modifiedContainer.style.display = "block";
         modifiedText.innerText = "";
         break;
-      case 7: // REWRITE_RECORDING
-        status.innerText = "Rewriting via PicoLLM...";
+      case 'REWRITE_RECORDING':
+        tooltip.innerText = "Generating rewrite...";
         modifiedTitle.innerText = "Rewritten:";
-        volumeMeter.classList.add('hidden');
+        meterContainer.style.display = "none";
 
         modifiedContainer.style.display = "block";
         modifiedText.innerText = "";
@@ -61,7 +58,7 @@ window.onload = () => {
 
   initButton.onclick = async () => {
     initButton.disabled = true;
-    status.innerText = "Loading engines...";
+    topStatus.innerText = "Loading engines...";
 
     try {
       await Picovoice.init(accessKey.value, {
@@ -79,18 +76,20 @@ window.onload = () => {
           audioStream.play();
           await audioStream.waitPlayback();
         },
-        onError: (err) => alert("Error: " + err)
+        onError: (err) => alert(err)
       });
 
+      topStatusBlock.style.display = 'none';
       document.getElementById("initBlock").style.display = 'none';
       document.getElementById("appBlock").style.display = 'block';
 
-      await Picovoice.start();
-      audioStream = new Picovoice.AudioStream(Picovoice.getStreamSampleRate());
-
     } catch (e) {
-      alert(e.message);
+      topStatus.innerText = "Error loading engines: " + e.message;
+      initButton.disabled = false;
     }
+
+    await Picovoice.start();
+    audioStream = new Picovoice.AudioStream(Picovoice.getStreamSampleRate());
   };
 
   accessKey.onchange = () => {

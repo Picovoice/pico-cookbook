@@ -1,4 +1,3 @@
-import { Mutex } from 'async-mutex';
 import { PorcupineWorker } from '@picovoice/porcupine-web';
 import { RhinoInference, RhinoWorker } from '@picovoice/rhino-web';
 import { CheetahTranscript, CheetahWorker } from '@picovoice/cheetah-web';
@@ -7,14 +6,14 @@ import { PicoLLMWorker } from '@picovoice/picollm-web';
 import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 
 export enum UIState {
-  INIT,
-  LOADING_MODEL,
-  WAKE_WORD,
-  VOICE_COMMAND,
-  START_RECORDING,
-  READ_RECORDING,
-  SUMMARIZE_RECORDING,
-  REWRITE_RECORDING
+  INIT = 'INIT',
+  LOADING_MODEL = 'LOADING_MODEL',
+  WAKE_WORD = 'WAKE_WORD',
+  VOICE_COMMAND = 'VOICE_COMMAND',
+  START_RECORDING = 'START_RECORDING',
+  READ_RECORDING = 'READ_RECORDING',
+  SUMMARIZE_RECORDING = 'SUMMARIZE_RECORDING',
+  REWRITE_RECORDING = 'REWRITE_RECORDING'
 }
 
 type PvObject = {
@@ -74,73 +73,88 @@ const init = async (
 
   callbacks.onStateChange(UIState.LOADING_MODEL);
 
-  try {
-    const keyword = {
-      publicPath: 'models/porcupine_model.ppn',
-      label: 'wake word',
-      sensitivity: 0.5,
-      forceWrite: true
-    };
+  const keyword = {
+    publicPath: 'models/porcupine_model.ppn',
+    label: 'wake word',
+    sensitivity: 0.5,
+    forceWrite: true
+  };
+  const detectionCallback = async () => {
+    if (currentState === UIState.WAKE_WORD) {
+      await WebVoiceProcessor.unsubscribe(porcupine);
+      await WebVoiceProcessor.subscribe(rhino);
+      setState(UIState.VOICE_COMMAND);
+    }
+  };
+  const porcupine = await PorcupineWorker.create(
+    accessKey,
+    keyword,
+    detectionCallback,
+    { publicPath: "models/porcupine_params.pv" });
 
-    const porcupine = await PorcupineWorker.create(accessKey, keyword, async () => {
-      if (currentState === UIState.WAKE_WORD) {
-        await WebVoiceProcessor.unsubscribe(porcupine);
-        await WebVoiceProcessor.subscribe(rhino);
-        setState(UIState.VOICE_COMMAND);
+  const context = {
+    publicPath: 'models/rhino_model.rhn',
+    forceWrite: true
+  };
+  const intentCallback = async (inference: RhinoInference) => {
+    if (currentState === UIState.VOICE_COMMAND && inference.isFinalized) {
+      if (inference.isUnderstood) {
+        await WebVoiceProcessor.unsubscribe(rhino);
+        handleIntent(inference.intent);
+      } else {
+        playAudioMessage("Sorry, I didn't understand that.");
+        await WebVoiceProcessor.unsubscribe(rhino);
+        resetToWakeWord();
       }
-    }, { publicPath: "models/porcupine_params.pv" });
+    }
+  };
+  const rhino = await RhinoWorker.create(
+    accessKey,
+    context,
+    intentCallback,
+    { publicPath: "models/rhino_params.pv" },
+    { requireEndpoint: false, endpointDurationSec: 0.5 });
 
-    const context = {
-      publicPath: 'models/rhino_model.rhn',
-      forceWrite: true
-    };
+  const transcribeCallback = async (transcript: CheetahTranscript) => {
+    if (currentState === UIState.START_RECORDING) {
+      memoText += transcript.transcript;
 
-    const rhino = await RhinoWorker.create(accessKey, context, async (inference: RhinoInference) => {
-      if (currentState === UIState.VOICE_COMMAND && inference.isFinalized) {
-        if (inference.isUnderstood) {
-          await WebVoiceProcessor.unsubscribe(rhino);
-          handleIntent(inference.intent);
-        } else {
-          playAudioMessage("Sorry, I didn't understand that.");
-          await WebVoiceProcessor.unsubscribe(rhino);
-          resetToWakeWord();
-        }
-      }},
-      { publicPath: "models/rhino_params.pv" },
-      { requireEndpoint: false, endpointDurationSec: 0.5 });
+      if (transcript.isEndpoint) {
+        cheetah.flush();
+      }
 
-    const cheetah = await CheetahWorker.create(accessKey, async (transcript: CheetahTranscript) => {
-      if (currentState === UIState.START_RECORDING) {
-        memoText += transcript.transcript;
+      if (transcript.isFlushed) {
+        memoText = memoText + " ";
+      }
 
-        if (transcript.isEndpoint) {
-          cheetah.flush();
-        }
+      if (/.*(stop recording)[.\s]*$/i.test(memoText)) {
+        memoText = memoText.replace(/stop recording[.\s]*$/i, '').trim();
+        enhancedText = memoText;
+        await WebVoiceProcessor.unsubscribe(cheetah);
+        resetToWakeWord();
+      }
+      callbacks!.onOriginalText(memoText);
+    }
+  };
+  const cheetah = await CheetahWorker.create(
+    accessKey,
+    transcribeCallback,
+    { publicPath: "models/cheetah_params.pv"} ,
+    { enableAutomaticPunctuation: true, enableTextNormalization: true }
+  );
 
-        if (transcript.isFlushed) {
-          memoText = memoText + " ";
-        }
+  const pllm = await PicoLLMWorker.create(
+    accessKey,
+    {modelFile: "models/picollm_model.pllm", cacheFileOverwrite: true}
+  );
+  const orca = await OrcaWorker.create(
+    accessKey,
+    { publicPath: "models/orca_params_en_female.pv" },
+    {}
+  );
 
-        if (/.*(stop recording)[.\s]*$/i.test(memoText)) {
-          memoText = memoText.replace(/stop recording[.\s]*$/i, '').trim();
-          enhancedText = memoText;
-          await WebVoiceProcessor.unsubscribe(cheetah);
-          resetToWakeWord();
-        }
-        callbacks!.onOriginalText(memoText);
-      }},
-      { publicPath: "models/cheetah_params.pv"} ,
-      { enableAutomaticPunctuation: true, enableTextNormalization: true });
-
-    const pllm = await PicoLLMWorker.create(accessKey, {modelFile: "models/picollm_model.pllm", cacheFileOverwrite: true});
-    const orca = await OrcaWorker.create(accessKey, { publicPath: "models/orca_params_en_female.pv" }, {});
-
-    object = { porcupine, rhino, cheetah, pllm, orca };
-    setState(UIState.WAKE_WORD);
-
-  } catch (error: any) {
-    callbacks!.onError(error.toString());
-  }
+  object = { porcupine, rhino, cheetah, pllm, orca };
+  setState(UIState.WAKE_WORD);
 };
 
 const handleIntent = async (intent: string | undefined) => {
