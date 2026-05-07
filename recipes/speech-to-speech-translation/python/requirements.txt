@@ -1,4 +1,4 @@
-pvbat~=1.0.1
+pvbat~=1.0.2
 pvcheetah~=4.0.1
 pvorca~=3.0.0
 pvrecorder~=1.2.7
