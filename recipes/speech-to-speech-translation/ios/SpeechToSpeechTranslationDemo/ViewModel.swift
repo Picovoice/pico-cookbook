@@ -74,6 +74,21 @@ let LANGUAGE_PAIRS: [String:[String]] = [
   ]
 ]
 
+struct DottedText: Identifiable {
+    let id: UUID = UUID()
+    var content: String = ""
+    var withDots: Bool = true
+}
+
+let DOTS = [
+    " .  ",
+    " .. ",
+    " ...",
+    "  ..",
+    "   .",
+    "    "
+]
+
 let BAT_THRESHOLD: Float32 = 0.75
 
 class ViewModel: ObservableObject {
@@ -88,6 +103,9 @@ class ViewModel: ObservableObject {
     private var audioStream: AudioPlayerStream?
 
     private var pcmBuffer: [Int16] = []
+    
+    @Published var dotIndex = 0
+    private var timer: Timer?
     
     @Published var chatState: ChatState = .SELECTING
 
@@ -107,11 +125,24 @@ class ViewModel: ObservableObject {
     @Published var errorMessage = ""
 
     deinit {
-//        if picollm != nil {
-//            picollm!.delete()
-//        }
+        unloadEngines()
     }
 
+    
+    func withDots(_ content: String, dots: Bool) -> String {
+        if dots {
+            return content + DOTS[dotIndex]
+        } else {
+            return content
+        }
+    }
+
+    init() {
+        timer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in
+            self!.dotIndex = (self!.dotIndex + 1) % DOTS.count
+        }
+    }
+    
     public func selectedSourceLanguageChange() {
         if chatState != .DETECTING {
             selectedTargetLanguage = "invalid"
@@ -132,9 +163,6 @@ class ViewModel: ObservableObject {
         if selectedSourceLanguage == "automatic" {
             loadBat()
         } else {
-            if bat != nil {
-                bat!.delete()
-            }
             loadEngines()
         }
     }
@@ -159,7 +187,7 @@ class ViewModel: ObservableObject {
             do {
                 setStatusText("Loading Cheetah \(sourceLanguage)...")
                 let cheetahModelPath = Bundle(for: type(of: self)).path(forResource: "cheetah_params_\(sourceLanguage)", ofType: "pv")!
-                cheetah = try Cheetah(accessKey: ACCESS_KEY, modelPath: cheetahModelPath, endpointDuration: 1.0)
+                cheetah = try Cheetah(accessKey: ACCESS_KEY, modelPath: cheetahModelPath, endpointDuration: 1.0, enableAutomaticPunctuation: true, enableTextNormalization: true)
 
                 setStatusText("Loading Zebra \(sourceLanguage)_\(targetLanguage)...")
                 let zebraModelPath = Bundle(for: type(of: self)).path(forResource: "zebra_params_\(sourceLanguage)_\(targetLanguage)", ofType: "pv")!
@@ -173,9 +201,13 @@ class ViewModel: ObservableObject {
                 audioStream = try AudioPlayerStream(sampleRate: Double(self.orca!.sampleRate!))
 
                 setStatusText("Loading Voice Processor...")
-                VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
-                VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
-                startAudioRecording()
+                if bat != nil {
+                    bat!.delete()
+                } else {
+                    VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
+                    VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
+                    startAudioRecording()
+                }
 
                 setStatusText(ViewModel.statusTextDefault)
                 DispatchQueue.main.async { [self] in
@@ -246,7 +278,6 @@ class ViewModel: ObservableObject {
 
         errorMessage = ""
         promptText = ""
-        enginesLoaded = false
         chatText.removeAll()
 
         chatState = .SELECTING
@@ -342,20 +373,31 @@ class ViewModel: ObservableObject {
     private func audioCallback(frame: [Int16]) {
         do {
             if chatState == .LISTENING {
-                let partialTranscript = try self.cheetah!.process(frame)
-                appendChatText(text: partialTranscript.0, translated: false)
+                pcmBuffer.append(contentsOf: frame)
                 
-                if partialTranscript.1 {
-                    let finalTranscript = try self.cheetah!.flush()
-                    appendChatText(text: finalTranscript, translated: false)
+                var isFlushed = false
+                while pcmBuffer.count >= Cheetah.frameLength {
+                    let partialTranscript = try self.cheetah!.process(Array(pcmBuffer[0..<Int(Cheetah.frameLength)]))
+                    pcmBuffer.removeFirst(Int(Cheetah.frameLength))
+                    appendChatText(text: partialTranscript.0, translated: false)
                     
-                    if chatText.count > 0 && !chatText[chatText.count - 1].transcript.isEmpty {
-                        translateAndSpeak()
+                    if partialTranscript.1 {
+                        let finalTranscript = try self.cheetah!.flush()
+                        appendChatText(text: finalTranscript, translated: false)
+                        appendChatText(text: " ", translated: false)
+                        
+                        if chatText.count > 0 && !chatText[chatText.count - 1].transcript.isEmpty {
+                            isFlushed = true
+                        }
                     }
                 }
+                if isFlushed {
+                    translateAndSpeak()
+                }
             } else if chatState == .DETECTING {
-                var foundLanguage = BatLanguages.UNKNOWN
                 pcmBuffer.append(contentsOf: frame)
+
+                var foundLanguage = BatLanguages.UNKNOWN
                 if (pcmBuffer.count >= Bat.frameLength) {
                     let bufferStart = pcmBuffer.count - Int(Bat.frameLength)
                     let bufferEnd = pcmBuffer.count
@@ -373,10 +415,6 @@ class ViewModel: ObservableObject {
                 if foundLanguage != BatLanguages.UNKNOWN {
                     if LANGUAGE_PAIRS.keys.contains(foundLanguage.toString()) &&
                         LANGUAGE_PAIRS[foundLanguage.toString()]!.contains(selectedTargetLanguage) {
-                        
-                        stopAudioRecording()
-                        VoiceProcessor.instance.clearFrameListeners()
-                        VoiceProcessor.instance.clearErrorListeners()
                         
                         DispatchQueue.main.async { [self] in
                             selectedSourceLanguage = foundLanguage.toString()

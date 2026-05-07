@@ -54,14 +54,15 @@ struct ChatView: View {
                         ForEach(0..<viewModel.chatText.count, id: \.self) { i in
                             let transcript = viewModel.chatText[i].transcript
                             let translated = viewModel.chatText[i].translated
+                            let dots = (i == viewModel.chatText.count - 1)
                             
                             VStack(spacing: 0) {
-                                Text(transcript)
+                                Text(viewModel.withDots(transcript, dots: dots && translated == nil))
                                     .frame(maxWidth: .infinity, alignment: .topLeading)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 8)
                                 if (translated != nil) {
-                                    Text(translated!)
+                                    Text(viewModel.withDots(translated!, dots: dots))
                                         .foregroundColor(Constants.activeBlue)
                                         .frame(maxWidth: .infinity, alignment: .topLeading)
                                         .padding(.horizontal, 8)
