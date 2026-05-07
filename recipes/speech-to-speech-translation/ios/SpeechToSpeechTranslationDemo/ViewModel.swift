@@ -25,7 +25,7 @@ enum ChatState {
     case ERROR
 }
 
-let LANGUAGE_DISPLAY: [String:String] = [
+let LANGUAGE_DISPLAY: [String: String] = [
     "automatic": "Automatic",
     "de": "German",
     "en": "English",
@@ -34,41 +34,41 @@ let LANGUAGE_DISPLAY: [String:String] = [
     "it": "Italian"
 ]
 
-let LANGUAGE_PAIRS: [String:[String]] = [
+let LANGUAGE_PAIRS: [String: [String]] = [
   "automatic": [
     "de",
     "en",
     "es",
     "fr",
-    "it",
+    "it"
   ],
   "de": [
     "en",
     "es",
     "fr",
-    "it",
+    "it"
   ],
   "en": [
     "de",
     "es",
     "fr",
-    "it",
+    "it"
   ],
   "es": [
     "de",
     "en",
     "fr",
-    "it",
+    "it"
   ],
   "fr": [
     "de",
     "en",
-    "es",
+    "es"
   ],
   "it": [
     "de",
     "en",
-    "es",
+    "es"
   ]
 ]
 
@@ -119,7 +119,6 @@ class ViewModel: ObservableObject {
     deinit {
         unloadEngines()
     }
-
 
     func withDots(_ content: String, dots: Bool) -> String {
         if dots && !isPaused {
@@ -176,15 +175,23 @@ class ViewModel: ObservableObject {
             }
             do {
                 setStatusText("Loading Cheetah \(sourceLanguage)...")
-                let cheetahModelPath = Bundle(for: type(of: self)).path(forResource: "cheetah_params_\(sourceLanguage)", ofType: "pv")!
-                cheetah = try Cheetah(accessKey: ACCESS_KEY, modelPath: cheetahModelPath, endpointDuration: 1.0, enableAutomaticPunctuation: true, enableTextNormalization: true)
+                let cheetahModelPath = Bundle(for: type(of: self))
+                    .path(forResource: "cheetah_params_\(sourceLanguage)", ofType: "pv")!
+                cheetah = try Cheetah(
+                    accessKey: ACCESS_KEY,
+                    modelPath: cheetahModelPath,
+                    endpointDuration: 1.0,
+                    enableAutomaticPunctuation: true,
+                    enableTextNormalization: true)
 
                 setStatusText("Loading Zebra \(sourceLanguage)_\(targetLanguage)...")
-                let zebraModelPath = Bundle(for: type(of: self)).path(forResource: "zebra_params_\(sourceLanguage)_\(targetLanguage)", ofType: "pv")!
+                let zebraModelPath = Bundle(for: type(of: self))
+                    .path(forResource: "zebra_params_\(sourceLanguage)_\(targetLanguage)", ofType: "pv")!
                 zebra = try Zebra(accessKey: ACCESS_KEY, modelPath: zebraModelPath)
 
                 setStatusText("Loading Orca \(targetLanguage)...")
-                let orcaModelPath = Bundle(for: type(of: self)).path(forResource: "orca_params_\(targetLanguage)_male", ofType: "pv")!
+                let orcaModelPath = Bundle(for: type(of: self))
+                    .path(forResource: "orca_params_\(targetLanguage)_male", ofType: "pv")!
                 orca = try Orca(accessKey: ACCESS_KEY, modelPath: orcaModelPath)
 
                 setStatusText("Loading Audio Player...")
@@ -391,30 +398,29 @@ class ViewModel: ObservableObject {
                 pcmBuffer.append(contentsOf: frame)
 
                 var foundLanguage = BatLanguages.UNKNOWN
-                if (pcmBuffer.count >= Bat.frameLength) {
+                if pcmBuffer.count >= Bat.frameLength {
                     let bufferStart = pcmBuffer.count - Int(Bat.frameLength)
                     let bufferEnd = pcmBuffer.count
 
                     let scores = try bat!.process(Array(pcmBuffer[bufferStart..<bufferEnd]))
-                    if (scores != nil) {
-                        for (identified, confidence) in scores! {
-                            if confidence >= BAT_THRESHOLD {
-                                foundLanguage = identified
-                            }
+                    if scores != nil {
+                        for (identified, confidence) in scores! where confidence >= BAT_THRESHOLD {
+                            foundLanguage = identified
                         }
                     }
                 }
 
                 if foundLanguage != BatLanguages.UNKNOWN {
-                    if LANGUAGE_PAIRS.keys.contains(foundLanguage.toString()) &&
-                        LANGUAGE_PAIRS[foundLanguage.toString()]!.contains(selectedTargetLanguage) {
+                    let foundLanguageString = foundLanguage.toString()
+                    if LANGUAGE_PAIRS.keys.contains(foundLanguageString) &&
+                        LANGUAGE_PAIRS[foundLanguageString]!.contains(selectedTargetLanguage) {
 
                         DispatchQueue.main.async { [self] in
-                            selectedSourceLanguage = foundLanguage.toString()
+                            selectedSourceLanguage = foundLanguageString
                         }
                     } else {
                         DispatchQueue.main.async { [self] in
-                            statusText = "Cannot translate from \(foundLanguage.toString()) to \(selectedTargetLanguage)"
+                            statusText = "Cannot translate from \(foundLanguageString) to \(selectedTargetLanguage)"
                         }
                     }
                 }

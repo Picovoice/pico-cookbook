@@ -1,5 +1,5 @@
 //
-//  Copyright 2024 Picovoice Inc.
+//  Copyright 2026 Picovoice Inc.
 //  You may not use this file except in compliance with the license. A copy of the license is located in the "LICENSE"
 //  file accompanying this source.
 //  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
@@ -19,11 +19,11 @@ struct SelectLanguageView: View {
             Text("Speech To Speech Translation")
 
             Spacer()
-            
+
             if viewModel.chatState != ChatState.SELECTING {
                 ChatView(viewModel: viewModel)
             }
-            
+
             Spacer()
 
             if !viewModel.errorMessage.isEmpty {
@@ -38,7 +38,7 @@ struct SelectLanguageView: View {
             } else {
                 Text(viewModel.statusText)
             }
-            
+
             HStack {
                 Spacer()
                 Picker("Source Language", selection: $viewModel.selectedSourceLanguage,
@@ -47,7 +47,8 @@ struct SelectLanguageView: View {
                         Text(LANGUAGE_DISPLAY[key] ?? "").tag(key)
                     }
                 })
-                .onChange(of: $viewModel.selectedSourceLanguage.wrappedValue) { () in  viewModel.selectedSourceLanguageChange()
+                .onChange(of: $viewModel.selectedSourceLanguage.wrappedValue) { () in
+                    viewModel.selectedSourceLanguageChange()
                 }
                 .disabled(viewModel.chatState == .LOADING)
                 Spacer()
@@ -56,8 +57,9 @@ struct SelectLanguageView: View {
                 Picker("Target Language", selection: $viewModel.selectedTargetLanguage,
                        content: {
                     Text("Select Language").tag("invalid")
-                    ForEach(0..<LANGUAGE_PAIRS[$viewModel.selectedSourceLanguage.wrappedValue]!.count, id: \.self) { i in
-                        let lang = LANGUAGE_PAIRS[$viewModel.selectedSourceLanguage.wrappedValue]![i]
+                    let selectedSourceLanguage = $viewModel.selectedSourceLanguage.wrappedValue
+                    ForEach(0..<LANGUAGE_PAIRS[selectedSourceLanguage]!.count, id: \.self) { i in
+                        let lang = LANGUAGE_PAIRS[selectedSourceLanguage]![i]
                         Text(LANGUAGE_DISPLAY[lang] ?? "").tag(lang)
                     }
                 })
@@ -67,7 +69,7 @@ struct SelectLanguageView: View {
                 .disabled(viewModel.chatState == .LOADING)
                 Spacer()
             }
-            
+
             Button(action: viewModel.pauseDemo) {
                 Image(systemName: $viewModel.isPaused.wrappedValue ? "pause" : "microphone.fill")
                     .background(Constants.btnColor(viewModel.chatState == .LISTENING))

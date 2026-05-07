@@ -1,5 +1,5 @@
 //
-//  Copyright 2024 Picovoice Inc.
+//  Copyright 2026 Picovoice Inc.
 //  You may not use this file except in compliance with the license. A copy of the license is located in the "LICENSE"
 //  file accompanying this source.
 //  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
@@ -11,14 +11,14 @@ import SwiftUI
 
 struct ChatView: View {
     @ObservedObject var viewModel: ViewModel
-    
-    var body: some View {        
+
+    var body: some View {
         ZStack {
             VStack(alignment: .center) {
                 resultsBox
-                
+
                 Spacer()
-                
+
                 HStack(alignment: .center) {
                     Spacer()
                     if !viewModel.enableGenerateButton {
@@ -32,7 +32,7 @@ struct ChatView: View {
             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity).background(Color.white)
         }
     }
-    
+
     var resultsBox: some View {
         VStack {
             ScrollViewReader { proxy in
@@ -42,14 +42,14 @@ struct ChatView: View {
                             let transcript = viewModel.chatText[i].transcript
                             let translated = viewModel.chatText[i].translated
                             let dots = (i == viewModel.chatText.count - 1)
-                            
+
                             VStack(spacing: 0) {
                                 Text(viewModel.withDots(transcript, dots: dots && translated == nil))
                                     .foregroundColor(translated == nil ? Constants.activeBlue : .gray)
                                     .frame(maxWidth: .infinity, alignment: .topLeading)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 8)
-                                if (translated != nil) {
+                                if translated != nil {
                                     Text(viewModel.withDots(translated!, dots: dots))
                                         .foregroundColor(Constants.activeBlue)
                                         .frame(maxWidth: .infinity, alignment: .topLeading)
