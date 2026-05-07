@@ -12,7 +12,7 @@ import SwiftUI
 struct VolumeMeterView: View {
     @ObservedObject var viewModel: ViewModel
     var barScale: [Float] = [4.0, 9.0, 6.0]
-    
+
     var body: some View {
         HStack(spacing: 10) {
             ForEach(0..<3) { index in

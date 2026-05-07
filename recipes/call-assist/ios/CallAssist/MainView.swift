@@ -86,9 +86,9 @@ struct MainView: View {
                     .font(.twenty)
                     .padding([.top, .bottom], 5)
             }
-            
+
             Spacer()
-            
+
             VolumeMeterView(viewModel: viewModel)
         }.frame(maxHeight: .infinity, alignment: .top)
             .padding()
