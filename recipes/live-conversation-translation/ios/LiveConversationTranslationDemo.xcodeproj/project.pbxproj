@@ -1,0 +1,664 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 54;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		02A11949268D39A700A2AC99 /* LiveConversationTranslationDemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02A11948268D39A700A2AC99 /* LiveConversationTranslationDemoApp.swift */; };
+		02A1194B268D39A700A2AC99 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02A1194A268D39A700A2AC99 /* ContentView.swift */; };
+		02A1194D268D39AB00A2AC99 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 02A1194C268D39AB00A2AC99 /* Assets.xcassets */; };
+		02A1195F268D3FD600A2AC99 /* ViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02A1195E268D3FD600A2AC99 /* ViewModel.swift */; };
+		070C11AA2F92C55F0052BEA9 /* Zebra in Frameworks */ = {isa = PBXBuildFile; productRef = 070C11A92F92C55F0052BEA9 /* Zebra */; };
+		0720E6D82F92CB2A0075BF13 /* orca_params_en_female.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6CB2F92CB290075BF13 /* orca_params_en_female.pv */; };
+		0720E6D92F92CB2A0075BF13 /* orca_params_fr_female.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6CF2F92CB290075BF13 /* orca_params_fr_female.pv */; };
+		0720E6DA2F92CB2A0075BF13 /* orca_params_es_female.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6CD2F92CB290075BF13 /* orca_params_es_female.pv */; };
+		0720E6DB2F92CB2A0075BF13 /* orca_params_it_female.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6D12F92CB290075BF13 /* orca_params_it_female.pv */; };
+		0720E6DC2F92CB2A0075BF13 /* cheetah_params_de.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6C42F92CB290075BF13 /* cheetah_params_de.pv */; };
+		0720E6DD2F92CB2A0075BF13 /* orca_params_en_male.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6CC2F92CB290075BF13 /* orca_params_en_male.pv */; };
+		0720E6DE2F92CB2A0075BF13 /* orca_params_de_female.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6C92F92CB290075BF13 /* orca_params_de_female.pv */; };
+		0720E6DF2F92CB2A0075BF13 /* orca_params_ja_female.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6D32F92CB290075BF13 /* orca_params_ja_female.pv */; };
+		0720E6E02F92CB2A0075BF13 /* orca_params_ko_female.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6D52F92CB290075BF13 /* orca_params_ko_female.pv */; };
+		0720E6E12F92CB2A0075BF13 /* cheetah_params_pt.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6C82F92CB290075BF13 /* cheetah_params_pt.pv */; };
+		0720E6E22F92CB2A0075BF13 /* orca_params_fr_male.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6D02F92CB290075BF13 /* orca_params_fr_male.pv */; };
+		0720E6E32F92CB2A0075BF13 /* orca_params_pt_female.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6D62F92CB290075BF13 /* orca_params_pt_female.pv */; };
+		0720E6E42F92CB2A0075BF13 /* cheetah_params_fr.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6C62F92CB290075BF13 /* cheetah_params_fr.pv */; };
+		0720E6E52F92CB2A0075BF13 /* cheetah_params_it.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6C72F92CB290075BF13 /* cheetah_params_it.pv */; };
+		0720E6E62F92CB2A0075BF13 /* orca_params_de_male.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6CA2F92CB290075BF13 /* orca_params_de_male.pv */; };
+		0720E6E72F92CB2A0075BF13 /* orca_params_ja_male.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6D42F92CB290075BF13 /* orca_params_ja_male.pv */; };
+		0720E6E82F92CB2A0075BF13 /* cheetah_params_es.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6C52F92CB290075BF13 /* cheetah_params_es.pv */; };
+		0720E6E92F92CB2A0075BF13 /* orca_params_es_male.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6CE2F92CB290075BF13 /* orca_params_es_male.pv */; };
+		0720E6EA2F92CB2A0075BF13 /* orca_params_pt_male.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6D72F92CB290075BF13 /* orca_params_pt_male.pv */; };
+		0720E6EB2F92CB2A0075BF13 /* orca_params_it_male.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6D22F92CB290075BF13 /* orca_params_it_male.pv */; };
+		0720E6EE2F92CD820075BF13 /* Bat in Frameworks */ = {isa = PBXBuildFile; productRef = 0720E6ED2F92CD820075BF13 /* Bat */; };
+		0720E70D2F9301860075BF13 /* zebra_params_es_fr.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6FA2F9301860075BF13 /* zebra_params_es_fr.pv */; };
+		0720E70E2F9301860075BF13 /* zebra_params_fr_de.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6FC2F9301860075BF13 /* zebra_params_fr_de.pv */; };
+		0720E70F2F9301860075BF13 /* zebra_params_fr_en.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6FD2F9301860075BF13 /* zebra_params_fr_en.pv */; };
+		0720E7102F9301860075BF13 /* zebra_params_ko_en.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E70A2F9301860075BF13 /* zebra_params_ko_en.pv */; };
+		0720E7112F9301860075BF13 /* zebra_params_en_fr.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6F62F9301860075BF13 /* zebra_params_en_fr.pv */; };
+		0720E7122F9301860075BF13 /* zebra_params_it_fr.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E7022F9301860075BF13 /* zebra_params_it_fr.pv */; };
+		0720E7132F9301860075BF13 /* zebra_params_ja_pt.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E7082F9301860075BF13 /* zebra_params_ja_pt.pv */; };
+		0720E7142F9301860075BF13 /* zebra_params_en_es.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6F52F9301860075BF13 /* zebra_params_en_es.pv */; };
+		0720E7152F9301860075BF13 /* zebra_params_ja_es.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E7052F9301860075BF13 /* zebra_params_ja_es.pv */; };
+		0720E7162F9301860075BF13 /* zebra_params_de_en.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6F02F9301860075BF13 /* zebra_params_de_en.pv */; };
+		0720E7172F9301860075BF13 /* zebra_params_en_it.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6F72F9301860075BF13 /* zebra_params_en_it.pv */; };
+		0720E7182F9301860075BF13 /* zebra_params_de_fr.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6F22F9301860075BF13 /* zebra_params_de_fr.pv */; };
+		0720E7192F9301860075BF13 /* zebra_params_it_de.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6FF2F9301860075BF13 /* zebra_params_it_de.pv */; };
+		0720E71A2F9301860075BF13 /* zebra_params_de_it.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6F32F9301860075BF13 /* zebra_params_de_it.pv */; };
+		0720E71B2F9301860075BF13 /* zebra_params_ja_it.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E7072F9301860075BF13 /* zebra_params_ja_it.pv */; };
+		0720E71C2F9301860075BF13 /* zebra_params_it_es.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E7012F9301860075BF13 /* zebra_params_it_es.pv */; };
+		0720E71D2F9301860075BF13 /* cheetah_params_en.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6EF2F9301860075BF13 /* cheetah_params_en.pv */; };
+		0720E71E2F9301860075BF13 /* zebra_params_ja_de.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E7032F9301860075BF13 /* zebra_params_ja_de.pv */; };
+		0720E71F2F9301860075BF13 /* zebra_params_es_de.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6F82F9301860075BF13 /* zebra_params_es_de.pv */; };
+		0720E7202F9301860075BF13 /* zebra_params_ko_es.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E70B2F9301860075BF13 /* zebra_params_ko_es.pv */; };
+		0720E7212F9301860075BF13 /* zebra_params_es_en.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6F92F9301860075BF13 /* zebra_params_es_en.pv */; };
+		0720E7222F9301860075BF13 /* zebra_params_de_es.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6F12F9301860075BF13 /* zebra_params_de_es.pv */; };
+		0720E7232F9301860075BF13 /* zebra_params_fr_es.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6FE2F9301860075BF13 /* zebra_params_fr_es.pv */; };
+		0720E7242F9301860075BF13 /* zebra_params_ja_en.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E7042F9301860075BF13 /* zebra_params_ja_en.pv */; };
+		0720E7252F9301860075BF13 /* zebra_params_ja_fr.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E7062F9301860075BF13 /* zebra_params_ja_fr.pv */; };
+		0720E7262F9301860075BF13 /* zebra_params_ko_de.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E7092F9301860075BF13 /* zebra_params_ko_de.pv */; };
+		0720E7272F9301860075BF13 /* zebra_params_ko_fr.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E70C2F9301860075BF13 /* zebra_params_ko_fr.pv */; };
+		0720E7282F9301860075BF13 /* zebra_params_it_en.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E7002F9301860075BF13 /* zebra_params_it_en.pv */; };
+		0720E7292F9301860075BF13 /* zebra_params_en_de.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6F42F9301860075BF13 /* zebra_params_en_de.pv */; };
+		0720E72A2F9301860075BF13 /* zebra_params_es_it.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6FB2F9301860075BF13 /* zebra_params_es_it.pv */; };
+		34C504D02D271C5E0003405B /* ios_voice_processor in Frameworks */ = {isa = PBXBuildFile; productRef = 34C504CF2D271C5E0003405B /* ios_voice_processor */; };
+		34C504D32D271E4B0003405B /* ios_voice_processor in Frameworks */ = {isa = PBXBuildFile; productRef = 34C504D22D271E4B0003405B /* ios_voice_processor */; };
+		34C504D82D2728410003405B /* Cheetah in Frameworks */ = {isa = PBXBuildFile; productRef = 34C504D72D2728410003405B /* Cheetah */; };
+		34CE2DE42D27287900AC10F0 /* Orca in Frameworks */ = {isa = PBXBuildFile; productRef = 34CE2DE32D27287900AC10F0 /* Orca */; };
+		C789D24B2BEA8E5D005FDB10 /* SelectLanguageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C789D24A2BEA8E5D005FDB10 /* SelectLanguageView.swift */; };
+		C789D24D2BEA8EAE005FDB10 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C789D24C2BEA8EAE005FDB10 /* ChatView.swift */; };
+		C789D2512BEAD752005FDB10 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = C789D2502BEAD752005FDB10 /* Constants.swift */; };
+		C7E87DC82C07E83800C32367 /* AudioPlayerStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7E87DC72C07E83800C32367 /* AudioPlayerStream.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		02A11945268D39A700A2AC99 /* LiveConversationTranslationDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiveConversationTranslationDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		02A11948268D39A700A2AC99 /* LiveConversationTranslationDemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveConversationTranslationDemoApp.swift; sourceTree = "<group>"; };
+		02A1194A268D39A700A2AC99 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		02A1194C268D39AB00A2AC99 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		02A11951268D39AB00A2AC99 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		02A1195E268D3FD600A2AC99 /* ViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModel.swift; sourceTree = "<group>"; };
+		0720E6C42F92CB290075BF13 /* cheetah_params_de.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = cheetah_params_de.pv; sourceTree = "<group>"; };
+		0720E6C52F92CB290075BF13 /* cheetah_params_es.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = cheetah_params_es.pv; sourceTree = "<group>"; };
+		0720E6C62F92CB290075BF13 /* cheetah_params_fr.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = cheetah_params_fr.pv; sourceTree = "<group>"; };
+		0720E6C72F92CB290075BF13 /* cheetah_params_it.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = cheetah_params_it.pv; sourceTree = "<group>"; };
+		0720E6C82F92CB290075BF13 /* cheetah_params_pt.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = cheetah_params_pt.pv; sourceTree = "<group>"; };
+		0720E6C92F92CB290075BF13 /* orca_params_de_female.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_de_female.pv; sourceTree = "<group>"; };
+		0720E6CA2F92CB290075BF13 /* orca_params_de_male.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_de_male.pv; sourceTree = "<group>"; };
+		0720E6CB2F92CB290075BF13 /* orca_params_en_female.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_en_female.pv; sourceTree = "<group>"; };
+		0720E6CC2F92CB290075BF13 /* orca_params_en_male.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_en_male.pv; sourceTree = "<group>"; };
+		0720E6CD2F92CB290075BF13 /* orca_params_es_female.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_es_female.pv; sourceTree = "<group>"; };
+		0720E6CE2F92CB290075BF13 /* orca_params_es_male.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_es_male.pv; sourceTree = "<group>"; };
+		0720E6CF2F92CB290075BF13 /* orca_params_fr_female.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_fr_female.pv; sourceTree = "<group>"; };
+		0720E6D02F92CB290075BF13 /* orca_params_fr_male.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_fr_male.pv; sourceTree = "<group>"; };
+		0720E6D12F92CB290075BF13 /* orca_params_it_female.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_it_female.pv; sourceTree = "<group>"; };
+		0720E6D22F92CB290075BF13 /* orca_params_it_male.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_it_male.pv; sourceTree = "<group>"; };
+		0720E6D32F92CB290075BF13 /* orca_params_ja_female.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_ja_female.pv; sourceTree = "<group>"; };
+		0720E6D42F92CB290075BF13 /* orca_params_ja_male.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_ja_male.pv; sourceTree = "<group>"; };
+		0720E6D52F92CB290075BF13 /* orca_params_ko_female.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_ko_female.pv; sourceTree = "<group>"; };
+		0720E6D62F92CB290075BF13 /* orca_params_pt_female.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_pt_female.pv; sourceTree = "<group>"; };
+		0720E6D72F92CB290075BF13 /* orca_params_pt_male.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = orca_params_pt_male.pv; sourceTree = "<group>"; };
+		0720E6EF2F9301860075BF13 /* cheetah_params_en.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = cheetah_params_en.pv; sourceTree = "<group>"; };
+		0720E6F02F9301860075BF13 /* zebra_params_de_en.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_de_en.pv; sourceTree = "<group>"; };
+		0720E6F12F9301860075BF13 /* zebra_params_de_es.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_de_es.pv; sourceTree = "<group>"; };
+		0720E6F22F9301860075BF13 /* zebra_params_de_fr.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_de_fr.pv; sourceTree = "<group>"; };
+		0720E6F32F9301860075BF13 /* zebra_params_de_it.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_de_it.pv; sourceTree = "<group>"; };
+		0720E6F42F9301860075BF13 /* zebra_params_en_de.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_en_de.pv; sourceTree = "<group>"; };
+		0720E6F52F9301860075BF13 /* zebra_params_en_es.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_en_es.pv; sourceTree = "<group>"; };
+		0720E6F62F9301860075BF13 /* zebra_params_en_fr.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_en_fr.pv; sourceTree = "<group>"; };
+		0720E6F72F9301860075BF13 /* zebra_params_en_it.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_en_it.pv; sourceTree = "<group>"; };
+		0720E6F82F9301860075BF13 /* zebra_params_es_de.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_es_de.pv; sourceTree = "<group>"; };
+		0720E6F92F9301860075BF13 /* zebra_params_es_en.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_es_en.pv; sourceTree = "<group>"; };
+		0720E6FA2F9301860075BF13 /* zebra_params_es_fr.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_es_fr.pv; sourceTree = "<group>"; };
+		0720E6FB2F9301860075BF13 /* zebra_params_es_it.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_es_it.pv; sourceTree = "<group>"; };
+		0720E6FC2F9301860075BF13 /* zebra_params_fr_de.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_fr_de.pv; sourceTree = "<group>"; };
+		0720E6FD2F9301860075BF13 /* zebra_params_fr_en.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_fr_en.pv; sourceTree = "<group>"; };
+		0720E6FE2F9301860075BF13 /* zebra_params_fr_es.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_fr_es.pv; sourceTree = "<group>"; };
+		0720E6FF2F9301860075BF13 /* zebra_params_it_de.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_it_de.pv; sourceTree = "<group>"; };
+		0720E7002F9301860075BF13 /* zebra_params_it_en.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_it_en.pv; sourceTree = "<group>"; };
+		0720E7012F9301860075BF13 /* zebra_params_it_es.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_it_es.pv; sourceTree = "<group>"; };
+		0720E7022F9301860075BF13 /* zebra_params_it_fr.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_it_fr.pv; sourceTree = "<group>"; };
+		0720E7032F9301860075BF13 /* zebra_params_ja_de.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_ja_de.pv; sourceTree = "<group>"; };
+		0720E7042F9301860075BF13 /* zebra_params_ja_en.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_ja_en.pv; sourceTree = "<group>"; };
+		0720E7052F9301860075BF13 /* zebra_params_ja_es.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_ja_es.pv; sourceTree = "<group>"; };
+		0720E7062F9301860075BF13 /* zebra_params_ja_fr.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_ja_fr.pv; sourceTree = "<group>"; };
+		0720E7072F9301860075BF13 /* zebra_params_ja_it.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_ja_it.pv; sourceTree = "<group>"; };
+		0720E7082F9301860075BF13 /* zebra_params_ja_pt.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_ja_pt.pv; sourceTree = "<group>"; };
+		0720E7092F9301860075BF13 /* zebra_params_ko_de.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_ko_de.pv; sourceTree = "<group>"; };
+		0720E70A2F9301860075BF13 /* zebra_params_ko_en.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_ko_en.pv; sourceTree = "<group>"; };
+		0720E70B2F9301860075BF13 /* zebra_params_ko_es.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_ko_es.pv; sourceTree = "<group>"; };
+		0720E70C2F9301860075BF13 /* zebra_params_ko_fr.pv */ = {isa = PBXFileReference; lastKnownFileType = file; path = zebra_params_ko_fr.pv; sourceTree = "<group>"; };
+		C789D24A2BEA8E5D005FDB10 /* SelectLanguageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectLanguageView.swift; sourceTree = "<group>"; };
+		C789D24C2BEA8EAE005FDB10 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		C789D2502BEAD752005FDB10 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
+		C7E87DC72C07E83800C32367 /* AudioPlayerStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerStream.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		02A11942268D39A700A2AC99 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0720E6EE2F92CD820075BF13 /* Bat in Frameworks */,
+				070C11AA2F92C55F0052BEA9 /* Zebra in Frameworks */,
+				34C504D82D2728410003405B /* Cheetah in Frameworks */,
+				34CE2DE42D27287900AC10F0 /* Orca in Frameworks */,
+				34C504D32D271E4B0003405B /* ios_voice_processor in Frameworks */,
+				34C504D02D271C5E0003405B /* ios_voice_processor in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		02A1193C268D39A700A2AC99 = {
+			isa = PBXGroup;
+			children = (
+				02A11947268D39A700A2AC99 /* LiveConversationTranslationDemo */,
+				0720E6EC2F92CD820075BF13 /* Frameworks */,
+				02A11946268D39A700A2AC99 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		02A11946268D39A700A2AC99 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				02A11945268D39A700A2AC99 /* LiveConversationTranslationDemo.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		02A11947268D39A700A2AC99 /* LiveConversationTranslationDemo */ = {
+			isa = PBXGroup;
+			children = (
+				C7E87DC02C07C65C00C32367 /* resources */,
+				02A11948268D39A700A2AC99 /* LiveConversationTranslationDemoApp.swift */,
+				02A1194A268D39A700A2AC99 /* ContentView.swift */,
+				02A1194C268D39AB00A2AC99 /* Assets.xcassets */,
+				02A11951268D39AB00A2AC99 /* Info.plist */,
+				02A1195E268D3FD600A2AC99 /* ViewModel.swift */,
+				C789D24A2BEA8E5D005FDB10 /* SelectLanguageView.swift */,
+				C789D24C2BEA8EAE005FDB10 /* ChatView.swift */,
+				C789D2502BEAD752005FDB10 /* Constants.swift */,
+				C7E87DC72C07E83800C32367 /* AudioPlayerStream.swift */,
+			);
+			path = LiveConversationTranslationDemo;
+			sourceTree = "<group>";
+		};
+		0720E6EC2F92CD820075BF13 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		C7E87DC02C07C65C00C32367 /* resources */ = {
+			isa = PBXGroup;
+			children = (
+				0720E6EF2F9301860075BF13 /* cheetah_params_en.pv */,
+				0720E6F02F9301860075BF13 /* zebra_params_de_en.pv */,
+				0720E6F12F9301860075BF13 /* zebra_params_de_es.pv */,
+				0720E6F22F9301860075BF13 /* zebra_params_de_fr.pv */,
+				0720E6F32F9301860075BF13 /* zebra_params_de_it.pv */,
+				0720E6F42F9301860075BF13 /* zebra_params_en_de.pv */,
+				0720E6F52F9301860075BF13 /* zebra_params_en_es.pv */,
+				0720E6F62F9301860075BF13 /* zebra_params_en_fr.pv */,
+				0720E6F72F9301860075BF13 /* zebra_params_en_it.pv */,
+				0720E6F82F9301860075BF13 /* zebra_params_es_de.pv */,
+				0720E6F92F9301860075BF13 /* zebra_params_es_en.pv */,
+				0720E6FA2F9301860075BF13 /* zebra_params_es_fr.pv */,
+				0720E6FB2F9301860075BF13 /* zebra_params_es_it.pv */,
+				0720E6FC2F9301860075BF13 /* zebra_params_fr_de.pv */,
+				0720E6FD2F9301860075BF13 /* zebra_params_fr_en.pv */,
+				0720E6FE2F9301860075BF13 /* zebra_params_fr_es.pv */,
+				0720E6FF2F9301860075BF13 /* zebra_params_it_de.pv */,
+				0720E7002F9301860075BF13 /* zebra_params_it_en.pv */,
+				0720E7012F9301860075BF13 /* zebra_params_it_es.pv */,
+				0720E7022F9301860075BF13 /* zebra_params_it_fr.pv */,
+				0720E7032F9301860075BF13 /* zebra_params_ja_de.pv */,
+				0720E7042F9301860075BF13 /* zebra_params_ja_en.pv */,
+				0720E7052F9301860075BF13 /* zebra_params_ja_es.pv */,
+				0720E7062F9301860075BF13 /* zebra_params_ja_fr.pv */,
+				0720E7072F9301860075BF13 /* zebra_params_ja_it.pv */,
+				0720E7082F9301860075BF13 /* zebra_params_ja_pt.pv */,
+				0720E7092F9301860075BF13 /* zebra_params_ko_de.pv */,
+				0720E70A2F9301860075BF13 /* zebra_params_ko_en.pv */,
+				0720E70B2F9301860075BF13 /* zebra_params_ko_es.pv */,
+				0720E70C2F9301860075BF13 /* zebra_params_ko_fr.pv */,
+				0720E6C42F92CB290075BF13 /* cheetah_params_de.pv */,
+				0720E6C52F92CB290075BF13 /* cheetah_params_es.pv */,
+				0720E6C62F92CB290075BF13 /* cheetah_params_fr.pv */,
+				0720E6C72F92CB290075BF13 /* cheetah_params_it.pv */,
+				0720E6C82F92CB290075BF13 /* cheetah_params_pt.pv */,
+				0720E6C92F92CB290075BF13 /* orca_params_de_female.pv */,
+				0720E6CA2F92CB290075BF13 /* orca_params_de_male.pv */,
+				0720E6CB2F92CB290075BF13 /* orca_params_en_female.pv */,
+				0720E6CC2F92CB290075BF13 /* orca_params_en_male.pv */,
+				0720E6CD2F92CB290075BF13 /* orca_params_es_female.pv */,
+				0720E6CE2F92CB290075BF13 /* orca_params_es_male.pv */,
+				0720E6CF2F92CB290075BF13 /* orca_params_fr_female.pv */,
+				0720E6D02F92CB290075BF13 /* orca_params_fr_male.pv */,
+				0720E6D12F92CB290075BF13 /* orca_params_it_female.pv */,
+				0720E6D22F92CB290075BF13 /* orca_params_it_male.pv */,
+				0720E6D32F92CB290075BF13 /* orca_params_ja_female.pv */,
+				0720E6D42F92CB290075BF13 /* orca_params_ja_male.pv */,
+				0720E6D52F92CB290075BF13 /* orca_params_ko_female.pv */,
+				0720E6D62F92CB290075BF13 /* orca_params_pt_female.pv */,
+				0720E6D72F92CB290075BF13 /* orca_params_pt_male.pv */,
+			);
+			path = resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		02A11944268D39A700A2AC99 /* LiveConversationTranslationDemo */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 02A11954268D39AB00A2AC99 /* Build configuration list for PBXNativeTarget "LiveConversationTranslationDemo" */;
+			buildPhases = (
+				02A11941268D39A700A2AC99 /* Sources */,
+				02A11942268D39A700A2AC99 /* Frameworks */,
+				02A11943268D39A700A2AC99 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LiveConversationTranslationDemo;
+			productName = LiveConversationTranslationDemo;
+			productReference = 02A11945268D39A700A2AC99 /* LiveConversationTranslationDemo.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		02A1193D268D39A700A2AC99 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastSwiftUpdateCheck = 1250;
+				LastUpgradeCheck = 1530;
+				TargetAttributes = {
+					02A11944268D39A700A2AC99 = {
+						CreatedOnToolsVersion = 12.5;
+					};
+				};
+			};
+			buildConfigurationList = 02A11940268D39A700A2AC99 /* Build configuration list for PBXProject "LiveConversationTranslationDemo" */;
+			compatibilityVersion = "Xcode 9.3";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 02A1193C268D39A700A2AC99;
+			packageReferences = (
+				34C504CC2D2719A30003405B /* XCRemoteSwiftPackageReference "orca" */,
+				34C504CD2D271A440003405B /* XCRemoteSwiftPackageReference "cheetah" */,
+				34C504D12D271E4B0003405B /* XCRemoteSwiftPackageReference "ios-voice-processor" */,
+				070C11A82F92C55F0052BEA9 /* XCRemoteSwiftPackageReference "zebra" */,
+			);
+			productRefGroup = 02A11946268D39A700A2AC99 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				02A11944268D39A700A2AC99 /* LiveConversationTranslationDemo */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		02A11943268D39A700A2AC99 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0720E6D82F92CB2A0075BF13 /* orca_params_en_female.pv in Resources */,
+				0720E6D92F92CB2A0075BF13 /* orca_params_fr_female.pv in Resources */,
+				0720E6DA2F92CB2A0075BF13 /* orca_params_es_female.pv in Resources */,
+				0720E6DB2F92CB2A0075BF13 /* orca_params_it_female.pv in Resources */,
+				0720E6DC2F92CB2A0075BF13 /* cheetah_params_de.pv in Resources */,
+				0720E6DD2F92CB2A0075BF13 /* orca_params_en_male.pv in Resources */,
+				0720E6DE2F92CB2A0075BF13 /* orca_params_de_female.pv in Resources */,
+				0720E6DF2F92CB2A0075BF13 /* orca_params_ja_female.pv in Resources */,
+				0720E6E02F92CB2A0075BF13 /* orca_params_ko_female.pv in Resources */,
+				0720E70D2F9301860075BF13 /* zebra_params_es_fr.pv in Resources */,
+				0720E70E2F9301860075BF13 /* zebra_params_fr_de.pv in Resources */,
+				0720E70F2F9301860075BF13 /* zebra_params_fr_en.pv in Resources */,
+				0720E7102F9301860075BF13 /* zebra_params_ko_en.pv in Resources */,
+				0720E7112F9301860075BF13 /* zebra_params_en_fr.pv in Resources */,
+				0720E7122F9301860075BF13 /* zebra_params_it_fr.pv in Resources */,
+				0720E7132F9301860075BF13 /* zebra_params_ja_pt.pv in Resources */,
+				0720E7142F9301860075BF13 /* zebra_params_en_es.pv in Resources */,
+				0720E7152F9301860075BF13 /* zebra_params_ja_es.pv in Resources */,
+				0720E7162F9301860075BF13 /* zebra_params_de_en.pv in Resources */,
+				0720E7172F9301860075BF13 /* zebra_params_en_it.pv in Resources */,
+				0720E7182F9301860075BF13 /* zebra_params_de_fr.pv in Resources */,
+				0720E7192F9301860075BF13 /* zebra_params_it_de.pv in Resources */,
+				0720E71A2F9301860075BF13 /* zebra_params_de_it.pv in Resources */,
+				0720E71B2F9301860075BF13 /* zebra_params_ja_it.pv in Resources */,
+				0720E71C2F9301860075BF13 /* zebra_params_it_es.pv in Resources */,
+				0720E71D2F9301860075BF13 /* cheetah_params_en.pv in Resources */,
+				0720E71E2F9301860075BF13 /* zebra_params_ja_de.pv in Resources */,
+				0720E71F2F9301860075BF13 /* zebra_params_es_de.pv in Resources */,
+				0720E7202F9301860075BF13 /* zebra_params_ko_es.pv in Resources */,
+				0720E7212F9301860075BF13 /* zebra_params_es_en.pv in Resources */,
+				0720E7222F9301860075BF13 /* zebra_params_de_es.pv in Resources */,
+				0720E7232F9301860075BF13 /* zebra_params_fr_es.pv in Resources */,
+				0720E7242F9301860075BF13 /* zebra_params_ja_en.pv in Resources */,
+				0720E7252F9301860075BF13 /* zebra_params_ja_fr.pv in Resources */,
+				0720E7262F9301860075BF13 /* zebra_params_ko_de.pv in Resources */,
+				0720E7272F9301860075BF13 /* zebra_params_ko_fr.pv in Resources */,
+				0720E7282F9301860075BF13 /* zebra_params_it_en.pv in Resources */,
+				0720E7292F9301860075BF13 /* zebra_params_en_de.pv in Resources */,
+				0720E72A2F9301860075BF13 /* zebra_params_es_it.pv in Resources */,
+				0720E6E12F92CB2A0075BF13 /* cheetah_params_pt.pv in Resources */,
+				0720E6E22F92CB2A0075BF13 /* orca_params_fr_male.pv in Resources */,
+				0720E6E32F92CB2A0075BF13 /* orca_params_pt_female.pv in Resources */,
+				0720E6E42F92CB2A0075BF13 /* cheetah_params_fr.pv in Resources */,
+				0720E6E52F92CB2A0075BF13 /* cheetah_params_it.pv in Resources */,
+				0720E6E62F92CB2A0075BF13 /* orca_params_de_male.pv in Resources */,
+				0720E6E72F92CB2A0075BF13 /* orca_params_ja_male.pv in Resources */,
+				0720E6E82F92CB2A0075BF13 /* cheetah_params_es.pv in Resources */,
+				0720E6E92F92CB2A0075BF13 /* orca_params_es_male.pv in Resources */,
+				0720E6EA2F92CB2A0075BF13 /* orca_params_pt_male.pv in Resources */,
+				0720E6EB2F92CB2A0075BF13 /* orca_params_it_male.pv in Resources */,
+				02A1194D268D39AB00A2AC99 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		02A11941268D39A700A2AC99 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C789D24D2BEA8EAE005FDB10 /* ChatView.swift in Sources */,
+				C789D24B2BEA8E5D005FDB10 /* SelectLanguageView.swift in Sources */,
+				02A1194B268D39A700A2AC99 /* ContentView.swift in Sources */,
+				C789D2512BEAD752005FDB10 /* Constants.swift in Sources */,
+				02A1195F268D3FD600A2AC99 /* ViewModel.swift in Sources */,
+				C7E87DC82C07E83800C32367 /* AudioPlayerStream.swift in Sources */,
+				02A11949268D39A700A2AC99 /* LiveConversationTranslationDemoApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		02A11952268D39AB00A2AC99 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		02A11953268D39AB00A2AC99 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		02A11955268D39AB00A2AC99 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = EU9HUJJU2X;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				INFOPLIST_FILE = LiveConversationTranslationDemo/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.picovoice.LiveConversationTranslationDemo;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		02A11956268D39AB00A2AC99 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = EU9HUJJU2X;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				INFOPLIST_FILE = LiveConversationTranslationDemo/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.picovoice.LiveConversationTranslationDemo;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		02A11940268D39A700A2AC99 /* Build configuration list for PBXProject "LiveConversationTranslationDemo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				02A11952268D39AB00A2AC99 /* Debug */,
+				02A11953268D39AB00A2AC99 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		02A11954268D39AB00A2AC99 /* Build configuration list for PBXNativeTarget "LiveConversationTranslationDemo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				02A11955268D39AB00A2AC99 /* Debug */,
+				02A11956268D39AB00A2AC99 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		070C11A82F92C55F0052BEA9 /* XCRemoteSwiftPackageReference "zebra" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Picovoice/zebra.git";
+			requirement = {
+				kind = exactVersion;
+				version = 1.0.0;
+			};
+		};
+		070C11AB2F92C6230052BEA9 /* XCRemoteSwiftPackageReference "bat" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Picovoice/bat.git";
+			requirement = {
+				kind = exactVersion;
+				version = 1.0.1;
+			};
+		};
+		34C504CC2D2719A30003405B /* XCRemoteSwiftPackageReference "orca" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/picovoice/orca";
+			requirement = {
+				kind = exactVersion;
+				version = 3.0.0;
+			};
+		};
+		34C504CD2D271A440003405B /* XCRemoteSwiftPackageReference "cheetah" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/picovoice/cheetah";
+			requirement = {
+				kind = exactVersion;
+				version = 4.0.1;
+			};
+		};
+		34C504CE2D271C5E0003405B /* XCRemoteSwiftPackageReference "ios-voice-processor" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/picovoice/ios-voice-processor";
+			requirement = {
+				kind = exactVersion;
+				version = 1.2.0;
+			};
+		};
+		34C504D12D271E4B0003405B /* XCRemoteSwiftPackageReference "ios-voice-processor" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/picovoice/ios-voice-processor";
+			requirement = {
+				kind = exactVersion;
+				version = 1.2.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		070C11A92F92C55F0052BEA9 /* Zebra */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 070C11A82F92C55F0052BEA9 /* XCRemoteSwiftPackageReference "zebra" */;
+			productName = Zebra;
+		};
+		0720E6ED2F92CD820075BF13 /* Bat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 070C11AB2F92C6230052BEA9 /* XCRemoteSwiftPackageReference "bat" */;
+			productName = Bat;
+		};
+		34C504CF2D271C5E0003405B /* ios_voice_processor */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 34C504CE2D271C5E0003405B /* XCRemoteSwiftPackageReference "ios-voice-processor" */;
+			productName = ios_voice_processor;
+		};
+		34C504D22D271E4B0003405B /* ios_voice_processor */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 34C504D12D271E4B0003405B /* XCRemoteSwiftPackageReference "ios-voice-processor" */;
+			productName = ios_voice_processor;
+		};
+		34C504D72D2728410003405B /* Cheetah */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 34C504CD2D271A440003405B /* XCRemoteSwiftPackageReference "cheetah" */;
+			productName = Cheetah;
+		};
+		34CE2DE32D27287900AC10F0 /* Orca */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 34C504CC2D2719A30003405B /* XCRemoteSwiftPackageReference "orca" */;
+			productName = Orca;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 02A1193D268D39A700A2AC99 /* Project object */;
+}
