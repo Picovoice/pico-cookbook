@@ -899,10 +899,10 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@picovoice/bat-web@^1.0.0":
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/@picovoice/bat-web/-/bat-web-1.0.1.tgz#788314c4ec3d1a3bfe6e990416e673e0e9eed50e"
-  integrity sha512-AnE3/Is9dAXEvy7QPzi5kSYrVg5QyEm7IHY0K8iQTFJNiTY9LN03zJ51dH5TZr5zFB8wKMcAfmOKFGP4PGGSjw==
+"@picovoice/bat-web@^1.0.2":
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/@picovoice/bat-web/-/bat-web-1.0.2.tgz#4939d2cb48ee99a68643e2bb3472a75d07971937"
+  integrity sha512-F5GM332lK+pxbFR5OPgkQM8qnIraCSnlss2N8y2WWkNflnt3kYeCAPZ2Gq4gZDOcES+nlmlzMFwvP2On0M/2Iw==
   dependencies:
     "@picovoice/web-utils" "=1.4.3"
 

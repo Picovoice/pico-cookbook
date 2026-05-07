@@ -18,7 +18,7 @@
   "author": "Picovoice Inc",
   "license": "Apache-2.0",
   "dependencies": {
-    "@picovoice/bat-web": "^1.0.0",
+    "@picovoice/bat-web": "^1.0.2",
     "@picovoice/cheetah-web": "^4.0.1",
     "@picovoice/orca-web": "^3.0.0",
     "@picovoice/web-voice-processor": "^4.0.9",
