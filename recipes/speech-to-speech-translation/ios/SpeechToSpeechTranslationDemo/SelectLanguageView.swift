@@ -39,6 +39,8 @@ struct SelectLanguageView: View {
                 .onChange(of: $viewModel.selectedSourceLanguage.wrappedValue) { () in  viewModel.selectedSourceLanguageChange()
                 }
                 Spacer()
+                Image(systemName: "arrow.right")
+                Spacer()
                 Picker("Target Language", selection: $viewModel.selectedTargetLanguage,
                        content: {
                     Text("Select Language").tag("invalid")
@@ -54,9 +56,10 @@ struct SelectLanguageView: View {
             }
             
             Button(action: viewModel.pauseDemo) {
-                Text($viewModel.isPaused.wrappedValue ? "Play" : "Pause")
+                Image(systemName: $viewModel.isPaused.wrappedValue ? "pause" : "microphone.fill")
                     .background(Constants.btnColor(viewModel.chatState == .LISTENING))
                     .foregroundColor(.white)
+                    .frame(width: 10, height: 10)
                     .padding(.horizontal, 35.0)
                     .padding(.vertical, 20.0)
             }.background(

@@ -1,5 +1,5 @@
 //
-//  Copyright 2024-2025 Picovoice Inc.
+//  Copyright 2026 Picovoice Inc.
 //  You may not use this file except in compliance with the license. A copy of the license is located in the "LICENSE"
 //  file accompanying this source.
 //  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
@@ -22,8 +22,6 @@ enum ChatState {
     case DETECTING
     case LISTENING
     case TRANSLATING
-    case SYNTHESISING
-    case SPEAKING
     case ERROR
 }
 
@@ -74,12 +72,6 @@ let LANGUAGE_PAIRS: [String:[String]] = [
   ]
 ]
 
-struct DottedText: Identifiable {
-    let id: UUID = UUID()
-    var content: String = ""
-    var withDots: Bool = true
-}
-
 let DOTS = [
     " .  ",
     " .. ",
@@ -103,10 +95,10 @@ class ViewModel: ObservableObject {
     private var audioStream: AudioPlayerStream?
 
     private var pcmBuffer: [Int16] = []
-    
+
     @Published var dotIndex = 0
     private var timer: Timer?
-    
+
     @Published var chatState: ChatState = .SELECTING
 
     @Published var selectedSourceLanguage: String = "automatic"
@@ -128,7 +120,7 @@ class ViewModel: ObservableObject {
         unloadEngines()
     }
 
-    
+
     func withDots(_ content: String, dots: Bool) -> String {
         if dots && !isPaused {
             return content + DOTS[dotIndex]
@@ -142,7 +134,7 @@ class ViewModel: ObservableObject {
             self!.dotIndex = (self!.dotIndex + 1) % DOTS.count
         }
     }
-    
+
     public func selectedSourceLanguageChange() {
         if chatState != .DETECTING {
             selectedTargetLanguage = "invalid"
@@ -150,16 +142,16 @@ class ViewModel: ObservableObject {
             startDemo()
         }
     }
-    
+
     public func selectedTargetLanguageChange() {
         if chatState != .SELECTING {
-            unloadEngines() // TODO: Need to handle this correctly, causes crash!
+            unloadEngines()
         }
         if selectedTargetLanguage != "invalid" {
             startDemo()
         }
     }
-    
+
     public func startDemo() {
         chatState = .LOADING
         if selectedSourceLanguage == "automatic" {
@@ -169,17 +161,13 @@ class ViewModel: ObservableObject {
         }
     }
 
-    public func detect() {
-        
-    }
-    
     public func loadEngines() {
         errorMessage = ""
         statusText = ""
-        
+
         let sourceLanguage = selectedSourceLanguage
         let targetLanguage = selectedTargetLanguage
-        
+
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             let setStatusText = {(_ msg: String) in
                 DispatchQueue.main.async { [self] in
@@ -232,7 +220,7 @@ class ViewModel: ObservableObject {
     public func loadBat() {
         errorMessage = ""
         statusText = ""
-        
+
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             let setStatusText = {(_ msg: String) in
                 DispatchQueue.main.async { [self] in
@@ -262,7 +250,7 @@ class ViewModel: ObservableObject {
             }
         }
     }
-    
+
     public func unloadEngines() {
         stopAudioRecording()
         VoiceProcessor.instance.clearFrameListeners()
@@ -297,7 +285,7 @@ class ViewModel: ObservableObject {
             isPaused = true
         }
     }
-    
+
     private func startAudioRecording() {
         DispatchQueue.main.sync {
             do {
@@ -319,7 +307,7 @@ class ViewModel: ObservableObject {
             }
         }
     }
-    
+
     private func appendChatText(text: String, translated: Bool) {
         DispatchQueue.main.async { [self] in
             if chatText.count > 0 {
@@ -331,37 +319,37 @@ class ViewModel: ObservableObject {
             }
         }
     }
-    
+
     private func translateAndSpeak() {
         DispatchQueue.main.async { [self] in
             chatState = .TRANSLATING
         }
-        
+
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             Task {
                 do {
                     let translation = try self.zebra!.translate(text: chatText[chatText.count - 1].transcript)
-                    
+
                     let audio = try orca!.synthesize(text: translation)
-                    
+
                     try audioStream!.playStreamPCM(audio.pcm)
-                    
+
                     var currentTime: Float = 0.0
                     for (index, word) in audio.wordArray.enumerated() {
                         let duration = Int((word.startSec - currentTime) * 1000)
                         try await Task.sleep(for: .milliseconds(duration))
                         currentTime = word.startSec
-                        
+
                         appendChatText(text: word.word, translated: true)
-                        
+
                         if index + 1 < audio.wordArray.count && !audio.wordArray[index + 1].word.first!.isPunctuation {
                             appendChatText(text: " ", translated: true)
                         }
                     }
-                    
+
                     let duration = Int((audio.wordArray.last!.endSec - currentTime) * 1000)
                     try await Task.sleep(for: .milliseconds(duration))
-                    
+
                     DispatchQueue.main.async { [self] in
                         chatState = .LISTENING
                         chatText.append(Message(transcript: ""))
@@ -375,32 +363,22 @@ class ViewModel: ObservableObject {
         }
     }
 
-    public func interrupt() {
-        do {
-            audioStream!.stopStreamPCM()
-        } catch {
-            DispatchQueue.main.async { [self] in
-                errorMessage = "\(error.localizedDescription)"
-            }
-        }
-    }
-
     private func audioCallback(frame: [Int16]) {
         do {
             if chatState == .LISTENING {
                 pcmBuffer.append(contentsOf: frame)
-                
+
                 var isFlushed = false
                 while pcmBuffer.count >= Cheetah.frameLength {
                     let partialTranscript = try self.cheetah!.process(Array(pcmBuffer[0..<Int(Cheetah.frameLength)]))
                     pcmBuffer.removeFirst(Int(Cheetah.frameLength))
                     appendChatText(text: partialTranscript.0, translated: false)
-                    
+
                     if partialTranscript.1 {
                         let finalTranscript = try self.cheetah!.flush()
                         appendChatText(text: finalTranscript, translated: false)
                         appendChatText(text: " ", translated: false)
-                        
+
                         if chatText.count > 0 && !chatText[chatText.count - 1].transcript.isEmpty {
                             isFlushed = true
                         }
@@ -426,11 +404,11 @@ class ViewModel: ObservableObject {
                         }
                     }
                 }
-                
+
                 if foundLanguage != BatLanguages.UNKNOWN {
                     if LANGUAGE_PAIRS.keys.contains(foundLanguage.toString()) &&
                         LANGUAGE_PAIRS[foundLanguage.toString()]!.contains(selectedTargetLanguage) {
-                        
+
                         DispatchQueue.main.async { [self] in
                             selectedSourceLanguage = foundLanguage.toString()
                         }
@@ -462,7 +440,7 @@ struct Message: Equatable {
     mutating func appendTranscript(text: String) {
         self.transcript.append(text)
     }
-    
+
     mutating func appendTranslated(text: String) {
         if self.translated != nil {
             self.translated!.append(text)
