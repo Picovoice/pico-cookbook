@@ -22,8 +22,12 @@ window.onload = () => {
         meterContainer.style.display = 'flex';
         break;
       case 'VOICE_COMMAND':
-        tooltip.innerText =
-          "Commands: 'start memo', 'read memo', 'summarize memo', 'rewrite memo'";
+        if (originalText.innerText.length > 0) {
+          tooltip.innerText =
+            "Commands: 'start memo', 'read memo', 'summarize memo', 'rewrite memo'";
+        } else {
+          tooltip.innerText = "Say 'start memo' to record a voice memo"
+        }
         meterContainer.style.display = 'flex';
         break;
       case 'START_RECORDING':
@@ -34,7 +38,11 @@ window.onload = () => {
         modifiedText.innerText = '';
         break;
       case 'READ_RECORDING':
-        tooltip.innerText = 'Reading memo aloud...';
+        if (originalText.innerText.length > 0) {
+          tooltip.innerText = 'Reading memo aloud...';
+        } else {
+          tooltip.innerText = "Record a memo with 'start memo' first";
+        }
         meterContainer.style.display = 'none';
         break;
       case 'SUMMARIZE_RECORDING':
@@ -81,7 +89,7 @@ window.onload = () => {
 
       topStatusBlock.style.display = 'none';
       document.getElementById('initBlock').style.display = 'none';
-      document.getElementById('appBlock').style.display = 'block';
+      document.getElementById('appBlock').style.display = 'flex';
     } catch (e) {
       topStatus.innerText = 'Error loading engines: ' + e.message;
       initButton.disabled = false;

@@ -102,7 +102,6 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
       } else {
         playAudioMessage("Sorry, I didn't understand that.");
         await WebVoiceProcessor.unsubscribe(rhino);
-        resetToWakeWord();
       }
     }
   };
@@ -169,7 +168,6 @@ const handleIntent = async (intent: string | undefined) => {
   } else if (intent === 'summarizeMemo' || intent === 'rewriteMemo') {
     if (!memoText) {
       playAudioMessage(NO_MEMO_ERROR_PHRASE);
-      resetToWakeWord();
       return;
     }
     setState(
@@ -207,7 +205,9 @@ const playAudioMessage = async (text: string) => {
   if (orcaSynthesis.pcm) {
     callbacks!.onAudioReady(orcaSynthesis.pcm);
   }
-  resetToWakeWord();
+  setTimeout(() => {
+    resetToWakeWord();
+  }, 2000);
 };
 
 const resetToWakeWord = async () => {
