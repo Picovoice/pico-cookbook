@@ -9,82 +9,80 @@
 
 import SwiftUI
 
-let ACTIONS = [
-    "Greet",
-    "Connect Call",
-    "Decline Call",
-    "Ask for Details",
-    "Ask to Text",
-    "Ask to Email",
-    "Ask to Call Back",
-    "Block Caller"
-]
-
-extension Color {
-    static let lightGray = Color(red: 0.8, green: 0.8, blue: 0.8)
-    static let offWhite = Color(red: 0.93, green: 0.93, blue: 0.93)
-}
-
-extension Font {
-    static let twenty = Font.system(size: 20)
-    static let fourteen = Font.system(size: 14)
-}
-
 struct MainView: View {
     @ObservedObject var viewModel: ViewModel
 
     var body: some View {
-        VStack {
+        VStack(spacing: 20) {
+            
+            // Text Displays
             ScrollView {
-                VStack {
-                    ForEach(
-                        Array(viewModel.callerTextHistory.enumerated()), id: \.offset) { index, item in
-                        Text(viewModel.withDots(item: item))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .foregroundStyle((index % 2 == 1) ? .green : .gray)
-                            .monospacedDigit()
-                            .font(.twenty)
-                    }
-                }.frame(minHeight: 200, alignment: .top)
-            }
-            .frame(maxWidth: .infinity, maxHeight: 200)
-            .padding(8)
-            .defaultScrollAnchor(.bottom)
-            .background(Color.offWhite)
-            .cornerRadius(10)
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.lightGray, lineWidth: 1)
-            )
-
-            Text(viewModel.withDots(item: viewModel.aiTextHistory))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .foregroundStyle(.blue)
-                .monospacedDigit()
-                .font(.twenty)
-
-            if viewModel.listenState == .command {
-                Text("Say one of the following commands")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .foregroundStyle(.gray)
-                    .font(.fourteen)
-
-                ForEach(ACTIONS, id: \.self) {item in
-                    Text("- \(item)")
+                VStack(alignment: .leading, spacing: 10) {
+                    
+                    Text("Memo:")
+                        .font(.headline)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .foregroundStyle(.gray)
-                        .font(.fourteen)
-                        .padding(.leading, 10)
-                        .padding(.top, -10)
-                }
+                    
+                    Text(viewModel.memoText)
+                        .padding()
+                        .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+                        .background(Color(red: 0.93, green: 0.93, blue: 0.93))
+                        .cornerRadius(10)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+                        )
+                    
+                    if !viewModel.modifiedTitle.isEmpty {
+                        Text(viewModel.modifiedTitle)
+                            .font(.headline)
+                            .padding(.top, 10)
+                        
+                        Text(viewModel.modifiedText)
+                            .padding()
+                            .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+                            .foregroundColor(.blue)
+                            .background(Color(red: 0.93, green: 0.93, blue: 0.93))
+                            .cornerRadius(10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+                            )
+                    }
 
-                Text(viewModel.withDots(item: viewModel.userTextHistory))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .foregroundStyle(.blue)
-                    .monospacedDigit()
-                    .font(.twenty)
+                    if !viewModel.tooltipText.isEmpty {
+                        Text(viewModel.tooltipText)
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .italic()
+                            .padding(.top, 10)
+                    }
+                }
             }
-        }.frame(maxHeight: .infinity, alignment: .top)
             .padding()
+            
+            // Status area
+            VStack {
+                Text(viewModel.statusText)
+                    .font(.title3)
+                    .padding(.bottom, 10)
+                
+                if viewModel.uiState == .wakeWord ||
+                    viewModel.uiState == .voiceCommand ||
+                    viewModel.uiState == .startRecording {
+                    VolumeMeterView(volume: viewModel.volumeLevel)
+                } else if viewModel.uiState == .loadingModel ||
+                            viewModel.uiState == .readRecording ||
+                            viewModel.uiState == .summarizeRecording ||
+                            viewModel.uiState == .rewriteRecording {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                        .scaleEffect(1.5)
+                }
+            }
+            .frame(height: 150)
+            .frame(maxWidth: .infinity)
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 }

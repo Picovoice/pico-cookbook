@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0218F6602FAC08D600798D8B /* Porcupine in Frameworks */ = {isa = PBXBuildFile; productRef = 0218F65F2FAC08D600798D8B /* Porcupine */; };
+		0218F6822FAC0ACC00798D8B /* porcupine_model.ppn in Resources */ = {isa = PBXBuildFile; fileRef = 0218F6812FAC0ACC00798D8B /* porcupine_model.ppn */; };
 		343769072FA56D8900E01072 /* Cheetah in Frameworks */ = {isa = PBXBuildFile; productRef = 343769062FA56D8900E01072 /* Cheetah */; };
 		3437690A2FA56DFA00E01072 /* Orca in Frameworks */ = {isa = PBXBuildFile; productRef = 343769092FA56DFA00E01072 /* Orca */; };
 		3437690D2FA56EAA00E01072 /* Rhino in Frameworks */ = {isa = PBXBuildFile; productRef = 3437690C2FA56EAA00E01072 /* Rhino */; };
@@ -19,6 +21,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0218F6812FAC0ACC00798D8B /* porcupine_model.ppn */ = {isa = PBXFileReference; lastKnownFileType = file; path = porcupine_model.ppn; sourceTree = "<group>"; };
 		343768DB2FA55DD100E01072 /* VoiceMemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceMemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3462B5662FA9053700B9D697 /* cheetah_params.pv */ = {isa = PBXFileReference; lastKnownFileType = file; name = cheetah_params.pv; path = cheetah/lib/common/cheetah_params.pv; sourceTree = "<group>"; };
 		3462B5682FA9054600B9D697 /* orca_params_en_female.pv */ = {isa = PBXFileReference; lastKnownFileType = file; name = orca_params_en_female.pv; path = orca/lib/common/orca_params_en_female.pv; sourceTree = "<group>"; };
@@ -39,6 +42,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0218F6602FAC08D600798D8B /* Porcupine in Frameworks */,
 				3495DDEE2FA5766A0011D5E9 /* PicoLLM in Frameworks */,
 				3437690D2FA56EAA00E01072 /* Rhino in Frameworks */,
 				343769072FA56D8900E01072 /* Cheetah in Frameworks */,
@@ -53,6 +57,7 @@
 		343768D22FA55DD100E01072 = {
 			isa = PBXGroup;
 			children = (
+				0218F6812FAC0ACC00798D8B /* porcupine_model.ppn */,
 				3462B56C2FA9129200B9D697 /* rhino_model.rhn */,
 				3462B56A2FA9128B00B9D697 /* picollm_model.pllm */,
 				3462B5682FA9054600B9D697 /* orca_params_en_female.pv */,
@@ -95,6 +100,7 @@
 				3437690C2FA56EAA00E01072 /* Rhino */,
 				343769102FA5715100E01072 /* ios_voice_processor */,
 				3495DDED2FA5766A0011D5E9 /* PicoLLM */,
+				0218F65F2FAC08D600798D8B /* Porcupine */,
 			);
 			productName = VoiceMemo;
 			productReference = 343768DB2FA55DD100E01072 /* VoiceMemo.app */;
@@ -130,6 +136,7 @@
 				3437690B2FA56EAA00E01072 /* XCRemoteSwiftPackageReference "rhino" */,
 				3437690E2FA56ECB00E01072 /* XCRemoteSwiftPackageReference "picollm" */,
 				3437690F2FA5715100E01072 /* XCRemoteSwiftPackageReference "ios-voice-processor" */,
+				0218F65E2FAC08D600798D8B /* XCRemoteSwiftPackageReference "porcupine" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 343768DC2FA55DD100E01072 /* Products */;
@@ -150,6 +157,7 @@
 				3462B56B2FA9128B00B9D697 /* picollm_model.pllm in Resources */,
 				3462B5692FA9054600B9D697 /* orca_params_en_female.pv in Resources */,
 				3462B5672FA9053700B9D697 /* cheetah_params.pv in Resources */,
+				0218F6822FAC0ACC00798D8B /* porcupine_model.ppn in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -299,6 +307,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -326,6 +335,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -363,6 +373,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		0218F65E2FAC08D600798D8B /* XCRemoteSwiftPackageReference "porcupine" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Picovoice/porcupine";
+			requirement = {
+				kind = exactVersion;
+				version = 4.0.0;
+			};
+		};
 		343769052FA56D8900E01072 /* XCRemoteSwiftPackageReference "cheetah" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/picovoice/cheetah";
@@ -406,6 +424,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		0218F65F2FAC08D600798D8B /* Porcupine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0218F65E2FAC08D600798D8B /* XCRemoteSwiftPackageReference "porcupine" */;
+			productName = Porcupine;
+		};
 		343769062FA56D8900E01072 /* Cheetah */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 343769052FA56D8900E01072 /* XCRemoteSwiftPackageReference "cheetah" */;

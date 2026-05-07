@@ -100,9 +100,9 @@ def main() -> None:
         required=True,
         help='`AccessKey` obtained from `Picovoice Console` (https://console.picovoice.ai/).')
     parser.add_argument(
-        '--name',
+        '--keyword_path',
         required=True,
-        help='Name of the user having their calls screened.')
+        help='Absolute path to the Porcupine model file (`.ppn`).')
     parser.add_argument(
         '--context_path',
         required=True,
@@ -118,22 +118,16 @@ def main() -> None:
         major, minor = version.split('.')[:2]
         clone_repo(animal, major, minor)
 
+    shutil.copy(args.keyword_path, os.path.join(public_folder, "porcupine_model.ppn"))
     shutil.copy(args.context_path, os.path.join(public_folder, "rhino_model.rhn"))
     shutil.copy(args.picollm_model_path, os.path.join(public_folder, "picollm_model.pllm"))
 
-    main_activity_path = os.path.join(
-        os.path.dirname(__file__),
-        DEMO,
-        "ViewModel.swift")
-    with open(main_activity_path, 'r') as main_activity_file:
-        main_activity_contents = main_activity_file.read()
-    main_activity_contents = (
-        main_activity_contents
-        .replace("${YOUR_ACCESS_KEY_HERE}", args.access_key)
-        .replace("${YOUR_USERNAME_HERE}", args.name)
-    )
-    with open(main_activity_path, 'w') as main_activity_file:
-        main_activity_file.write(main_activity_contents)
+    view_model_path = os.path.join(os.path.dirname(__file__), DEMO, "ViewModel.swift")
+    with open(view_model_path, 'r') as file:
+        contents = file.read()
+    contents = contents.replace("${YOUR_ACCESS_KEY_HERE}", args.access_key)
+    with open(view_model_path, 'w') as file:
+        file.write(contents)
 
 
 if __name__ == '__main__':
