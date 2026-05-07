@@ -236,7 +236,7 @@ class ViewModel: ObservableObject {
                 VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
                 startAudioRecording()
 
-                setStatusText("Detecting target language")
+                setStatusText("Start speaking in source language")
                 DispatchQueue.main.async { [self] in
                     chatState = .DETECTING
                     chatText.removeAll()

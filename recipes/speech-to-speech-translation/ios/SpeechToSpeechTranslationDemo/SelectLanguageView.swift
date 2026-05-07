@@ -25,8 +25,19 @@ struct SelectLanguageView: View {
             }
             
             Spacer()
-            
-            Text(viewModel.statusText)
+
+            if !viewModel.errorMessage.isEmpty {
+                Text(viewModel.errorMessage)
+                    .padding()
+                    .foregroundColor(Color.white)
+                    .frame(maxWidth: .infinity)
+                    .background(Constants.dangerRed)
+                    .font(.body)
+                    .opacity(viewModel.errorMessage.isEmpty ? 0 : 1)
+                    .cornerRadius(10)
+            } else {
+                Text(viewModel.statusText)
+            }
             
             HStack {
                 Spacer()
@@ -38,6 +49,7 @@ struct SelectLanguageView: View {
                 })
                 .onChange(of: $viewModel.selectedSourceLanguage.wrappedValue) { () in  viewModel.selectedSourceLanguageChange()
                 }
+                .disabled(viewModel.chatState == .LOADING)
                 Spacer()
                 Image(systemName: "arrow.right")
                 Spacer()
@@ -52,6 +64,7 @@ struct SelectLanguageView: View {
                 .onChange(of: $viewModel.selectedTargetLanguage.wrappedValue) { () in
                     viewModel.selectedTargetLanguageChange()
                 }
+                .disabled(viewModel.chatState == .LOADING)
                 Spacer()
             }
             

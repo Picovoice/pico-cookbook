@@ -12,9 +12,7 @@ import SwiftUI
 struct ChatView: View {
     @ObservedObject var viewModel: ViewModel
     
-    var body: some View {
-        let isError = viewModel.errorMessage.count > 0
-        
+    var body: some View {        
         ZStack {
             VStack(alignment: .center) {
                 resultsBox
@@ -29,17 +27,6 @@ struct ChatView: View {
                     Spacer()
                 }
                 .padding(.horizontal, 24)
-                
-                if isError {
-                    Text(viewModel.errorMessage)
-                        .padding()
-                        .foregroundColor(Color.white)
-                        .frame(maxWidth: .infinity)
-                        .background(Constants.dangerRed)
-                        .font(.body)
-                        .opacity(viewModel.errorMessage.isEmpty ? 0 : 1)
-                        .cornerRadius(10)
-                }
             }
             .padding(.bottom, 32)
             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity).background(Color.white)
@@ -58,6 +45,7 @@ struct ChatView: View {
                             
                             VStack(spacing: 0) {
                                 Text(viewModel.withDots(transcript, dots: dots && translated == nil))
+                                    .foregroundColor(translated == nil ? Constants.activeBlue : .gray)
                                     .frame(maxWidth: .infinity, alignment: .topLeading)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 8)
