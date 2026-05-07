@@ -53,16 +53,17 @@ struct SelectLanguageView: View {
                 Spacer()
             }
             
-            Button(action: viewModel.startDemo) {
-                Text("Pause")
-                    .background(Constants.btnColor(true))
+            Button(action: viewModel.pauseDemo) {
+                Text($viewModel.isPaused.wrappedValue ? "Play" : "Pause")
+                    .background(Constants.btnColor(viewModel.chatState == .LISTENING))
                     .foregroundColor(.white)
                     .padding(.horizontal, 35.0)
                     .padding(.vertical, 20.0)
             }.background(
-                Capsule().fill(Constants.btnColor(true))
+                Capsule().fill(Constants.btnColor(viewModel.chatState == .LISTENING))
             )
             .padding(12)
+            .disabled(viewModel.chatState != .LISTENING)
         }.frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity).background(Color.white)
     }
 }

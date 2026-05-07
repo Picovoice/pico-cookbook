@@ -112,7 +112,7 @@ class ViewModel: ObservableObject {
     @Published var selectedSourceLanguage: String = "automatic"
     @Published var selectedTargetLanguage: String = "invalid"
 
-    @Published var enginesLoaded = false
+    @Published var isPaused = false
 
     static let statusTextDefault = ""
     @Published var statusText = statusTextDefault
@@ -130,7 +130,7 @@ class ViewModel: ObservableObject {
 
     
     func withDots(_ content: String, dots: Bool) -> String {
-        if dots {
+        if dots && !isPaused {
             return content + DOTS[dotIndex]
         } else {
             return content
@@ -152,7 +152,9 @@ class ViewModel: ObservableObject {
     }
     
     public func selectedTargetLanguageChange() {
-//        unloadEngines() // TODO: Need to handle this correctly, causes crash!
+        if chatState != .SELECTING {
+            unloadEngines() // TODO: Need to handle this correctly, causes crash!
+        }
         if selectedTargetLanguage != "invalid" {
             startDemo()
         }
@@ -207,6 +209,9 @@ class ViewModel: ObservableObject {
                     VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
                     VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
                     startAudioRecording()
+                }
+                DispatchQueue.main.async { [self] in
+                    isPaused = false
                 }
 
                 setStatusText(ViewModel.statusTextDefault)
@@ -283,6 +288,16 @@ class ViewModel: ObservableObject {
         chatState = .SELECTING
     }
 
+    public func pauseDemo() {
+        if isPaused {
+            VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
+            isPaused = false
+        } else {
+            VoiceProcessor.instance.clearFrameListeners()
+            isPaused = true
+        }
+    }
+    
     private func startAudioRecording() {
         DispatchQueue.main.sync {
             do {
@@ -421,7 +436,7 @@ class ViewModel: ObservableObject {
                         }
                     } else {
                         DispatchQueue.main.async { [self] in
-                            statusText = "Cannot translated from \(foundLanguage.toString()) to \(selectedTargetLanguage)"
+                            statusText = "Cannot translate from \(foundLanguage.toString()) to \(selectedTargetLanguage)"
                         }
                     }
                 }
