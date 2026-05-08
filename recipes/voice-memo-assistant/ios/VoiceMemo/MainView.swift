@@ -25,6 +25,14 @@ struct MainView: View {
                     .bold()
                     .multilineTextAlignment(.center)
                     .padding(16)
+                if !viewModel.tooltipText.isEmpty {
+                    Text(viewModel.tooltipText)
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                        .italic()
+                        .padding(.top, 10)
+                }
+
                 Spacer()
 
             } else {
@@ -32,11 +40,13 @@ struct MainView: View {
 
                     Text("Memo:")
                         .font(.headline)
+                        .foregroundColor(.black)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     ScrollView {
                         Text(viewModel.memoText)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .foregroundColor(.black)
                             .padding()
                     }
                     .frame(height: 150)
@@ -51,6 +61,7 @@ struct MainView: View {
                         Text(viewModel.modifiedTitle)
                             .font(.headline)
                             .padding(.top, 10)
+                            .foregroundColor(.black)
 
                         ScrollView {
                             Text(viewModel.modifiedText)
@@ -83,6 +94,7 @@ struct MainView: View {
             VStack {
                 Text(viewModel.statusText)
                     .font(.title3)
+                    .foregroundColor(.black)
                     .padding(.bottom, 10)
 
                 if viewModel.uiState == .wakeWord ||
@@ -102,5 +114,6 @@ struct MainView: View {
             .frame(maxWidth: .infinity)
         }
         .frame(maxHeight: .infinity, alignment: .top)
+        .background(.white)
     }
 }

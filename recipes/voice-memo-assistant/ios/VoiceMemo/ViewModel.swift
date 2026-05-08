@@ -312,10 +312,10 @@ class ViewModel: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             Task {
                 do {
-                    print(text)
                     let audio = try orca!.synthesize(text: text)
                     try audioStream!.playStreamPCM(audio.pcm)
-                    try await Task.sleep(for: .milliseconds(2000))
+                    let duration = Int((audio.wordArray.last!.endSec) * 1000)
+                    try await Task.sleep(for: .milliseconds(duration))
                     updateUIState(.wakeWord)
                 } catch {
                     setErrorText(error: "Playback error", details: error.localizedDescription)
