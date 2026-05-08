@@ -1,4 +1,4 @@
-pveagle==3.0.0
+pveagle==3.0.1
 pvorca==3.0.0
 pvporcupine==4.0.2
 pvrecorder==1.2.7
