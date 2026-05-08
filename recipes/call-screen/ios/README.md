@@ -4,7 +4,7 @@ Screen unknown calls with real-time transcription and natural voice responses, p
 
 ## Compatibility
 
-- iOS 16.0+
+- iOS 17.0+
 
 ## AccessKey
 
