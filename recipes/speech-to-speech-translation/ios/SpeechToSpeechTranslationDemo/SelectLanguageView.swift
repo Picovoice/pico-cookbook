@@ -50,7 +50,8 @@ struct SelectLanguageView: View {
                 .onChange(of: $viewModel.selectedSourceLanguage.wrappedValue) { () in
                     viewModel.selectedSourceLanguageChange()
                 }
-                .disabled(viewModel.chatState == .LOADING)
+                .disabled(viewModel.chatState == .LOADING ||
+                          viewModel.chatState == .TRANSLATING)
                 Spacer()
                 Image(systemName: "arrow.right")
                 Spacer()
@@ -66,12 +67,15 @@ struct SelectLanguageView: View {
                 .onChange(of: $viewModel.selectedTargetLanguage.wrappedValue) { () in
                     viewModel.selectedTargetLanguageChange()
                 }
-                .disabled(viewModel.chatState == .LOADING)
+                .disabled(viewModel.chatState == .LOADING ||
+                          viewModel.chatState == .TRANSLATING)
                 Spacer()
             }
 
             Button(action: viewModel.pauseDemo) {
-                Image(systemName: $viewModel.isPaused.wrappedValue ? "pause" : "microphone.fill")
+                let imageName = ($viewModel.isPaused.wrappedValue ||
+                                 viewModel.chatState == .SELECTING) ? "microphone.fill" : "pause"
+                Image(systemName: imageName)
                     .background(Constants.btnColor(viewModel.chatState == .LISTENING))
                     .foregroundColor(.white)
                     .frame(width: 10, height: 10)
