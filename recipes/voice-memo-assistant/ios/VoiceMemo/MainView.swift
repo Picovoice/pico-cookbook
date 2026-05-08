@@ -49,7 +49,7 @@ struct MainView: View {
                             .foregroundColor(.black)
                             .padding()
                     }
-                    .frame(height: 150)
+                    .frame(minHeight: 100, maxHeight: 200)
                     .background(Color(red: 0.93, green: 0.93, blue: 0.93))
                     .cornerRadius(10)
                     .overlay(
@@ -69,7 +69,7 @@ struct MainView: View {
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                                 .padding()
                         }
-                        .frame(height: 150)
+                        .frame(minHeight: 100, maxHeight: 200)
                         .background(Color(red: 0.93, green: 0.93, blue: 0.93))
                         .cornerRadius(10)
                         .overlay(
