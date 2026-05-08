@@ -22,7 +22,6 @@ xcuserdata
 Pods
 
 # Exclude picovoice cloned repositories and resources
-bat
 cheetah
 orca
 zebra

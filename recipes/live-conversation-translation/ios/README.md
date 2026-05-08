@@ -1,7 +1,7 @@
-# Speech-to-Speech Translation in iOS
+# Live Conversation Translation in iOS
 
-Real-time speech-to-speech translation powered by on-device AI. Speak in one language and hear it translated in real
-time into another.
+Two-way real-time speech translation powered by on-device AI. Have live conversations across languages, with each person
+speaking naturally in their own language and hearing the other translated in real time.
 
 ## Compatibility
 
@@ -16,7 +16,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ## Usage
 
-These instructions assume your current working directory is `recipes/speech-to-speech-translation/ios`.
+These instructions assume your current working directory is `recipes/live-conversation-translation/ios`.
 
 ### 1. Download the Required Models
 

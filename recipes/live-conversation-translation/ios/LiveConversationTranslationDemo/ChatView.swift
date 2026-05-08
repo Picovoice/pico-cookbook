@@ -11,14 +11,14 @@ import SwiftUI
 
 struct ChatView: View {
     @ObservedObject var viewModel: ViewModel
-    
+
     var body: some View {
         ZStack {
             VStack(alignment: .center) {
                 resultsBox
-                
+
                 Spacer()
-                
+
                 HStack(alignment: .center) {
                     Spacer()
                 }
@@ -28,7 +28,7 @@ struct ChatView: View {
             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity).background(Color.white)
         }
     }
-    
+
     var resultsBox: some View {
         VStack {
             ScrollViewReader { proxy in
@@ -39,7 +39,7 @@ struct ChatView: View {
                             let translated = viewModel.chatText[i].translated
                             let direction = viewModel.chatText[i].direction
                             let dots = (i == viewModel.chatText.count - 1)
-                            
+
                             let alignment: Alignment = direction == .ltr ? .topLeading : .topTrailing
 
                             HStack(spacing: 0) {
@@ -49,7 +49,7 @@ struct ChatView: View {
                                         .frame(maxWidth: .infinity, alignment: .topLeading)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 8)
-                                    if (translated != nil) {
+                                    if translated != nil {
                                         Text(viewModel.withDots(translated!, dots: dots))
                                             .foregroundColor(Constants.activeBlue)
                                             .frame(maxWidth: .infinity, alignment: .topLeading)

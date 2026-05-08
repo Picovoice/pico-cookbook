@@ -19,13 +19,13 @@ struct SelectLanguageView: View {
             Text("Live Conversation Translation")
 
             Spacer()
-            
+
             if viewModel.chatState != ChatState.SELECTING {
                 ChatView(viewModel: viewModel)
             }
-            
+
             Spacer()
-            
+
             if !viewModel.errorMessage.isEmpty {
                 Text(viewModel.errorMessage)
                     .padding()
@@ -38,7 +38,7 @@ struct SelectLanguageView: View {
             } else {
                 Text(viewModel.statusText)
             }
-            
+
             HStack(alignment: .center, spacing: 0) {
                 Spacer()
                 Picker("Source Language", selection: $viewModel.selectedSourceLanguage,
@@ -48,7 +48,8 @@ struct SelectLanguageView: View {
                         Text(LANGUAGE_DISPLAY[key] ?? "").tag(key)
                     }
                 })
-                .onChange(of: $viewModel.selectedSourceLanguage.wrappedValue) { () in  viewModel.selectedSourceLanguageChange()
+                .onChange(of: $viewModel.selectedSourceLanguage.wrappedValue) { () in
+                    viewModel.selectedSourceLanguageChange()
                 }
                 .disabled(viewModel.chatState == .LOADING)
                 .fixedSize()
@@ -59,8 +60,9 @@ struct SelectLanguageView: View {
                        content: {
                     Text("Select Language").tag("invalid")
                     if $viewModel.selectedSourceLanguage.wrappedValue != "invalid" {
-                        ForEach(0..<LANGUAGE_PAIRS[$viewModel.selectedSourceLanguage.wrappedValue]!.count, id: \.self) { i in
-                            let lang = LANGUAGE_PAIRS[$viewModel.selectedSourceLanguage.wrappedValue]![i]
+                        let selectedSourceLanguage = $viewModel.selectedSourceLanguage.wrappedValue
+                        ForEach(0..<LANGUAGE_PAIRS[selectedSourceLanguage]!.count, id: \.self) { i in
+                            let lang = LANGUAGE_PAIRS[selectedSourceLanguage]![i]
                             Text(LANGUAGE_DISPLAY[lang] ?? "").tag(lang)
                         }
                     }
@@ -68,12 +70,13 @@ struct SelectLanguageView: View {
                 .onChange(of: $viewModel.selectedTargetLanguage.wrappedValue) { () in
                     viewModel.selectedTargetLanguageChange()
                 }
-                .disabled(viewModel.chatState == .LOADING || $viewModel.selectedSourceLanguage.wrappedValue == "invalid")
+                .disabled(viewModel.chatState == .LOADING ||
+                          $viewModel.selectedSourceLanguage.wrappedValue == "invalid")
                 .fixedSize()
                 Spacer()
             }
             .frame(maxWidth: .infinity)
-            
+
             Button(action: viewModel.pauseDemo) {
                 Image(systemName: $viewModel.isPaused.wrappedValue ? "pause" : "microphone.fill")
                     .background(Constants.btnColor(viewModel.chatState == .LISTENING))

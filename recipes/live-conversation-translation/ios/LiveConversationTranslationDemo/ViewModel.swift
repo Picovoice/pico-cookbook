@@ -28,7 +28,7 @@ enum TranslationDirection {
     case rtl
 }
 
-let LANGUAGE_DISPLAY: [String:String] = [
+let LANGUAGE_DISPLAY: [String: String] = [
     "de": "German",
     "en": "English",
     "es": "Spanish",
@@ -36,34 +36,34 @@ let LANGUAGE_DISPLAY: [String:String] = [
     "it": "Italian"
 ]
 
-let LANGUAGE_PAIRS: [String:[String]] = [
+let LANGUAGE_PAIRS: [String: [String]] = [
   "de": [
     "en",
     "es",
     "fr",
-    "it",
+    "it"
   ],
   "en": [
     "de",
     "es",
     "fr",
-    "it",
+    "it"
   ],
   "es": [
     "de",
     "en",
     "fr",
-    "it",
+    "it"
   ],
   "fr": [
     "de",
     "en",
-    "es",
+    "es"
   ],
   "it": [
     "de",
     "en",
-    "es",
+    "es"
   ]
 ]
 
@@ -94,7 +94,7 @@ class ViewModel: ObservableObject {
     private var audioStream: AudioPlayerStream?
 
     private var direction: TranslationDirection = .ltr
-    
+
     @Published var dotIndex = 0
     private var timer: Timer?
 
@@ -115,7 +115,6 @@ class ViewModel: ObservableObject {
     deinit {
         unloadEngines()
     }
-
 
     func withDots(_ content: String, dots: Bool) -> String {
         if dots && !isPaused {
@@ -164,27 +163,43 @@ class ViewModel: ObservableObject {
             }
             do {
                 setStatusText("Loading Cheetah \(sourceLanguage)...")
-                let cheetahModelPath_0 = Bundle(for: type(of: self)).path(forResource: "cheetah_params_\(sourceLanguage)", ofType: "pv")!
-                cheetah_0 = try Cheetah(accessKey: ACCESS_KEY, modelPath: cheetahModelPath_0, endpointDuration: 1.0, enableAutomaticPunctuation: true, enableTextNormalization: true)
+                let cheetahModelPath_0 = Bundle(for: type(of: self))
+                    .path(forResource: "cheetah_params_\(sourceLanguage)", ofType: "pv")!
+                cheetah_0 = try Cheetah(
+                    accessKey: ACCESS_KEY,
+                    modelPath: cheetahModelPath_0,
+                    endpointDuration: 1.0,
+                    enableAutomaticPunctuation: true,
+                    enableTextNormalization: true)
 
                 setStatusText("Loading Cheetah \(targetLanguage)...")
-                let cheetahModelPath_1 = Bundle(for: type(of: self)).path(forResource: "cheetah_params_\(targetLanguage)", ofType: "pv")!
-                cheetah_1 = try Cheetah(accessKey: ACCESS_KEY, modelPath: cheetahModelPath_1, endpointDuration: 1.0, enableAutomaticPunctuation: true, enableTextNormalization: true)
+                let cheetahModelPath_1 = Bundle(for: type(of: self))
+                    .path(forResource: "cheetah_params_\(targetLanguage)", ofType: "pv")!
+                cheetah_1 = try Cheetah(
+                    accessKey: ACCESS_KEY,
+                    modelPath: cheetahModelPath_1,
+                    endpointDuration: 1.0,
+                    enableAutomaticPunctuation: true,
+                    enableTextNormalization: true)
 
                 setStatusText("Loading Zebra \(sourceLanguage)_\(targetLanguage)...")
-                let zebraModelPath_0 = Bundle(for: type(of: self)).path(forResource: "zebra_params_\(sourceLanguage)_\(targetLanguage)", ofType: "pv")!
+                let zebraModelPath_0 = Bundle(for: type(of: self))
+                    .path(forResource: "zebra_params_\(sourceLanguage)_\(targetLanguage)", ofType: "pv")!
                 zebra_0 = try Zebra(accessKey: ACCESS_KEY, modelPath: zebraModelPath_0)
 
                 setStatusText("Loading Zebra \(targetLanguage)_\(sourceLanguage)...")
-                let zebraModelPath_1 = Bundle(for: type(of: self)).path(forResource: "zebra_params_\(targetLanguage)_\(sourceLanguage)", ofType: "pv")!
+                let zebraModelPath_1 = Bundle(for: type(of: self))
+                    .path(forResource: "zebra_params_\(targetLanguage)_\(sourceLanguage)", ofType: "pv")!
                 zebra_1 = try Zebra(accessKey: ACCESS_KEY, modelPath: zebraModelPath_1)
 
                 setStatusText("Loading Orca \(targetLanguage)...")
-                let orcaModelPath_0 = Bundle(for: type(of: self)).path(forResource: "orca_params_\(targetLanguage)_male", ofType: "pv")!
+                let orcaModelPath_0 = Bundle(for: type(of: self))
+                    .path(forResource: "orca_params_\(targetLanguage)_male", ofType: "pv")!
                 orca_0 = try Orca(accessKey: ACCESS_KEY, modelPath: orcaModelPath_0)
 
                 setStatusText("Loading Orca \(sourceLanguage)...")
-                let orcaModelPath_1 = Bundle(for: type(of: self)).path(forResource: "orca_params_\(sourceLanguage)_male", ofType: "pv")!
+                let orcaModelPath_1 = Bundle(for: type(of: self))
+                    .path(forResource: "orca_params_\(sourceLanguage)_male", ofType: "pv")!
                 orca_1 = try Orca(accessKey: ACCESS_KEY, modelPath: orcaModelPath_1)
 
                 setStatusText("Loading Audio Player...")
@@ -308,7 +323,7 @@ class ViewModel: ObservableObject {
                 do {
                     let zebra = direction == .ltr ? self.zebra_0 : self.zebra_1
                     let orca = direction == .ltr ? self.orca_0 : self.orca_1
-                    
+
                     let translation = try zebra!.translate(text: chatText[chatText.count - 1].transcript)
                     let audio = try orca!.synthesize(text: translation)
 
@@ -348,7 +363,7 @@ class ViewModel: ObservableObject {
         do {
             if chatState == .LISTENING {
                 let cheetah = direction == .ltr ? self.cheetah_0 : self.cheetah_1
-                
+
                 var isFlushed = false
                 let partialTranscript = try cheetah!.process(frame)
                 appendChatText(text: partialTranscript.0, translated: false)
