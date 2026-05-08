@@ -7,7 +7,6 @@
 //  specific language governing permissions and limitations under the License.
 //
 
-import Bat
 import Cheetah
 import Orca
 import Zebra
@@ -19,14 +18,17 @@ import Foundation
 enum ChatState {
     case SELECTING
     case LOADING
-    case DETECTING
     case LISTENING
     case TRANSLATING
     case ERROR
 }
 
+enum TranslationDirection {
+    case ltr
+    case rtl
+}
+
 let LANGUAGE_DISPLAY: [String:String] = [
-    "automatic": "Automatic",
     "de": "German",
     "en": "English",
     "es": "Spanish",
@@ -35,13 +37,6 @@ let LANGUAGE_DISPLAY: [String:String] = [
 ]
 
 let LANGUAGE_PAIRS: [String:[String]] = [
-  "automatic": [
-    "de",
-    "en",
-    "es",
-    "fr",
-    "it",
-  ],
   "de": [
     "en",
     "es",
@@ -87,30 +82,31 @@ class ViewModel: ObservableObject {
 
     private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
 
-    private var bat: Bat?
-    private var cheetah: Cheetah?
-    private var zebra: Zebra?
-    private var orca: Orca?
+    private var cheetah_0: Cheetah?
+    private var cheetah_1: Cheetah?
+
+    private var zebra_0: Zebra?
+    private var zebra_1: Zebra?
+
+    private var orca_0: Orca?
+    private var orca_1: Orca?
 
     private var audioStream: AudioPlayerStream?
 
-    private var pcmBuffer: [Int16] = []
-
+    private var direction: TranslationDirection = .ltr
+    
     @Published var dotIndex = 0
     private var timer: Timer?
 
     @Published var chatState: ChatState = .SELECTING
 
-    @Published var selectedSourceLanguage: String = "automatic"
+    @Published var selectedSourceLanguage: String = "invalid"
     @Published var selectedTargetLanguage: String = "invalid"
 
     @Published var isPaused = false
 
     static let statusTextDefault = ""
     @Published var statusText = statusTextDefault
-
-    @Published var promptText = ""
-    @Published var enableGenerateButton = true
 
     @Published var chatText: [Message] = []
 
@@ -136,11 +132,7 @@ class ViewModel: ObservableObject {
     }
 
     public func selectedSourceLanguageChange() {
-        if chatState != .DETECTING {
-            selectedTargetLanguage = "invalid"
-        } else {
-            startDemo()
-        }
+        selectedTargetLanguage = "invalid"
     }
 
     public func selectedTargetLanguageChange() {
@@ -154,11 +146,7 @@ class ViewModel: ObservableObject {
 
     public func startDemo() {
         chatState = .LOADING
-        if selectedSourceLanguage == "automatic" {
-            loadBat()
-        } else {
-            loadEngines()
-        }
+        loadEngines()
     }
 
     public func loadEngines() {
@@ -176,28 +164,37 @@ class ViewModel: ObservableObject {
             }
             do {
                 setStatusText("Loading Cheetah \(sourceLanguage)...")
-                let cheetahModelPath = Bundle(for: type(of: self)).path(forResource: "cheetah_params_\(sourceLanguage)", ofType: "pv")!
-                cheetah = try Cheetah(accessKey: ACCESS_KEY, modelPath: cheetahModelPath, endpointDuration: 1.0, enableAutomaticPunctuation: true, enableTextNormalization: true)
+                let cheetahModelPath_0 = Bundle(for: type(of: self)).path(forResource: "cheetah_params_\(sourceLanguage)", ofType: "pv")!
+                cheetah_0 = try Cheetah(accessKey: ACCESS_KEY, modelPath: cheetahModelPath_0, endpointDuration: 1.0, enableAutomaticPunctuation: true, enableTextNormalization: true)
+
+                setStatusText("Loading Cheetah \(targetLanguage)...")
+                let cheetahModelPath_1 = Bundle(for: type(of: self)).path(forResource: "cheetah_params_\(targetLanguage)", ofType: "pv")!
+                cheetah_1 = try Cheetah(accessKey: ACCESS_KEY, modelPath: cheetahModelPath_1, endpointDuration: 1.0, enableAutomaticPunctuation: true, enableTextNormalization: true)
 
                 setStatusText("Loading Zebra \(sourceLanguage)_\(targetLanguage)...")
-                let zebraModelPath = Bundle(for: type(of: self)).path(forResource: "zebra_params_\(sourceLanguage)_\(targetLanguage)", ofType: "pv")!
-                zebra = try Zebra(accessKey: ACCESS_KEY, modelPath: zebraModelPath)
+                let zebraModelPath_0 = Bundle(for: type(of: self)).path(forResource: "zebra_params_\(sourceLanguage)_\(targetLanguage)", ofType: "pv")!
+                zebra_0 = try Zebra(accessKey: ACCESS_KEY, modelPath: zebraModelPath_0)
+
+                setStatusText("Loading Zebra \(targetLanguage)_\(sourceLanguage)...")
+                let zebraModelPath_1 = Bundle(for: type(of: self)).path(forResource: "zebra_params_\(targetLanguage)_\(sourceLanguage)", ofType: "pv")!
+                zebra_1 = try Zebra(accessKey: ACCESS_KEY, modelPath: zebraModelPath_1)
 
                 setStatusText("Loading Orca \(targetLanguage)...")
-                let orcaModelPath = Bundle(for: type(of: self)).path(forResource: "orca_params_\(targetLanguage)_male", ofType: "pv")!
-                orca = try Orca(accessKey: ACCESS_KEY, modelPath: orcaModelPath)
+                let orcaModelPath_0 = Bundle(for: type(of: self)).path(forResource: "orca_params_\(targetLanguage)_male", ofType: "pv")!
+                orca_0 = try Orca(accessKey: ACCESS_KEY, modelPath: orcaModelPath_0)
+
+                setStatusText("Loading Orca \(sourceLanguage)...")
+                let orcaModelPath_1 = Bundle(for: type(of: self)).path(forResource: "orca_params_\(sourceLanguage)_male", ofType: "pv")!
+                orca_1 = try Orca(accessKey: ACCESS_KEY, modelPath: orcaModelPath_1)
 
                 setStatusText("Loading Audio Player...")
-                audioStream = try AudioPlayerStream(sampleRate: Double(self.orca!.sampleRate!))
+                audioStream = try AudioPlayerStream(sampleRate: Double(self.orca_0!.sampleRate!))
 
                 setStatusText("Loading Voice Processor...")
-                if bat != nil {
-                    bat!.delete()
-                } else {
-                    VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
-                    VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
-                    startAudioRecording()
-                }
+                VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
+                VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
+                startAudioRecording()
+
                 DispatchQueue.main.async { [self] in
                     isPaused = false
                 }
@@ -205,42 +202,9 @@ class ViewModel: ObservableObject {
                 setStatusText(ViewModel.statusTextDefault)
                 DispatchQueue.main.async { [self] in
                     chatState = .LISTENING
+                    direction = .ltr
                     chatText.removeAll()
-                    chatText.append(Message(transcript: ""))
-                }
-            } catch {
-                DispatchQueue.main.async { [self] in
-                    unloadEngines()
-                    errorMessage = "\(error.localizedDescription)"
-                }
-            }
-        }
-    }
-
-    public func loadBat() {
-        errorMessage = ""
-        statusText = ""
-
-        DispatchQueue.global(qos: .userInitiated).async { [self] in
-            let setStatusText = {(_ msg: String) in
-                DispatchQueue.main.async { [self] in
-                    statusText = msg
-                }
-            }
-            do {
-                setStatusText("Loading Bat...")
-                bat = try Bat(accessKey: ACCESS_KEY)
-
-                setStatusText("Loading Voice Processor...")
-                VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
-                VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
-                startAudioRecording()
-
-                setStatusText("Detecting target language")
-                DispatchQueue.main.async { [self] in
-                    chatState = .DETECTING
-                    chatText.removeAll()
-                    chatText.append(Message(transcript: ""))
+                    chatText.append(Message(transcript: "", direction: direction))
                 }
             } catch {
                 DispatchQueue.main.async { [self] in
@@ -256,21 +220,35 @@ class ViewModel: ObservableObject {
         VoiceProcessor.instance.clearFrameListeners()
         VoiceProcessor.instance.clearErrorListeners()
 
-        if cheetah != nil {
-            cheetah!.delete()
+        if cheetah_0 != nil {
+            cheetah_0!.delete()
         }
-        if zebra != nil {
-            zebra!.delete()
+        if cheetah_1 != nil {
+            cheetah_1!.delete()
         }
-        if orca != nil {
-            orca!.delete()
+
+        if zebra_0 != nil {
+            zebra_0!.delete()
         }
-        cheetah = nil
-        zebra = nil
-        orca = nil
+        if zebra_1 != nil {
+            zebra_1!.delete()
+        }
+
+        if orca_0 != nil {
+            orca_0!.delete()
+        }
+        if orca_1 != nil {
+            orca_1!.delete()
+        }
+
+        cheetah_0 = nil
+        cheetah_1 = nil
+        zebra_0 = nil
+        zebra_1 = nil
+        orca_0 = nil
+        orca_1 = nil
 
         errorMessage = ""
-        promptText = ""
         chatText.removeAll()
 
         chatState = .SELECTING
@@ -328,8 +306,10 @@ class ViewModel: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             Task {
                 do {
-                    let translation = try self.zebra!.translate(text: chatText[chatText.count - 1].transcript)
-
+                    let zebra = direction == .ltr ? self.zebra_0 : self.zebra_1
+                    let orca = direction == .ltr ? self.orca_0 : self.orca_1
+                    
+                    let translation = try zebra!.translate(text: chatText[chatText.count - 1].transcript)
                     let audio = try orca!.synthesize(text: translation)
 
                     try audioStream!.playStreamPCM(audio.pcm)
@@ -352,7 +332,8 @@ class ViewModel: ObservableObject {
 
                     DispatchQueue.main.async { [self] in
                         chatState = .LISTENING
-                        chatText.append(Message(transcript: ""))
+                        direction = direction == .ltr ? .rtl : .ltr
+                        chatText.append(Message(transcript: "", direction: direction))
                     }
                 } catch {
                     DispatchQueue.main.async { [self] in
@@ -366,57 +347,23 @@ class ViewModel: ObservableObject {
     private func audioCallback(frame: [Int16]) {
         do {
             if chatState == .LISTENING {
-                pcmBuffer.append(contentsOf: frame)
-
+                let cheetah = direction == .ltr ? self.cheetah_0 : self.cheetah_1
+                
                 var isFlushed = false
-                while pcmBuffer.count >= Cheetah.frameLength {
-                    let partialTranscript = try self.cheetah!.process(Array(pcmBuffer[0..<Int(Cheetah.frameLength)]))
-                    pcmBuffer.removeFirst(Int(Cheetah.frameLength))
-                    appendChatText(text: partialTranscript.0, translated: false)
+                let partialTranscript = try cheetah!.process(frame)
+                appendChatText(text: partialTranscript.0, translated: false)
 
-                    if partialTranscript.1 {
-                        let finalTranscript = try self.cheetah!.flush()
-                        appendChatText(text: finalTranscript, translated: false)
-                        appendChatText(text: " ", translated: false)
+                if partialTranscript.1 {
+                    let finalTranscript = try cheetah!.flush()
+                    appendChatText(text: finalTranscript, translated: false)
+                    appendChatText(text: " ", translated: false)
 
-                        if chatText.count > 0 && !chatText[chatText.count - 1].transcript.isEmpty {
-                            isFlushed = true
-                        }
+                    if chatText.count > 0 && !chatText[chatText.count - 1].transcript.isEmpty {
+                        isFlushed = true
                     }
                 }
                 if isFlushed {
                     translateAndSpeak()
-                }
-            } else if chatState == .DETECTING {
-                pcmBuffer.append(contentsOf: frame)
-
-                var foundLanguage = BatLanguages.UNKNOWN
-                if (pcmBuffer.count >= Bat.frameLength) {
-                    let bufferStart = pcmBuffer.count - Int(Bat.frameLength)
-                    let bufferEnd = pcmBuffer.count
-
-                    let scores = try bat!.process(Array(pcmBuffer[bufferStart..<bufferEnd]))
-                    if (scores != nil) {
-                        for (identified, confidence) in scores! {
-                            if confidence >= BAT_THRESHOLD {
-                                foundLanguage = identified
-                            }
-                        }
-                    }
-                }
-
-                if foundLanguage != BatLanguages.UNKNOWN {
-                    if LANGUAGE_PAIRS.keys.contains(foundLanguage.toString()) &&
-                        LANGUAGE_PAIRS[foundLanguage.toString()]!.contains(selectedTargetLanguage) {
-
-                        DispatchQueue.main.async { [self] in
-                            selectedSourceLanguage = foundLanguage.toString()
-                        }
-                    } else {
-                        DispatchQueue.main.async { [self] in
-                            statusText = "Cannot translate from \(foundLanguage.toString()) to \(selectedTargetLanguage)"
-                        }
-                    }
                 }
             }
         } catch {
@@ -436,6 +383,7 @@ class ViewModel: ObservableObject {
 struct Message: Equatable {
     var transcript: String
     var translated: String?
+    var direction: TranslationDirection
 
     mutating func appendTranscript(text: String) {
         self.transcript.append(text)

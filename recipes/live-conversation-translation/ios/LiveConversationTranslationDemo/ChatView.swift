@@ -1,5 +1,5 @@
 //
-//  Copyright 2024 Picovoice Inc.
+//  Copyright 2026 Picovoice Inc.
 //  You may not use this file except in compliance with the license. A copy of the license is located in the "LICENSE"
 //  file accompanying this source.
 //  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
@@ -13,8 +13,6 @@ struct ChatView: View {
     @ObservedObject var viewModel: ViewModel
     
     var body: some View {
-        let isError = viewModel.errorMessage.count > 0
-        
         ZStack {
             VStack(alignment: .center) {
                 resultsBox
@@ -23,23 +21,8 @@ struct ChatView: View {
                 
                 HStack(alignment: .center) {
                     Spacer()
-                    if !viewModel.enableGenerateButton {
-                        ProgressView(value: 0).progressViewStyle(CircularProgressViewStyle())
-                    }
-                    Spacer()
                 }
                 .padding(.horizontal, 24)
-                
-                if isError {
-                    Text(viewModel.errorMessage)
-                        .padding()
-                        .foregroundColor(Color.white)
-                        .frame(maxWidth: .infinity)
-                        .background(Constants.dangerRed)
-                        .font(.body)
-                        .opacity(viewModel.errorMessage.isEmpty ? 0 : 1)
-                        .cornerRadius(10)
-                }
             }
             .padding(.bottom, 32)
             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity).background(Color.white)
@@ -54,25 +37,40 @@ struct ChatView: View {
                         ForEach(0..<viewModel.chatText.count, id: \.self) { i in
                             let transcript = viewModel.chatText[i].transcript
                             let translated = viewModel.chatText[i].translated
+                            let direction = viewModel.chatText[i].direction
                             let dots = (i == viewModel.chatText.count - 1)
                             
-                            VStack(spacing: 0) {
-                                Text(viewModel.withDots(transcript, dots: dots && translated == nil))
-                                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 8)
-                                if (translated != nil) {
-                                    Text(viewModel.withDots(translated!, dots: dots))
-                                        .foregroundColor(Constants.activeBlue)
+                            let alignment: Alignment = direction == .ltr ? .topLeading : .topTrailing
+
+                            HStack(spacing: 0) {
+                                VStack(spacing: 0) {
+                                    Text(viewModel.withDots(transcript, dots: dots && translated == nil))
+                                        .foregroundColor(translated == nil ? Constants.activeBlue : .gray)
                                         .frame(maxWidth: .infinity, alignment: .topLeading)
                                         .padding(.horizontal, 8)
-                                        .padding(.bottom, 8)
+                                        .padding(.vertical, 8)
+                                    if (translated != nil) {
+                                        Text(viewModel.withDots(translated!, dots: dots))
+                                            .foregroundColor(Constants.activeBlue)
+                                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                                            .padding(.horizontal, 8)
+                                            .padding(.bottom, 8)
+                                    }
                                 }
+                                .containerRelativeFrame(
+                                    .horizontal, alignment: .topLeading
+                                ) { length, _ in
+                                    return length / 1.5
+                                }
+                                .background(Constants.backgroundGrey)
+                                .cornerRadius(3.0)
+                                .padding(.bottom, 8)
                             }
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
-                            .background(Constants.backgroundGrey)
-                            .cornerRadius(3.0)
-                            .padding(.bottom, 8)
+                            .frame(
+                                maxWidth: .infinity,
+                                maxHeight: .infinity,
+                                alignment: alignment
+                            )
                         }
                     }
                     .padding(12)

@@ -1,5 +1,5 @@
 //
-//  Copyright 2024 Picovoice Inc.
+//  Copyright 2026 Picovoice Inc.
 //  You may not use this file except in compliance with the license. A copy of the license is located in the "LICENSE"
 //  file accompanying this source.
 //  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
@@ -26,34 +26,53 @@ struct SelectLanguageView: View {
             
             Spacer()
             
-            Text(viewModel.statusText)
+            if !viewModel.errorMessage.isEmpty {
+                Text(viewModel.errorMessage)
+                    .padding()
+                    .foregroundColor(Color.white)
+                    .frame(maxWidth: .infinity)
+                    .background(Constants.dangerRed)
+                    .font(.body)
+                    .opacity(viewModel.errorMessage.isEmpty ? 0 : 1)
+                    .cornerRadius(10)
+            } else {
+                Text(viewModel.statusText)
+            }
             
-            HStack {
+            HStack(alignment: .center, spacing: 0) {
                 Spacer()
                 Picker("Source Language", selection: $viewModel.selectedSourceLanguage,
                        content: {
+                    Text("Select Language").tag("invalid")
                     ForEach(Array(LANGUAGE_PAIRS.keys).sorted(), id: \.self) { key in
                         Text(LANGUAGE_DISPLAY[key] ?? "").tag(key)
                     }
                 })
                 .onChange(of: $viewModel.selectedSourceLanguage.wrappedValue) { () in  viewModel.selectedSourceLanguageChange()
                 }
+                .disabled(viewModel.chatState == .LOADING)
+                .fixedSize()
                 Spacer()
-                Image(systemName: "arrow.right")
+                Image(systemName: "arrow.left.arrow.right")
                 Spacer()
                 Picker("Target Language", selection: $viewModel.selectedTargetLanguage,
                        content: {
                     Text("Select Language").tag("invalid")
-                    ForEach(0..<LANGUAGE_PAIRS[$viewModel.selectedSourceLanguage.wrappedValue]!.count, id: \.self) { i in
-                        let lang = LANGUAGE_PAIRS[$viewModel.selectedSourceLanguage.wrappedValue]![i]
-                        Text(LANGUAGE_DISPLAY[lang] ?? "").tag(lang)
+                    if $viewModel.selectedSourceLanguage.wrappedValue != "invalid" {
+                        ForEach(0..<LANGUAGE_PAIRS[$viewModel.selectedSourceLanguage.wrappedValue]!.count, id: \.self) { i in
+                            let lang = LANGUAGE_PAIRS[$viewModel.selectedSourceLanguage.wrappedValue]![i]
+                            Text(LANGUAGE_DISPLAY[lang] ?? "").tag(lang)
+                        }
                     }
                 })
                 .onChange(of: $viewModel.selectedTargetLanguage.wrappedValue) { () in
                     viewModel.selectedTargetLanguageChange()
                 }
+                .disabled(viewModel.chatState == .LOADING || $viewModel.selectedSourceLanguage.wrappedValue == "invalid")
+                .fixedSize()
                 Spacer()
             }
+            .frame(maxWidth: .infinity)
             
             Button(action: viewModel.pauseDemo) {
                 Image(systemName: $viewModel.isPaused.wrappedValue ? "pause" : "microphone.fill")

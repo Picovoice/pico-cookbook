@@ -32,7 +32,6 @@
 		0720E6E92F92CB2A0075BF13 /* orca_params_es_male.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6CE2F92CB290075BF13 /* orca_params_es_male.pv */; };
 		0720E6EA2F92CB2A0075BF13 /* orca_params_pt_male.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6D72F92CB290075BF13 /* orca_params_pt_male.pv */; };
 		0720E6EB2F92CB2A0075BF13 /* orca_params_it_male.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6D22F92CB290075BF13 /* orca_params_it_male.pv */; };
-		0720E6EE2F92CD820075BF13 /* Bat in Frameworks */ = {isa = PBXBuildFile; productRef = 0720E6ED2F92CD820075BF13 /* Bat */; };
 		0720E70D2F9301860075BF13 /* zebra_params_es_fr.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6FA2F9301860075BF13 /* zebra_params_es_fr.pv */; };
 		0720E70E2F9301860075BF13 /* zebra_params_fr_de.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6FC2F9301860075BF13 /* zebra_params_fr_de.pv */; };
 		0720E70F2F9301860075BF13 /* zebra_params_fr_en.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6FD2F9301860075BF13 /* zebra_params_fr_en.pv */; };
@@ -141,7 +140,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0720E6EE2F92CD820075BF13 /* Bat in Frameworks */,
 				070C11AA2F92C55F0052BEA9 /* Zebra in Frameworks */,
 				34C504D82D2728410003405B /* Cheetah in Frameworks */,
 				34CE2DE42D27287900AC10F0 /* Orca in Frameworks */,
@@ -585,14 +583,6 @@
 				version = 1.0.0;
 			};
 		};
-		070C11AB2F92C6230052BEA9 /* XCRemoteSwiftPackageReference "bat" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Picovoice/bat.git";
-			requirement = {
-				kind = exactVersion;
-				version = 1.0.1;
-			};
-		};
 		34C504CC2D2719A30003405B /* XCRemoteSwiftPackageReference "orca" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/picovoice/orca";
@@ -632,11 +622,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 070C11A82F92C55F0052BEA9 /* XCRemoteSwiftPackageReference "zebra" */;
 			productName = Zebra;
-		};
-		0720E6ED2F92CD820075BF13 /* Bat */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 070C11AB2F92C6230052BEA9 /* XCRemoteSwiftPackageReference "bat" */;
-			productName = Bat;
 		};
 		34C504CF2D271C5E0003405B /* ios_voice_processor */ = {
 			isa = XCSwiftPackageProductDependency;
