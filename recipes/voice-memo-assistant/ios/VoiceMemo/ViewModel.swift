@@ -181,7 +181,6 @@ class ViewModel: ObservableObject {
             if uiState == .wakeWord {
                 let keywordIndex = try porcupine!.process(pcm: frame)
                 if keywordIndex == 0 {
-                    interrupt()
                     updateUIState(.voiceCommand)
                 }
             } else if uiState == .voiceCommand {
@@ -324,20 +323,14 @@ class ViewModel: ObservableObject {
         }
     }
 
-    func interrupt() {
-        do {
-            try picollm?.interrupt()
-            audioStream?.stopStreamPCM()
-        } catch {
-            setErrorText(error: "Interrupt error", details: error.localizedDescription)
-        }
-    }
-
     func unloadEngines() {
         enginesLoaded = false
-        do { try VoiceProcessor.instance.stop() } catch {}
+
         VoiceProcessor.instance.clearFrameListeners()
+        VoiceProcessor.instance.clearErrorListeners()
+
         audioStream = nil
+
         porcupine?.delete()
         rhino?.delete()
         cheetah?.delete()
