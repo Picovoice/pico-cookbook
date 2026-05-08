@@ -12,5 +12,6 @@ Record, rewrite, summarize, and replay voice memos hands-free, powered by on-dev
 
 ## Implementations
 
-- [Python](python)
 - [Android](android)
+- [Python](python)
+- [Web](web)

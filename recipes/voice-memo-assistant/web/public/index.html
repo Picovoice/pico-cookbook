@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="index.js"></script>
+    <script type="application/javascript" src="controller.js"></script>
+    <style>
+      html,
+      body {
+        height: 90%;
+        font-family: sans-serif;
+      }
+
+      #appBlock {
+        display: none;
+        align-items: center;
+        flex-flow: column;
+        height: 100%;
+        font-size: 14px;
+        width: 100%;
+        margin-top: 75px;
+      }
+
+      .dialogArea {
+        flex: 0 0 auto;
+        width: 60%;
+        max-width: 500px;
+        margin-bottom: 20px;
+      }
+
+      .messageArea {
+        flex: 0 0 auto;
+        width: 60%;
+        display: flex;
+        max-width: 500px;
+      }
+
+      .result-container {
+        border: 1px solid rgb(118, 118, 118);
+        height: 150px;
+        background-color: #fafafa;
+      }
+
+      .result-text {
+        margin: 0;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        height: calc(100% - 10px);
+        overflow-y: auto;
+        padding: 5px;
+      }
+
+      #message {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+      }
+
+      #tooltip {
+        text-align: center;
+        color: #555;
+        font-style: italic;
+        height: 20px;
+      }
+
+      h3 {
+        margin-bottom: 5px;
+        color: #333;
+      }
+
+      #meterContainer {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        height: 80px;
+        margin-top: 8px;
+      }
+
+      .volume-bar {
+        width: 8px;
+        height: 8px;
+        background-color: #377dff;
+        border-radius: 4px;
+        transition: transform 0.05s ease-in-out;
+        transform-origin: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Voice Memo Assistant</h1>
+
+    <div id="topStatusBlock">
+      <div>
+        <b>Status:</b> <span id="topStatus">Not loaded.</span
+        ><span id="dotdotdot"></span>
+      </div>
+      <hr />
+    </div>
+
+    <div id="initBlock">
+      <label for="accessKey">AccessKey: </label>
+      <input type="text" id="accessKey" name="accessKey" />
+      <br /><br />
+      <button id="init" disabled>Init Voice Memo Assistant</button>
+    </div>
+
+    <div id="appBlock">
+      <div class="dialogArea">
+        <h3>Original Memo:</h3>
+        <div class="result-container">
+          <pre id="originalText" class="result-text"></pre>
+        </div>
+
+        <div id="modifiedContainer" style="display: none; margin-top: 15px">
+          <h3 id="modifiedTitle">Modified:</h3>
+          <div class="result-container">
+            <pre id="modifiedText" class="result-text"></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="messageArea" style="justify-content: center">
+        <div id="tooltip"></div>
+      </div>
+
+      <div id="message" class="messageArea">
+        <div id="meterContainer" style="display: none">
+          <div id="bar1" class="volume-bar"></div>
+          <div id="bar2" class="volume-bar"></div>
+          <div id="bar3" class="volume-bar"></div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
