@@ -57,6 +57,13 @@ class ViewModel: ObservableObject {
         DispatchQueue.main.async { self.statusText = text }
     }
 
+    func setErrorText(error: String, details: String) {
+        DispatchQueue.main.async {
+            self.statusText = error
+            self.tooltipText = details
+        }
+    }
+
     func updateUIState(_ state: UIState) {
         DispatchQueue.main.async {
             self.uiState = state
@@ -102,6 +109,11 @@ class ViewModel: ObservableObject {
         unloadEngines()
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             do {
+                DispatchQueue.main.async {
+                    self.enginesLoaded = false
+                    self.updateUIState(.loadingModel)
+                }
+
                 setStatusText(text: "Loading Porcupine...")
                 guard let ppnPath = Bundle.main.path(
                     forResource: "porcupine_model",
@@ -156,7 +168,7 @@ class ViewModel: ObservableObject {
                     self.updateUIState(.wakeWord)
                 }
             } catch {
-                setStatusText(text: error.localizedDescription)
+                setErrorText(error: "Engine init failed", details: error.localizedDescription)
                 unloadEngines()
             }
         }
@@ -189,10 +201,10 @@ class ViewModel: ObservableObject {
                                     (!memoText.isEmpty ? memoText : NO_MEMO_ERROR_PHRASE))
                         case "summarizeMemo":
                             updateUIState(.summarizeRecording)
-                            processLLM(task: "Summarize")
+                            processLLM(task: "summarizeMemo")
                         case "rewriteMemo":
                             updateUIState(.rewriteRecording)
-                            processLLM(task: "Rewrite")
+                            processLLM(task: "rewriteMemo")
                         default:
                             break
                         }
@@ -223,7 +235,7 @@ class ViewModel: ObservableObject {
                 }
             }
         } catch {
-            print(error.localizedDescription)
+            setErrorText(error: "Audio error", details: error.localizedDescription)
         }
     }
 
@@ -239,7 +251,7 @@ class ViewModel: ObservableObject {
                 let dialog = try picollm!.getDialog()
                 var promptBody = ""
 
-                if task == "Summarize" {
+                if task == "summarizeMemo" {
                     promptBody = "Summarize the memo below. Return only the summary.\n" +
                         "Rules:\n- Do not say \"Here is the summarized memo\".\n" +
                         "- Do not add any prefix, label, intro, explanation, or quotes.\n" +
@@ -274,7 +286,7 @@ class ViewModel: ObservableObject {
                 }
                 updateUIState(.wakeWord)
             } catch {
-                print(error)
+                setErrorText(error: "LLM error", details: error.localizedDescription)
             }
         }
     }
@@ -298,12 +310,16 @@ class ViewModel: ObservableObject {
 
     func synthesizeAndPlayback(text: String) {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
-            do {
-                let audio = try orca!.synthesize(text: text)
-                try audioStream!.playStreamPCM(audio.pcm)
-                updateUIState(.wakeWord)
-            } catch {
-                print(error)
+            Task {
+                do {
+                    print(text)
+                    let audio = try orca!.synthesize(text: text)
+                    try audioStream!.playStreamPCM(audio.pcm)
+                    try await Task.sleep(for: .milliseconds(2000))
+                    updateUIState(.wakeWord)
+                } catch {
+                    setErrorText(error: "Playback error", details: error.localizedDescription)
+                }
             }
         }
     }
@@ -313,7 +329,7 @@ class ViewModel: ObservableObject {
             try picollm?.interrupt()
             audioStream?.stopStreamPCM()
         } catch {
-            print(error)
+            setErrorText(error: "Interrupt error", details: error.localizedDescription)
         }
     }
 

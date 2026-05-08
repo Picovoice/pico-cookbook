@@ -12,42 +12,59 @@ import SwiftUI
 struct MainView: View {
     @ObservedObject var viewModel: ViewModel
 
+    let brandColor = Color(red: 55/255, green: 125/255, blue: 255/255)
+
     var body: some View {
         VStack(spacing: 20) {
-            
-            // Text Displays
-            ScrollView {
+
+            if !viewModel.enginesLoaded {
+                Spacer()
+                Text("Voice Memo Assistant")
+                    .foregroundColor(brandColor)
+                    .font(.largeTitle)
+                    .bold()
+                    .multilineTextAlignment(.center)
+                    .padding(16)
+                Spacer()
+
+            } else {
                 VStack(alignment: .leading, spacing: 10) {
-                    
+
                     Text("Memo:")
                         .font(.headline)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    Text(viewModel.memoText)
-                        .padding()
-                        .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+
+                    ScrollView {
+                        Text(viewModel.memoText)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .padding()
+                    }
+                    .frame(height: 150)
+                    .background(Color(red: 0.93, green: 0.93, blue: 0.93))
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+                    )
+
+                    if !viewModel.modifiedTitle.isEmpty {
+                        Text(viewModel.modifiedTitle)
+                            .font(.headline)
+                            .padding(.top, 10)
+
+                        ScrollView {
+                            Text(viewModel.modifiedText)
+                                .foregroundColor(brandColor)
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                                .padding()
+                        }
+                        .frame(height: 150)
                         .background(Color(red: 0.93, green: 0.93, blue: 0.93))
                         .cornerRadius(10)
                         .overlay(
                             RoundedRectangle(cornerRadius: 10)
                                 .stroke(Color.gray.opacity(0.5), lineWidth: 1)
                         )
-                    
-                    if !viewModel.modifiedTitle.isEmpty {
-                        Text(viewModel.modifiedTitle)
-                            .font(.headline)
-                            .padding(.top, 10)
-                        
-                        Text(viewModel.modifiedText)
-                            .padding()
-                            .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
-                            .foregroundColor(.blue)
-                            .background(Color(red: 0.93, green: 0.93, blue: 0.93))
-                            .cornerRadius(10)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.gray.opacity(0.5), lineWidth: 1)
-                            )
                     }
 
                     if !viewModel.tooltipText.isEmpty {
@@ -57,16 +74,17 @@ struct MainView: View {
                             .italic()
                             .padding(.top, 10)
                     }
+
+                    Spacer()
                 }
+                .padding()
             }
-            .padding()
-            
-            // Status area
+
             VStack {
                 Text(viewModel.statusText)
                     .font(.title3)
                     .padding(.bottom, 10)
-                
+
                 if viewModel.uiState == .wakeWord ||
                     viewModel.uiState == .voiceCommand ||
                     viewModel.uiState == .startRecording {
@@ -76,7 +94,7 @@ struct MainView: View {
                             viewModel.uiState == .summarizeRecording ||
                             viewModel.uiState == .rewriteRecording {
                     ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                        .progressViewStyle(CircularProgressViewStyle(tint: brandColor))
                         .scaleEffect(1.5)
                 }
             }
