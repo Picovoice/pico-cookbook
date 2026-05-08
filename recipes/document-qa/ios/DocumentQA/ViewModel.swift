@@ -27,7 +27,7 @@ enum ControlState {
     case idle, prompt, completion, interrupting
 }
 
-struct Chunk : Codable {
+struct Chunk: Codable {
     let start: Int
     let end: Int
     var embedding: [Float] = []
@@ -59,9 +59,9 @@ class ViewModel: ObservableObject {
 
     @Published var dotIndex = 0
     private var timer: Timer?
-    
-    var documentURL: URL? = nil
-    var documentContent: String? = nil
+
+    var documentURL: URL?
+    var documentContent: String?
     var documentChunks: [Chunk] = [Chunk]()
 
     private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
@@ -75,7 +75,7 @@ class ViewModel: ObservableObject {
         "<end_of_turn>",    // Gemma
         "<|endoftext|>",    // Phi-2
         "<|eot_id|>",       // Llama-3
-        "<|end|>", "<|user|>", "<|assistant|>", // Phi-3
+        "<|end|>", "<|user|>", "<|assistant|>" // Phi-3
     ]
 
     private var cheetah: Cheetah?
@@ -89,7 +89,7 @@ class ViewModel: ObservableObject {
     private var isGenerating: Bool = false
     private var isSpeaking: Bool = false
     private var isInterrupting: Bool = false
-    
+
     func setStatusText(text: String) {
         DispatchQueue.main.async { [self] in
             viewState = .loading
@@ -102,13 +102,13 @@ class ViewModel: ObservableObject {
             viewState = state
         }
     }
-    
+
     func setListenState(state: ListenState) {
         DispatchQueue.main.async { [self] in
             listenState = state
         }
     }
-    
+
     func setControlState(state: ControlState) {
         DispatchQueue.main.async { [self] in
             if state != .completion || controlState == .prompt {
@@ -116,30 +116,30 @@ class ViewModel: ObservableObject {
             }
         }
     }
-    
+
     func sendText(text: String) {
         DispatchQueue.main.async { [self] in
             if textHistory.isEmpty || !textHistory.last!.withDots {
                 textHistory.append(TextElement())
             }
-            
+
             textHistory[textHistory.count - 1].content += text
         }
     }
-    
+
     func blueText() {
         DispatchQueue.main.async { [self] in
             textHistory[textHistory.count - 1].isBlue = true
         }
     }
-    
+
     func flushText() {
         DispatchQueue.main.async { [self] in
             textHistory[textHistory.count - 1].content += "\n"
             textHistory[textHistory.count - 1].withDots = false
         }
     }
-    
+
     func withDots(item: TextElement) -> String {
         if item.content.isEmpty {
             return ""
@@ -149,12 +149,12 @@ class ViewModel: ObservableObject {
             return item.content
         }
     }
-    
+
     init() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             self!.dotIndex = (self!.dotIndex + 1) % DOTS.count
         }
-        
+
         loadEngines()
     }
 
@@ -183,7 +183,7 @@ class ViewModel: ObservableObject {
                         throw NSError(domain: "picollm_model not found", code: 0)
                     }
                 picollm = try PicoLLM(accessKey: ACCESS_KEY, modelPath: picollmModelPath, device: "cpu:2")
-                
+
                 setStatusText(text: "Loading picoLLM (embedding)...")
                 guard let embeddingModelPath = Bundle(for: type(of: self))
                     .path(forResource: "picollm_embedding_model", ofType: "pllm") else {
@@ -271,7 +271,7 @@ class ViewModel: ObservableObject {
                 .replacing("\r\n", with: "\n")
                 .replacing(/\n\n+/, with: "\n\n")
             documentChunks.removeAll()
-            
+
             let cachePath = getDocumentCachePath()
             let data = FileManager.default.contents(atPath: cachePath)
             if data != nil {
@@ -281,15 +281,15 @@ class ViewModel: ObservableObject {
             setStatusText(text: error.localizedDescription)
         }
     }
-    
+
     func hasEmbeddings() -> Bool {
         return !documentChunks.isEmpty
     }
-    
+
     func resetEmbeddings() {
         documentChunks.removeAll()
     }
-    
+
     func getDocumentCachePath() -> String {
         let data = Data(documentURL!.absoluteString.utf8)
         let hashed = SHA256.hash(data: data)
@@ -297,16 +297,16 @@ class ViewModel: ObservableObject {
         let home = NSHomeDirectory()
         return "\(home)/\(hex)-\(CHUNK_SIZE)-\(CHUNK_OVERLAP).json"
     }
-    
+
     func computeEmbeddings() throws {
         chunkDocument()
         embedDocument()
-        
+
         let cachePath = getDocumentCachePath()
         let cached = try JSONEncoder().encode(documentChunks)
         FileManager.default.createFile(atPath: cachePath, contents: cached)
     }
-    
+
     func startDemo() {
         DispatchQueue.main.async { [self] in
             textHistory.removeAll()
@@ -320,7 +320,7 @@ class ViewModel: ObservableObject {
 
                 setStatusText(text: "Starting Demo...")
 
-                let _ = try cheetah!.flush()
+                _ = try cheetah!.flush()
                 setViewState(state: .main)
                 startListening()
             } catch {
@@ -337,14 +337,14 @@ class ViewModel: ObservableObject {
             }
         }
     }
-    
+
     func chunkDocument() {
         let content = documentContent!
-        
+
         var start = 0
         while start < content.count {
             setStatusText(text: "Splitting Document into Chunks (\(start * 100 / content.count)%)...")
-            
+
             var end = min(start + CHUNK_SIZE, content.count)
             if end < content.count {
                 let startIndex = content.index(content.startIndex, offsetBy: start)
@@ -377,7 +377,7 @@ class ViewModel: ObservableObject {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return chunk
     }
-    
+
     func embedDocument() {
         do {
             for index in documentChunks.indices {
@@ -404,16 +404,16 @@ class ViewModel: ObservableObject {
                 let (transcript, endpoint) = try cheetah!.process(frame)
                 currentTranscript += transcript
                 sendText(text: transcript)
-                
-                if (endpoint) {
+
+                if endpoint {
                     let flush = try cheetah!.flush()
                     currentTranscript += flush
                     sendText(text: flush)
                     flushText()
-                    
+
                     let question = currentTranscript
                     currentTranscript = ""
-                    
+
                     if !question.isEmpty {
                         setListenState(state: .idle)
                         processQuestion(question: question)
@@ -429,28 +429,28 @@ class ViewModel: ObservableObject {
         let embedding = try embedder!.generateEmbeddings(prompt: prompt)
         return normalizeVector(vector: embedding)
     }
-    
+
     private func normalizeVector(vector: [Float]) -> [Float] {
         var sum: Float = 0
         for x in vector {
             sum += x * x
         }
         let norm = pow(sum, 0.5)
-        
+
         var normalizedVector = [Float](repeating: 0.0, count: vector.count)
         for i in vector.indices {
             normalizedVector[i] = vector[i] / norm
         }
 
-        return normalizedVector;
+        return normalizedVector
     }
-    
+
     private func dotProduct(a: [Float], b: [Float]) -> Float {
-        var sum: Float = 0;
+        var sum: Float = 0
         for i in 0..<a.count {
-            sum += a[i] * b[i];
+            sum += a[i] * b[i]
         }
-        return sum;
+        return sum
     }
 
     func processQuestion(question: String) {
@@ -458,11 +458,11 @@ class ViewModel: ObservableObject {
             if viewState != .main {
                 return
             }
-            
+
             do {
                 let retrievedChunks = try retrieveChunks(question: question)
                 let prompt = try buildPrompt(question: question, retrievedChunks: retrievedChunks)
-                
+
                 let stream = try orca!.streamOpen()
                 audioStream!.resetAudioPlayer()
 
@@ -479,12 +479,10 @@ class ViewModel: ObservableObject {
                         setControlState(state: .completion)
                         if !isInterrupting {
                             var isStopPhrase = false
-                            for phrase in STOP_PHRASES {
-                                if token.contains(phrase) {
-                                    isStopPhrase = true
-                                }
+                            for phrase in STOP_PHRASES where token.contains(phrase) {
+                                isStopPhrase = true
                             }
-                            
+
                             if !isStopPhrase {
                                 do {
                                     sendText(text: token)
@@ -527,51 +525,49 @@ class ViewModel: ObservableObject {
             }
         }
     }
-    
+
     func retrieveChunks(question: String) throws -> [String] {
         let embedding = try computeEmbedding(prompt: question)
-        
+
         var scores = [Float](repeating: 0.0, count: documentChunks.count)
         for i in documentChunks.indices {
             scores[i] = dotProduct(a: embedding, b: documentChunks[i].embedding)
         }
-        
+
         var topks = [Float](repeating: -Float.infinity, count: TOPK)
         var indices = [Int](repeating: 0, count: TOPK)
-        
+
         for i in scores.indices {
             var element = scores[i]
             var indice = i
-            
+
             if element > topks[TOPK - 1] {
-                for j in 0..<TOPK {
-                    if (element > topks[j]) {
-                        let prev_topk = topks[j]
-                        topks[j] = element
-                        element = prev_topk
-                        
-                        let prev_topk_indice = indices[j]
-                        indices[j] = indice
-                        indice = prev_topk_indice
-                    }
+                for j in 0..<TOPK where element > topks[j] {
+                    let prev_topk = topks[j]
+                    topks[j] = element
+                    element = prev_topk
+
+                    let prev_topk_indice = indices[j]
+                    indices[j] = indice
+                    indice = prev_topk_indice
                 }
             }
         }
-        
+
         var retrievedChunks = [String]()
         for i in indices.indices {
             retrievedChunks.append(getChunkText(index: indices[i]))
         }
-        
+
         return retrievedChunks
     }
-    
+
     func buildPrompt(question: String, retrievedChunks: [String]) throws -> String {
         var context = ""
         for index in retrievedChunks.indices {
             context += "[Excerpt \(index + 1)]\n\(retrievedChunks[index])\n\n"
         }
-        
+
         let dialog = try picollm!.getDialog(
             system: "You are a document question-answering assistant. " +
                     "Answer only using the provided document excerpts. " +
@@ -589,7 +585,7 @@ class ViewModel: ObservableObject {
 
         return try dialog.prompt()
     }
-    
+
     func skipResponse() {
         do {
             if isGenerating {

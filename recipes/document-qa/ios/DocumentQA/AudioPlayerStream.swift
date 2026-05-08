@@ -16,7 +16,7 @@ class AudioPlayerStream {
     private let mixerNode = AVAudioMixerNode()
 
     private var pcmBuffers = [AVAudioPCMBuffer]()
-    private var flushCallback: (() -> Void)? = nil
+    private var flushCallback: (() -> Void)?
     public var isPlaying = false
     public var isStopped = false
 
@@ -104,7 +104,7 @@ class AudioPlayerStream {
         pcmBuffers.removeAll()
         playerNode.stop()
     }
-    
+
     func flushStreamPCM(_ callback: (() -> Void)?) {
         flushCallback = callback
 

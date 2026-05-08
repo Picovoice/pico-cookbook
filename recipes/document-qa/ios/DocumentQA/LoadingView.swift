@@ -13,7 +13,7 @@ struct LoadingView: View {
     @ObservedObject var viewModel: ViewModel
     @State private var loadingFile: Bool = false
     @State private var loadingEmbeddings: Bool = false
-    
+
     var body: some View {
         VStack {
             Text("Document QA")
@@ -45,7 +45,7 @@ struct LoadingView: View {
                     allowedContentTypes: [.item]
                 ) { result in
                     switch result {
-                    case .success(let url) :
+                    case .success(let url):
                         viewModel.loadDocument(url: url)
                         if viewModel.hasEmbeddings() {
                             loadingEmbeddings = true

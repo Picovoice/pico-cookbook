@@ -29,32 +29,31 @@ struct MainView: View {
                     GeometryReader { geometry in
                         ScrollView {
                             VStack {
-                                ForEach(
-                                    Array(viewModel.textHistory.enumerated()), id: \.offset) { index, item in
-                                        Text(viewModel.withDots(item: item))
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .foregroundStyle(item.isBlue ? .blue : .gray)
-                                            .monospacedDigit()
-                                            .font(.twenty)
-                                    }
+                                ForEach(Array(viewModel.textHistory.enumerated()), id: \.offset) { _, item in
+                                    Text(viewModel.withDots(item: item))
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .foregroundStyle(item.isBlue ? .blue : .gray)
+                                        .monospacedDigit()
+                                        .font(.twenty)
+                                }
                             }.frame(minHeight: geometry.size.height, alignment: .top)
                         }.defaultScrollAnchor(.bottomLeading)
                     }
                 }.frame(maxHeight: .infinity)
-                
+
                 Spacer()
-                
+
                 HStack {
                     Button(action: {
                         viewModel.stopDemo()
                     }, label: {
                         Image(systemName: "arrowshape.left.fill")
                             .font(.twenty)
-                        
+
                     }).disabled(viewModel.controlState == .prompt)
-                    
+
                     Spacer()
-                    
+
                     Button(action: {
                         viewModel.skipResponse()
                     }, label: {
