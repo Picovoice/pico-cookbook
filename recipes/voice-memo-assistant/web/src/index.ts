@@ -1,10 +1,7 @@
-import { getStreamSampleRate, init, start, release } from './main';
-import { AudioStream } from './audio_stream';
+import { init, start, release } from './main';
 
 export default {
   init,
   start,
   release,
-  getStreamSampleRate,
-  AudioStream,
 };

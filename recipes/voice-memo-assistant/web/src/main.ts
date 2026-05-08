@@ -4,6 +4,7 @@ import { CheetahTranscript, CheetahWorker } from '@picovoice/cheetah-web';
 import { OrcaWorker } from '@picovoice/orca-web';
 import { PicoLLMWorker } from '@picovoice/picollm-web';
 import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
+import { AudioStream } from './audio_stream';
 
 export enum UIState {
   INIT = 'INIT',
@@ -22,6 +23,7 @@ type PvObject = {
   cheetah: CheetahWorker;
   pllm: PicoLLMWorker;
   orca: OrcaWorker;
+  audioStream: AudioStream;
 };
 
 type DemoCallbacks = {
@@ -151,7 +153,9 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
     {}
   );
 
-  object = { porcupine, rhino, cheetah, pllm, orca };
+  const audioStream = new AudioStream(orca.sampleRate);
+
+  object = { porcupine, rhino, cheetah, pllm, orca, audioStream };
   setState(UIState.WAKE_WORD);
 };
 
@@ -203,11 +207,12 @@ const runLLMTask = async (task: string) => {
 const playAudioMessage = async (text: string) => {
   const orcaSynthesis = await object!.orca.synthesize(text);
   if (orcaSynthesis.pcm) {
-    callbacks!.onAudioReady(orcaSynthesis.pcm);
+    object!.audioStream.stream(orcaSynthesis.pcm);
+    object!.audioStream.play();
+    await object!.audioStream.waitPlayback();
   }
-  setTimeout(() => {
-    resetToWakeWord();
-  }, 2000);
+
+  resetToWakeWord();
 };
 
 const resetToWakeWord = async () => {
@@ -225,8 +230,6 @@ const start = async (): Promise<void> => {
   await WebVoiceProcessor.subscribe(customAudioEngine);
 };
 
-const getStreamSampleRate = (): number => object!.orca.sampleRate;
-
 const release = async (): Promise<void> => {
   if (object === null) {
     return;
@@ -242,4 +245,4 @@ const release = async (): Promise<void> => {
   object = null;
 };
 
-export { init, start, getStreamSampleRate, release };
+export { init, start, release };

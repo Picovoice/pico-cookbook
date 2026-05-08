@@ -13,8 +13,6 @@ window.onload = () => {
   const bar2 = document.getElementById('bar2');
   const bar3 = document.getElementById('bar3');
 
-  let audioStream;
-
   const updateUI = state => {
     switch (state) {
       case 'WAKE_WORD':
@@ -79,11 +77,6 @@ window.onload = () => {
           bar2.style.height = `${baseHeight + volume * 32}px`;
           bar3.style.height = `${baseHeight + volume * 24}px`;
         },
-        onAudioReady: async pcm => {
-          audioStream.stream(pcm);
-          audioStream.play();
-          await audioStream.waitPlayback();
-        },
         onError: err => alert(err),
       });
 
@@ -96,7 +89,6 @@ window.onload = () => {
     }
 
     await Picovoice.start();
-    audioStream = new Picovoice.AudioStream(Picovoice.getStreamSampleRate());
   };
 
   accessKey.onchange = () => {
