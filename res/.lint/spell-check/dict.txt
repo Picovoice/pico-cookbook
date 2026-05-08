@@ -2,6 +2,7 @@ addch
 addstr
 alireza
 appendleft
+arrowshape
 callassist
 callscreen
 colour
@@ -12,6 +13,7 @@ documentqa
 dotdotdot
 dotnet
 dtype
+embedder
 embeddinggemma
 endoftext
 endwin
