@@ -276,6 +276,7 @@ class ViewModel: ObservableObject {
         } else {
             VoiceProcessor.instance.clearFrameListeners()
             isPaused = true
+            flush()
         }
     }
 
@@ -364,21 +365,11 @@ class ViewModel: ObservableObject {
             if chatState == .LISTENING {
                 let cheetah = direction == .ltr ? self.cheetah_0 : self.cheetah_1
 
-                var isFlushed = false
                 let partialTranscript = try cheetah!.process(frame)
                 appendChatText(text: partialTranscript.0, translated: false)
 
                 if partialTranscript.1 {
-                    let finalTranscript = try cheetah!.flush()
-                    appendChatText(text: finalTranscript, translated: false)
-                    appendChatText(text: " ", translated: false)
-
-                    if chatText.count > 0 && !chatText[chatText.count - 1].transcript.isEmpty {
-                        isFlushed = true
-                    }
-                }
-                if isFlushed {
-                    translateAndSpeak()
+                    flush()
                 }
             }
         } catch {
@@ -388,6 +379,24 @@ class ViewModel: ObservableObject {
         }
     }
 
+    private func flush() {
+        do {
+            let cheetah = direction == .ltr ? self.cheetah_0 : self.cheetah_1
+
+            let finalTranscript = try cheetah!.flush()
+            appendChatText(text: finalTranscript, translated: false)
+            appendChatText(text: " ", translated: false)
+
+            if chatText.count > 0 && !chatText[chatText.count - 1].transcript.isEmpty {
+                translateAndSpeak()
+            }
+        } catch {
+            DispatchQueue.main.async { [self] in
+                errorMessage = "\(error.localizedDescription)"
+            }
+        }
+    }
+    
     private func errorCallback(error: VoiceProcessorError) {
         DispatchQueue.main.async { [self] in
             errorMessage = "\(error.localizedDescription)"

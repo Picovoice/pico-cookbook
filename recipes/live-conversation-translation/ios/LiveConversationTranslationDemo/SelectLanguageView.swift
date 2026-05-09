@@ -43,7 +43,9 @@ struct SelectLanguageView: View {
                 Spacer()
                 Picker("Source Language", selection: $viewModel.selectedSourceLanguage,
                        content: {
-                    Text("Select Language").tag("invalid")
+                    if $viewModel.selectedSourceLanguage.wrappedValue == "invalid" {
+                        Text("Select Language").tag("invalid")
+                    }
                     ForEach(Array(LANGUAGE_PAIRS.keys).sorted(), id: \.self) { key in
                         Text(LANGUAGE_DISPLAY[key] ?? "").tag(key)
                     }
@@ -58,7 +60,9 @@ struct SelectLanguageView: View {
                 Spacer()
                 Picker("Target Language", selection: $viewModel.selectedTargetLanguage,
                        content: {
-                    Text("Select Language").tag("invalid")
+                    if $viewModel.selectedTargetLanguage.wrappedValue == "invalid" {
+                        Text("Select Language").tag("invalid")
+                    }
                     if $viewModel.selectedSourceLanguage.wrappedValue != "invalid" {
                         let selectedSourceLanguage = $viewModel.selectedSourceLanguage.wrappedValue
                         ForEach(0..<LANGUAGE_PAIRS[selectedSourceLanguage]!.count, id: \.self) { i in
@@ -78,7 +82,9 @@ struct SelectLanguageView: View {
             .frame(maxWidth: .infinity)
 
             Button(action: viewModel.pauseDemo) {
-                Image(systemName: $viewModel.isPaused.wrappedValue ? "pause" : "microphone.fill")
+                let imageName = ($viewModel.isPaused.wrappedValue ||
+                                 viewModel.chatState == .SELECTING) ? "microphone.fill" : "pause"
+                Image(systemName: imageName)
                     .background(Constants.btnColor(viewModel.chatState == .LISTENING))
                     .foregroundColor(.white)
                     .frame(width: 10, height: 10)
