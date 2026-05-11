@@ -385,7 +385,6 @@ class ViewModel: ObservableObject {
 
             let finalTranscript = try cheetah!.flush()
             appendChatText(text: finalTranscript, translated: false)
-            appendChatText(text: " ", translated: false)
 
             if chatText.count > 0 && !chatText[chatText.count - 1].transcript.isEmpty {
                 translateAndSpeak()

@@ -39,38 +39,39 @@ struct ChatView: View {
                             let translated = viewModel.chatText[i].translated
                             let direction = viewModel.chatText[i].direction
                             let dots = (i == viewModel.chatText.count - 1)
-
+                            
                             let alignment: Alignment = direction == .ltr ? .topLeading : .topTrailing
-
-                            HStack(spacing: 0) {
+                            let sourceLang = direction == .ltr ? viewModel.selectedSourceLanguage : viewModel.selectedTargetLanguage
+                            let targetLang = direction != .ltr ? viewModel.selectedSourceLanguage : viewModel.selectedTargetLanguage
+                            
+                            VStack(spacing: 0) {
+                                Text("\(sourceLang) -> \(targetLang)")
+                                    .frame(maxWidth: .infinity, alignment: alignment)
+                                    .padding(.horizontal, 16)
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 12))
                                 VStack(spacing: 0) {
                                     Text(viewModel.withDots(transcript, dots: dots && translated == nil))
                                         .foregroundColor(translated == nil ? Constants.activeBlue : .gray)
-                                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                                        .frame(maxWidth: .infinity, alignment: alignment)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 8)
                                     if translated != nil {
                                         Text(viewModel.withDots(translated!, dots: dots))
                                             .foregroundColor(Constants.activeBlue)
-                                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                                            .frame(maxWidth: .infinity, alignment: alignment)
                                             .padding(.horizontal, 8)
                                             .padding(.bottom, 8)
                                     }
                                 }
-                                .containerRelativeFrame(
-                                    .horizontal, alignment: .topLeading
-                                ) { length, _ in
-                                    return length / 1.5
-                                }
                                 .background(Constants.backgroundGrey)
-                                .cornerRadius(3.0)
+                                .cornerRadius(6)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Constants.secondaryGrey,  lineWidth: 1)
+                                )
                                 .padding(.bottom, 8)
                             }
-                            .frame(
-                                maxWidth: .infinity,
-                                maxHeight: .infinity,
-                                alignment: alignment
-                            )
                         }
                     }
                     .padding(12)

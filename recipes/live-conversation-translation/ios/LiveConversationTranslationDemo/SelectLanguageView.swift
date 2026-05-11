@@ -55,10 +55,13 @@ struct SelectLanguageView: View {
                 }
                 .disabled(viewModel.chatState == .LOADING ||
                           viewModel.chatState == .TRANSLATING)
-                .fixedSize()
-                Spacer()
+                .containerRelativeFrame(.horizontal, alignment: .center) { length, _ in
+                    return length / 3
+                }
                 Image(systemName: "arrow.left.arrow.right")
-                Spacer()
+                .containerRelativeFrame(.horizontal, alignment: .center) { length, _ in
+                    return length / 4
+                }
                 Picker("Target Language", selection: $viewModel.selectedTargetLanguage,
                        content: {
                     if $viewModel.selectedTargetLanguage.wrappedValue == "invalid" {
@@ -78,10 +81,12 @@ struct SelectLanguageView: View {
                 .disabled(viewModel.chatState == .LOADING ||
                           viewModel.chatState == .TRANSLATING ||
                           $viewModel.selectedSourceLanguage.wrappedValue == "invalid")
-                .fixedSize()
+                .containerRelativeFrame(.horizontal, alignment: .center) { length, _ in
+                    return length / 3
+                }
                 Spacer()
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, minHeight: 64)
 
             Button(action: viewModel.pauseDemo) {
                 let imageName = ($viewModel.isPaused.wrappedValue ||
