@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="index.js"></script>
+  <script type="application/javascript" src="controller.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body style="display: flex; flex-direction: column;">
+  <h1 style="text-align: center; color: var(--brand-primary); margin: 48px auto;">Call Screen</h1>
+
+  <div id="error-container" style="display: none;">
+    <div id="error" style="white-space: pre; display: none;"></div>
+  </div>
+
+  <div style="width: 980px; margin: auto; flex-grow: 1; display: flex; flex-direction: row;">
+    <div id="chatBlock">
+      <div style="text-align: center; font-weight: bolder; font-size: 16px; padding: 8px; border-bottom: 2px solid #ccc; color: #444;">
+        Incoming Call
+      </div>
+    </div>
+    
+    <div id="initBlock">
+      <div style="display: flex; flex-direction: row; justify-content: end; align-items: center; justify-items: start; gap: 8px;">
+        <label for="accessKey" style="text-align: right; font-size: 17px; white-space: nowrap;">
+          <code style="background-color: #eee; padding: 4px; border-radius: 2px; font-size: 0.92em;">AccessKey</code> from
+          <a href="https://console.picovoice.ai/">Picovoice Console</a>
+        </label>
+        <input style="padding: 4px 4px; border-radius: 4px; border: 2px solid #ccc; font-family: monospace; font-size: 12px; width: 40%;flex-shrink: 0; color: #444;" type="text" id="accessKey" name="accessKey"/>
+      </div>
+
+      <div style="display: flex; flex-direction: row; justify-content: end; align-items: center; justify-items: start; text-align: center; margin-top: 8px; gap: 8px;">
+        <label for="accessKey" style="text-align: right; font-size: 17px;">Your name</label>
+        <input style="padding: 4px 4px; border-radius: 4px; border: 2px solid #ccc; font-family: monospace; font-size: 12px; color: #444; width: 40%;flex-shrink: 0;" type="text" id="name" name="name"/>
+      </div>
+
+      <button id="init" disabled>
+        Start Demo 
+        <span id="initButtonTooltip" class="tooltip"></span>
+      </button>
+
+      <div id="status-container" style="margin-top: 12px;">
+        <span id="status">Press Start Demo to begin</span>
+        <span id="dotdotdot" style="white-space: pre;"></span>
+      </div>
+    </div>
+  </div>
+
+  <script src="index.js"></script>
+  <script src="controller.js"></script>
+</body>
+</html>
