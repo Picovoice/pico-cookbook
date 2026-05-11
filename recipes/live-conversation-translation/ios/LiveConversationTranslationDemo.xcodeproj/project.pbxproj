@@ -62,6 +62,9 @@
 		0720E7282F9301860075BF13 /* zebra_params_it_en.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E7002F9301860075BF13 /* zebra_params_it_en.pv */; };
 		0720E7292F9301860075BF13 /* zebra_params_en_de.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6F42F9301860075BF13 /* zebra_params_en_de.pv */; };
 		0720E72A2F9301860075BF13 /* zebra_params_es_it.pv in Resources */ = {isa = PBXBuildFile; fileRef = 0720E6FB2F9301860075BF13 /* zebra_params_es_it.pv */; };
+		07B4E83D2FB28907005F31B0 /* Cheetah in Frameworks */ = {isa = PBXBuildFile; productRef = 07B4E83C2FB28907005F31B0 /* Cheetah */; };
+		07B4E8402FB289AA005F31B0 /* Cheetah in Frameworks */ = {isa = PBXBuildFile; productRef = 07B4E83F2FB289AA005F31B0 /* Cheetah */; };
+		07B4E8432FB28A81005F31B0 /* Cheetah in Frameworks */ = {isa = PBXBuildFile; productRef = 07B4E8422FB28A81005F31B0 /* Cheetah */; };
 		34C504D02D271C5E0003405B /* ios_voice_processor in Frameworks */ = {isa = PBXBuildFile; productRef = 34C504CF2D271C5E0003405B /* ios_voice_processor */; };
 		34C504D32D271E4B0003405B /* ios_voice_processor in Frameworks */ = {isa = PBXBuildFile; productRef = 34C504D22D271E4B0003405B /* ios_voice_processor */; };
 		34C504D82D2728410003405B /* Cheetah in Frameworks */ = {isa = PBXBuildFile; productRef = 34C504D72D2728410003405B /* Cheetah */; };
@@ -140,9 +143,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				07B4E8402FB289AA005F31B0 /* Cheetah in Frameworks */,
+				07B4E8432FB28A81005F31B0 /* Cheetah in Frameworks */,
 				070C11AA2F92C55F0052BEA9 /* Zebra in Frameworks */,
 				34C504D82D2728410003405B /* Cheetah in Frameworks */,
 				34CE2DE42D27287900AC10F0 /* Orca in Frameworks */,
+				07B4E83D2FB28907005F31B0 /* Cheetah in Frameworks */,
 				34C504D32D271E4B0003405B /* ios_voice_processor in Frameworks */,
 				34C504D02D271C5E0003405B /* ios_voice_processor in Frameworks */,
 			);
@@ -295,9 +301,9 @@
 			mainGroup = 02A1193C268D39A700A2AC99;
 			packageReferences = (
 				34C504CC2D2719A30003405B /* XCRemoteSwiftPackageReference "orca" */,
-				34C504CD2D271A440003405B /* XCRemoteSwiftPackageReference "cheetah" */,
 				34C504D12D271E4B0003405B /* XCRemoteSwiftPackageReference "ios-voice-processor" */,
 				070C11A82F92C55F0052BEA9 /* XCRemoteSwiftPackageReference "zebra" */,
+				07B4E8412FB28A81005F31B0 /* XCRemoteSwiftPackageReference "cheetah" */,
 			);
 			productRefGroup = 02A11946268D39A700A2AC99 /* Products */;
 			projectDirPath = "";
@@ -583,6 +589,22 @@
 				version = 1.0.0;
 			};
 		};
+		07B4E83B2FB28907005F31B0 /* XCRemoteSwiftPackageReference "cheetah" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Picovoice/cheetah";
+			requirement = {
+				kind = exactVersion;
+				version = 4.0.2;
+			};
+		};
+		07B4E8412FB28A81005F31B0 /* XCRemoteSwiftPackageReference "cheetah" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Picovoice/cheetah";
+			requirement = {
+				kind = exactVersion;
+				version = 4.0.2;
+			};
+		};
 		34C504CC2D2719A30003405B /* XCRemoteSwiftPackageReference "orca" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/picovoice/orca";
@@ -622,6 +644,20 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 070C11A82F92C55F0052BEA9 /* XCRemoteSwiftPackageReference "zebra" */;
 			productName = Zebra;
+		};
+		07B4E83C2FB28907005F31B0 /* Cheetah */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 07B4E83B2FB28907005F31B0 /* XCRemoteSwiftPackageReference "cheetah" */;
+			productName = Cheetah;
+		};
+		07B4E83F2FB289AA005F31B0 /* Cheetah */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Cheetah;
+		};
+		07B4E8422FB28A81005F31B0 /* Cheetah */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 07B4E8412FB28A81005F31B0 /* XCRemoteSwiftPackageReference "cheetah" */;
+			productName = Cheetah;
 		};
 		34C504CF2D271C5E0003405B /* ios_voice_processor */ = {
 			isa = XCSwiftPackageProductDependency;
