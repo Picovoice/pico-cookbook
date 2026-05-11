@@ -396,7 +396,7 @@ class ViewModel: ObservableObject {
             }
         }
     }
-    
+
     private func errorCallback(error: VoiceProcessorError) {
         DispatchQueue.main.async { [self] in
             errorMessage = "\(error.localizedDescription)"
