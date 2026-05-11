@@ -15,3 +15,4 @@ Record, rewrite, summarize, and replay voice memos hands-free, powered by on-dev
 - [Android](android)
 - [iOS](ios)
 - [Python](python)
+- [Web](web)
