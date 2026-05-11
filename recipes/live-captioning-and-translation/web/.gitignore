@@ -10,7 +10,5 @@ public/index.js
 *.rhn
 *.ppn
 types/*.d.ts*
-orca
 cheetah
-rhino
-porcupine
+zebra

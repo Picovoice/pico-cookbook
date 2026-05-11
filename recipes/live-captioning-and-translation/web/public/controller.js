@@ -2,6 +2,8 @@ window.onload = () => {
   const accessKey = document.getElementById('accessKey');
   const initButton = document.getElementById('init');
 
+  const fileSelector = document.getElementById('audioFile');
+
   const topStatusBlock = document.getElementById('topStatusBlock');
   const topStatus = document.getElementById('topStatus');
   const tooltip = document.getElementById('tooltip');
@@ -88,10 +90,14 @@ window.onload = () => {
       initButton.disabled = false;
     }
 
-    await Picovoice.start();
+    await Picovoice.start(fileSelector.files[0]);
   };
 
   accessKey.onchange = () => {
-    if (accessKey.value) initButton.disabled = false;
+    if (accessKey.value && fileSelector.value) initButton.disabled = false;
   };
+
+  fileSelector.onchange = () => {
+    if (accessKey.value && fileSelector.value) initButton.disabled = false;
+  }
 };

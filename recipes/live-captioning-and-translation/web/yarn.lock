@@ -906,34 +906,6 @@
   dependencies:
     "@picovoice/web-utils" "=1.4.3"
 
-"@picovoice/orca-web@^3.0.0":
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/@picovoice/orca-web/-/orca-web-3.0.0.tgz#774f76a827f1ad09c0557c163e1b6f0af0f250bf"
-  integrity sha512-ZkUDA0zgjHQupFWOtUnpNskvDiqZdYx5DXCh2Mypzz/f8YvQ8YavrGvyDM2o9n/nei4PF2Czck6x4YtxMl/5vA==
-  dependencies:
-    "@picovoice/web-utils" "=1.4.3"
-
-"@picovoice/picollm-web@~2.1.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@picovoice/picollm-web/-/picollm-web-2.1.0.tgz#bdbca2e9388cb406bbd340bb0082406dff48ff01"
-  integrity sha512-lEdluy6/v6cTiM7g/EH9KMWjDAMr32vht1p/stGMjy9g9LPBvMo3aVww1xZbR7LnczG7RZqg9lJYecRvqCHz7Q==
-  dependencies:
-    "@picovoice/web-utils" "~1.4.3"
-
-"@picovoice/porcupine-web@^4.0.0":
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/@picovoice/porcupine-web/-/porcupine-web-4.0.0.tgz#33946e43a48db84a8c27d6fd4b61a747304af085"
-  integrity sha512-YqXBp6R9od6NTgcm80UyyB71c4eBArxD3BtX1SKQC4/xAvThM2VgwtPj4J7gvjl9yqqlcr+0Mg3T4lbKIOziTw==
-  dependencies:
-    "@picovoice/web-utils" "=1.4.3"
-
-"@picovoice/rhino-web@^4.0.0":
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/@picovoice/rhino-web/-/rhino-web-4.0.0.tgz#ca2a69dd968427359045506a9d840f99bfb2b2b8"
-  integrity sha512-wI8cFj6dTCDYm5SOjyQI94MKlIFFWQ5MIJ/UbJVi4tuEi0MGCXTpbKMpuxbnqpG/hskKqQzOtjs7jy/7DWQhwQ==
-  dependencies:
-    "@picovoice/web-utils" "=1.4.3"
-
 "@picovoice/web-utils@=1.3.1":
   version "1.3.1"
   resolved "https://registry.yarnpkg.com/@picovoice/web-utils/-/web-utils-1.3.1.tgz#d417e98604a650b54a8e03669015ecf98c2383ec"
@@ -941,7 +913,7 @@
   dependencies:
     commander "^9.2.0"
 
-"@picovoice/web-utils@=1.4.3", "@picovoice/web-utils@~1.4.3":
+"@picovoice/web-utils@=1.4.3":
   version "1.4.3"
   resolved "https://registry.yarnpkg.com/@picovoice/web-utils/-/web-utils-1.4.3.tgz#1de0b20d6080c18d295c6df37c09d88bf7c4f555"
   integrity sha512-7JN3YYsSD9Gtce6YKG3XqpX49dkeu7jTdbox7rHQA/X/Q3zxopXA9zlCKSq6EIjFbiX2iuzDKUx1XrFa3d8c0w==
@@ -954,6 +926,13 @@
   integrity sha512-20pdkFjtuiojAdLIkNHXt4YgpRnlUePFW+gfkeCb+J+2XTRDGOI50+aJzL95p6QjDzGXsO7PZhlz7yDofOvZtg==
   dependencies:
     "@picovoice/web-utils" "=1.3.1"
+
+"@picovoice/zebra-web@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@picovoice/zebra-web/-/zebra-web-1.0.0.tgz#d147c9e63e2a2d6f9203899d5d2dc46eff2b4cb6"
+  integrity sha512-8iH7HjRpc8dgYkj8WHHQFqTNluqFLasFmgWnO0I5kzLZPHzR3+8bdKBZiawSFUglsfT/kq6/rFDEl0/+Ifqu6A==
+  dependencies:
+    "@picovoice/web-utils" "=1.4.3"
 
 "@rollup/plugin-babel@^6.0.4":
   version "6.0.4"

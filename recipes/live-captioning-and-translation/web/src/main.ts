@@ -1,28 +1,16 @@
-import { PorcupineWorker } from '@picovoice/porcupine-web';
-import { RhinoInference, RhinoWorker } from '@picovoice/rhino-web';
 import { CheetahTranscript, CheetahWorker } from '@picovoice/cheetah-web';
-import { OrcaWorker } from '@picovoice/orca-web';
-import { PicoLLMWorker } from '@picovoice/picollm-web';
-import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 import { AudioStream } from './audio_stream';
 
 export enum UIState {
   INIT = 'INIT',
+  RECORDING = 'RECORDING',
   LOADING_MODEL = 'LOADING_MODEL',
-  WAKE_WORD = 'WAKE_WORD',
-  VOICE_COMMAND = 'VOICE_COMMAND',
-  START_RECORDING = 'START_RECORDING',
-  READ_RECORDING = 'READ_RECORDING',
-  SUMMARIZE_RECORDING = 'SUMMARIZE_RECORDING',
-  REWRITE_RECORDING = 'REWRITE_RECORDING',
+  CAPTIONING = 'CAPTIONING',
 }
 
 type PvObject = {
-  porcupine: PorcupineWorker;
-  rhino: RhinoWorker;
   cheetah: CheetahWorker;
-  pllm: PicoLLMWorker;
-  orca: OrcaWorker;
+  // TODO: Zebra also
   audioStream: AudioStream;
 };
 
@@ -70,53 +58,10 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
 
   callbacks = cb;
 
-  callbacks.onStateChange(UIState.LOADING_MODEL);
-
-  const keyword = {
-    publicPath: 'models/porcupine_model.ppn',
-    label: 'wake word',
-    sensitivity: 0.5,
-    forceWrite: true,
-  };
-  const detectionCallback = async () => {
-    if (currentState === UIState.WAKE_WORD) {
-      await WebVoiceProcessor.unsubscribe(porcupine);
-      await WebVoiceProcessor.subscribe(rhino);
-      setState(UIState.VOICE_COMMAND);
-    }
-  };
-  const porcupine = await PorcupineWorker.create(
-    accessKey,
-    keyword,
-    detectionCallback,
-    { publicPath: 'models/porcupine_params.pv' }
-  );
-
-  const context = {
-    publicPath: 'models/rhino_model.rhn',
-    forceWrite: true,
-  };
-  const intentCallback = async (inference: RhinoInference) => {
-    if (currentState === UIState.VOICE_COMMAND && inference.isFinalized) {
-      if (inference.isUnderstood) {
-        await WebVoiceProcessor.unsubscribe(rhino);
-        handleIntent(inference.intent);
-      } else {
-        playAudioMessage("Sorry, I didn't understand that.");
-        await WebVoiceProcessor.unsubscribe(rhino);
-      }
-    }
-  };
-  const rhino = await RhinoWorker.create(
-    accessKey,
-    context,
-    intentCallback,
-    { publicPath: 'models/rhino_params.pv' },
-    { requireEndpoint: false, endpointDurationSec: 0.5 }
-  );
+  setState(UIState.LOADING_MODEL);
 
   const transcribeCallback = async (transcript: CheetahTranscript) => {
-    if (currentState === UIState.START_RECORDING) {
+    if (currentState === UIState.CAPTIONING) {
       memoText += transcript.transcript;
 
       if (transcript.isEndpoint) {
@@ -127,97 +72,19 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
         memoText = memoText + ' ';
       }
 
-      if (/.*(stop recording)[.\s]*$/i.test(memoText)) {
-        memoText = memoText.replace(/stop recording[.\s]*$/i, '').trim();
-        enhancedText = memoText;
-        await WebVoiceProcessor.unsubscribe(cheetah);
-        resetToWakeWord();
-      }
       callbacks!.onOriginalText(memoText);
     }
   };
   const cheetah = await CheetahWorker.create(
     accessKey,
     transcribeCallback,
-    { publicPath: 'models/cheetah_params.pv' },
+    { publicPath: 'models/cheetah_params_en.pv', forceWrite: true },
     { enableAutomaticPunctuation: true, enableTextNormalization: true }
   );
 
-  const pllm = await PicoLLMWorker.create(accessKey, {
-    modelFile: 'models/picollm_model.pllm',
-    cacheFileOverwrite: true,
-  });
-  const orca = await OrcaWorker.create(
-    accessKey,
-    { publicPath: 'models/orca_params_en_female.pv' },
-    {}
-  );
+  const audioStream = new AudioStream(cheetah.sampleRate);
 
-  const audioStream = new AudioStream(orca.sampleRate);
-
-  object = { porcupine, rhino, cheetah, pllm, orca, audioStream };
-  setState(UIState.WAKE_WORD);
-};
-
-const handleIntent = async (intent: string | undefined) => {
-  if (intent === 'startMemo') {
-    memoText = '';
-    enhancedText = '';
-    setState(UIState.START_RECORDING);
-    await WebVoiceProcessor.subscribe(object!.cheetah);
-  } else if (intent === 'readMemo') {
-    setState(UIState.READ_RECORDING);
-    const textToRead = enhancedText || NO_MEMO_ERROR_PHRASE;
-    playAudioMessage(textToRead);
-  } else if (intent === 'summarizeMemo' || intent === 'rewriteMemo') {
-    if (!memoText) {
-      playAudioMessage(NO_MEMO_ERROR_PHRASE);
-      return;
-    }
-    setState(
-      intent === 'summarizeMemo'
-        ? UIState.SUMMARIZE_RECORDING
-        : UIState.REWRITE_RECORDING
-    );
-    runLLMTask(intent);
-  }
-};
-
-const runLLMTask = async (task: string) => {
-  enhancedText = '';
-  const dialog = object!.pllm.getDialog();
-  let prompt =
-    task === 'summarizeMemo'
-      ? `Summarize the memo below in one short sentence. Return only the summary.\n\nMemo:\n${memoText}\n\nSummarized memo:\n`
-      : `Rewrite the memo below to fix grammar and punctuation. Preserve the original meaning. Return only the rewritten memo.\n\nMemo:\n${memoText}\n\nRewritten memo:\n`;
-
-  dialog.addHumanRequest(prompt);
-
-  await object!.pllm.generate(dialog.prompt(), {
-    stopPhrases: ['<|eot_id|>'],
-    streamCallback: token => {
-      enhancedText += token.replace('<|eot_id|>', '');
-      callbacks!.onModifiedText(enhancedText);
-    },
-  });
-  callbacks!.onModifiedText(enhancedText);
-  resetToWakeWord();
-};
-
-const playAudioMessage = async (text: string) => {
-  const orcaSynthesis = await object!.orca.synthesize(text);
-  if (orcaSynthesis.pcm) {
-    object!.audioStream.stream(orcaSynthesis.pcm);
-    object!.audioStream.play();
-    await object!.audioStream.waitPlayback();
-  }
-
-  resetToWakeWord();
-};
-
-const resetToWakeWord = async () => {
-  setState(UIState.WAKE_WORD);
-  await WebVoiceProcessor.subscribe(object!.porcupine);
+  object = { cheetah, audioStream };
 };
 
 const setState = (state: UIState) => {
@@ -225,22 +92,76 @@ const setState = (state: UIState) => {
   callbacks!.onStateChange(state);
 };
 
-const start = async (): Promise<void> => {
-  await WebVoiceProcessor.subscribe(object!.porcupine);
-  await WebVoiceProcessor.subscribe(customAudioEngine);
+const start = async (audioFile: File): Promise<void> => {
+  setState(UIState.CAPTIONING);
+
+  // @ts-ignore
+  const audioContext = new (window.AudioContext || window.webKitAudioContext)({
+    sampleRate: 16000,
+  });
+
+  function readAudioFile(selectedFile: any, callback: any) {
+    let reader = new FileReader();
+    reader.onload = function (ev: any) {
+      let wavBytes = reader.result;
+      // @ts-ignore
+      audioContext.decodeAudioData(wavBytes, callback);
+    };
+    reader.readAsArrayBuffer(selectedFile);
+  }
+
+  readAudioFile(audioFile, async (audioBuffer: any) => {
+    const f32PCM = audioBuffer.getChannelData(0);
+    const i16PCM = new Int16Array(f32PCM.length);
+
+    const INT16_MAX = 32767;
+    const INT16_MIN = -32768;
+    i16PCM.set(
+      f32PCM.map((f: number) => {
+        let i = Math.trunc(f * INT16_MAX);
+        if (f > INT16_MAX) i = INT16_MAX;
+        if (f < INT16_MIN) i = INT16_MIN;
+        return i;
+      }),
+    );
+
+    await caption(i16PCM);
+  });
 };
+
+const caption = async (pcm: Int16Array) => {
+  const playback_start_ms = performance.now();
+  let played_samples = 0;
+
+  const numCheetahFrames = Math.floor(pcm.length / object!.cheetah.frameLength)
+  for (let i = 1; i < numCheetahFrames; i++) {
+    const pcmStart = (i - 1) * object!.cheetah.frameLength;
+    const pcmEnd = (i) * object!.cheetah.frameLength;
+    const pcmSlice = pcm.slice(pcmStart, pcmEnd);
+
+    object!.cheetah.process(pcmSlice);
+    object!.audioStream.stream(pcmSlice);
+    object!.audioStream.play();
+
+    played_samples += pcmSlice.length;
+    const playback_time_ms = (played_samples / object!.cheetah.sampleRate) * 1000;
+    const delay_ms = playback_start_ms + playback_time_ms - performance.now()
+
+    if (delay_ms > 0) {
+      await new Promise(r => setTimeout(r, delay_ms));
+    }
+  }
+
+  await object!.audioStream.waitPlayback();
+}
 
 const release = async (): Promise<void> => {
   if (object === null) {
     return;
   }
 
-  const { porcupine, rhino, cheetah, pllm, orca } = object;
-  porcupine.terminate();
-  rhino.terminate();
+  const { cheetah } = object;
   cheetah.terminate();
-  await pllm.release();
-  orca.terminate();
 
   object = null;
 };

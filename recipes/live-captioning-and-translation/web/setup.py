@@ -3,7 +3,6 @@ import shutil
 import subprocess
 import sys
 import time
-from argparse import ArgumentParser
 from threading import (
     Event,
     Thread
@@ -12,26 +11,13 @@ from typing import Tuple
 
 
 ANIMALS = [
-    ("cheetah", "4.0.1"),
-    ("orca", "3.0.0"),
-    ("porcupine", "4.0.0"),
-    ("rhino", "4.0.0"),
+    ("cheetah", "4.0.0"),
+    ("zebra", "1.0.0"),
 ]
 
-COPIES = {
-    "orca": [
-        "orca_params_en_female.pv"
-    ],
-    "cheetah": [
-        "cheetah_params.pv"
-    ],
-    "porcupine": [
-        "porcupine_params.pv"
-    ],
-    "rhino": [
-        "rhino_params.pv"
-    ]
-}
+RENAMES = [
+    ("cheetah_params.pv", "cheetah_params_en.pv")
+]
 
 
 def animate_status(text: str) -> Tuple[Event, Thread]:
@@ -101,34 +87,21 @@ def clone_repo(animal: str, major: str, minor: str) -> str:
 
 
 def main() -> None:
-    parser = ArgumentParser()
-    parser.add_argument(
-        '--keyword_path',
-        required=True,
-        help='Absolute path to the Porcupine model file (`.ppn`).')
-    parser.add_argument(
-        '--context_path',
-        required=True,
-        help='Absolute path to the Rhino model file (`.rhn`).')
-    parser.add_argument(
-        '--picollm_model_path',
-        required=True,
-        help='Absolute path to the picoLLM model file (`.pllm`).')
-    args = parser.parse_args()
-
-    public_folder = os.path.join(os.path.dirname(__file__), "public/models")
+    public_folder = os.path.join(os.path.dirname(__file__), "public", "models")
     for animal, version in ANIMALS:
         major, minor = version.split('.')[:2]
         folder = clone_repo(animal, major, minor)
         model_folder = os.path.join(folder, "lib", "common")
-        for filename in COPIES[animal]:
+        for filename in os.listdir(model_folder):
             src_path = os.path.join(model_folder, filename)
             dst_path = os.path.join(public_folder, filename)
             shutil.copy(src_path, dst_path)
 
-    shutil.copy(args.keyword_path, os.path.join(public_folder, "porcupine_model.ppn"))
-    shutil.copy(args.context_path, os.path.join(public_folder, "rhino_model.rhn"))
-    shutil.copy(args.picollm_model_path, os.path.join(public_folder, "picollm_model.pllm"))
+    for old, new in RENAMES:
+        src_path = os.path.join(public_folder, old)
+        dst_path = os.path.join(public_folder, new)
+        if os.path.exists(src_path):
+            os.rename(src_path, dst_path)
 
 
 if __name__ == '__main__':
