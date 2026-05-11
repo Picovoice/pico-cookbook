@@ -53,7 +53,8 @@ struct SelectLanguageView: View {
                 .onChange(of: $viewModel.selectedSourceLanguage.wrappedValue) { () in
                     viewModel.selectedSourceLanguageChange()
                 }
-                .disabled(viewModel.chatState == .LOADING)
+                .disabled(viewModel.chatState == .LOADING ||
+                          viewModel.chatState == .TRANSLATING)
                 .fixedSize()
                 Spacer()
                 Image(systemName: "arrow.left.arrow.right")
@@ -75,6 +76,7 @@ struct SelectLanguageView: View {
                     viewModel.selectedTargetLanguageChange()
                 }
                 .disabled(viewModel.chatState == .LOADING ||
+                          viewModel.chatState == .TRANSLATING ||
                           $viewModel.selectedSourceLanguage.wrappedValue == "invalid")
                 .fixedSize()
                 Spacer()
