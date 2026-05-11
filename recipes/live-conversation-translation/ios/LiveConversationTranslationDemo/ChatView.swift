@@ -39,11 +39,13 @@ struct ChatView: View {
                             let translated = viewModel.chatText[i].translated
                             let direction = viewModel.chatText[i].direction
                             let dots = (i == viewModel.chatText.count - 1)
-                            
+
                             let alignment: Alignment = direction == .ltr ? .topLeading : .topTrailing
-                            let sourceLang = direction == .ltr ? viewModel.selectedSourceLanguage : viewModel.selectedTargetLanguage
-                            let targetLang = direction != .ltr ? viewModel.selectedSourceLanguage : viewModel.selectedTargetLanguage
-                            
+                            let sourceLang = direction == .ltr ?
+                                viewModel.selectedSourceLanguage : viewModel.selectedTargetLanguage
+                            let targetLang = direction != .ltr ?
+                                viewModel.selectedSourceLanguage : viewModel.selectedTargetLanguage
+
                             VStack(spacing: 0) {
                                 Text("\(sourceLang) -> \(targetLang)")
                                     .frame(maxWidth: .infinity, alignment: alignment)
@@ -68,7 +70,7 @@ struct ChatView: View {
                                 .cornerRadius(6)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Constants.secondaryGrey,  lineWidth: 1)
+                                        .stroke(Constants.secondaryGrey, lineWidth: 1)
                                 )
                                 .padding(.bottom, 8)
                             }
