@@ -24,7 +24,7 @@ enum ListenState {
 }
 
 enum ControlState {
-    case idle, prompt, completion, interrupting
+    case idle, loading, prompt, completion, interrupting
 }
 
 struct Chunk: Codable {
@@ -56,6 +56,7 @@ class ViewModel: ObservableObject {
     @Published var enginesLoaded: Bool = false
     @Published var textHistory: [TextElement] = [TextElement]()
     @Published var useEmbeddingCache: Bool = true
+    @Published var soundLevel: Float = 0.0
 
     @Published var dotIndex = 0
     private var timer: Timer?
@@ -273,10 +274,11 @@ class ViewModel: ObservableObject {
             documentChunks.removeAll()
 
             let cachePath = getDocumentCachePath()
-            let data = FileManager.default.contents(atPath: cachePath)
-            if data != nil {
-                documentChunks = try JSONDecoder().decode([Chunk].self, from: data!)
-            }
+
+            do {
+                let cacheText = try String(contentsOf: cachePath!, encoding: .utf8)
+                documentChunks = try JSONDecoder().decode([Chunk].self, from: Data(cacheText.utf8))
+            } catch {}
         } catch {
             setStatusText(text: error.localizedDescription)
         }
@@ -290,12 +292,13 @@ class ViewModel: ObservableObject {
         documentChunks.removeAll()
     }
 
-    func getDocumentCachePath() -> String {
+    func getDocumentCachePath() -> URL? {
         let data = Data(documentURL!.absoluteString.utf8)
         let hashed = SHA256.hash(data: data)
         let hex = hashed.compactMap { String(format: "%02x", $0) }.joined()
-        let home = NSHomeDirectory()
-        return "\(home)/\(hex)-\(CHUNK_SIZE)-\(CHUNK_OVERLAP).json"
+        let file = "\(hex)-\(CHUNK_SIZE)-\(CHUNK_OVERLAP).json"
+        let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        return folder?.appendingPathComponent(file).absoluteURL
     }
 
     func computeEmbeddings() throws {
@@ -304,15 +307,17 @@ class ViewModel: ObservableObject {
 
         let cachePath = getDocumentCachePath()
         let cached = try JSONEncoder().encode(documentChunks)
-        FileManager.default.createFile(atPath: cachePath, contents: cached)
+        try cached.write(to: cachePath!)
     }
 
     func startDemo() {
-        DispatchQueue.main.async { [self] in
-            textHistory.removeAll()
-        }
-
         DispatchQueue.global(qos: .userInitiated).async { [self] in
+            setControlState(state: .loading)
+
+            DispatchQueue.main.async { [self] in
+                textHistory.removeAll()
+            }
+
             if documentContent == nil {
                 return
             }
@@ -400,9 +405,12 @@ class ViewModel: ObservableObject {
         setStatusText(text: "Load a document to begin.")
         setListenState(state: .idle)
         setViewState(state: .loading)
+        setControlState(state: .idle)
     }
 
     func audioCallback(frame: [Int16]) {
+        computeSoundLevel(frame: frame)
+
         if listenState == .question {
             do {
                 let (transcript, endpoint) = try cheetah!.process(frame)
@@ -426,6 +434,25 @@ class ViewModel: ObservableObject {
             } catch {
                 setStatusText(text: error.localizedDescription)
             }
+        }
+    }
+
+    func computeSoundLevel(frame: [Int16]) {
+        let MIN_DB: Double = -40
+        let MAX_DB: Double = 0
+
+        var sum: Double = 0
+        for sample in frame {
+            sum += pow(Double(sample), 2)
+        }
+
+        let rms = (sum / Double(frame.count)) / pow(Double(Int16.max), 2)
+        let db: Double = 10 * log10(max(rms, 1e-9))
+        let normalized = (db - MIN_DB) / (MAX_DB - MIN_DB)
+        let clamped = max(0.0, min(1.0, normalized))
+
+        DispatchQueue.main.async { [self] in
+            soundLevel = soundLevel * 0.5 + Float(clamped) * 0.5
         }
     }
 

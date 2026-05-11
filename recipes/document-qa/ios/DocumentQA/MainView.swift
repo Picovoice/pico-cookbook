@@ -72,6 +72,20 @@ struct MainView: View {
                     RoundedRectangle(cornerRadius: 10)
                         .stroke(Color.lightGray, lineWidth: 1)
                 )
+
+            Text(viewModel.listenState == .question ? "Ask a Question" : " ")
+                .foregroundStyle(.gray)
+                .padding(.top, 16)
+
+            if viewModel.listenState == .question {
+                VolumeMeterView(viewModel: viewModel)
+            } else {
+                HStack {
+                    ProgressView()
+                        .controlSize(.extraLarge)
+                }.frame(width: 50, height: 70)
+                    .padding(20)
+            }
         }.padding()
     }
 }

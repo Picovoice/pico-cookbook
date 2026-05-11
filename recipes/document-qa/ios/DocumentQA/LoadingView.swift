@@ -24,6 +24,8 @@ struct LoadingView: View {
             Text(viewModel.statusText)
                 .foregroundStyle(.gray)
                 .padding(16)
+
+            let buttonDisabled = !viewModel.enginesLoaded || viewModel.controlState == .loading
             Button(
                 action: {
                     loadingFile = true
@@ -33,13 +35,13 @@ struct LoadingView: View {
                         .padding(.vertical, 8)
                         .padding(8)
                         .foregroundStyle(.white)
-                       .background(viewModel.enginesLoaded ? .blue : .gray)
+                        .background(buttonDisabled ? .gray : .blue)
                         .clipShape(
                             RoundedRectangle(
                                 cornerRadius: 8))
                 }
             ).padding(16)
-                .disabled(!viewModel.enginesLoaded)
+                .disabled(buttonDisabled)
                 .fileImporter(
                     isPresented: $loadingFile,
                     allowedContentTypes: [.item]
