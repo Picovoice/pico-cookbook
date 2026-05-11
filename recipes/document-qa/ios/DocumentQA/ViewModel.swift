@@ -313,6 +313,10 @@ class ViewModel: ObservableObject {
         }
 
         DispatchQueue.global(qos: .userInitiated).async { [self] in
+            if documentContent == nil {
+                return
+            }
+
             do {
                 if documentChunks.isEmpty {
                     try computeEmbeddings()

@@ -46,7 +46,10 @@ struct LoadingView: View {
                 ) { result in
                     switch result {
                     case .success(let url):
+                        guard url.startAccessingSecurityScopedResource() else { return }
                         viewModel.loadDocument(url: url)
+                        url.stopAccessingSecurityScopedResource()
+
                         if viewModel.hasEmbeddings() {
                             loadingEmbeddings = true
                         } else {
