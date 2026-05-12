@@ -10,6 +10,7 @@ compat
 dbfs
 declatory
 documentqa
+deepseek
 dotdotdot
 dotnet
 dtype
@@ -52,6 +53,7 @@ pvrecorder
 pvrhino
 pvspeaker
 pvzebra
+qwen
 samplerate
 sdcard
 sigwinch
@@ -61,6 +63,7 @@ speakerawarewakeword
 speechtospeechtranslation
 subheadline
 subwin
+tobytes
 tock
 tock
 TOPK
