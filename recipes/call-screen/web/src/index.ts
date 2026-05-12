@@ -5,6 +5,9 @@ import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 import { AudioStream } from './audio_stream';
 import { Action, promptFromAction, isTerminalFromAction, allActions } from './action';
 
+const MIN_DB = -40.0;
+const MAX_DB = 0.0;
+
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 type PvObject = {
@@ -14,28 +17,31 @@ type PvObject = {
   rhino: RhinoWorker,
   action: Action,
   username: string,
-  transcript: string,
 };
 
 let object: PvObject | null = null;
+
+var triggerAudioCallback = (_: Int16Array) => {};
 
 var cheetahPcmBuffer = new Int16Array();
 const BufferedCheetahEngine = {
   onmessage: function(e: any) {
     switch (e.data.command) {
-        case 'process':
-            var tempPcmBuffer = new Int16Array(cheetahPcmBuffer.length + e.data.inputFrame.length);
-            tempPcmBuffer.set(cheetahPcmBuffer);
-            tempPcmBuffer.set(e.data.inputFrame, cheetahPcmBuffer.length);
-            cheetahPcmBuffer = tempPcmBuffer
+      case 'process':
+        triggerAudioCallback(e.data.inputFrame);
 
-            if (object !== null) {
-              while (cheetahPcmBuffer.length >= object!.cheetah.frameLength) {
-                object!.cheetah.process(cheetahPcmBuffer.slice(0, object!.cheetah.frameLength));
-                cheetahPcmBuffer = cheetahPcmBuffer.slice(object!.cheetah.frameLength)
-              }
-            }
-            break;
+        var tempPcmBuffer = new Int16Array(cheetahPcmBuffer.length + e.data.inputFrame.length);
+        tempPcmBuffer.set(cheetahPcmBuffer);
+        tempPcmBuffer.set(e.data.inputFrame, cheetahPcmBuffer.length);
+        cheetahPcmBuffer = tempPcmBuffer
+
+        if (object !== null) {
+          while (cheetahPcmBuffer.length >= object!.cheetah.frameLength) {
+            object!.cheetah.process(cheetahPcmBuffer.slice(0, object!.cheetah.frameLength));
+            cheetahPcmBuffer = cheetahPcmBuffer.slice(object!.cheetah.frameLength)
+          }
+        }
+        break;
     }
   }
 }
@@ -44,17 +50,19 @@ var rhinoPcmBuffer = new Int16Array();
 const BufferedRhinoEngine = {
   onmessage: function(e: any) {
     switch (e.data.command) {
-        case 'process':
-            var tempPcmBuffer = new Int16Array(rhinoPcmBuffer.length + e.data.inputFrame.length);
-            tempPcmBuffer.set(rhinoPcmBuffer);
-            tempPcmBuffer.set(e.data.inputFrame, rhinoPcmBuffer.length);
-            rhinoPcmBuffer = tempPcmBuffer
+      case 'process':
+        triggerAudioCallback(e.data.inputFrame);
 
-            if (object !== null && rhinoPcmBuffer.length >= object!.rhino.frameLength) {
-              object!.rhino.process(rhinoPcmBuffer.slice(0, object!.rhino.frameLength));
-              rhinoPcmBuffer = rhinoPcmBuffer.slice(object!.rhino.frameLength)
-            }
-            break;
+        var tempPcmBuffer = new Int16Array(rhinoPcmBuffer.length + e.data.inputFrame.length);
+        tempPcmBuffer.set(rhinoPcmBuffer);
+        tempPcmBuffer.set(e.data.inputFrame, rhinoPcmBuffer.length);
+        rhinoPcmBuffer = tempPcmBuffer
+
+        if (object !== null && rhinoPcmBuffer.length >= object!.rhino.frameLength) {
+          object!.rhino.process(rhinoPcmBuffer.slice(0, object!.rhino.frameLength));
+          rhinoPcmBuffer = rhinoPcmBuffer.slice(object!.rhino.frameLength)
+        }
+        break;
     }
   }
 }
@@ -62,21 +70,33 @@ const BufferedRhinoEngine = {
 const init = async (
   accessKey: string,
   username: string,
-  sendState: (message: string, obj: any) => void,
+  sendMessage: (message: string, obj: any) => void,
   makeRequest: (message: string) => any,
+  onVolumeCallback: (volume: number) => void,
 ): Promise<null | (() => Promise<void>)> => {
 
-  sendState("ai state", "AI: Connecting caller");
+  triggerAudioCallback = (frame: Int16Array) => {
+    let sum = 0;
+    for (let i = 0; i < frame.length; i++) {
+      sum += Math.pow(frame[i], 2);
+    }
+    const rms = sum / frame.length / Math.pow(32767, 2);
+    const db = 10 * Math.log10(Math.max(rms, 1e-9));
+    const normalized = (db - MIN_DB) / (MAX_DB - MIN_DB);
+    const normalizedVolume = Math.max(0.0, Math.min(1.0, normalized));
+
+    onVolumeCallback(normalizedVolume);
+  }
 
   const resetDemo = async () => {
     object!.audio.clear();
 
-    sendState("ai state", "");
+    sendMessage("ai state", "");
 
     await stopListenForCaller();
     await stopGiveUserOptions();
 
-    sendState("restart demo", null);
+    sendMessage("restart demo", null);
   };
 
   const speakToCaller = async () => {
@@ -89,8 +109,8 @@ const init = async (
     object!.audio.stream(synthesis.pcm);
     object!.audio.play();
 
-    sendState("ai state", "AI: Speaking to caller");
-    sendState("new ai bubble", "[AI] ");
+    sendMessage("ai state", "AI: Speaking to caller");
+    sendMessage("new ai bubble", "[AI] ");
 
     for (let alignment of alignments) {
       const index = alignments.indexOf(alignment);
@@ -102,14 +122,14 @@ const init = async (
       }
 
       setTimeout(() => {
-        sendState("add to bubble", word);
+        sendMessage("add to bubble", word);
       }, alignment.startSec * 1000);
     }
 
     await object!.audio.waitPlayback();
 
     if (isTerminalFromAction(object!.action)) {
-      await sleep(1500);
+      await sleep(1700);
       resetDemo();
     } else {
       listenForCaller();
@@ -117,26 +137,26 @@ const init = async (
   };
 
   const listenForCaller = async () => {
-    sendState("new caller bubble", "[CALLER] ");
-    sendState("ai state", "AI: Listening to caller");
+    sendMessage("new caller bubble", "[CALLER] ");
+    sendMessage("start listening", null);
+    sendMessage("ai state", "AI: Listening to caller");
 
     const cheetah = BufferedCheetahEngine;
     await WebVoiceProcessor.subscribe(cheetah);
   };
-
   const stopListenForCaller = async () => {
+    sendMessage("stop listening", null);
     const cheetah = BufferedCheetahEngine;
     await WebVoiceProcessor.unsubscribe(cheetah);
   };
 
   const giveUserOptions = async () => {
-    sendState("give user options", allActions());
-    sendState("ai state", "AI: Listening for " + object!.username + "'s command");
+    sendMessage("give user options", allActions());
+    sendMessage("ai state", "AI: Listening for " + object!.username + "'s command");
 
     const rhino = BufferedRhinoEngine;
     await WebVoiceProcessor.subscribe(rhino);
   };
-
   const stopGiveUserOptions = async () => {
     const rhino = BufferedRhinoEngine;
     await WebVoiceProcessor.unsubscribe(rhino);
@@ -146,11 +166,11 @@ const init = async (
     transcript: CheetahTranscript
   ): Promise<void> => {
     if (transcript.transcript.length > 0) {
-      sendState("add to bubble", transcript.transcript);
+      sendMessage("add to bubble", transcript.transcript);
     }
 
     if (transcript.isEndpoint) {
-      sendState("add to bubble", " ");
+      sendMessage("add to bubble", " ");
       const cheetah = object!.cheetah;
       cheetah.flush();
     }
@@ -173,17 +193,17 @@ const init = async (
       object!.action = inference.slots!.action as Action;
 
       await stopGiveUserOptions();
-      sendState("select option", object!.action);
+      sendMessage("select option", object!.action);
 
       setTimeout(() => { speakToCaller(); }, 600);
     } else {
-      sendState("unknown user option", 1000);
+      sendMessage("unknown user option", 1000);
     }
   };
 
   const ATTEMPT = 100 * 1001;
 
-  sendState("status", "Loading Cheetah");
+  sendMessage("status", "Loading Cheetah");
   const cheetah = await CheetahWorker.create(
     accessKey,
     transcriptCallback,
@@ -198,7 +218,7 @@ const init = async (
     }
   );
 
-  sendState("status", "Loading Orca");
+  sendMessage("status", "Loading Orca");
   const orca = await OrcaWorker.create(
     accessKey,
     {
@@ -208,7 +228,7 @@ const init = async (
     {}
   );
 
-  sendState("status", "Loading Rhino");
+  sendMessage("status", "Loading Rhino");
   const rhino = await RhinoWorker.create(
     accessKey,
     { publicPath: 'models/call_screen_demo_web.rhn',
@@ -218,7 +238,8 @@ const init = async (
       version: ATTEMPT },
   );
 
-  sendState("status", "Loading Audio Stream");
+  sendMessage("ai state", "AI: Connecting caller");
+  sendMessage("status", "Loading Audio Stream");
   const audio = new AudioStream(orca.sampleRate);
 
   object = {
@@ -228,7 +249,6 @@ const init = async (
     rhino: rhino,
     action: Action.GREET,
     username: username,
-    transcript: "",
   };
 
   return () => speakToCaller();
@@ -259,6 +279,7 @@ const release = async () => {
 };
 
 export default {
+  sleep,
   init,
   release
 };

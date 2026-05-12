@@ -5,46 +5,49 @@
   <script type="application/javascript" src="controller.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
-<body style="display: flex; flex-direction: column;">
-  <h1 style="text-align: center; color: var(--brand-primary); margin: 48px auto;">Call Screen</h1>
+<body>
+  <h1>Call Screen</h1>
 
   <div id="error-container" style="display: none;">
-    <div id="error" style="white-space: pre; display: none;"></div>
+    <div id="error" style="white-space: pre;"></div>
   </div>
 
-  <div style="width: 980px; margin: auto; flex-grow: 1; display: flex; flex-direction: row;">
+  <div id="main-container">
     <div id="chat-block-container">
-      <div style="text-align: center; width: calc(100% - 16px); font-weight: bolder; font-size: 16px; padding: 8px; border-bottom: 2px solid #ccc; color: #222;">
-        Incoming Call
-      </div>
+      <div class="header">Incoming Call</div>
 
       <div id="chat-block">
       </div>
 
-      <div id="ai-state" style="margin-top: auto; text-align: center; font-weight: bolder; font-size: 16px; padding: 8px; color: #222;">
+      <div id="volume-meter-caller" style="opacity: 0;">
+        <div class="volume-bar" id="bar1"></div>
+        <div class="volume-bar" id="bar2"></div>
+        <div class="volume-bar" id="bar3"></div>
+      </div>
+
+      <div id="ai-state">
       </div>
     </div>
     
-    <div id="initBlock">
-      <div style="display: flex; flex-direction: row; justify-content: end; align-items: center; justify-items: start; gap: 8px;">
-        <label for="accessKey" style="text-align: right; font-size: 17px; white-space: nowrap;">
-          <code style="background-color: #eee; padding: 4px; border-radius: 2px; font-size: 0.92em;">AccessKey</code> from
-          <a href="https://console.picovoice.ai/">Picovoice Console</a>
+    <div id="user-block">
+      <div id="access-key-container">
+        <label for="access-key">
+          <code>AccessKey</code> from <a href="https://console.picovoice.ai/">Picovoice Console</a>
         </label>
-        <input style="padding: 4px 4px; border-radius: 4px; border: 2px solid #ccc; font-family: monospace; font-size: 12px; width: 40%;flex-shrink: 0; color: #444;" type="text" id="accessKey" name="accessKey"/>
+        <input type="text" id="access-key" name="access-key"/>
       </div>
 
-      <div style="display: flex; flex-direction: row; justify-content: end; align-items: center; justify-items: start; text-align: center; margin-top: 8px; gap: 8px;">
-        <label for="accessKey" style="text-align: right; font-size: 17px;">Your name</label>
-        <input style="padding: 4px 4px; border-radius: 4px; border: 2px solid #ccc; font-family: monospace; font-size: 12px; color: #444; width: 40%;flex-shrink: 0;" type="text" id="name" name="name"/>
+      <div id="name-container">
+        <label for="name">Your name</label>
+        <input type="text" id="name" name="name" />
       </div>
 
       <button id="init" disabled>
         Start Demo 
-        <span id="initButtonTooltip" class="tooltip"></span>
+        <span id="init-button-tooltip" class="tooltip"></span>
       </button>
 
-      <div id="status-container" style="margin-top: 12px;">
+      <div id="status-container">
         <span id="status"></span>
         <span id="dotdotdot" style="white-space: pre;"></span>
       </div>
@@ -55,8 +58,14 @@
         <div id="hud-options">
         </div>
 
-        <div id="hud-temp" style="color: var(--brand-primary);"></div>
-        <span id="hud-dotdotdot" style="white-space: pre;"></span>
+        <div id="volume-meter-user" style="opacity: 0;">
+          <div class="volume-bar" id="bar4"></div>
+          <div class="volume-bar" id="bar5"></div>
+          <div class="volume-bar" id="bar6"></div>
+        </div>
+
+        <div id="hud-temp">
+        </div>
       </div>
     </div>
   </div>

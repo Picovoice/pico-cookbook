@@ -1,5 +1,3 @@
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
 function sanitizeForOrca(str) {
   replacements = {
     "\n": " ",
@@ -26,6 +24,7 @@ window.onload = () => {
 
   let dotIdx = 0;
   let dotInterval = null;
+  let bubbleDotInterval = null;
 
   const statusContainer = document.getElementById("status-container");
   const status = document.getElementById("status");
@@ -34,29 +33,67 @@ window.onload = () => {
   const dotdotdot = document.getElementById("dotdotdot");
 
   const chatBlock = document.getElementById("chat-block");
+  const volumeMeterCaller = document.getElementById('volume-meter-caller');
+  const bar1 = document.getElementById('bar1');
+  const bar2 = document.getElementById('bar2');
+  const bar3 = document.getElementById('bar3');
   const aiState = document.getElementById("ai-state");
 
-  const accessKey = document.getElementById("accessKey");
+  const accessKey = document.getElementById("access-key");
   const name = document.getElementById("name");
   const initButton = document.getElementById("init");
-  const initButtonTooltip = document.getElementById("initButtonTooltip");
+  const initButtonTooltip = document.getElementById("init-button-tooltip");
 
   const hudContainer = document.getElementById("hud-container");
   const hudOptions = document.getElementById("hud-options");
   const hudTemp = document.getElementById("hud-temp");
+  const volumeMeterUser = document.getElementById('volume-meter-user');
+  const bar4 = document.getElementById('bar4');
+  const bar5 = document.getElementById('bar5');
+  const bar6 = document.getElementById('bar6');
 
   const writeError = (errorString) => {
     errorContainer.style.display = 'block';
-    error.style.display = 'block';
     error.innerText = `Error: ${errorString}`;
     writeStatus("Error");
   };
 
   const writeStatus = (statusString) => {
     statusContainer.style.display = 'block';
-    status.style.display = 'inline';
     status.innerText = statusString;
   };
+
+  // -----------------------------------------
+
+  const startDot = () => {
+    if (dotInterval) {
+      clearInterval(dotInterval);
+    }
+    dotInterval = setInterval(() => {
+      dotIdx = (dotIdx + 1) % ANIMATION_FRAMES.length;
+      dotdotdot.innerText = ANIMATION_FRAMES[dotIdx];
+    }, 200);
+  }
+  const stopDot = () => {
+    if (dotInterval) {
+      clearInterval(dotInterval);
+    }
+    dotIdx = 0;
+    dotdotdot.innerText = '';
+  }
+
+  const onVolumeCallback = volume => {
+    const baseHeight = 8;
+    bar1.style.height = `${baseHeight + volume * 20}px`;
+    bar2.style.height = `${baseHeight + volume * 32}px`;
+    bar3.style.height = `${baseHeight + volume * 24}px`;
+
+    bar4.style.height = `${baseHeight + volume * 20}px`;
+    bar5.style.height = `${baseHeight + volume * 32}px`;
+    bar6.style.height = `${baseHeight + volume * 24}px`;
+  };
+
+  // -----------------------------------------
 
   const enableInitButton = _ => {
     let isValid = (accessKey.value.length > 0) && (sanitizeForOrca(name.value).replaceAll(" ", "").length > 0);
@@ -74,38 +111,7 @@ window.onload = () => {
   accessKey.addEventListener("input", enableInitButton);
   name.addEventListener("input", enableInitButton);
 
-  //let animationIndex = 0;
-  //const animationElement = document.createElement("span");
-  /*const animationInterval = setInterval(() => {
-    const frame = ANIMATION_FRAMES[animationIndex];
-    animationElement.innerText = ` ${frame} `;
-    animationIndex = (animationIndex + 1) % ANIMATION_FRAMES.length;
-  }, 500);
-  const state = {
-    bubbleElem: null,
-    upperElem: null,
-    lowerElem: null,
-    upperTextElem: null,
-    lowerTextElem: null,
-  };*/
-
-  const startDot = () => {
-    if (dotInterval) {
-      clearInterval(dotInterval);
-    }
-    dotInterval = setInterval(() => {
-      dotIdx = (dotIdx + 1) % ANIMATION_FRAMES.length;
-      dotdotdot.innerText = ANIMATION_FRAMES[dotIdx];
-    }, 100);
-  }
-
-  const stopDot = () => {
-    if (dotInterval) {
-      clearInterval(dotInterval);
-    }
-    dotIdx = 0;
-    dotdotdot.innerText = '';
-  }
+  // -----------------------------------------
 
   let hudFadeoutTimeoutHandle = null;
   let hudFadeoutEndStateFunction = null;
@@ -113,7 +119,7 @@ window.onload = () => {
 
   const restartDemo = async () => {
     chatBlock.style.opacity = "0";
-    await sleep(400);
+    await Picovoice.sleep(400);
     
     chatBlock.replaceChildren();
     chatBlock.style.opacity = "1";
@@ -131,7 +137,35 @@ window.onload = () => {
     initButton.disabled = false;
     initButton.removeAttribute("disabled");
     initButton.setAttribute("coloured", "");
+
+    await Picovoice.release();
   };
+
+  let currentBubbleText = "";
+  let currentBubbleDots = "";
+
+  const startBubbleDot = () => {
+    if (bubbleDotInterval) {
+      clearInterval(bubbleDotInterval);
+    }
+    bubbleDotInterval = setInterval(() => {
+      dotIdx = (dotIdx + 1) % ANIMATION_FRAMES.length;
+      currentBubbleDots = ANIMATION_FRAMES[dotIdx];
+
+      chatBlock.lastElementChild.innerHTML = currentBubbleText + currentBubbleDots;
+    }, 200);
+  }
+  const stopBubbleDot = () => {
+    if (bubbleDotInterval) {
+      clearInterval(bubbleDotInterval);
+    }
+    dotIdx = 0;
+    currentBubbleDots = '';
+  
+    chatBlock.lastElementChild.innerHTML = currentBubbleText;
+  }
+
+  // -----------------------------------------
 
   const sendMessage = (message, obj) => {
     if (message === "status") {
@@ -140,7 +174,11 @@ window.onload = () => {
 
     } else if (message === "add to bubble") {
       let text = obj;
-      chatBlock.lastElementChild.innerHTML += text;
+      if (text.length === 0)
+        return;
+
+      currentBubbleText += text;
+      chatBlock.lastElementChild.innerHTML = currentBubbleText + currentBubbleDots;
       if (chatBlock.lastElementChild.innerHTML.length > 0) {
         chatBlock.lastElementChild.style.opacity = "1";
       }
@@ -155,6 +193,7 @@ window.onload = () => {
         bubble.style.opacity = "1";
       }
 
+      currentBubbleText = text;
       chatBlock.appendChild(bubble);
 
     } else if (message === "new ai bubble") {
@@ -167,9 +206,19 @@ window.onload = () => {
         bubble.style.opacity = "1";
       }
 
+      currentBubbleText = text;
       chatBlock.appendChild(bubble);
 
+    } else if (message === "start listening") {
+      volumeMeterCaller.style.opacity = "1";
+      startBubbleDot();
+
+    } else if (message === "stop listening") {
+      volumeMeterCaller.style.opacity = "0";
+      stopBubbleDot();
+
     } else if (message === "give user options") {
+      volumeMeterUser.style.opacity = "1";
       let text = obj;
 
       hudTemp.innerHTML = "";
@@ -194,9 +243,8 @@ window.onload = () => {
 
       hudContainer.style.opacity = "1";
 
-      // TODO: display a dotdotdot?
-      
     } else if (message === "select option") {
+      volumeMeterUser.style.opacity = "0";
       let text = obj;
 
       let element = document.getElementById("option-" + text.replace(" ", "_").toLowerCase());
@@ -212,14 +260,22 @@ window.onload = () => {
 
     } else if (message === "unknown user option") {
       let timeoutMs = obj;
-      hudTemp.innerHTML = "Unknown Action";
 
-      if (hudTempTimeoutHandle != null) {
+      if (hudTempTimeoutHandle) {
         clearTimeout(hudTempTimeoutHandle);
+        hudTemp.innerHTML = "";
+        hudTemp.style.opacity = "1";
       }
 
+      hudTemp.innerHTML = "Unknown Action";
+
       hudTempTimeoutHandle = setTimeout(
-        () => { hudTemp.innerHTML = ""; },
+        async () => {
+          hudTemp.style.opacity = "0";
+          await sleep(200);
+          hudTemp.innerHTML = "";
+          hudTemp.style.opacity = "1";
+        },
         timeoutMs);
 
     } else if (message === "ai state") {
@@ -259,7 +315,8 @@ window.onload = () => {
         accessKey.value,
         sanitizeForOrca(name.value),
         sendMessage,
-        makeRequest
+        makeRequest,
+        onVolumeCallback,
       );
 
     } catch (e) {
@@ -268,11 +325,13 @@ window.onload = () => {
       stopDot();
     }
 
+    if (start === null) {
+      return;
+    }
+
     try {
-      if (start !== null) {
-        writeStatus("");
-        await start();
-      }
+      writeStatus("");
+      await start();
     } catch (e) {
       writeError(e.message);
     }
