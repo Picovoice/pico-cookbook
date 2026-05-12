@@ -99,9 +99,8 @@ const init = async (
   const stream = await orca.streamOpen();
 
   const mutex = new Mutex();
+  const streamMutex = new Mutex();
   let transcripts: string[] = [];
-  let synthesized = 0;
-  let stopTokens = 0;
 
   const stopPhrases = [
     '</s>', // Llama-2, Mistral
@@ -124,13 +123,12 @@ const init = async (
       streamCallback: async token => {
         if (!stopPhrases.includes(token)) {
           onText(token);
+          const streamRelease = await streamMutex.acquire();
           const pcm = await stream.synthesize(token);
-          synthesized++;
           if (pcm !== null) {
             onStream(pcm);
           }
-        } else {
-          stopTokens++;
+          streamRelease();
         }
       }
     });
@@ -139,22 +137,12 @@ const init = async (
 
     dialog.addLLMResponse(completion);
 
-    const waitForSynthesize = (): Promise<void> => new Promise<void>(resolve => {
-      const interval = setInterval(() => {
-        if ((synthesized === (completionTokens.length - stopTokens)) || endpoint === PicoLLMEndpoint.INTERRUPTED) {
-          clearInterval(interval);
-          resolve();
-        }
-      }, 100);
-    });
-
-    await waitForSynthesize();
+    const streamRelease = await streamMutex.acquire();
     const pcm = await stream.flush();
     if (pcm !== null) {
       onStream(pcm);
     }
-    synthesized = 0;
-    stopTokens = 0;
+    streamRelease();
 
     const interrupted = (endpoint === PicoLLMEndpoint.INTERRUPTED);
     await onComplete(interrupted);
