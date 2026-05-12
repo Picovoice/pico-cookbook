@@ -347,7 +347,8 @@ namespace LLMVoiceAssistant
                 Channel<string> completionChannel = Channel.CreateUnbounded<string>();
                 void OnPartialCompletion(object? _, string completion)
                 {
-                    if (completion.Length > 0) {
+                    if (completion.Length > 0)
+                    {
                         completionChannel.Writer.TryWrite(completion);
                     }
                 }
