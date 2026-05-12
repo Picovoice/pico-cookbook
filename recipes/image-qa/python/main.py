@@ -1,6 +1,7 @@
 import queue
 import re
 import shutil
+import signal
 import sys
 from argparse import ArgumentParser
 from threading import (
@@ -23,7 +24,12 @@ from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
 
 
-def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str = '\n') -> Tuple[Event, Thread]:
+def print_async(
+        get_text: Callable[[], str],
+        stop_requested: Event,
+        refresh_sec: float = 0.1,
+        end: str = '\n',
+) -> Tuple[Event, Thread]:
     stop_event = Event()
 
     def wrap_text(text: str, width: int) -> list[str]:
@@ -58,7 +64,7 @@ def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str 
         sys.stdout.flush()
 
         try:
-            while not stop_event.is_set():
+            while not stop_event.is_set() and not stop_requested.is_set():
                 text = get_text()
                 dots = dots_list[i]
 
@@ -88,7 +94,7 @@ def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str 
             sys.stdout.write("\033[?25h")
             sys.stdout.flush()
 
-    thread = Thread(target=run, daemon=True)
+    thread = Thread(target=run)
     thread.start()
     return stop_event, thread
 
@@ -122,6 +128,7 @@ def stream_answer(
         speaker: PvSpeaker,
         question: str,
         image: Image.Image,
+        stop_requested: Event,
 ) -> str:
     text_queue: queue.Queue[Optional[str]] = queue.Queue()
     tts_error_queue: queue.Queue[BaseException] = queue.Queue()
@@ -149,8 +156,12 @@ def stream_answer(
 
     def update_progress(x: float) -> None:
         nonlocal progress
+
+        if stop_requested.is_set():
+            return
+
         with progress_lock:
-            progress = f"{x:.2f}%"
+            progress = f"Analyzing {x:.2f}%"
 
     def pop_speakable_text(force: bool = False) -> str:
         nonlocal pending_speech_text
@@ -191,8 +202,17 @@ def stream_answer(
             stream = orca.stream_open()
 
             while True:
-                text = text_queue.get()
+                try:
+                    text = text_queue.get(timeout=0.1)
+                except queue.Empty:
+                    if stop_requested.is_set():
+                        break
+                    continue
+
                 if text is None:
+                    break
+
+                if stop_requested.is_set():
                     break
 
                 speech_text = sanitize_for_orca(
@@ -203,12 +223,13 @@ def stream_answer(
                     continue
 
                 pcm = stream.synthesize(speech_text)
-                if pcm is not None and len(pcm) > 0:
+                if pcm is not None and len(pcm) > 0 and not stop_requested.is_set():
                     speaker.flush(pcm)
 
-            pcm = stream.flush()
-            if pcm is not None and len(pcm) > 0:
-                speaker.flush(pcm)
+            if not stop_requested.is_set():
+                pcm = stream.flush()
+                if pcm is not None and len(pcm) > 0:
+                    speaker.flush(pcm)
 
         except BaseException as e:
             tts_error_queue.put(e)
@@ -221,6 +242,9 @@ def stream_answer(
         nonlocal answer
         nonlocal pending_speech_text
 
+        if stop_requested.is_set():
+            return
+
         text = text.replace('<|im_end|>', '')
         if len(text) == 0:
             return
@@ -231,15 +255,18 @@ def stream_answer(
         with pending_speech_lock:
             pending_speech_text += text
 
-        while True:
+        while not stop_requested.is_set():
             speakable_text = pop_speakable_text(force=False)
             if len(speakable_text) == 0:
                 break
 
             text_queue.put(speakable_text)
 
-    answer_event, answer_thread = print_async(get_answer)
-    tts_thread = Thread(target=tts_worker, daemon=True)
+    answer_event, answer_thread = print_async(
+        get_text=get_answer,
+        stop_requested=stop_requested)
+
+    tts_thread = Thread(target=tts_worker)
     tts_thread.start()
 
     try:
@@ -254,35 +281,41 @@ def stream_answer(
             prompt_progress_callback=update_progress,
             stream_callback=on_llm_stream)
 
-        final_answer = completion.completion.strip().replace('<|im_end|>', '')
+        if not stop_requested.is_set():
+            final_answer = completion.completion.strip().replace('<|im_end|>', '')
 
-        with answer_lock:
-            if len(final_answer) > 0:
-                answer = final_answer
-            elif len(answer.strip()) == 0:
-                answer = "I don't know."
+            with answer_lock:
+                if len(final_answer) > 0:
+                    answer = final_answer
+                elif len(answer.strip()) == 0:
+                    answer = "I don't know."
 
-        remaining_speech_text = pop_speakable_text(force=True)
-        if len(remaining_speech_text) > 0:
-            text_queue.put(remaining_speech_text)
+            remaining_speech_text = pop_speakable_text(force=True)
+            if len(remaining_speech_text) > 0:
+                text_queue.put(remaining_speech_text)
 
         text_queue.put(None)
-        tts_thread.join()
-
-        if not tts_error_queue.empty():
-            raise tts_error_queue.get()
 
         answer_event.set()
         answer_thread.join()
+
+        tts_thread.join()
+
+        if not stop_requested.is_set() and not tts_error_queue.empty():
+            raise tts_error_queue.get()
 
         with answer_lock:
             return answer.strip()
 
     except BaseException:
+        stop_requested.set()
         text_queue.put(None)
-        tts_thread.join(timeout=1.0)
+
         answer_event.set()
         answer_thread.join()
+
+        tts_thread.join()
+
         raise
 
 
@@ -321,6 +354,15 @@ def main() -> None:
     endpoint_duration_sec = args.endpoint_duration_sec
     picollm_device = args.picollm_device
 
+    stop_requested = Event()
+    previous_sigint_handler = signal.getsignal(signal.SIGINT)
+
+    def handle_sigint(_, __) -> None:
+        if not stop_requested.is_set():
+            stop_requested.set()
+
+    signal.signal(signal.SIGINT, handle_sigint)
+
     cheetah = None
     vlm = None
     orca = None
@@ -354,7 +396,7 @@ def main() -> None:
 
         image = Image.open(image_path).convert("RGB")
 
-        while True:
+        while not stop_requested.is_set():
             question = ""
             question_lock = Lock()
 
@@ -363,23 +405,31 @@ def main() -> None:
                     display_question = "(listening)" if question == "" else question
                     return f"[Q] {display_question}"
 
-            question_event, question_thread = print_async(get_question)
+            question_event, question_thread = print_async(
+                get_text=get_question,
+                stop_requested=stop_requested)
 
-            while True:
-                partial, is_endpoint = cheetah.process(recorder.read())
-                with question_lock:
-                    question += partial
-
-                if is_endpoint:
-                    remainder = cheetah.flush()
+            try:
+                while not stop_requested.is_set():
+                    partial, is_endpoint = cheetah.process(recorder.read())
                     with question_lock:
-                        question += remainder
+                        question += partial
 
-                    if len(question) > 0:
-                        break
+                    if is_endpoint:
+                        remainder = cheetah.flush()
+                        with question_lock:
+                            question += remainder
 
-            question_event.set()
-            question_thread.join()
+                        if len(question.strip()) > 0:
+                            break
+
+            finally:
+                question_event.set()
+                question_thread.join()
+
+            if stop_requested.is_set():
+                break
+
             recorder.stop()
 
             stream_answer(
@@ -387,24 +437,26 @@ def main() -> None:
                 orca=orca,
                 speaker=speaker,
                 question=question,
-                image=image)
+                image=image,
+                stop_requested=stop_requested)
 
-            recorder.start()
-
+            if not stop_requested.is_set():
+                recorder.start()
     except KeyboardInterrupt:
-        pass
-
+        stop_requested.set()
     finally:
+        stop_requested.set()
+
         sys.stdout.write("\033[?25h")
         sys.stdout.flush()
-
-        if speaker is not None:
-            speaker.stop()
-            speaker.delete()
 
         if recorder is not None:
             recorder.stop()
             recorder.delete()
+
+        if speaker is not None:
+            speaker.stop()
+            speaker.delete()
 
         if orca is not None:
             orca.delete()
@@ -414,6 +466,8 @@ def main() -> None:
 
         if cheetah is not None:
             cheetah.delete()
+
+        signal.signal(signal.SIGINT, previous_sigint_handler)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 import queue
 import re
 import shutil
+import signal
 import sys
 from argparse import ArgumentParser
 from threading import (
@@ -23,7 +24,12 @@ from pvorca import Orca
 from pvspeaker import PvSpeaker
 
 
-def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str = '\n') -> Tuple[Event, Thread]:
+def print_async(
+        get_text: Callable[[], str],
+        stop_requested: Event,
+        refresh_sec: float = 0.1,
+        end: str = '\n',
+) -> Tuple[Event, Thread]:
     stop_event = Event()
 
     def wrap_text(text: str, width: int) -> list[str]:
@@ -58,7 +64,7 @@ def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str 
         sys.stdout.flush()
 
         try:
-            while not stop_event.is_set():
+            while not stop_event.is_set() and not stop_requested.is_set():
                 text = get_text()
                 dots = dots_list[i]
 
@@ -88,7 +94,7 @@ def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str 
             sys.stdout.write("\033[?25h")
             sys.stdout.flush()
 
-    thread = Thread(target=run, daemon=True)
+    thread = Thread(target=run)
     thread.start()
     return stop_event, thread
 
@@ -121,6 +127,7 @@ def stream_ocr_result(
         orca: Orca,
         speaker: PvSpeaker,
         image: Image.Image,
+        stop_requested: Event,
 ) -> str:
     text_queue: queue.Queue[Optional[str]] = queue.Queue()
     tts_error_queue: queue.Queue[BaseException] = queue.Queue()
@@ -148,8 +155,12 @@ def stream_ocr_result(
 
     def update_progress(x: float) -> None:
         nonlocal progress
+
+        if stop_requested.is_set():
+            return
+
         with progress_lock:
-            progress = f"{x:.2f}%"
+            progress = f"Analyzing {x:.2f}%"
 
     def pop_speakable_text(force: bool = False) -> str:
         nonlocal pending_speech_text
@@ -190,8 +201,17 @@ def stream_ocr_result(
             stream = orca.stream_open()
 
             while True:
-                text = text_queue.get()
+                try:
+                    text = text_queue.get(timeout=0.1)
+                except queue.Empty:
+                    if stop_requested.is_set():
+                        break
+                    continue
+
                 if text is None:
+                    break
+
+                if stop_requested.is_set():
                     break
 
                 speech_text = sanitize_for_orca(
@@ -202,12 +222,13 @@ def stream_ocr_result(
                     continue
 
                 pcm = stream.synthesize(speech_text)
-                if pcm is not None and len(pcm) > 0:
+                if pcm is not None and len(pcm) > 0 and not stop_requested.is_set():
                     speaker.flush(pcm)
 
-            pcm = stream.flush()
-            if pcm is not None and len(pcm) > 0:
-                speaker.flush(pcm)
+            if not stop_requested.is_set():
+                pcm = stream.flush()
+                if pcm is not None and len(pcm) > 0:
+                    speaker.flush(pcm)
 
         except BaseException as e:
             tts_error_queue.put(e)
@@ -219,6 +240,9 @@ def stream_ocr_result(
     def on_ocr_stream(text: str) -> None:
         nonlocal extracted_text
         nonlocal pending_speech_text
+
+        if stop_requested.is_set():
+            return
 
         text = (
             text
@@ -234,15 +258,18 @@ def stream_ocr_result(
         with pending_speech_lock:
             pending_speech_text += text
 
-        while True:
+        while not stop_requested.is_set():
             speakable_text = pop_speakable_text(force=False)
             if len(speakable_text) == 0:
                 break
 
             text_queue.put(speakable_text)
 
-    ocr_event, ocr_thread = print_async(get_extracted_text)
-    tts_thread = Thread(target=tts_worker, daemon=True)
+    ocr_event, ocr_thread = print_async(
+        get_text=get_extracted_text,
+        stop_requested=stop_requested)
+
+    tts_thread = Thread(target=tts_worker)
     tts_thread.start()
 
     try:
@@ -253,40 +280,46 @@ def stream_ocr_result(
             stream_callback=on_ocr_stream,
             prompt_progress_callback=update_progress)
 
-        final_text = (
-            completion.completion
-            .strip()
-            .replace('<|im_end|>', '')
-            .replace('<｜end▁of▁sentence｜>', '')
-        )
+        if not stop_requested.is_set():
+            final_text = (
+                completion.completion
+                .strip()
+                .replace('<|im_end|>', '')
+                .replace('<｜end▁of▁sentence｜>', '')
+            )
 
-        with extracted_text_lock:
-            if len(final_text) > 0:
-                extracted_text = final_text
-            elif len(extracted_text.strip()) == 0:
-                extracted_text = "No text was detected."
+            with extracted_text_lock:
+                if len(final_text) > 0:
+                    extracted_text = final_text
+                elif len(extracted_text.strip()) == 0:
+                    extracted_text = "No text was detected."
 
-        remaining_speech_text = pop_speakable_text(force=True)
-        if len(remaining_speech_text) > 0:
-            text_queue.put(remaining_speech_text)
+            remaining_speech_text = pop_speakable_text(force=True)
+            if len(remaining_speech_text) > 0:
+                text_queue.put(remaining_speech_text)
 
         text_queue.put(None)
-        tts_thread.join()
-
-        if not tts_error_queue.empty():
-            raise tts_error_queue.get()
 
         ocr_event.set()
         ocr_thread.join()
+
+        tts_thread.join()
+
+        if not stop_requested.is_set() and not tts_error_queue.empty():
+            raise tts_error_queue.get()
 
         with extracted_text_lock:
             return extracted_text.strip()
 
     except BaseException:
+        stop_requested.set()
         text_queue.put(None)
-        tts_thread.join(timeout=1.0)
+
         ocr_event.set()
         ocr_thread.join()
+
+        tts_thread.join()
+
         raise
 
 
@@ -319,6 +352,15 @@ def main() -> None:
     image_path = args.image_path
     picollm_device = args.picollm_device
 
+    stop_requested = Event()
+    previous_sigint_handler = signal.getsignal(signal.SIGINT)
+
+    def handle_sigint(_, __) -> None:
+        if not stop_requested.is_set():
+            stop_requested.set()
+
+    signal.signal(signal.SIGINT, handle_sigint)
+
     ocr = None
     orca = None
     speaker = None
@@ -344,12 +386,13 @@ def main() -> None:
             ocr=ocr,
             orca=orca,
             speaker=speaker,
-            image=image)
-
+            image=image,
+            stop_requested=stop_requested)
     except KeyboardInterrupt:
-        pass
-
+        stop_requested.set()
     finally:
+        stop_requested.set()
+
         sys.stdout.write("\033[?25h")
         sys.stdout.flush()
 
@@ -362,6 +405,8 @@ def main() -> None:
 
         if ocr is not None:
             ocr.release()
+
+        signal.signal(signal.SIGINT, previous_sigint_handler)
 
 
 if __name__ == "__main__":
