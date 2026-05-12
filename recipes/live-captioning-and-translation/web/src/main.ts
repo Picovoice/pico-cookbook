@@ -1,5 +1,46 @@
 import { CheetahTranscript, CheetahWorker } from '@picovoice/cheetah-web';
+import { ZebraWorker } from '@picovoice/zebra-web';
 import { AudioStream } from './audio_stream';
+import { Mutex } from 'async-mutex';
+
+const textMutex = new Mutex();
+const translateMutex = new Mutex();
+
+const LANGUAGE_PAIRS: any = {
+  de: [
+    'de',
+    'en',
+    'es',
+    'fr',
+    'it',
+  ],
+  en: [
+    'de',
+    'en',
+    'es',
+    'fr',
+    'it',
+  ],
+  es: [
+    'de',
+    'en',
+    'es',
+    'fr',
+    'it',
+  ],
+  fr: [
+    'de',
+    'en',
+    'es',
+    'fr',
+  ],
+  it: [
+    'de',
+    'en',
+    'es',
+    'it',
+  ]
+};
 
 export enum UIState {
   INIT = 'INIT',
@@ -10,13 +51,13 @@ export enum UIState {
 
 type PvObject = {
   cheetah: CheetahWorker;
-  // TODO: Zebra also
+  zebra: ZebraWorker | null;
   audioStream: AudioStream;
 };
 
 type DemoCallbacks = {
   onStateChange: (state: UIState) => void;
-  onOriginalText: (text: string) => void;
+  onOriginalText: (text: TranscriptLine[]) => void;
   onModifiedText: (text: string) => void;
   onAudioReady: (pcm: Int16Array) => void;
   onVolume: (volume: number) => void;
@@ -25,8 +66,15 @@ type DemoCallbacks = {
 
 let object: PvObject | null = null;
 let currentState = UIState.INIT;
-let memoText = '';
-let enhancedText = '';
+
+type TranscriptLine = {
+  caption: string;
+  translated: string;
+}
+
+let transcriptLines: TranscriptLine[] = [];
+let transcriptQueue = '';
+
 const NO_MEMO_ERROR_PHRASE = 'You need to record a memo first.';
 
 const MIN_DB = -40.0;
@@ -53,7 +101,11 @@ const customAudioEngine = {
   },
 };
 
-const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
+const init = async (
+    accessKey: string,
+    sourceLanguage: string,
+    targetLanguage: string,
+    cb: DemoCallbacks): Promise<void> => {
   if (object !== null) return;
 
   callbacks = cb;
@@ -62,29 +114,68 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
 
   const transcribeCallback = async (transcript: CheetahTranscript) => {
     if (currentState === UIState.CAPTIONING) {
-      memoText += transcript.transcript;
+      const textRelease = await textMutex.acquire();
+      transcriptQueue += transcript.transcript;
 
       if (transcript.isEndpoint) {
         cheetah.flush();
       }
 
-      if (transcript.isFlushed) {
-        memoText = memoText + ' ';
-      }
-
-      callbacks!.onOriginalText(memoText);
+      callbacks!.onModifiedText(transcriptQueue);
+      await translateCallback(transcript.isFlushed ?? false);
+      textRelease();
     }
   };
   const cheetah = await CheetahWorker.create(
     accessKey,
     transcribeCallback,
-    { publicPath: 'models/cheetah_params_en.pv', forceWrite: true },
-    { enableAutomaticPunctuation: true, enableTextNormalization: true }
+    { publicPath: `models/cheetah_params_${sourceLanguage}.pv`, forceWrite: true },
+    {
+      endpointDurationSec: 1,
+      enableAutomaticPunctuation: true,
+      enableTextNormalization: true
+    }
   );
+
+  const translateCallback = async (isFlushed: boolean) => {
+    const hasEndRe = /[.!?](?:\s|$)/;
+    const sentencesRe = /^((?:.*?[.!?](?:\s+|$))+)?(.*)$/s;
+
+    // TODO: Handle flush
+
+    if (transcriptQueue.search(hasEndRe) === -1) {
+      return;
+    }
+
+    const match = transcriptQueue.match(sentencesRe);
+    if (match === null) {
+      return;
+    }
+    const sentences = match![1]
+    const tail = match![2]
+
+    if (zebra !== null && sentences) {
+      const translateRelease = await translateMutex.acquire();
+      const translated = await zebra.translate(sentences);
+      translateRelease();
+
+      transcriptLines.push({ caption: sentences, translated })
+      callbacks!.onOriginalText(transcriptLines);
+    }
+
+    transcriptQueue = tail;
+  }
+  let zebra: ZebraWorker | null = null;
+  if (sourceLanguage !== targetLanguage) {
+    zebra = await ZebraWorker.create(
+      accessKey,
+      { publicPath: `models/zebra_params_${sourceLanguage}_${targetLanguage}.pv`, forceWrite: true },
+    );
+  }
 
   const audioStream = new AudioStream(cheetah.sampleRate);
 
-  object = { cheetah, audioStream };
+  object = { cheetah, zebra, audioStream };
 };
 
 const setState = (state: UIState) => {
@@ -160,10 +251,18 @@ const release = async (): Promise<void> => {
     return;
   }
 
-  const { cheetah } = object;
+  const { cheetah, zebra } = object;
   cheetah.terminate();
+  if (zebra !== null) {
+    zebra!.terminate();
+  }
 
   object = null;
 };
 
-export { init, start, release };
+export {
+  LANGUAGE_PAIRS,
+  init,
+  start,
+  release,
+};

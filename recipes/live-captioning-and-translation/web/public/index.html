@@ -88,7 +88,7 @@
     </style>
   </head>
   <body>
-    <h1>Voice Memo Assistant</h1>
+    <h1>Live Captioning & Translation</h1>
 
     <div id="topStatusBlock">
       <div>
@@ -105,7 +105,29 @@
       <label for="audioFile">Audio File: </label>
       <input type="file" id="audioFile" name="audioFile" />
       <br /><br />
-      <button id="init" disabled>Init Voice Memo Assistant</button>
+      <label for="sourceLanguage">
+        Select source language:
+      </label>
+      <select name="sourceLanguage" id="sourceLanguage">
+        <option value="de">de</option>
+        <option value="en">en</option>
+        <option value="es">es</option>
+        <option value="fr">fr</option>
+        <option value="it">it</option>
+      </select>
+      <br />
+      <label for="targetLanguage">
+        Select target language:
+      </label>
+      <select name="targetLanguage" id="targetLanguage">
+        <option value="de">de</option>
+        <option value="en">en</option>
+        <option value="es">es</option>
+        <option value="fr">fr</option>
+        <option value="it">it</option>
+      </select>
+      <br /><br />
+      <button id="init" disabled>Start demo</button>
     </div>
 
     <div id="appBlock">
@@ -114,12 +136,8 @@
         <div class="result-container">
           <pre id="originalText" class="result-text"></pre>
         </div>
-
-        <div id="modifiedContainer" style="display: none; margin-top: 15px">
-          <h3 id="modifiedTitle">Modified:</h3>
-          <div class="result-container">
-            <pre id="modifiedText" class="result-text"></pre>
-          </div>
+        <div class="result-container">
+          <pre id="modifiedText" class="result-text"></pre>
         </div>
       </div>
 

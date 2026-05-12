@@ -3,6 +3,8 @@ window.onload = () => {
   const initButton = document.getElementById('init');
 
   const fileSelector = document.getElementById('audioFile');
+  const sourceLanguage = document.getElementById('sourceLanguage');
+  const targetLanguage = document.getElementById('targetLanguage');
 
   const topStatusBlock = document.getElementById('topStatusBlock');
   const topStatus = document.getElementById('topStatus');
@@ -64,23 +66,38 @@ window.onload = () => {
     }
   };
 
+  const onOriginalText = transcriptLines => {
+    let transcriptText = ""
+    for (const line of transcriptLines) {
+      transcriptText += `${line.caption}\n`
+      transcriptText += `${line.translated}\n`
+      transcriptText += `\n`
+    }
+    originalText.innerText = transcriptText;
+  }
+
   initButton.onclick = async () => {
     initButton.disabled = true;
     topStatus.innerText = 'Loading engines...';
 
     try {
-      await Picovoice.init(accessKey.value, {
-        onStateChange: state => updateUI(state),
-        onOriginalText: text => (originalText.innerText = text),
-        onModifiedText: text => (modifiedText.innerText = text),
-        onVolume: volume => {
-          const baseHeight = 8;
-          bar1.style.height = `${baseHeight + volume * 20}px`;
-          bar2.style.height = `${baseHeight + volume * 32}px`;
-          bar3.style.height = `${baseHeight + volume * 24}px`;
-        },
-        onError: err => alert(err),
-      });
+      await Picovoice.init(
+        accessKey.value,
+        sourceLanguage.value,
+        targetLanguage.value,
+        {
+          onStateChange: state => updateUI(state),
+          onOriginalText: onOriginalText,
+          onModifiedText: text => (modifiedText.innerText = text),
+          onVolume: volume => {
+            const baseHeight = 8;
+            bar1.style.height = `${baseHeight + volume * 20}px`;
+            bar2.style.height = `${baseHeight + volume * 32}px`;
+            bar3.style.height = `${baseHeight + volume * 24}px`;
+          },
+          onError: err => alert(err),
+        }
+      );
 
       topStatusBlock.style.display = 'none';
       document.getElementById('initBlock').style.display = 'none';
@@ -99,5 +116,17 @@ window.onload = () => {
 
   fileSelector.onchange = () => {
     if (accessKey.value && fileSelector.value) initButton.disabled = false;
+  }
+
+  sourceLanguage.value = 'en'
+  targetLanguage.value = 'en'
+  sourceLanguage.onchange = () => {
+    Array.from(targetLanguage.options).forEach((option) => {
+      option.disabled = !Picovoice.LANGUAGE_PAIRS[sourceLanguage.value].includes(option.value);
+
+      if ((targetLanguage.value === option.value) && (option.disabled === true)) {
+        targetLanguage.value = sourceLanguage.value;
+      }
+    });
   }
 };
