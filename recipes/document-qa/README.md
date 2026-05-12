@@ -14,4 +14,5 @@ with a picoLLM chat model, and speaks the answer with Orca Streaming Text-to-Spe
 ## Implementations
 
 - [Android](android)
+- [iOS](ios)
 - [Python](python)
