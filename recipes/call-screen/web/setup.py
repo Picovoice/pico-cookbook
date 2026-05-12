@@ -12,12 +12,10 @@ from typing import Tuple
 ANIMALS = [
     ("cheetah", "4.0.0"),
     ("orca", "3.0.0"),
-    # ("rhino", "NOT SURE"),
+    ("rhino", "4.0.0"),
 ]
 
-RENAMES = [
-    ("cheetah_params.pv", "cheetah_params_en.pv")
-]
+RENAMES = []
 
 def animate_status(text: str) -> Tuple[Event, Thread]:
     stop_event = Event()

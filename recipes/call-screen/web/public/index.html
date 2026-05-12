@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="overflow-x: hidden;">
 <head>
   <script src="index.js"></script>
   <script type="application/javascript" src="controller.js"></script>
@@ -13,9 +13,15 @@
   </div>
 
   <div style="width: 980px; margin: auto; flex-grow: 1; display: flex; flex-direction: row;">
-    <div id="chatBlock">
-      <div style="text-align: center; font-weight: bolder; font-size: 16px; padding: 8px; border-bottom: 2px solid #ccc; color: #444;">
+    <div id="chat-block-container">
+      <div style="text-align: center; width: calc(100% - 16px); font-weight: bolder; font-size: 16px; padding: 8px; border-bottom: 2px solid #ccc; color: #222;">
         Incoming Call
+      </div>
+
+      <div id="chat-block">
+      </div>
+
+      <div id="ai-state" style="margin-top: auto; text-align: center; font-weight: bolder; font-size: 16px; padding: 8px; color: #222;">
       </div>
     </div>
     
@@ -39,8 +45,18 @@
       </button>
 
       <div id="status-container" style="margin-top: 12px;">
-        <span id="status">Press Start Demo to begin</span>
+        <span id="status"></span>
         <span id="dotdotdot" style="white-space: pre;"></span>
+      </div>
+
+      <div id="hud-container" style="opacity: 0;">
+        <div id="hud">Select a call-assist voice action</div>
+
+        <div id="hud-options">
+        </div>
+
+        <div id="hud-temp" style="color: var(--brand-primary);"></div>
+        <span id="hud-dotdotdot" style="white-space: pre;"></span>
       </div>
     </div>
   </div>

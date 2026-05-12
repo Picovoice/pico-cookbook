@@ -4,6 +4,8 @@
   --gray-light: #e0e0e0;
   --success-green: #4caf50;
   --error-red: #f44336;
+
+  --light-blue: rgb(173, 234, 255);
 }
 
 html, body {
@@ -35,15 +37,17 @@ button {
 }
 
 
-button .tooltip {
+.tooltip {
     visibility: hidden; /* Hidden by default */
 
     position: absolute;
     transform: translateX(10px);
     padding: 0 2px;
 
+    max-width: 185px;
+
     font-size: 10px;
-    text-align: center;
+    text-align: start;
 
     background-color: #ddd;
     color: #666;
@@ -51,6 +55,9 @@ button .tooltip {
     z-index: 1;
 }
 button:hover .tooltip {
+  visibility: visible;
+}
+#hud-options div:hover .tooltip {
   visibility: visible;
 }
 
@@ -109,11 +116,12 @@ button[coloured] {
     margin-top: 0.5em;
 }
 
-#chatBlock {
-    display: block;
+#chat-block-container {
+    display: flex;
+    flex-direction: column;
 
     margin-right: 24px;
-    margin-bottom: 96px;
+    margin-bottom: 64px;
 
     border-radius: 12px;
     border: 2px solid #ccc;
@@ -124,10 +132,16 @@ button[coloured] {
     flex-flow: column;
 
     max-height: 800px;
-    height: calc(100% - 48px);
+    height: calc(100% - 64px);
     width: calc(45% - 12px);
+}
+
+#chat-block {
+    width: 100%;
 
     font-size: 14px;
+
+    transition: opacity 0.4s ease;
 }
 
 #result {
@@ -198,9 +212,70 @@ button[coloured] {
     margin-right: 10px;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+/* ---------------------------------------------------------------- */
+
+#hud-container {
+    width: 100%;
+
+    margin: 12px 0 0 0;
+
+    transition: opacity 0.4s ease;
+}
+
+#hud {
+    padding: 4px;
+
+    font-weight: bolder;
+    text-align: center;
+
+    margin: 0 0 8px 0;
+
+    color: #222;
+
+    border-radius: 12px 12px 0 0;
+
+    background-color: var(--gray-light);
+}
+
+#hud-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+#hud-options div {
+    display: inline-block;
+    box-sizing: border-box;
+    
+    text-align: center;
+
+    flex: 0 0 calc(25% - ((24px) / 4));
+
+    margin: 0;
+
+    padding: 12px 4px;
+
+    font-size: 13.5px;
+    font-weight: 100;
+
+    border-radius: 12px;
+
+    cursor: not-allowed;
+
+    color: #fff;
+    background-color: var(--brand-primary);
+}
+
+#hud-options div[coloured] {
+    background-color: var(--brand-primary-dark);
+}
+
+#hud-temp {
+    margin-top: 8px;
+
+    text-align: center;
+    letter-spacing: 0.01ch;
+    font-weight: bold;
 }
 
 /* ---------------------------------------------------------------- */
@@ -212,7 +287,7 @@ button[coloured] {
     margin-left: 4px;
     margin-right: auto;
     margin-top: 4px;
-    padding: 12px;
+    padding: 10px;
 
     color: #222;
     background-color: #ddd;
@@ -228,10 +303,10 @@ button[coloured] {
     margin-right: 4px;
     margin-left: auto;
     margin-top: 4px;
-    padding: 12px;
+    padding: 10px;
 
     color: #222;
-    background-color: rgb(173, 234, 255);
+    background-color: var(--light-blue);
     border-radius: 8px 8px 0 8px;
  
     font-size: 14px;

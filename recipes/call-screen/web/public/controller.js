@@ -1,3 +1,26 @@
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function sanitizeForOrca(str) {
+  replacements = {
+    "\n": " ",
+    "\r": " ",
+    "\t": " ",
+    "“": '"',
+    "”": '"',
+    "‘": "'",
+    "’": "'",
+    "—": "-",
+    "–": "-",
+    "…": "...",
+  };
+
+  for (const [k,v] of Object.entries(replacements)) {
+    str = str.replaceAll(k, v);
+  }
+
+  return str;
+}
+
 window.onload = () => {
   const ANIMATION_FRAMES = ["   ", ".  ", ".. ", "...", " ..", "  ."];
 
@@ -10,17 +33,17 @@ window.onload = () => {
   const error = document.getElementById("error");
   const dotdotdot = document.getElementById("dotdotdot");
 
-  const initBlock = document.getElementById("initBlock");
-  const chatBlock = document.getElementById("chatBlock");
+  const chatBlock = document.getElementById("chat-block");
+  const aiState = document.getElementById("ai-state");
 
   const accessKey = document.getElementById("accessKey");
   const name = document.getElementById("name");
   const initButton = document.getElementById("init");
   const initButtonTooltip = document.getElementById("initButtonTooltip");
-  const sourceLanguage = document.getElementById("sourceLanguage");
-  const targetLanguage = document.getElementById("targetLanguage");
-  const message = document.getElementById("message");
-  const result = document.getElementById("result");
+
+  const hudContainer = document.getElementById("hud-container");
+  const hudOptions = document.getElementById("hud-options");
+  const hudTemp = document.getElementById("hud-temp");
 
   const writeError = (errorString) => {
     errorContainer.style.display = 'block';
@@ -36,7 +59,7 @@ window.onload = () => {
   };
 
   const enableInitButton = _ => {
-    let isValid = (accessKey.value.length > 0) && (name.value.length > 0);
+    let isValid = (accessKey.value.length > 0) && (sanitizeForOrca(name.value).replaceAll(" ", "").length > 0);
     if (isValid) {
       initButton.removeAttribute("disabled");
       initButton.setAttribute("coloured", "");
@@ -84,79 +107,133 @@ window.onload = () => {
     dotdotdot.innerText = '';
   }
 
-  const sendMessage = (message, text) => {
-    // result.scrollTop = result.scrollHeight;
+  let hudFadeoutTimeoutHandle = null;
+  let hudFadeoutEndStateFunction = null;
+  let hudTempTimeoutHandle = null;
 
+  const restartDemo = async () => {
+    chatBlock.style.opacity = "0";
+    await sleep(400);
+    
+    chatBlock.replaceChildren();
+    chatBlock.style.opacity = "1";
+
+    if (hudFadeoutTimeoutHandle && hudFadeoutEndStateFunction) {
+      clearTimeout(hudFadeoutTimeoutHandle);
+      hudFadeoutEndStateFunction();
+    }
+
+    if (hudTempTimeoutHandle) {
+      clearTimeout(hudTempTimeoutHandle);
+      hudTemp.innerHTML = "";
+    }
+
+    initButton.disabled = false;
+    initButton.removeAttribute("disabled");
+    initButton.setAttribute("coloured", "");
+  };
+
+  const sendMessage = (message, obj) => {
     if (message === "status") {
+      let text = obj;
       writeStatus(text);
+
     } else if (message === "add to bubble") {
+      let text = obj;
       chatBlock.lastElementChild.innerHTML += text;
-      
+      if (chatBlock.lastElementChild.innerHTML.length > 0) {
+        chatBlock.lastElementChild.style.opacity = "1";
+      }
+
     } else if (message === "new caller bubble") {
+      let text = obj;
       let bubble = document.createElement("div");
       bubble.classList.add("caller-bubble");
+      bubble.style.opacity = "0";
+      bubble.innerHTML += text;
+      if (bubble.innerHTML.length > 0) {
+        bubble.style.opacity = "1";
+      }
+
       chatBlock.appendChild(bubble);
 
     } else if (message === "new ai bubble") {
+      let text = obj;
       let bubble = document.createElement("div");
       bubble.classList.add("ai-bubble");
+      bubble.style.opacity = "0";
+      bubble.innerHTML += text;
+      if (bubble.innerHTML.length > 0) {
+        bubble.style.opacity = "1";
+      }
+
       chatBlock.appendChild(bubble);
-  
-    } /*else if (mode === "prompt") {
-      message.innerText = text;
-    } else if (mode === "listen") {
-      const rowElem = document.createElement("div");
-      const bubbleElem = document.createElement("div");
-      const upperElem = document.createElement("div");
-      const upperTextElem = document.createElement("span");
 
-      if (text === "right") {
-        rowElem.className = "align-end";
-      } else if (text === "left") {
-        rowElem.className = "align-start";
+    } else if (message === "give user options") {
+      let text = obj;
+
+      hudTemp.innerHTML = "";
+
+      hudOptions.replaceChildren();
+      for (text of text.split(",")) {
+        if (text.length === 0)
+          continue;
+
+        let option = document.createElement("div");
+        option.innerHTML = text;
+        option.id = "option-" + text.replace(" ", "_").toLowerCase();
+
+        let tooltip = document.createElement("span");
+        tooltip.classList.add("tooltip");
+        tooltip.innerHTML = "To select this voice command, speak into your microphone"
+        
+        option.appendChild(tooltip);
+        
+        hudOptions.appendChild(option);
       }
 
-      bubbleElem.className = "text-bubble";
-      upperElem.classList = "upper-bubble";
+      hudContainer.style.opacity = "1";
 
-      upperElem.appendChild(upperTextElem);
-      upperElem.appendChild(animationElement);
-      bubbleElem.appendChild(upperElem);
-      rowElem.appendChild(bubbleElem);
-      result.appendChild(rowElem);
+      // TODO: display a dotdotdot?
+      
+    } else if (message === "select option") {
+      let text = obj;
 
-      result.scrollTop = result.scrollHeight;
-      state.bubbleElem = bubbleElem
-      state.upperElem = upperElem;
-      state.upperTextElem = upperTextElem;
-    } else if (mode === "transcript") {
-      state.upperTextElem.innerText += text;
-    } else if (mode === "translate") {
-      const lowerElem = document.createElement("div");
-      const lowerTextElem = document.createElement("span");
-      lowerElem.classList = "lower-bubble";
-      lowerElem.appendChild(lowerTextElem);
-      state.bubbleElem.appendChild(lowerElem);
+      let element = document.getElementById("option-" + text.replace(" ", "_").toLowerCase());
+      if (element) {
+        element.setAttribute("coloured", "");
 
-      state.lowerElem = lowerElem;
-      state.lowerTextElem = lowerTextElem;
-
-      state.upperElem.classList.add("mute-text");
-      state.upperElem.removeChild(animationElement);
-      state.lowerElem.appendChild(animationElement);
-    } else if (mode === "translation") {
-      state.lowerTextElem.innerText += text;
-      if (text == "") {
-        state.lowerElem.removeChild(animationElement);
+        hudFadeoutEndStateFunction = () => {
+            hudContainer.style.opacity = "0";
+            element.removeAttribute("coloured");
+        };
+        hudFadeoutTimeoutHandle = setTimeout(hudFadeoutEndStateFunction, 2000);
       }
-    } else if (mode === "detecting") {
-      initBlock.style.display = 'none';
-      chatBlock.style.display = 'flex';
-    } */ else if (message === "loading") {
-      /*
-      if (state.upperTextElem) {
-        state.upperTextElem.innerText = "";
-      }*/
+
+    } else if (message === "unknown user option") {
+      let timeoutMs = obj;
+      hudTemp.innerHTML = "Unknown Action";
+
+      if (hudTempTimeoutHandle != null) {
+        clearTimeout(hudTempTimeoutHandle);
+      }
+
+      hudTempTimeoutHandle = setTimeout(
+        () => { hudTemp.innerHTML = ""; },
+        timeoutMs);
+
+    } else if (message === "ai state") {
+      let text = obj;
+      aiState.innerHTML = text;
+
+    } else if (message === "restart demo") {
+      restartDemo();
+    }
+  };
+
+  const makeRequest = (message) => {
+    if (message === "bubble length") {
+      return chatBlock.lastElementChild.innerHTML.length;
     }
   };
 
@@ -170,33 +247,34 @@ window.onload = () => {
 
   initButton.addEventListener("click", async () => {
     initButton.disabled = true;
+    initButton.setAttribute("disabled", "");
+    initButton.removeAttribute("coloured");
+
     writeStatus("Loading");
     startDot();
 
+    let start = null;
     try {
-      const start = await Picovoice.init(
+      start = await Picovoice.init(
         accessKey.value,
-        sendMessage
+        sanitizeForOrca(name.value),
+        sendMessage,
+        makeRequest
       );
 
-      if (start !== null) {
-        writeStatus("Loading complete.");
-        await start();
-      }
     } catch (e) {
       writeError(e.message);
     } finally {
       stopDot();
     }
-  });
 
-  sourceLanguage.onchange = () => {
-    Array.from(targetLanguage.options).forEach((option) => {
-      option.disabled = !Picovoice.LANGUAGE_PAIRS[sourceLanguage.value].includes(option.value);
-
-      if ((targetLanguage.value === option.value) && (option.disabled === true)) {
-        targetLanguage.value = Picovoice.LANGUAGE_PAIRS[sourceLanguage.value][0];
+    try {
+      if (start !== null) {
+        writeStatus("");
+        await start();
       }
-    });
-  }
+    } catch (e) {
+      writeError(e.message);
+    }
+  });
 };
