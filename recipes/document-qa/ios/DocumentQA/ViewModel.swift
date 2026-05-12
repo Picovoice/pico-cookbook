@@ -151,6 +151,16 @@ class ViewModel: ObservableObject {
         }
     }
 
+    func tooltipText() -> String {
+        if listenState == .question {
+            return "Ask a Question"
+        } else if controlState == .prompt {
+            return "Thinking..."
+        } else {
+            return "Responding..."
+        }
+    }
+
     init() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             self!.dotIndex = (self!.dotIndex + 1) % DOTS.count

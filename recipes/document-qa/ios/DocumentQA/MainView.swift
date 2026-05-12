@@ -73,7 +73,7 @@ struct MainView: View {
                         .stroke(Color.lightGray, lineWidth: 1)
                 )
 
-            Text(viewModel.listenState == .question ? "Ask a Question" : " ")
+            Text(viewModel.tooltipText())
                 .foregroundStyle(.gray)
                 .padding(.top, 16)
 
