@@ -5,7 +5,7 @@ import sys
 import time
 from argparse import ArgumentParser
 from itertools import chain
-from multiprocessing import Pipe, Process, Queue, active_children
+from multiprocessing import Pipe, Process, active_children
 # noinspection PyProtectedMember
 from multiprocessing.connection import Connection
 from threading import Thread
@@ -248,7 +248,7 @@ class Synthesizer:
             close = False
             synthesizing = False
             flushing = False
-            text_queue = Queue()
+            text_queue = []
             while not close:
                 time.sleep(0.1)
                 while connection.poll():
@@ -257,27 +257,25 @@ class Synthesizer:
                         close = True
                         synthesizing = False
                         flushing = False
-                        while not text_queue.empty():
-                            text_queue.get()
+                        text_queue = []
                     elif message['command'] == Commands.START:
                         synthesizing = True
                         utterance_end_sec = message['utterance_end_sec']
                     elif message['command'] == Commands.PROCESS:
                         if synthesizing:
-                            text_queue.put(message['text'])
+                            text_queue.append(message['text'])
                     elif message['command'] == Commands.FLUSH:
                         flushing = True
                     elif message['command'] == Commands.INTERRUPT:
                         synthesizing = False
                         flushing = False
-                        while not text_queue.empty():
-                            text_queue.get()
+                        text_queue = []
                         orca_stream.flush()
                         orca_profiler.reset()
                         utterance_end_sec = 0
                         delay_sec = -1
-                while not text_queue.empty():
-                    text = text_queue.get()
+                while len(text_queue) > 0:
+                    text = text_queue.pop(0)
                     if synthesizing:
                         orca_profiler.tick()
                         pcm = orca_stream.synthesize(text)
@@ -286,7 +284,7 @@ class Synthesizer:
                             connection.send({'command': Commands.SPEAK, 'pcm': pcm})
                             if delay_sec == -1:
                                 delay_sec = time.perf_counter() - utterance_end_sec
-                if synthesizing and flushing and text_queue.empty():
+                if synthesizing and flushing and len(text_queue) == 0:
                     synthesizing = False
                     flushing = False
                     orca_profiler.tick()

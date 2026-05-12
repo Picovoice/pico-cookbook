@@ -202,7 +202,7 @@ class Synthesizer:
             close = False
             synthesizing = False
             flushing = False
-            text_queue = Queue()
+            text_queue = []
             while not close:
                 time.sleep(0.1)
                 while connection.poll():
@@ -211,28 +211,26 @@ class Synthesizer:
                         close = True
                         synthesizing = False
                         flushing = False
-                        while not text_queue.empty():
-                            text_queue.get()
+                        text_queue = []
                     elif message['command'] == Commands.START:
                         synthesizing = True
                     elif message['command'] == Commands.PROCESS:
                         if synthesizing:
-                            text_queue.put(message['text'])
+                            text_queue.append(message['text'])
                     elif message['command'] == Commands.FLUSH:
                         flushing = True
                     elif message['command'] == Commands.INTERRUPT:
                         synthesizing = False
                         flushing = False
-                        while not text_queue.empty():
-                            text_queue.get()
+                        text_queue = []
                         orca_stream.flush()
-                while not text_queue.empty():
-                    text = text_queue.get()
+                while len(text_queue) > 0:
+                    text = text_queue.pop(0)
                     if synthesizing:
                         pcm = orca_stream.synthesize(text)
                         if pcm is not None:
                             connection.send({'command': Commands.SPEAK, 'pcm': pcm})
-                if synthesizing and flushing and text_queue.empty():
+                if synthesizing and flushing and len(text_queue) == 0:
                     synthesizing = False
                     flushing = False
                     pcm = orca_stream.flush()
