@@ -1,5 +1,6 @@
 import { CheetahTranscript, CheetahWorker } from '@picovoice/cheetah-web';
 import { ZebraWorker } from '@picovoice/zebra-web';
+import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 import { AudioStream } from './audio_stream';
 import { Mutex } from 'async-mutex';
 
@@ -44,7 +45,6 @@ const LANGUAGE_PAIRS: any = {
 
 export enum UIState {
   INIT = 'INIT',
-  RECORDING = 'RECORDING',
   LOADING_MODEL = 'LOADING_MODEL',
   CAPTIONING = 'CAPTIONING',
 }
@@ -74,8 +74,6 @@ type TranscriptLine = {
 
 let transcriptLines: TranscriptLine[] = [];
 let transcriptQueue = '';
-
-const NO_MEMO_ERROR_PHRASE = 'You need to record a memo first.';
 
 const MIN_DB = -40.0;
 const MAX_DB = 0.0;
@@ -191,41 +189,46 @@ const setState = (state: UIState) => {
   callbacks!.onStateChange(state);
 };
 
-const start = async (audioFile: File): Promise<void> => {
+const start = async (audioFile: File | undefined): Promise<void> => {
   setState(UIState.CAPTIONING);
 
-  // @ts-ignore
-  const audioContext = new (window.AudioContext || window.webKitAudioContext)({
-    sampleRate: 16000,
-  });
+  if (audioFile !== undefined) {
+    // @ts-ignore
+    const audioContext = new (window.AudioContext || window.webKitAudioContext)({
+      sampleRate: 16000,
+    });
 
-  function readAudioFile(selectedFile: any, callback: any) {
-    let reader = new FileReader();
-    reader.onload = function (ev: any) {
-      let wavBytes = reader.result;
-      // @ts-ignore
-      audioContext.decodeAudioData(wavBytes, callback);
-    };
-    reader.readAsArrayBuffer(selectedFile);
+    function readAudioFile(selectedFile: any, callback: any) {
+      let reader = new FileReader();
+      reader.onload = function (ev: any) {
+        let wavBytes = reader.result;
+        // @ts-ignore
+        audioContext.decodeAudioData(wavBytes, callback);
+      };
+      reader.readAsArrayBuffer(selectedFile);
+    }
+
+    readAudioFile(audioFile, async (audioBuffer: any) => {
+      const f32PCM = audioBuffer.getChannelData(0);
+      const i16PCM = new Int16Array(f32PCM.length);
+
+      const INT16_MAX = 32767;
+      const INT16_MIN = -32768;
+      i16PCM.set(
+        f32PCM.map((f: number) => {
+          let i = Math.trunc(f * INT16_MAX);
+          if (f > INT16_MAX) i = INT16_MAX;
+          if (f < INT16_MIN) i = INT16_MIN;
+          return i;
+        }),
+      );
+
+      await caption(i16PCM);
+    });
+  } else {
+    await WebVoiceProcessor.subscribe(object!.cheetah);
+    await WebVoiceProcessor.subscribe(customAudioEngine);
   }
-
-  readAudioFile(audioFile, async (audioBuffer: any) => {
-    const f32PCM = audioBuffer.getChannelData(0);
-    const i16PCM = new Int16Array(f32PCM.length);
-
-    const INT16_MAX = 32767;
-    const INT16_MIN = -32768;
-    i16PCM.set(
-      f32PCM.map((f: number) => {
-        let i = Math.trunc(f * INT16_MAX);
-        if (f > INT16_MAX) i = INT16_MAX;
-        if (f < INT16_MIN) i = INT16_MIN;
-        return i;
-      }),
-    );
-
-    await caption(i16PCM);
-  });
 };
 
 const caption = async (pcm: Int16Array) => {
@@ -255,17 +258,27 @@ const caption = async (pcm: Int16Array) => {
 }
 
 const release = async (): Promise<void> => {
+  setState(UIState.INIT);
+
+  transcriptLines = [];
+  transcriptQueue = '';
+
+  WebVoiceProcessor.reset();
+
   if (object === null) {
     return;
   }
 
-  const { cheetah, zebra } = object;
+  const { cheetah, zebra, audioStream} = object;
   cheetah.terminate();
   if (zebra !== null) {
     zebra!.terminate();
   }
 
+  audioStream.clear();
+
   object = null;
+  callbacks = null;
 };
 
 export {

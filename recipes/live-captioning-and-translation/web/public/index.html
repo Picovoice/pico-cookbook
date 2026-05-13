@@ -103,6 +103,11 @@
         transition: transform 0.05s ease-in-out;
         transform-origin: center;
       }
+
+      #resetContainer {
+        align-items: center;
+        margin-top: 8px;
+      }
     </style>
   </head>
   <body>
@@ -121,6 +126,7 @@
       <input type="text" id="accessKey" name="accessKey" />
       <br /><br />
       <label for="audioFile">Audio File: </label>
+      <button id="audioFileClear">clear</button>
       <input type="file" id="audioFile" name="audioFile" />
       <br /><br />
       <label for="sourceLanguage">
@@ -155,15 +161,14 @@
         </div>
       </div>
 
-      <div class="messageArea" style="justify-content: center">
-        <div id="tooltip"></div>
-      </div>
-
       <div id="message" class="messageArea">
         <div id="meterContainer" style="display: none">
           <div id="bar1" class="volume-bar"></div>
           <div id="bar2" class="volume-bar"></div>
           <div id="bar3" class="volume-bar"></div>
+        </div>
+        <div id="resetContainer">
+          <button id="reset">Reset demo</button>
         </div>
       </div>
     </div>

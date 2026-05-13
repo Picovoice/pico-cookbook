@@ -1,8 +1,10 @@
 window.onload = () => {
   const accessKey = document.getElementById('accessKey');
   const initButton = document.getElementById('init');
+  const resetButton = document.getElementById('reset');
 
   const fileSelector = document.getElementById('audioFile');
+  const audioFileClear = document.getElementById('audioFileClear');
   const sourceLanguage = document.getElementById('sourceLanguage');
   const targetLanguage = document.getElementById('targetLanguage');
 
@@ -15,51 +17,13 @@ window.onload = () => {
   const bar2 = document.getElementById('bar2');
   const bar3 = document.getElementById('bar3');
 
-  const updateUI = state => {
-    switch (state) {
-      case 'WAKE_WORD':
-        tooltip.innerText = 'Listening for the wake word...';
-        meterContainer.style.display = 'flex';
-        break;
-      case 'VOICE_COMMAND':
-        if (originalText.innerText.length > 0) {
-          tooltip.innerText =
-            "Commands: 'start memo', 'read memo', 'summarize memo', 'rewrite memo'";
-        } else {
-          tooltip.innerText = "Say 'start memo' to record a voice memo"
-        }
-        meterContainer.style.display = 'flex';
-        break;
-      case 'START_RECORDING':
-        tooltip.innerText = "Say 'stop recording' to end.";
-        meterContainer.style.display = 'flex';
-
-        modifiedContainer.style.display = 'none';
-        modifiedText.innerText = '';
-        break;
-      case 'READ_RECORDING':
-        if (originalText.innerText.length > 0) {
-          tooltip.innerText = 'Reading memo aloud...';
-        } else {
-          tooltip.innerText = "Record a memo with 'start memo' first";
-        }
-        meterContainer.style.display = 'none';
-        break;
-      case 'SUMMARIZE_RECORDING':
-        tooltip.innerText = 'Generating summary...';
-        modifiedTitle.innerText = 'Summarized:';
-        meterContainer.style.display = 'none';
-
-        modifiedContainer.style.display = 'block';
-        modifiedText.innerText = '';
-        break;
-      case 'REWRITE_RECORDING':
-        tooltip.innerText = 'Generating rewrite...';
-        modifiedTitle.innerText = 'Rewritten:';
-        meterContainer.style.display = 'none';
-
-        modifiedContainer.style.display = 'block';
-        modifiedText.innerText = '';
+  const updateUI = uistate => {
+    switch (uistate) {
+      case 'INIT':
+        topStatusBlock.style.display = 'block';
+        document.getElementById('initBlock').style.display = 'block';
+        document.getElementById('appBlock').style.display = 'none';
+        document.getElementById('meterContainer').style.display = 'none';
         break;
     }
   };
@@ -125,13 +89,15 @@ window.onload = () => {
     initButton.disabled = true;
     topStatus.innerText = 'Loading engines...';
 
+    const selectedFile = fileSelector.files[0];
+
     try {
       await Picovoice.init(
         accessKey.value,
         sourceLanguage.value,
         targetLanguage.value,
         {
-          onStateChange: state => updateUI(state),
+          onStateChange: uistate => updateUI(uistate),
           onOriginalText: onOriginalText,
           onModifiedText: onModifiedText,
           onVolume: volume => {
@@ -147,21 +113,27 @@ window.onload = () => {
       topStatusBlock.style.display = 'none';
       document.getElementById('initBlock').style.display = 'none';
       document.getElementById('appBlock').style.display = 'flex';
+
+      if (!selectedFile) {
+        document.getElementById('meterContainer').style.display = 'flex';
+      }
+
       createNewTextBubble();
     } catch (e) {
       topStatus.innerText = 'Error loading engines: ' + e.message;
       initButton.disabled = false;
     }
 
-    await Picovoice.start(fileSelector.files[0]);
+    await Picovoice.start(selectedFile);
   };
 
+  if (accessKey.value) initButton.disabled = false;
   accessKey.onchange = () => {
-    if (accessKey.value && fileSelector.value) initButton.disabled = false;
+    if (accessKey.value) initButton.disabled = false;
   };
 
-  fileSelector.onchange = () => {
-    if (accessKey.value && fileSelector.value) initButton.disabled = false;
+  audioFileClear.onclick = () => {
+    fileSelector.value = null;
   }
 
   sourceLanguage.value = 'en'
@@ -174,5 +146,17 @@ window.onload = () => {
         targetLanguage.value = sourceLanguage.value;
       }
     });
+  }
+
+  resetButton.onclick = async () => {
+    await Picovoice.release();
+
+    topStatus.innerText = 'Not Loaded.';
+    if (accessKey.value) initButton.disabled = false;
+    result.replaceChildren();
+
+    state.bubbleElem = null;
+    state.upperElem = null;
+    state.upperTextElem = null;
   }
 };
