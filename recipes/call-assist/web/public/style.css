@@ -1,0 +1,396 @@
+:root {
+  --brand-primary: #377dff;
+  --brand-primary-dark: #285bc4;
+  --success-green: #4caf50;
+  --error-red: #f44336;
+
+  --light-blue: rgb(173, 234, 255);
+}
+
+html, body {
+    height: 100vh;
+    margin: 0;
+
+    font-family: sans-serif;
+    overflow: auto;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+a {
+    color: var(--brand-primary);
+}
+a:hover {
+    color: var(--brand-primary-dark);
+}
+
+h1 {
+    margin: 48px auto;
+
+    text-align: center;
+
+    color: var(--brand-primary);
+}
+
+button {
+    box-shadow: none;
+
+    font-size: 16px;
+    padding: 8px 12px;
+    margin: 12px auto !important;
+
+    cursor: not-allowed;
+
+    transition: background-color 0.2s linear, color 0.2s linear;
+}
+
+code {
+    background-color: #eee;
+    padding: 4px;
+    border-radius: 2px;
+    font-size: 0.92em;
+}
+
+/* ------------------------------------------------------------------------- */
+
+.tooltip {
+    visibility: hidden;
+
+    position: absolute;
+    transform: translateX(10px);
+    padding: 0 2px;
+
+    max-width: 185px;
+
+    font-size: 10px;
+    text-align: start;
+
+    background-color: #ddd;
+    color: #666;
+
+    z-index: 1;
+}
+button:hover .tooltip {
+  visibility: visible;
+}
+#hud-options div:hover .tooltip {
+  visibility: visible;
+}
+
+button[coloured]:active {
+    background-color: #377dff !important;
+}
+
+button[coloured]:hover {
+    background-color: #448dfa;
+}
+
+button[coloured] {
+    color: white;
+    background-color: #377dff;
+
+    padding: 10px 13.5px;
+
+    border: none;
+    border-radius: 2px;
+
+    cursor: pointer;
+}
+
+/* ------------------------------------------------------------------------- */
+
+#error-container {
+    margin: 0 auto;
+    width: 920px;
+
+    border-radius: 8px;
+    padding: 8px;
+    margin-bottom: 16px;
+
+    background: rgb(255, 101, 101);
+}
+#error {
+    white-space: pre;
+    color: white;
+    padding: 8px;
+    font-size: 16px;
+}
+
+#main-container {
+    display: flex;
+    flex-direction: row;
+    flex-grow: 1;
+
+    width: 980px;
+    margin: auto;
+}
+
+#user-block {
+    display: flex;
+    flex-direction: column;
+
+    overflow: auto;
+
+    width: calc(55% - 12px);
+    height: 100%;
+}
+#user-block * {
+    margin: 0.1em;
+}
+
+#access-key-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: end;
+    justify-items: start;
+    align-items: center;
+    gap: 8px;
+}
+#access-key-container label {
+    text-align: right;
+    font-size: 17px;
+    white-space: nowrap;
+}
+#access-key {
+    flex-shrink: 0;
+
+    width: 40%;
+    padding: 4px 4px;
+    
+    border-radius: 4px;
+    border: 2px solid #ccc;
+
+    font-family: monospace;
+    font-size: 12px;
+    
+    color: #444;
+}
+
+#name-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: end;
+    justify-items: start;
+    align-items: center;
+    gap: 8px;
+
+    margin-top: 8px;
+
+    text-align: center;
+}
+#name-container label {
+    text-align: right;
+    font-size: 17px;
+}
+#name {
+    flex-shrink: 0;
+
+    width: 40%;
+    padding: 4px 4px;
+    
+    border-radius: 4px;
+    border: 2px solid #ccc;
+    
+    font-family: monospace;
+    font-size: 12px;
+    
+    color: #444;
+}
+
+#init {
+    margin-top: 0.5em;
+}
+#status-container {
+    margin-top: 12px;
+}
+
+#chat-block-container {
+    display: flex;
+    flex-direction: column;
+
+    margin-right: 24px;
+    margin-bottom: 64px;
+
+    border-radius: 12px;
+    border: 2px solid #ccc;
+
+    overflow-y: auto;
+
+    align-items: center;
+    flex-flow: column;
+
+    max-height: 800px;
+    height: calc(100% - 64px);
+    width: calc(45% - 12px);
+}
+#chat-block-container .header {
+    width: calc(100% - 16px);
+
+    padding: 8px;
+    
+    border-bottom: 2px solid #ccc;
+
+    text-align: center;
+    font-weight: bolder;
+    font-size: 16px;
+
+    color: #222;
+}
+#chat-block {
+    width: 100%;
+
+    font-size: 14px;
+
+    transition: opacity 0.4s ease;
+}
+
+.caller-bubble {
+    display: inline-block;
+
+    white-space: pre-wrap;
+
+    max-width: 70%;
+    margin-left: 4px;
+    margin-right: auto;
+    margin-top: 4px;
+    padding: 10px;
+
+    color: #222;
+    background-color: #ddd;
+    border-radius: 8px 8px 8px 0;
+
+    font-size: 14px;
+}
+
+.ai-bubble {
+    display: table;
+
+    white-space: pre-wrap;
+
+    max-width: 70%;
+    margin-right: 4px;
+    margin-left: auto;
+    margin-top: 4px;
+    padding: 10px;
+
+    color: #222;
+    background-color: var(--light-blue);
+    border-radius: 8px 8px 0 8px;
+ 
+    font-size: 14px;
+}
+
+#ai-state {
+    margin-top: auto;
+    padding: 8px;
+
+    text-align: center;
+    font-weight: bolder;
+    font-size: 16px;
+    
+    color: #222;
+}
+
+/* ------------------------------------------------------------------------- */
+
+#report {
+    font-size: 12px;
+    letter-spacing: -0.08ch;
+    font-family: monospace;
+
+    white-space: pre-wrap;
+
+    transition: opacity 0.4s ease;
+}
+
+#hud-container {
+    width: 100%;
+
+    margin: 12px 0 0 0;
+
+    transition: opacity 0.4s ease;
+}
+
+#hud {
+    padding: 4px;
+
+    font-weight: bolder;
+    text-align: center;
+
+    margin: 0 0 8px 0;
+
+    color: #222;
+
+    border-radius: 12px 12px 0 0;
+
+    background-color: #d7d7d7;
+}
+
+#hud-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+#hud-options div {
+    display: inline-block;
+    box-sizing: border-box;
+    
+    text-align: center;
+
+    flex: 0 0 calc(25% - ((24px) / 4));
+
+    margin: 0;
+
+    padding: 12px 4px;
+
+    font-size: 13.5px;
+    font-weight: 100;
+
+    border-radius: 12px;
+
+    cursor: not-allowed;
+
+    color: #fff;
+    background-color: var(--brand-primary);
+
+    transition: background-color 0.4s ease;
+}
+#hud-options div[coloured] {
+    background-color: var(--brand-primary-dark);
+}
+
+#hud-temp {
+    margin-top: 16px;
+
+    text-align: center;
+    letter-spacing: 0.01ch;
+    font-weight: bold;
+
+    color: var(--brand-primary);
+
+    transition: opacity 0.2s ease;
+}
+
+/* ---------------------------------------------------------------- */
+
+#volume-meter-user, #volume-meter-caller {
+  display: flex;
+  gap: 6px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  margin: 16px 0;
+
+  transition: opacity 0.4s ease;
+}
+
+.volume-bar {
+  width: 8px;
+  height: 8px;
+  background-color: var(--brand-primary);
+  border-radius: 4px;
+  transition: height 0.05s ease;
+}
