@@ -32,6 +32,14 @@ window.onload = () => {
   const error = document.getElementById("error");
   const dotdotdot = document.getElementById("dotdotdot");
 
+  const loadContainerParent = document.getElementById("load-container-parent");
+  const loadContainer = document.getElementById("load-container");
+  const loadButton = document.getElementById("load-button");
+  const loadButtonTooltip = document.getElementById("load-button-tooltip");
+
+  const mainContainerParent = document.getElementById("main-container-parent");
+  const mainContainer = document.getElementById("main-container");
+
   const chatBlock = document.getElementById("chat-block");
   const volumeMeterCaller = document.getElementById('volume-meter-caller');
   const bar1 = document.getElementById('bar1');
@@ -41,7 +49,7 @@ window.onload = () => {
 
   const accessKey = document.getElementById("access-key");
   const name = document.getElementById("name");
-  const initButton = document.getElementById("init");
+  const initButton = document.getElementById("init-button");
   const initButtonTooltip = document.getElementById("init-button-tooltip");
 
   const hudContainer = document.getElementById("hud-container");
@@ -55,7 +63,10 @@ window.onload = () => {
   const writeError = (errorString) => {
     errorContainer.style.display = 'block';
     error.innerText = `Error: ${errorString}`;
-    writeStatus("Error");
+  };
+  const clearError = () => {
+    errorContainer.style.display = 'none';
+    error.innerText = "";
   };
 
   const writeStatus = (statusString) => {
@@ -95,21 +106,31 @@ window.onload = () => {
 
   // -----------------------------------------
 
-  const enableInitButton = _ => {
-    let isValid = (accessKey.value.length > 0) && (sanitizeForOrca(name.value).replaceAll(" ", "").length > 0);
-    if (isValid) {
+  const enableLoadButton = _ => {
+    if (accessKey.value.length > 0) {
+      loadButton.removeAttribute("disabled");
+      loadButton.setAttribute("coloured", "");
+      loadButtonTooltip.innerHTML = "";
+    } else {
+      loadButton.setAttribute("disabled", "");
+      loadButton.removeAttribute("coloured");
+      loadButtonTooltip.innerHTML = "fill in access key";
+    }
+  }
+  accessKey.addEventListener("input", enableLoadButton);
+
+  const enableStartButton = _ => {
+    if (sanitizeForOrca(name.value).replaceAll(" ", "").length > 0) {
       initButton.removeAttribute("disabled");
       initButton.setAttribute("coloured", "");
       initButtonTooltip.innerHTML = "";
     } else {
       initButton.setAttribute("disabled", "");
       initButton.removeAttribute("coloured");
-      initButtonTooltip.innerHTML = "fill in access key and name";
+      initButtonTooltip.innerHTML = "fill in name";
     }
   }
-
-  accessKey.addEventListener("input", enableInitButton);
-  name.addEventListener("input", enableInitButton);
+  name.addEventListener("input", enableStartButton);
 
   // -----------------------------------------
 
@@ -138,7 +159,7 @@ window.onload = () => {
     initButton.removeAttribute("disabled");
     initButton.setAttribute("coloured", "");
 
-    await Picovoice.release();
+    name.disabled = false;
   };
 
   let currentBubbleText = "";
@@ -272,7 +293,7 @@ window.onload = () => {
       hudTempTimeoutHandle = setTimeout(
         async () => {
           hudTemp.style.opacity = "0";
-          await sleep(200);
+          await Picovoice.sleep(200);
           hudTemp.innerHTML = "";
           hudTemp.style.opacity = "1";
         },
@@ -293,25 +314,24 @@ window.onload = () => {
     }
   };
 
-  initButtonTooltip.innerHTML = "fill in access key and name";
-
   if (typeof Picovoice === 'undefined') {
     writeError("You must run `yarn build` before running yarn start");
-    initButtonTooltip.innerHTML = "fix error first";
+    loadButtonTooltip.innerHTML = "fix error first";
     return;
   }
 
-  initButton.addEventListener("click", async () => {
-    initButton.disabled = true;
-    initButton.setAttribute("disabled", "");
-    initButton.removeAttribute("coloured");
+  let startFunction = null;
+
+  loadButton.addEventListener("click", async () => {
+    loadButton.disabled = true;
+    loadButton.setAttribute("disabled", "");
+    loadButton.removeAttribute("coloured");
 
     writeStatus("Loading");
     startDot();
 
-    let start = null;
     try {
-      start = await Picovoice.init(
+      startFunction = await Picovoice.init(
         accessKey.value,
         sanitizeForOrca(name.value),
         sendMessage,
@@ -321,17 +341,43 @@ window.onload = () => {
 
     } catch (e) {
       writeError(e.message);
+      return;
     } finally {
       stopDot();
     }
 
-    if (start === null) {
+    clearError();
+
+    if (startFunction === null) {
+      writeStatus("Loading failed");
       return;
+    } else {
+      writeStatus("");
+    }
+
+    loadContainer.style.opacity = "0";
+    mainContainer.style.opacity = "1";
+    mainContainerParent.style.visibility = "visible";
+
+    await Picovoice.sleep(400);
+
+    loadContainerParent.style.visibility = "hidden";
+  });
+
+  initButton.addEventListener("click", async () => {
+    initButton.disabled = true;
+    initButton.setAttribute("disabled", "");
+    initButton.removeAttribute("coloured");
+
+    name.disabled = true;
+
+    let success = await Picovoice.updateStartParameters(sanitizeForOrca(name.value));
+    if (!success) {
+      console.log("failed to update start parameters");
     }
 
     try {
-      writeStatus("");
-      await start();
+      await startFunction();
     } catch (e) {
       writeError(e.message);
     }

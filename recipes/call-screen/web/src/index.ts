@@ -69,7 +69,7 @@ const BufferedRhinoEngine = {
 
 const init = async (
   accessKey: string,
-  username: string,
+  name: string,
   sendMessage: (message: string, obj: any) => void,
   makeRequest: (message: string) => any,
   onVolumeCallback: (volume: number) => void,
@@ -241,10 +241,20 @@ const init = async (
     orca: orca,
     rhino: rhino,
     action: Action.GREET,
-    username: username,
+    username: name,
   };
 
   return () => speakToCaller();
+};
+
+const updateStartParameters = async (name: string): Promise<boolean> => {
+  if (object) {
+    object!.username = name;
+    object!.action = Action.GREET;
+    return true;
+  } else {
+    return false;
+  }
 };
 
 const release = async () => {
@@ -274,5 +284,6 @@ const release = async () => {
 export default {
   sleep,
   init,
+  updateStartParameters,
   release
 };

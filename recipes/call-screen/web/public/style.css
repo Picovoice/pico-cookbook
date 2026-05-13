@@ -15,11 +15,6 @@ html, body {
     overflow: auto;
 }
 
-body {
-    display: flex;
-    flex-direction: column;
-}
-
 a {
     color: var(--brand-primary);
 }
@@ -40,7 +35,7 @@ button {
 
     font-size: 16px;
     padding: 8px 12px;
-    margin: 12px auto !important;
+    margin: 12px 0;
 
     cursor: not-allowed;
 
@@ -103,8 +98,8 @@ button[coloured] {
 /* ------------------------------------------------------------------------- */
 
 #error-container {
+    width: 980px;
     margin: 0 auto;
-    width: 920px;
 
     border-radius: 8px;
     padding: 8px;
@@ -119,19 +114,46 @@ button[coloured] {
     font-size: 16px;
 }
 
+/* ------------------------------------------------------------------------- */
+
+#load-container-parent {
+    position: absolute;
+    width: 100%;
+    height: calc(100% - (3 * 48px)); 
+}
+#load-container {
+    position: relative;
+
+    width: 593px;
+    margin: 0 auto;
+
+    transition: opacity 0.4s ease;
+}
+
+/* ------------------------------------------------------------------------- */
+
+#main-container-parent {
+    display: flex;
+    flex-direction: column;
+
+    position: absolute;
+    width: 100%;
+    height: calc(100% - (3 * 48px)); 
+}
 #main-container {
+    position: relative;
+
     display: flex;
     flex-direction: row;
     flex-grow: 1;
 
     width: 980px;
     margin: auto;
+
+    transition: opacity 0.4s ease;
 }
 
 #user-block {
-    display: flex;
-    flex-direction: column;
-
     overflow: auto;
 
     width: calc(55% - 12px);
@@ -157,7 +179,7 @@ button[coloured] {
 #access-key {
     flex-shrink: 0;
 
-    width: 40%;
+    width: 50%;
     padding: 4px 4px;
     
     border-radius: 4px;
@@ -178,8 +200,6 @@ button[coloured] {
     gap: 8px;
 
     margin-top: 8px;
-
-    text-align: center;
 }
 #name-container label {
     text-align: right;
@@ -200,11 +220,8 @@ button[coloured] {
     color: #444;
 }
 
-#init {
+#init-button, load-button {
     margin-top: 0.5em;
-}
-#status-container {
-    margin-top: 12px;
 }
 
 #chat-block-container {

@@ -11,60 +11,72 @@
   <div id="error-container" style="display: none;">
     <div id="error" style="white-space: pre;"></div>
   </div>
+  
+  <div>
+    <div id="load-container-parent">
+      <div id="load-container">
+        <div id="access-key-container">
+          <label for="access-key">
+              <code>AccessKey</code> from <a href="https://console.picovoice.ai/">Picovoice Console</a>
+          </label>
+          <input type="text" id="access-key" name="access-key"/>
+        </div>
 
-  <div id="main-container">
-    <div id="chat-block-container">
-      <div class="header">Incoming Call</div>
+        <button id="load-button" disabled>
+          Load Demo
+          <span id="load-button-tooltip" class="tooltip">fill in access key</span>
+        </button>
 
-      <div id="chat-block">
-      </div>
-
-      <div id="volume-meter-caller" style="opacity: 0;">
-        <div class="volume-bar" id="bar1"></div>
-        <div class="volume-bar" id="bar2"></div>
-        <div class="volume-bar" id="bar3"></div>
-      </div>
-
-      <div id="ai-state">
+        <div id="status-container">
+          <span id="status"></span>
+          <span id="dotdotdot" style="white-space: pre;"></span>
+        </div>
       </div>
     </div>
-    
-    <div id="user-block">
-      <div id="access-key-container">
-        <label for="access-key">
-          <code>AccessKey</code> from <a href="https://console.picovoice.ai/">Picovoice Console</a>
-        </label>
-        <input type="text" id="access-key" name="access-key"/>
-      </div>
 
-      <div id="name-container">
-        <label for="name">Your name</label>
-        <input type="text" id="name" name="name" />
-      </div>
+    <div id="main-container-parent" style="visibility: hidden;">
+      <div id="main-container" style="opacity: 0;">
+        <div id="chat-block-container">
+          <div class="header">Incoming Call</div>
 
-      <button id="init" disabled>
-        Start Demo 
-        <span id="init-button-tooltip" class="tooltip"></span>
-      </button>
+          <div id="chat-block">
+          </div>
 
-      <div id="status-container">
-        <span id="status"></span>
-        <span id="dotdotdot" style="white-space: pre;"></span>
-      </div>
+          <div id="volume-meter-caller" style="opacity: 0;">
+            <div class="volume-bar" id="bar1"></div>
+            <div class="volume-bar" id="bar2"></div>
+            <div class="volume-bar" id="bar3"></div>
+          </div>
 
-      <div id="hud-container" style="opacity: 0;">
-        <div id="hud">Select a call-assist voice action</div>
-
-        <div id="hud-options">
+          <div id="ai-state">
+          </div>
+        </div>
+        
+        <div id="user-block">
+        <div id="name-container">
+          <label for="name">Your name</label>
+          <input type="text" id="name" name="name" />
         </div>
 
-        <div id="volume-meter-user" style="opacity: 0;">
-          <div class="volume-bar" id="bar4"></div>
-          <div class="volume-bar" id="bar5"></div>
-          <div class="volume-bar" id="bar6"></div>
-        </div>
+        <button id="init-button" disabled>
+          Start Demo 
+          <span id="init-button-tooltip" class="tooltip">fill in name</span>
+        </button>
 
-        <div id="hud-temp">
+        <div id="hud-container" style="opacity: 0;">
+          <div id="hud">Select a call-assist voice action</div>
+
+          <div id="hud-options">
+          </div>
+
+          <div id="volume-meter-user" style="opacity: 0;">
+            <div class="volume-bar" id="bar4"></div>
+            <div class="volume-bar" id="bar5"></div>
+            <div class="volume-bar" id="bar6"></div>
+          </div>
+
+          <div id="hud-temp">
+          </div>
         </div>
       </div>
     </div>
