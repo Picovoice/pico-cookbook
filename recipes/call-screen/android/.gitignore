@@ -12,3 +12,5 @@ test_resources
 
 /cheetah/
 /orca/
+
+*.pv

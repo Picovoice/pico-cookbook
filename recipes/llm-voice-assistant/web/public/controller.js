@@ -161,7 +161,7 @@ window.onload = () => {
         audioStream = new Picovoice.AudioStream(Picovoice.getStreamSampleRate());
       }
     } catch (e) {
-      writeError(e.message);
+      writeError(e.message + "\n\nStack Trace" + e.stack);
     } finally {
       stopDot();
     }

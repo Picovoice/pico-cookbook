@@ -10,11 +10,10 @@ from threading import (
 )
 from typing import Tuple
 
-DEMO = "call-screen"
-
 ANIMALS = [
-    ("cheetah", "4.0.1"),
+    ("cheetah", "4.0.0"),
     ("orca", "3.0.0"),
+    ("rhino", "4.0.0"),
 ]
 
 COPIES = {
@@ -23,6 +22,9 @@ COPIES = {
     ],
     "cheetah": [
         ("cheetah_params.pv", "cheetah_params.pv")
+    ],
+    "rhino": [
+        ("rhino_params.pv", "rhino_params.pv")
     ]
 }
 
@@ -96,25 +98,16 @@ def clone_repo(animal: str, major: str, minor: str) -> str:
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
-        '--access_key',
-        required=True,
-        help='`AccessKey` obtained from `Picovoice Console` (https://console.picovoice.ai/).')
-    parser.add_argument(
-        '--name',
-        required=True,
-        help='Name of the user having their calls screened.')
-    parser.add_argument(
         '--context_path',
         required=True,
         help='Absolute path to the Rhino context file (`.rhn`).')
     args = parser.parse_args()
 
-    public_folder = os.path.join(
-        os.path.dirname(__file__),
-        DEMO,
-        "src",
-        "main",
-        "assets")
+    public_folder = os.path.join(os.path.dirname(__file__), "public", "models")
+
+    shutil.copy(args.context_path, os.path.join(public_folder, "call_screen_demo_web.rhn"))
+    print(f"Copied {args.context_path} to public/models/call_screen_demo_web.rhn")
+
     for animal, version in ANIMALS:
         major, minor = version.split('.')[:2]
         folder = clone_repo(animal, major, minor)
@@ -123,25 +116,6 @@ def main() -> None:
             src_path = os.path.join(model_folder, src_filename)
             dst_path = os.path.join(public_folder, dst_filename)
             shutil.copy(src_path, dst_path)
-
-    shutil.copy(args.context_path, os.path.join(public_folder, "call_screen_demo_android.rhn"))
-
-    main_activity_path = os.path.join(
-        os.path.dirname(__file__),
-        DEMO,
-        "src",
-        "main",
-        f"java/ai/picovoice/{DEMO.replace('-', '')}",
-        "MainActivity.java")
-    with open(main_activity_path, 'r') as main_activity_file:
-        main_activity_contents = main_activity_file.read()
-    main_activity_contents = (
-        main_activity_contents
-        .replace("${YOUR_ACCESS_KEY_HERE}", args.access_key)
-        .replace("${YOUR_NAME_HERE}", args.name)
-    )
-    with open(main_activity_path, 'w') as main_activity_file:
-        main_activity_file.write(main_activity_contents)
 
 
 if __name__ == '__main__':

@@ -117,6 +117,7 @@ const init = async (
 
     const release = await mutex.acquire();
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { completion, completionTokens, endpoint } = await pllm.generate(dialog.prompt(), {
       completionTokenLimit: 128,
       stopPhrases: stopPhrases,
