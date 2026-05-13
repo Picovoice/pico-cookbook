@@ -37,19 +37,19 @@ python setup.py
 yarn
 ```
 
-### 2. Build the Demo
+### 3. Build the Demo
 
 ```console
 yarn build
 ```
 
-### 3. Run the Demo
+### 4. Run the Demo
 
 ```console
 yarn start
 ```
 
-### 4. Open the Demo page
+### 5. Open the Demo page
 
 <!-- markdown-link-check-disable -->
 - go to [localhost:5000](http://localhost:5000) in your web browser.
