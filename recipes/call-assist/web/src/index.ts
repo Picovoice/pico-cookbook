@@ -28,13 +28,19 @@ Rules:
 - If the caller does not say who they are, use unknown.
 - If the caller does not say why they are calling, use unknown.
 - Use lowercase unless the caller gives a proper name.
+- Avoid responding unknown. Use context.
 
 Examples:
+
+Caller said: "Hello, can you hear me?"
+caller: unknown
+reason: unknown
+
 Caller said: "I'm calling from the bank."
 caller: bank
 reason: unknown
 
-Caller said: "This is ups with a package delivery."
+Caller said: "This is UPS with a package delivery."
 caller: UPS
 reason: package delivery
 
@@ -42,38 +48,31 @@ Caller said: "This is customer service."
 caller: customer service
 reason: unknown
 
-Caller said: "I'm calling about your credit card."
-caller: unknown
-reason: credit card
-
-Caller said: "Hello, can you hear me?"
-caller: unknown
-reason: unknown
+Caller said: "I'm george and I'm calling about your sawmill."
+caller: George
+reason: my sawmill
 `;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const extractCallerAndReasonFromLLMInference = (inference: string): [string, string] => {
-    const inferenceLines = inference.split("\n");
-    if (inferenceLines.length !== 2)
-        return ["unknown", "unknown"];
+    const inferenceLower = inference.toLowerCase();
+    const callerIndex = inferenceLower.indexOf("caller:");
+    const reasonIndex = inferenceLower.indexOf("reason:");
 
-    const callerLine = inferenceLines[0];
-    const reasonLine = inferenceLines[1];
+    if (callerIndex == -1 || reasonIndex == -1) {
+        return ["unknown", "unknown"];
+    }
 
-    if (!callerLine.startsWith("caller: "))
-        return ["unknown", "unknown"];
-    const caller = callerLine.slice("caller: ".length);
-    if (caller.length == 0)
-        return ["unknown", "unknown"];
+    let callerEOL = inferenceLower.slice(callerIndex).indexOf("\n");
+    let reasonEOL = inferenceLower.slice(reasonIndex).indexOf("\n");
+    callerEOL = (callerEOL == -1) ? inferenceLower.length : (callerIndex + callerEOL);
+    reasonEOL = (reasonEOL == -1) ? inferenceLower.length : (reasonIndex + reasonEOL);
+    
+    const callerContents = inference.slice(callerIndex, callerEOL).split(":")[1];
+    const reasonContents = inference.slice(reasonIndex, reasonEOL).split(":")[1];
 
-    if (!reasonLine.startsWith("reason: "))
-        return ["unknown", "unknown"];
-    const reason = reasonLine.slice("reason: ".length);
-    if (reason.length == 0)
-        return ["unknown", "unknown"];
-
-    return [caller, reason];
+    return [callerContents.trim(), reasonContents.trim()];
 }
 
 // ------------------------------------------------------------------------- //
@@ -144,7 +143,7 @@ const BufferedRhinoEngine = {
 
 const init = async (
   accessKey: string,
-  username: string,
+  name: string,
   sendMessage: (message: string, obj: any) => void,
   makeRequest: (message: string) => any,
   onVolumeCallback: (volume: number) => void,
@@ -240,35 +239,35 @@ const init = async (
     if (transcript.isFlushed && makeRequest("bubble length") > 0) {
       await stopListenForCaller();
 
-      console.log("LLM PROCESS CALL");
-
       let callerText = makeRequest("bubble contents");
       await llmProcessCall(callerText);
     }
   }
 
   const llmProcessCall = async (callerText: string) => {
-    let dialog = await object!.llm.getDialog(undefined, undefined, SYSTEM);
-    dialog.addHumanRequest(`Caller said: \"${callerText}\"\n`);
+    sendMessage("start llm spinner", null);
 
-    console.log(callerText);
+    let dialog = await object!.llm.getDialog(undefined, undefined, SYSTEM);
+    dialog.addHumanRequest(`Caller said: \"${callerText.replace("[CALLER]", "").trim()}\"\n`);
 
     const completion = await llm.generate(
         dialog.prompt(),
         { stopPhrases: ['<|eot_id|>'] });
 
     const inference = completion.completion.trim().replace('<|eot_id|>', '');
-    console.log(`inference = ${inference}`);
+    console.log(`# Inference\n${inference}`);
     const [caller, reason] = extractCallerAndReasonFromLLMInference(inference);
 
+    sendMessage("stop llm spinner", null);
+
     if (caller != 'unknown' && reason != 'unknown') {
-      sendMessage("ai report", `[AI] \`${caller}\` is trying to speak with you about \`${reason}\`.`);
-      console.log("GIVE OPTIONS");
+      sendMessage(
+          "ai report",
+          `[AI] <b style="color: var(--brand-primary);">${caller}</b> is trying to speak with you about ` +
+          `<b style="color: var(--brand-primary);">${reason}</b>.`);
       setTimeout(() => { giveUserOptions(); }, 200);
       return;
-    }
-
-    if (object!.askForDetailsRetryCount < ASK_FOR_DETAILS_RETRY_LIMIT) {
+    } else if (object!.askForDetailsRetryCount < ASK_FOR_DETAILS_RETRY_LIMIT) {
       object!.action = Action.ASK_FOR_DETAILS;
 
       if (caller == 'unknown' && reason == 'unknown') {
@@ -276,18 +275,19 @@ const init = async (
       } else if (caller == 'unknown') {
         sendMessage(
             "ai report",
-            `[AI] Unknown caller is trying to speak with you about \`${reason}\`. I will ask for their identity.`);
+            `[AI] Unknown caller is trying to speak with you about <b style="color: var(--brand-primary);">${reason}</b>. ` +
+            `I will ask for their identity.`);
       } else {
         sendMessage(
             "ai report",
-            `[AI] \`${caller}\` is trying to speak with you. I will ask for their reason.`);
+            `[AI] <b style="color: var(--brand-primary);">${caller}</b> is trying to speak with you. I will ask for their reason.`);
       }
     } else {
       object!.action = Action.DECLINE_CALL;
       
       sendMessage(
           "ai report",
-          `[AI] Couldn't understand caller's identity and agenda after ${ASK_FOR_DETAILS_RETRY_LIMIT} ` +
+          `[AI] Couldn't understand caller's identity and agenda after <b style="color: var(--brand-primary);">${ASK_FOR_DETAILS_RETRY_LIMIT}</b> ` +
           "inquiries. Declining their call.");
     }
 
@@ -373,12 +373,22 @@ const init = async (
     orca: orca,
     rhino: rhino,
     action: Action.GREET,
-    username: username,
-
+    username: name,
     askForDetailsRetryCount: 0,
   };
 
   return () => speakToCaller();
+};
+
+const updateStartParameters = async (name: string): Promise<boolean> => {
+  if (object) {
+    object!.action = Action.GREET;
+    object!.username = name;
+    object!.askForDetailsRetryCount = 0;
+    return true;
+  } else {
+    return false;
+  }
 };
 
 const release = async () => {
@@ -408,5 +418,6 @@ const release = async () => {
 export default {
   sleep,
   init,
+  updateStartParameters,
   release
 };
