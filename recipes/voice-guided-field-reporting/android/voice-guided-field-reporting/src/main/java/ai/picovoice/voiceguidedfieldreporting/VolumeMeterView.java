@@ -23,7 +23,7 @@ public class VolumeMeterView extends LinearLayout {
     private View bar2;
     private View bar3;
 
-    final double MIN_DB = -30.0;
+    final double MIN_DB = -40.0;
     final double MAX_DB = 0.0;
 
     public VolumeMeterView(Context context) {
@@ -74,8 +74,8 @@ public class VolumeMeterView extends LinearLayout {
         float scale2 = 1f + (volume * 9f);
         float scale3 = 1f + (volume * 6f);
 
-        bar1.animate().scaleY(scale1).setDuration(50).start();
-        bar2.animate().scaleY(scale2).setDuration(50).start();
-        bar3.animate().scaleY(scale3).setDuration(50).start();
+        bar1.animate().scaleY(scale1).setDuration(45).start();
+        bar2.animate().scaleY(scale2).setDuration(45).start();
+        bar3.animate().scaleY(scale3).setDuration(45).start();
     }
 }
