@@ -282,7 +282,7 @@ You can download directly to your device or airdrop from a Mac.
                             if warmup {
                                 warmupBuffer.append(contentsOf: pcm!)
                                 if warmupBuffer.count >= (1 * orca!.sampleRate!) {
-                                    try audioStream!.playStreamPCM(pcm!)
+                                    try audioStream!.playStreamPCM(warmupBuffer)
                                     warmupBuffer.removeAll()
                                     warmup = false
                                 }
