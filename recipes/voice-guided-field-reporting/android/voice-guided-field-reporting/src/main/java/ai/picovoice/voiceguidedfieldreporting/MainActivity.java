@@ -13,6 +13,7 @@
 package ai.picovoice.voiceguidedfieldreporting;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.media.AudioAttributes;
@@ -31,9 +32,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -90,6 +89,27 @@ public class MainActivity extends AppCompatActivity {
     private Workflow workflow;
     private volatile boolean isRunning = false;
 
+    private final Map<CardType, CardUI> cardMap = new HashMap<>();
+
+    enum CardType {
+        UNIT_ID,
+        INCIDENT_TYPE,
+        PATIENT_CONDITION,
+        DESTINATION,
+        HANDOFF_STATUS,
+        HANDOFF_TIME,
+        NOTES
+    }
+
+    interface WorkflowListener {
+        void onInitProgress(String status);
+        void onStatusChanged(String status);
+        void onCardActive(CardType cardType);
+        void onCardUpdated(CardType cardType, String value, boolean isFinal);
+        void onWorkflowComplete();
+        void onVolumeFrame(short[] frame);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -139,6 +159,7 @@ public class MainActivity extends AppCompatActivity {
             btnStart.setVisibility(View.VISIBLE);
             startSpinner.setVisibility(View.GONE);
             successIcon.setVisibility(View.INVISIBLE);
+            workflowStatusText.setText("");
             startStatusText.setText("Ready to Start");
             btnCancel.setVisibility(View.VISIBLE);
             btnCancel.setText("Cancel Report");
@@ -189,9 +210,55 @@ public class MainActivity extends AppCompatActivity {
 
         new Thread(() -> {
             try {
-                workflow = new Workflow(
-                        status -> runOnUiThread(() -> startStatusText.setText(status))
-                );
+                workflow = new Workflow(MainActivity.this, new WorkflowListener() {
+                    @Override
+                    public void onInitProgress(String status) {
+                        runOnUiThread(() -> startStatusText.setText(status));
+                    }
+
+                    @Override
+                    public void onStatusChanged(String status) {
+                        runOnUiThread(() -> workflowStatusText.setText(status));
+                    }
+
+                    @Override
+                    public void onCardActive(CardType cardType) {
+                        if (cardType != null) {
+                            setActiveCard(cardMap.get(cardType));
+                        } else {
+                            setActiveCard(null);
+                        }
+                    }
+
+                    @Override
+                    public void onCardUpdated(CardType cardType, String value, boolean isFinal) {
+                        CardUI card = cardMap.get(cardType);
+                        if (card != null) {
+                            int color = isFinal ? INACTIVE_COLOUR : ACTIVE_COLOUR;
+                            card.setValue(value, color);
+                        }
+                    }
+
+                    @Override
+                    public void onWorkflowComplete() {
+                        runOnUiThread(() -> {
+                            volumeMeterView.setVisibility(View.INVISIBLE);
+                            processingSpinner.setVisibility(View.INVISIBLE);
+                            successIcon.setVisibility(View.VISIBLE);
+                            btnCancel.setVisibility(View.GONE);
+                        });
+
+                        try {
+                            Thread.sleep(2000);
+                        } catch (InterruptedException ignored) {}
+                        transitionToHome();
+                    }
+
+                    @Override
+                    public void onVolumeFrame(short[] frame) {
+                        runOnUiThread(() -> volumeMeterView.processFrame(frame));
+                    }
+                });
                 runOnUiThread(() -> {
                     btnStart.setVisibility(View.VISIBLE);
                     startSpinner.setVisibility(View.GONE);
@@ -260,15 +327,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private List<CardUI> allCards = new ArrayList<>();
-    private CardUI unitIdCard,
-            incidentTypeCard,
-            patientConditionCard,
-            destinationCard,
-            handoffStatusCard,
-            handoffTimeCard,
-            notesCard;
-
     class CardUI {
         View root;
         TextView titleView;
@@ -293,19 +351,19 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupReportCards() {
         reportContainer.removeAllViews();
-        allCards.clear();
+        cardMap.clear();
 
-        unitIdCard = createCard("UNIT ID");
-        incidentTypeCard = createCard("INCIDENT TYPE");
-        patientConditionCard = createCard("PATIENT CONDITION");
-        destinationCard = createCard("DESTINATION");
-        handoffStatusCard = createCard("HANDOFF STATUS");
-        handoffTimeCard = createCard("HANDOFF TIME");
-        notesCard = createCard("NOTES");
+        cardMap.put(CardType.UNIT_ID, createCard("UNIT ID"));
+        cardMap.put(CardType.INCIDENT_TYPE, createCard("INCIDENT TYPE"));
+        cardMap.put(CardType.PATIENT_CONDITION, createCard("PATIENT CONDITION"));
+        cardMap.put(CardType.DESTINATION, createCard("DESTINATION"));
+        cardMap.put(CardType.HANDOFF_STATUS, createCard("HANDOFF STATUS"));
+        cardMap.put(CardType.HANDOFF_TIME, createCard("HANDOFF TIME"));
+        cardMap.put(CardType.NOTES, createCard("NOTES"));
     }
 
     private void resetReportCards() {
-        for (CardUI card : allCards) {
+        for (CardUI card : cardMap.values()) {
             card.reset();
         }
     }
@@ -322,13 +380,12 @@ public class MainActivity extends AppCompatActivity {
         card.valueView.setText("-");
 
         reportContainer.addView(root);
-        allCards.add(card);
         return card;
     }
 
     private void setActiveCard(CardUI activeCard) {
         runOnUiThread(() -> {
-            for (CardUI card : allCards) {
+            for (CardUI card : cardMap.values()) {
                 boolean isActive = (card == activeCard);
                 card.root.setBackgroundResource(isActive
                         ? R.drawable.bg_report_card_active
@@ -369,17 +426,17 @@ public class MainActivity extends AppCompatActivity {
         private final Object lock = new Object();
         private volatile boolean isSessionActive = false;
 
-        public AINoiseSuppressedRecorder() throws Exception {
+        public AINoiseSuppressedRecorder(Context context, WorkflowListener listener) throws Exception {
             koala = new Koala.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(NS_MODEL)
-                    .build(MainActivity.this);
+                    .build(context);
             frameLength = koala.getFrameLength();
 
             VoiceProcessor.getInstance().addFrameListener(frame -> {
                 if (isSessionActive) {
                     rawFrames.offer(frame);
-                    runOnUiThread(() -> volumeMeterView.processFrame(frame));
+                    listener.onVolumeFrame(frame);
                 }
             });
         }
@@ -528,12 +585,12 @@ public class MainActivity extends AppCompatActivity {
     class PorcupineStep extends Step {
         private final Porcupine porcupine;
 
-        public PorcupineStep(AINoiseSuppressedRecorder r) throws Exception {
+        public PorcupineStep(Context context, AINoiseSuppressedRecorder r) throws Exception {
             super(r);
             porcupine = new Porcupine.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setKeywordPath(KEYWORD_MODEL)
-                    .build(MainActivity.this);
+                    .build(context);
         }
 
         public void run(String listeningPrompt) throws Exception {
@@ -562,12 +619,12 @@ public class MainActivity extends AppCompatActivity {
         private final PvSpeaker speaker;
         private final OrcaSynthesizeParams synthesizeParams;
 
-        public OrcaStep(AINoiseSuppressedRecorder r) throws Exception {
+        public OrcaStep(Context context, AINoiseSuppressedRecorder r) throws Exception {
             super(r);
             orca = new Orca.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(TTS_MODEL)
-                    .build(MainActivity.this);
+                    .build(context);
             synthesizeParams = new OrcaSynthesizeParams.Builder().build();
             speaker = new PvSpeaker(orca.getSampleRate());
         }
@@ -590,14 +647,14 @@ public class MainActivity extends AppCompatActivity {
     class RhinoStep extends Step {
         private final Rhino rhino;
 
-        public RhinoStep(AINoiseSuppressedRecorder r) throws Exception {
+        public RhinoStep(Context context, AINoiseSuppressedRecorder r) throws Exception {
             super(r);
             rhino = new Rhino.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setContextPath(CONTEXT_MODEL)
                     .setEndpointDurationSec(0.5f)
                     .setRequireEndpoint(false)
-                    .build(MainActivity.this);
+                    .build(context);
         }
 
         public RhinoInference run(String listeningPrompt) throws Exception {
@@ -629,14 +686,14 @@ public class MainActivity extends AppCompatActivity {
     class CheetahStep extends Step {
         private final Cheetah cheetah;
 
-        public CheetahStep(AINoiseSuppressedRecorder r) throws Exception {
+        public CheetahStep(Context context, AINoiseSuppressedRecorder r) throws Exception {
             super(r);
             cheetah = new Cheetah.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(STT_MODEL)
                     .setEnableAutomaticPunctuation(true)
                     .setEnableTextNormalization(true)
-                    .build(MainActivity.this);
+                    .build(context);
         }
 
         public String run(PartialCallback callback, String listeningPrompt) throws Exception {
@@ -703,34 +760,42 @@ public class MainActivity extends AppCompatActivity {
     }
 
     abstract class State {
-        public abstract Transition run(Map<String, Object> args) throws Exception;
+        protected final WorkflowListener listener;
 
-        protected void setStatus(String text) {
-            runOnUiThread(() -> workflowStatusText.setText(text));
+        public State(WorkflowListener listener) {
+            this.listener = listener;
         }
+
+        public abstract Transition run(Map<String, Object> args) throws Exception;
     }
 
     class PromptState extends State {
         OrcaStep step;
         String defaultPrompt;
         RecipeStates nextState;
-        CardUI targetCard;
+        CardType targetCardType;
 
-        public PromptState(OrcaStep step, String prompt, CardUI targetCard, RecipeStates nextState) {
+        public PromptState(
+                WorkflowListener listener,
+                OrcaStep step,
+                String prompt,
+                CardType targetCardType,
+                RecipeStates nextState) {
+            super(listener);
             this.step = step;
             this.defaultPrompt = prompt;
             this.nextState = nextState;
-            this.targetCard = targetCard;
+            this.targetCardType = targetCardType;
         }
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
-            setActiveCard(targetCard);
+            listener.onCardActive(targetCardType);
 
             String prompt = (args != null && args.containsKey("prompt"))
                     ? (String) args.get("prompt")
                     : defaultPrompt;
-            setStatus(prompt);
+            listener.onStatusChanged(prompt);
             step.run(prompt);
             return new Transition(nextState);
         }
@@ -745,21 +810,22 @@ public class MainActivity extends AppCompatActivity {
         String listeningPrompt, expectedIntent;
         RecipeStates successNextState, failureNextState;
         PromptGenerator successLogGen, failurePromptGen;
-
-        CardUI cardUI;
+        CardType cardType;
 
         public ReportState(
+                WorkflowListener listener,
                 RhinoStep step,
                 String listenPrompt,
-                CardUI cardUI,
+                CardType cardType,
                 String intent,
                 PromptGenerator successGen,
                 RecipeStates successState,
                 PromptGenerator failGen,
                 RecipeStates failState) {
+            super(listener);
             this.step = step;
             this.listeningPrompt = listenPrompt;
-            this.cardUI = cardUI;
+            this.cardType = cardType;
             this.expectedIntent = intent;
             this.successLogGen = successGen;
             this.successNextState = successState;
@@ -769,15 +835,15 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
-            cardUI.setValue("...", ACTIVE_COLOUR);
+            listener.onCardUpdated(cardType, "...", false);
 
             RhinoInference inference = step.run(listeningPrompt);
             if (inference != null && inference.getIsUnderstood() && inference.getIntent().equals(expectedIntent)) {
-                cardUI.setValue(successLogGen.generate(inference), INACTIVE_COLOUR);
+                listener.onCardUpdated(cardType, successLogGen.generate(inference), true);
                 return new Transition(successNextState);
             }
 
-            cardUI.setValue("...", ACTIVE_COLOUR);
+            listener.onCardUpdated(cardType, "...", false);
 
             Map<String, Object> nextArgs = new HashMap<>();
             nextArgs.put("prompt", failurePromptGen.generate(inference));
@@ -789,7 +855,8 @@ public class MainActivity extends AppCompatActivity {
         private final PorcupineStep step;
         private final RecipeStates nextState;
 
-        public StandbyState(PorcupineStep step, RecipeStates nextState) {
+        public StandbyState(WorkflowListener listener, PorcupineStep step, RecipeStates nextState) {
+            super(listener);
             this.step = step;
             this.nextState = nextState;
         }
@@ -802,78 +869,86 @@ public class MainActivity extends AppCompatActivity {
     }
 
     class IdentifyUnitPromptState extends PromptState {
-        public IdentifyUnitPromptState(OrcaStep step) {
+        public IdentifyUnitPromptState(WorkflowListener listener, OrcaStep step) {
             super(
+                    listener,
                     step,
                     "What is the unit ID?",
-                    unitIdCard,
+                    CardType.UNIT_ID,
                     RecipeStates.IDENTIFY_UNIT_REPORT);
         }
     }
 
     class IncidentTypePromptState extends PromptState {
-        public IncidentTypePromptState(OrcaStep step) {
+        public IncidentTypePromptState(WorkflowListener listener, OrcaStep step) {
             super(
+                    listener,
                     step,
                     "What was the incident type?",
-                    incidentTypeCard,
+                    CardType.INCIDENT_TYPE,
                     RecipeStates.INCIDENT_TYPE_REPORT);
         }
     }
 
     class PatientConditionPromptState extends PromptState {
-        public PatientConditionPromptState(OrcaStep step) {
+        public PatientConditionPromptState(WorkflowListener listener, OrcaStep step) {
             super(
+                    listener,
                     step,
                     "What is the patient condition?",
-                    patientConditionCard,
+                    CardType.PATIENT_CONDITION,
                     RecipeStates.PATIENT_CONDITION_REPORT);
         }
     }
 
     class DestinationPromptState extends PromptState {
-        public DestinationPromptState(OrcaStep step) {
+        public DestinationPromptState(WorkflowListener listener, OrcaStep step) {
             super(
+                    listener,
                     step,
                     "What was the destination?",
-                    destinationCard,
+                    CardType.DESTINATION,
                     RecipeStates.DESTINATION_REPORT);
         }
     }
 
     class HandoffStatusPromptState extends PromptState {
-        public HandoffStatusPromptState(OrcaStep step) {
+        public HandoffStatusPromptState(WorkflowListener listener, OrcaStep step) {
             super(
+                    listener,
                     step,
                     "What is the handoff status?",
-                    handoffStatusCard,
+                    CardType.HANDOFF_STATUS,
                     RecipeStates.HANDOFF_STATUS_REPORT);
         }
     }
 
     class HandoffTimePromptState extends PromptState {
-        public HandoffTimePromptState(OrcaStep step) {
+        public HandoffTimePromptState(WorkflowListener listener, OrcaStep step) {
             super(
+                    listener,
                     step,
                     "What was the handoff time?",
-                    handoffTimeCard,
+                    CardType.HANDOFF_TIME,
                     RecipeStates.HANDOFF_TIME_REPORT);
         }
     }
 
     class FinalNotePromptState extends PromptState {
-        public FinalNotePromptState(OrcaStep step) {
+        public FinalNotePromptState(WorkflowListener listener, OrcaStep step) {
             super(
+                    listener,
                     step,
                     "Please provide additional notes.",
-                    notesCard,
+                    CardType.NOTES,
                     RecipeStates.FINAL_NOTE_REPORT);
         }
     }
 
     class CompletePromptState extends PromptState {
-        public CompletePromptState(OrcaStep step) {
+        public CompletePromptState(WorkflowListener listener, OrcaStep step) {
             super(
+                    listener,
                     step,
                     "Field report recorded.",
                     null,
@@ -882,11 +957,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     class IdentifyUnitReportState extends ReportState {
-        public IdentifyUnitReportState(RhinoStep step) {
+        public IdentifyUnitReportState(WorkflowListener listener, RhinoStep step) {
             super(
+                    listener,
                     step,
                     "Listening for unit ID...",
-                    unitIdCard,
+                    CardType.UNIT_ID,
                     "identifyUnit",
                     inf -> inf.getSlots().get("unitId"),
                     RecipeStates.INCIDENT_TYPE_PROMPT,
@@ -896,11 +972,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     class IncidentTypeReportState extends ReportState {
-        public IncidentTypeReportState(RhinoStep step) {
+        public IncidentTypeReportState(WorkflowListener listener, RhinoStep step) {
             super(
+                    listener,
                     step,
                     "Listening for incident type...",
-                    incidentTypeCard,
+                    CardType.INCIDENT_TYPE,
                     "reportIncidentType",
                     inf -> inf.getSlots().get("incidentType"),
                     RecipeStates.PATIENT_CONDITION_PROMPT,
@@ -910,11 +987,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     class PatientConditionReportState extends ReportState {
-        public PatientConditionReportState(RhinoStep step) {
+        public PatientConditionReportState(WorkflowListener listener, RhinoStep step) {
             super(
+                    listener,
                     step,
                     "Listening for patient condition...",
-                    patientConditionCard,
+                    CardType.PATIENT_CONDITION,
                     "reportPatientCondition",
                     inf -> inf.getSlots().get("patientCondition"),
                     RecipeStates.DESTINATION_PROMPT,
@@ -924,11 +1002,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     class DestinationReportState extends ReportState {
-        public DestinationReportState(RhinoStep step) {
+        public DestinationReportState(WorkflowListener listener, RhinoStep step) {
             super(
+                    listener,
                     step,
                     "Listening for destination...",
-                    destinationCard,
+                    CardType.DESTINATION,
                     "reportDestination",
                     inf -> inf.getSlots().get("destination"),
                     RecipeStates.HANDOFF_STATUS_PROMPT,
@@ -938,11 +1017,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     class HandoffStatusReportState extends ReportState {
-        public HandoffStatusReportState(RhinoStep step) {
+        public HandoffStatusReportState(WorkflowListener listener, RhinoStep step) {
             super(
+                    listener,
                     step,
                     "Listening for handoff status...",
-                    handoffStatusCard,
+                    CardType.HANDOFF_STATUS,
                     "reportHandoffStatus",
                     inf -> inf.getSlots().get("handoffStatus"),
                     RecipeStates.HANDOFF_TIME_PROMPT,
@@ -952,17 +1032,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     class HandoffTimeReportState extends ReportState {
-        public HandoffTimeReportState(RhinoStep step) {
+        public HandoffTimeReportState(WorkflowListener listener, RhinoStep step) {
             super(
+                    listener,
                     step,
                     "Listening for handoff time...",
-                    handoffTimeCard,
+                    CardType.HANDOFF_TIME,
                     "reportHandoffTime",
                     inf -> {
                         String hour = HOUR_MAP.get(inf.getSlots().get("hour"));
-                        String minute = inf.getSlots().get("minute");
+                        int minute = Integer.parseInt(inf.getSlots().get("minute"));
                         String meridiem = inf.getSlots().get("meridiem");
-                        return String.format("%s:%s %s", hour, minute, meridiem.toUpperCase());
+                        return String.format("%s:%02d %s", hour, minute, meridiem.toUpperCase());
                     },
                     RecipeStates.FINAL_NOTE_PROMPT,
                     inf -> "I'm sorry. What was the handoff time again?",
@@ -973,26 +1054,27 @@ public class MainActivity extends AppCompatActivity {
     class DictationState extends State {
         private final CheetahStep step;
         private final RecipeStates nextState;
-        private final CardUI cardUI;
+        private final CardType cardType;
 
-        public DictationState(CheetahStep step, CardUI cardUI, RecipeStates nextState) {
+        public DictationState(
+                WorkflowListener listener,
+                CheetahStep step,
+                CardType cardType,
+                RecipeStates nextState) {
+            super(listener);
             this.step = step;
-            this.cardUI = cardUI;
+            this.cardType = cardType;
             this.nextState = nextState;
         }
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
             String finalNotes = step.run(
-                    transcript -> cardUI.valueView.setText(transcript),
+                    transcript -> listener.onCardUpdated(cardType, transcript, false),
                     "Listening for notes...");
-            cardUI.valueView.setText(finalNotes);
+            listener.onCardUpdated(cardType, finalNotes, true);
             return new Transition(nextState);
         }
-    }
-
-    public interface InitCallback {
-        void onProgress(String status);
     }
 
     class Workflow {
@@ -1003,53 +1085,56 @@ public class MainActivity extends AppCompatActivity {
         CheetahStep cheetahStep;
 
         Map<RecipeStates, State> states = new HashMap<>();
+        private final WorkflowListener listener;
 
-        public Workflow(InitCallback initCallback) throws Exception {
-            initCallback.onProgress("Loading Koala Noise Suppression...");
-            recorder = new AINoiseSuppressedRecorder();
+        public Workflow(Context context, WorkflowListener listener) throws Exception {
+            this.listener = listener;
 
-            initCallback.onProgress("Loading Porcupine Wake Word...");
-            porcupineStep = new PorcupineStep(recorder);
+            listener.onInitProgress("Loading Koala Noise Suppression...");
+            recorder = new AINoiseSuppressedRecorder(context, listener);
 
-            initCallback.onProgress("Loading Orca Text-to-Speech...");
-            orcaStep = new OrcaStep(recorder);
+            listener.onInitProgress("Loading Porcupine Wake Word...");
+            porcupineStep = new PorcupineStep(context, recorder);
 
-            initCallback.onProgress("Loading Rhino Speech-to-Intent...");
-            rhinoStep = new RhinoStep(recorder);
+            listener.onInitProgress("Loading Orca Text-to-Speech...");
+            orcaStep = new OrcaStep(context, recorder);
 
-            initCallback.onProgress("Loading Cheetah Speech-to-Text...");
-            cheetahStep = new CheetahStep(recorder);
+            listener.onInitProgress("Loading Rhino Speech-to-Intent...");
+            rhinoStep = new RhinoStep(context, recorder);
+
+            listener.onInitProgress("Loading Cheetah Speech-to-Text...");
+            cheetahStep = new CheetahStep(context, recorder);
 
             buildStates();
         }
 
         private void buildStates() {
-            states.put(RecipeStates.STANDBY, new StandbyState(porcupineStep, RecipeStates.IDENTIFY_UNIT_PROMPT));
+            states.put(RecipeStates.STANDBY, new StandbyState(listener, porcupineStep, RecipeStates.IDENTIFY_UNIT_PROMPT));
 
-            states.put(RecipeStates.IDENTIFY_UNIT_PROMPT, new IdentifyUnitPromptState(orcaStep));
-            states.put(RecipeStates.IDENTIFY_UNIT_REPORT, new IdentifyUnitReportState(rhinoStep));
+            states.put(RecipeStates.IDENTIFY_UNIT_PROMPT, new IdentifyUnitPromptState(listener, orcaStep));
+            states.put(RecipeStates.IDENTIFY_UNIT_REPORT, new IdentifyUnitReportState(listener, rhinoStep));
 
-            states.put(RecipeStates.INCIDENT_TYPE_PROMPT, new IncidentTypePromptState(orcaStep));
-            states.put(RecipeStates.INCIDENT_TYPE_REPORT, new IncidentTypeReportState(rhinoStep));
+            states.put(RecipeStates.INCIDENT_TYPE_PROMPT, new IncidentTypePromptState(listener, orcaStep));
+            states.put(RecipeStates.INCIDENT_TYPE_REPORT, new IncidentTypeReportState(listener, rhinoStep));
 
-            states.put(RecipeStates.PATIENT_CONDITION_PROMPT, new PatientConditionPromptState(orcaStep));
-            states.put(RecipeStates.PATIENT_CONDITION_REPORT, new PatientConditionReportState(rhinoStep));
+            states.put(RecipeStates.PATIENT_CONDITION_PROMPT, new PatientConditionPromptState(listener, orcaStep));
+            states.put(RecipeStates.PATIENT_CONDITION_REPORT, new PatientConditionReportState(listener, rhinoStep));
 
-            states.put(RecipeStates.DESTINATION_PROMPT, new DestinationPromptState(orcaStep));
-            states.put(RecipeStates.DESTINATION_REPORT, new DestinationReportState(rhinoStep));
+            states.put(RecipeStates.DESTINATION_PROMPT, new DestinationPromptState(listener, orcaStep));
+            states.put(RecipeStates.DESTINATION_REPORT, new DestinationReportState(listener, rhinoStep));
 
-            states.put(RecipeStates.HANDOFF_STATUS_PROMPT, new HandoffStatusPromptState(orcaStep));
-            states.put(RecipeStates.HANDOFF_STATUS_REPORT, new HandoffStatusReportState(rhinoStep));
+            states.put(RecipeStates.HANDOFF_STATUS_PROMPT, new HandoffStatusPromptState(listener, orcaStep));
+            states.put(RecipeStates.HANDOFF_STATUS_REPORT, new HandoffStatusReportState(listener, rhinoStep));
 
-            states.put(RecipeStates.HANDOFF_TIME_PROMPT, new HandoffTimePromptState(orcaStep));
-            states.put(RecipeStates.HANDOFF_TIME_REPORT, new HandoffTimeReportState(rhinoStep));
+            states.put(RecipeStates.HANDOFF_TIME_PROMPT, new HandoffTimePromptState(listener, orcaStep));
+            states.put(RecipeStates.HANDOFF_TIME_REPORT, new HandoffTimeReportState(listener, rhinoStep));
 
-            states.put(RecipeStates.FINAL_NOTE_PROMPT, new FinalNotePromptState(orcaStep));
+            states.put(RecipeStates.FINAL_NOTE_PROMPT, new FinalNotePromptState(listener, orcaStep));
             states.put(
                     RecipeStates.FINAL_NOTE_REPORT,
-                    new DictationState(cheetahStep, notesCard, RecipeStates.COMPLETE_PROMPT));
+                    new DictationState(listener, cheetahStep, CardType.NOTES, RecipeStates.COMPLETE_PROMPT));
 
-            states.put(RecipeStates.COMPLETE_PROMPT, new CompletePromptState(orcaStep));
+            states.put(RecipeStates.COMPLETE_PROMPT, new CompletePromptState(listener, orcaStep));
         }
 
         public void run() throws Exception {
@@ -1066,15 +1151,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (isRunning) {
-                runOnUiThread(() -> {
-                    volumeMeterView.setVisibility(View.INVISIBLE);
-                    processingSpinner.setVisibility(View.INVISIBLE);
-                    successIcon.setVisibility(View.VISIBLE);
-                    btnCancel.setVisibility(View.GONE);
-                });
-
-                Thread.sleep(2000);
-                transitionToHome();
+                listener.onWorkflowComplete();
             }
         }
 
@@ -1094,6 +1171,14 @@ public class MainActivity extends AppCompatActivity {
             if (recorder != null) {
                 recorder.delete();
             }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (workflow != null) {
+            workflow.delete();
         }
     }
 
