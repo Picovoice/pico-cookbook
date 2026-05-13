@@ -10,6 +10,14 @@
         font-family: sans-serif;
       }
 
+      #error {
+        white-space: pre;
+        background: red;
+        color: white;
+        padding: 5px;
+        font-size: 16px;
+      }
+
       #appBlock {
         display: none;
         align-items: center;
@@ -22,7 +30,7 @@
 
       .dialogArea {
         flex: 0 0 auto;
-        height: 95%;
+        height: calc(95% - 110px);
         width: 60%;
         max-width: 500px;
       }
@@ -107,6 +115,7 @@
       #resetContainer {
         align-items: center;
         margin-top: 8px;
+        height: 30px;
       }
     </style>
   </head>
@@ -115,8 +124,8 @@
 
     <div id="topStatusBlock">
       <div>
-        <b>Status:</b> <span id="topStatus">Not loaded.</span
-        ><span id="dotdotdot"></span>
+        <b>Status:</b> <span id="topStatus">Not loaded.</span>
+        <div id="error" style="white-space: pre; display: none;"></div>
       </div>
       <hr />
     </div>

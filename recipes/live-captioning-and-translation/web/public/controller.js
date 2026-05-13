@@ -3,6 +3,8 @@ window.onload = () => {
   const initButton = document.getElementById('init');
   const resetButton = document.getElementById('reset');
 
+  const error = document.getElementById("error");
+
   const fileSelector = document.getElementById('audioFile');
   const audioFileClear = document.getElementById('audioFileClear');
   const sourceLanguage = document.getElementById('sourceLanguage');
@@ -17,6 +19,18 @@ window.onload = () => {
   const bar2 = document.getElementById('bar2');
   const bar3 = document.getElementById('bar3');
 
+  const state = {
+    bubbleElem: null,
+    upperElem: null,
+    upperTextElem: null,
+  };
+
+  const writeError = (errorString) => {
+    error.style.display = 'block';
+    error.innerText = `Error: ${errorString}`;
+    status.innerText = 'Error.';
+  };
+
   const updateUI = uiState => {
     switch (uiState) {
       case 'INIT':
@@ -26,12 +40,6 @@ window.onload = () => {
         document.getElementById('meterContainer').style.display = 'none';
         break;
     }
-  };
-
-  const state = {
-    bubbleElem: null,
-    upperElem: null,
-    upperTextElem: null,
   };
 
   const onOriginalText = transcript => {
@@ -83,6 +91,11 @@ window.onload = () => {
     state.bubbleElem = bubbleElem;
     state.upperElem = upperElem;
     state.upperTextElem = upperTextElem;
+  }
+
+  if (typeof Picovoice === 'undefined') {
+    writeError("You must run `yarn build` before running yarn start");
+    return;
   }
 
   initButton.onclick = async () => {

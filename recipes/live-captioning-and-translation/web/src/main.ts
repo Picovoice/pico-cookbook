@@ -66,6 +66,7 @@ type DemoCallbacks = {
 
 let object: PvObject | null = null;
 let currentState = UIState.INIT;
+let doneCaptioning = false;
 
 type TranscriptLine = {
   caption: string;
@@ -223,11 +224,13 @@ const start = async (audioFile: File | undefined): Promise<void> => {
         }),
       );
 
+      doneCaptioning = false;
       await caption(i16PCM);
     });
   } else {
     await WebVoiceProcessor.subscribe(object!.cheetah);
     await WebVoiceProcessor.subscribe(customAudioEngine);
+    doneCaptioning = true;
   }
 };
 
@@ -237,6 +240,10 @@ const caption = async (pcm: Int16Array) => {
 
   const numCheetahFrames = Math.floor(pcm.length / object!.cheetah.frameLength)
   for (let i = 1; i < numCheetahFrames; i++) {
+    if (currentState !== UIState.CAPTIONING) {
+      break;
+    }
+
     const pcmStart = (i - 1) * object!.cheetah.frameLength;
     const pcmEnd = (i) * object!.cheetah.frameLength;
     const pcmSlice = pcm.slice(pcmStart, pcmEnd);
@@ -254,11 +261,16 @@ const caption = async (pcm: Int16Array) => {
     }
   }
 
+  doneCaptioning = true;
   await object!.audioStream.waitPlayback();
 }
 
 const release = async (): Promise<void> => {
   setState(UIState.INIT);
+
+  while (!doneCaptioning) {
+    await new Promise(r => setTimeout(r, 100));
+  }
 
   transcriptLines = [];
   transcriptQueue = '';
