@@ -17,8 +17,8 @@ window.onload = () => {
   const bar2 = document.getElementById('bar2');
   const bar3 = document.getElementById('bar3');
 
-  const updateUI = uistate => {
-    switch (uistate) {
+  const updateUI = uiState => {
+    switch (uiState) {
       case 'INIT':
         topStatusBlock.style.display = 'block';
         document.getElementById('initBlock').style.display = 'block';
@@ -97,7 +97,7 @@ window.onload = () => {
         sourceLanguage.value,
         targetLanguage.value,
         {
-          onStateChange: uistate => updateUI(uistate),
+          onStateChange: uiState => updateUI(uiState),
           onOriginalText: onOriginalText,
           onModifiedText: onModifiedText,
           onVolume: volume => {
