@@ -21,7 +21,7 @@
                 android:id="@+id/titleText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Paramedic Field Report"
+                android:text="Voice Guided Field Reporting"
                 android:textSize="26sp"
                 android:textStyle="bold"
                 android:textColor="#377dff"
