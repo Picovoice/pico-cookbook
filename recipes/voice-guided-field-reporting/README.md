@@ -13,4 +13,5 @@ voice notes, all powered by on-device voice AI.
 
 ## Implementations
 
+- [Android](android)
 - [Python](python)
