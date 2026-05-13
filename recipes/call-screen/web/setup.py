@@ -106,7 +106,7 @@ def main() -> None:
     public_folder = os.path.join(os.path.dirname(__file__), "public", "models")
 
     shutil.copy(args.context_path, os.path.join(public_folder, "call_screen_demo_web.rhn"))
-    print(f"Copied ${args.context_path} to public/models/call_screen_demo_web.rhn")
+    print(f"Copied {args.context_path} to public/models/call_screen_demo_web.rhn")
 
     for animal, version in ANIMALS:
         major, minor = version.split('.')[:2]
