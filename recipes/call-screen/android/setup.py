@@ -106,7 +106,7 @@ def main() -> None:
     parser.add_argument(
         '--context_path',
         required=True,
-        help='Absolute path to the Rhino model file (`.rhn`).')
+        help='Absolute path to the Rhino context file (`.rhn`).')
     args = parser.parse_args()
 
     public_folder = os.path.join(

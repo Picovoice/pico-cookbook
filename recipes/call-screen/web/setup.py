@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import sys
 import time
+from argparse import ArgumentParser
 from threading import (
     Event,
     Thread
@@ -15,7 +16,17 @@ ANIMALS = [
     ("rhino", "4.0.0"),
 ]
 
-RENAMES = []
+COPIES = {
+    "orca": [
+        ("orca_params_en_female.pv", "orca_params_en_female.pv")
+    ],
+    "cheetah": [
+        ("cheetah_params.pv", "cheetah_params.pv")
+    ],
+    "rhino": [
+        ("rhino_params.pv", "rhino_params.pv")
+    ]
+}
 
 def animate_status(text: str) -> Tuple[Event, Thread]:
     stop_event = Event()
@@ -32,7 +43,6 @@ def animate_status(text: str) -> Tuple[Event, Thread]:
     thread = Thread(target=worker, daemon=True)
     thread.start()
     return stop_event, thread
-
 
 def clone_repo(animal: str, major: str, minor: str) -> str:
     folder = os.path.join(os.path.dirname(__file__), animal)
@@ -84,22 +94,26 @@ def clone_repo(animal: str, major: str, minor: str) -> str:
 
 
 def main() -> None:
+    parser = ArgumentParser()
+    parser.add_argument(
+        '--context_path',
+        required=True,
+        help='Absolute path to the Rhino context file (`.rhn`).')
+    args = parser.parse_args()
+
     public_folder = os.path.join(os.path.dirname(__file__), "public", "models")
+
+    shutil.copy(args.context_path, os.path.join(public_folder, "call_screen_demo_web.rhn"))
+    print(f"Copied ${args.context_path} to public/models/call_screen_demo_web.rhn")
+
     for animal, version in ANIMALS:
         major, minor = version.split('.')[:2]
         folder = clone_repo(animal, major, minor)
         model_folder = os.path.join(folder, "lib", "common")
-        for filename in os.listdir(model_folder):
-            src_path = os.path.join(model_folder, filename)
-            dst_path = os.path.join(public_folder, filename)
+        for src_filename, dst_filename in COPIES[animal]:
+            src_path = os.path.join(model_folder, src_filename)
+            dst_path = os.path.join(public_folder, dst_filename)
             shutil.copy(src_path, dst_path)
-
-    for old, new in RENAMES:
-        src_path = os.path.join(public_folder, old)
-        dst_path = os.path.join(public_folder, new)
-        if os.path.exists(src_path):
-            os.rename(src_path, dst_path)
-
 
 if __name__ == '__main__':
     main()

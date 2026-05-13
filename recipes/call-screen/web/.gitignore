@@ -3,11 +3,15 @@
 .rts2_cache/
 .venv
 *.log
-cheetah
+
+cheetah/
+rhino/
+orca/
+
 dist/
 node_modules
-orca
 public/index.js
 public/models/*
 types/*.d.ts*
 venv
+*.rhn

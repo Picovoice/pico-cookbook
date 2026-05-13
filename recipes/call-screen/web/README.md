@@ -31,19 +31,12 @@ These instructions assume your current working directory is `recipes/call-screen
 
 ### 2. Download the Required Models
 
-Run the setup script to download and copy the models for [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/)
-and [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/).
+Run the setup script to download and copy the models for [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/), [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/), and [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/).
 
-It will also copy the models provided for [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) to the `public/models` folder.
-
-Lastly, it will place your `AccessKey` from Picovoice Console and name into the `ACCESS_KEY` and `USERNAME` variables
-in [MainActivity.java](call-screen/src/main/java/ai/picovoice/callscreen/MainActivity.java).
+It will also copy the context for [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) to the `public/models` folder.
 
 ```bash
-python setup.py \
-    --access_key ${ACCESS_KEY} \
-    --name ${NAME} \
-    --context_path ${PATH_TO_RHN}
+python setup.py --context_path ${PATH_TO_RHN}
 ```
 
 ### 3. Build and run the Demo 
