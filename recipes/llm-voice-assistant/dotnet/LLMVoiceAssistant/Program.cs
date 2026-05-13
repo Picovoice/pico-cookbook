@@ -347,26 +347,18 @@ namespace LLMVoiceAssistant
                 Channel<string> completionChannel = Channel.CreateUnbounded<string>();
                 void OnPartialCompletion(object? _, string completion)
                 {
-                    completionChannel.Writer.TryWrite(completion);
+                    if (completion.Length > 0)
+                    {
+                        completionChannel.Writer.TryWrite(completion);
+                    }
                 }
                 void OnCompletionGenerationCompleted(object? _, PicoLLMEndpoint endpoint)
                 {
                     if (endpoint != PicoLLMEndpoint.INTERRUPTED)
                     {
-                        while (completionChannel.Reader.Count > 0)
-                        {
-                            Thread.Sleep(50);
-                        }
-                        _orcaProfiler?.Tick();
-                        short[] pcm = orcaStream.Flush();
-                        _orcaProfiler?.Tock(pcm);
-                        profilerEvent?.Invoke(null, _orcaProfiler);
-                        if (pcm != null)
-                        {
-                            audioChannel.Writer.TryWrite(pcm);
-                        }
+                        completionChannel.Writer.TryWrite("");
                     }
-                    audioChannel.Writer.Complete();
+
                     _generator.PartialCompletionGenerated -= OnPartialCompletion;
                     _generator.CompletionGenerationCompleted -=
                         OnCompletionGenerationCompleted;
@@ -420,11 +412,26 @@ namespace LLMVoiceAssistant
                         {
                             string text = await completionChannel.Reader.ReadAsync(cancellationToken);
                             _orcaProfiler?.Tick();
-                            short[] pcm = orcaStream.Synthesize(text);
-                            _orcaProfiler?.Tock(pcm);
-                            if (pcm != null)
+                            if (text.Length > 0)
                             {
-                                audioChannel.Writer.TryWrite(pcm);
+                                short[] pcm = orcaStream.Synthesize(text);
+                                _orcaProfiler?.Tock(pcm);
+                                if (pcm != null)
+                                {
+                                    audioChannel.Writer.TryWrite(pcm);
+                                }
+                            }
+                            else
+                            {
+                                short[] pcm = orcaStream.Flush();
+                                _orcaProfiler?.Tock(pcm);
+                                profilerEvent?.Invoke(null, _orcaProfiler);
+                                if (pcm != null)
+                                {
+                                    audioChannel.Writer.TryWrite(pcm);
+                                }
+
+                                audioChannel.Writer.Complete();
                             }
                         }
                         catch (OperationCanceledException)
