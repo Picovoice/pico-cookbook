@@ -28,6 +28,7 @@ COPIES = {
     ]
 }
 
+
 def animate_status(text: str) -> Tuple[Event, Thread]:
     stop_event = Event()
 
@@ -43,6 +44,7 @@ def animate_status(text: str) -> Tuple[Event, Thread]:
     thread = Thread(target=worker, daemon=True)
     thread.start()
     return stop_event, thread
+
 
 def clone_repo(animal: str, major: str, minor: str) -> str:
     folder = os.path.join(os.path.dirname(__file__), animal)
@@ -114,6 +116,7 @@ def main() -> None:
             src_path = os.path.join(model_folder, src_filename)
             dst_path = os.path.join(public_folder, dst_filename)
             shutil.copy(src_path, dst_path)
+
 
 if __name__ == '__main__':
     main()

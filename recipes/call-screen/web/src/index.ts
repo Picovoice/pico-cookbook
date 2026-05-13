@@ -201,16 +201,14 @@ const init = async (
     }
   };
 
-  const ATTEMPT = 100 * 1001;
+  // If you update your model, you may want to enable force write to update the model in storage.
+  const FORCE_WRITE = false;
 
   sendMessage("status", "Loading Cheetah");
   const cheetah = await CheetahWorker.create(
     accessKey,
     transcriptCallback,
-    {
-      publicPath: "models/cheetah_params.pv",
-      version: ATTEMPT,
-    },
+    { publicPath: "models/cheetah_params.pv", forceWrite: FORCE_WRITE },
     {
       endpointDurationSec: 1.0,
       enableAutomaticPunctuation: true,
@@ -221,21 +219,16 @@ const init = async (
   sendMessage("status", "Loading Orca");
   const orca = await OrcaWorker.create(
     accessKey,
-    {
-      publicPath: "models/orca_params_en_female.pv",
-      version: ATTEMPT,
-    },
+    { publicPath: "models/orca_params_en_female.pv", forceWrite: FORCE_WRITE },
     {}
   );
 
   sendMessage("status", "Loading Rhino");
   const rhino = await RhinoWorker.create(
     accessKey,
-    { publicPath: 'models/call_screen_demo_web.rhn',
-      version: ATTEMPT },
+    { publicPath: 'models/call_screen_demo_web.rhn', forceWrite: FORCE_WRITE },
     inferenceCallback,
-    { publicPath: 'models/rhino_params.pv',
-      version: ATTEMPT },
+    { publicPath: 'models/rhino_params.pv', forceWrite: FORCE_WRITE },
   );
 
   sendMessage("ai state", "AI: Connecting caller");
