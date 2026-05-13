@@ -16,17 +16,6 @@ struct ChatView: View {
         ZStack {
             VStack(alignment: .center) {
                 resultsBox
-
-                Spacer()
-
-                HStack(alignment: .center) {
-                    Spacer()
-                    if !viewModel.enableGenerateButton {
-                        ProgressView(value: 0).progressViewStyle(CircularProgressViewStyle())
-                    }
-                    Spacer()
-                }
-                .padding(.horizontal, 24)
             }
             .padding(.bottom, 32)
             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity).background(Color.white)
