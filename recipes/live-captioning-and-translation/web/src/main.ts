@@ -57,8 +57,8 @@ type PvObject = {
 
 type DemoCallbacks = {
   onStateChange: (state: UIState) => void;
-  onOriginalText: (text: TranscriptLine[]) => void;
-  onModifiedText: (text: string) => void;
+  onOriginalText: (text: string) => void;
+  onModifiedText: (text: TranscriptLine[]) => void;
   onAudioReady: (pcm: Int16Array) => void;
   onVolume: (volume: number) => void;
   onError: (error: string) => void;
@@ -69,7 +69,7 @@ let currentState = UIState.INIT;
 
 type TranscriptLine = {
   caption: string;
-  translated: string;
+  translated: string | null;
 }
 
 let transcriptLines: TranscriptLine[] = [];
@@ -121,7 +121,7 @@ const init = async (
         cheetah.flush();
       }
 
-      callbacks!.onModifiedText(transcriptQueue);
+      callbacks!.onOriginalText(transcriptQueue);
       await translateCallback(transcript.isFlushed ?? false);
       textRelease();
     }
@@ -138,29 +138,37 @@ const init = async (
   );
 
   const translateCallback = async (isFlushed: boolean) => {
-    const hasEndRe = /[.!?](?:\s|$)/;
-    const sentencesRe = /^((?:.*?[.!?](?:\s+|$))+)?(.*)$/s;
+    let sentences = transcriptQueue;
+    let tail = "";
 
-    // TODO: Handle flush
+    if (!isFlushed) {
+      const hasEndRe = /[.!?](?:\s|$)/;
+      const sentencesRe = /^((?:.*?[.!?](?:\s+|$))+)?(.*)$/s;
 
-    if (transcriptQueue.search(hasEndRe) === -1) {
-      return;
+      if (transcriptQueue.search(hasEndRe) === -1) {
+        return;
+      }
+
+      const match = transcriptQueue.match(sentencesRe);
+      if (match === null) {
+        return;
+      }
+      sentences = match![1].trim()
+      tail = match![2].trim()
     }
 
-    const match = transcriptQueue.match(sentencesRe);
-    if (match === null) {
-      return;
-    }
-    const sentences = match![1]
-    const tail = match![2]
+    if (sentences) {
+      if (zebra !== null) {
+        const translateRelease = await translateMutex.acquire();
+        const translated = await zebra.translate(sentences);
+        translateRelease();
 
-    if (zebra !== null && sentences) {
-      const translateRelease = await translateMutex.acquire();
-      const translated = await zebra.translate(sentences);
-      translateRelease();
-
-      transcriptLines.push({ caption: sentences, translated })
-      callbacks!.onOriginalText(transcriptLines);
+        transcriptLines.push({ caption: sentences, translated })
+        callbacks!.onModifiedText(transcriptLines);
+      } else {
+        transcriptLines.push({ caption: sentences, translated: null })
+        callbacks!.onModifiedText(transcriptLines);
+      }
     }
 
     transcriptQueue = tail;

@@ -8,10 +8,8 @@ window.onload = () => {
 
   const topStatusBlock = document.getElementById('topStatusBlock');
   const topStatus = document.getElementById('topStatus');
-  const tooltip = document.getElementById('tooltip');
-  const originalText = document.getElementById('originalText');
-  const modifiedText = document.getElementById('modifiedText');
-  const modifiedTitle = document.getElementById('modifiedTitle');
+
+  const result = document.getElementById("result");
 
   const bar1 = document.getElementById('bar1');
   const bar2 = document.getElementById('bar2');
@@ -66,14 +64,61 @@ window.onload = () => {
     }
   };
 
-  const onOriginalText = transcriptLines => {
-    let transcriptText = ""
-    for (const line of transcriptLines) {
-      transcriptText += `${line.caption}\n`
-      transcriptText += `${line.translated}\n`
-      transcriptText += `\n`
+  const state = {
+    bubbleElem: null,
+    upperElem: null,
+    upperTextElem: null,
+  };
+
+  const onOriginalText = transcript => {
+    state.upperTextElem.innerText = transcript.trim() + " ";
+  }
+
+  const onModifiedText = transcriptLines => {
+    const line = transcriptLines[transcriptLines.length - 1]
+
+    if (line.translated !== null) {
+      const lowerElem = document.createElement("div");
+      const lowerTextElem = document.createElement("span");
+
+      lowerElem.classList = "lower-bubble";
+      lowerTextElem.innerText = line.translated;
+
+      lowerElem.appendChild(lowerTextElem);
+      state.bubbleElem.appendChild(lowerElem);
     }
-    originalText.innerText = transcriptText;
+
+    state.upperElem.classList.add("mute-text");
+    state.upperTextElem.innerText = line.caption;
+
+    createNewTextBubble();
+
+    result.scrollTop = result.scrollHeight;
+  }
+
+  const createNewTextBubble = () => {
+    const rowElem = document.createElement("div");
+    const bubbleElem = document.createElement("div");
+
+    const upperElem = document.createElement("div");
+    const upperTextElem = document.createElement("span");
+
+    rowElem.className = "align-start";
+
+    bubbleElem.className = "text-bubble";
+    upperElem.classList = "upper-bubble";
+
+    upperElem.appendChild(upperTextElem);
+    bubbleElem.appendChild(upperElem);
+
+    rowElem.appendChild(bubbleElem);
+    result.appendChild(rowElem);
+
+    upperTextElem.innerText = " "
+
+    state.bubbleElem = bubbleElem;
+    state.upperElem = upperElem;
+    state.upperTextElem = upperTextElem;
   }
 
   initButton.onclick = async () => {
@@ -88,7 +133,7 @@ window.onload = () => {
         {
           onStateChange: state => updateUI(state),
           onOriginalText: onOriginalText,
-          onModifiedText: text => (modifiedText.innerText = text),
+          onModifiedText: onModifiedText,
           onVolume: volume => {
             const baseHeight = 8;
             bar1.style.height = `${baseHeight + volume * 20}px`;
@@ -102,6 +147,7 @@ window.onload = () => {
       topStatusBlock.style.display = 'none';
       document.getElementById('initBlock').style.display = 'none';
       document.getElementById('appBlock').style.display = 'flex';
+      createNewTextBubble();
     } catch (e) {
       topStatus.innerText = 'Error loading engines: ' + e.message;
       initButton.disabled = false;

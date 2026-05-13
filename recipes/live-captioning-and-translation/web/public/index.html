@@ -22,9 +22,9 @@
 
       .dialogArea {
         flex: 0 0 auto;
+        height: 95%;
         width: 60%;
         max-width: 500px;
-        margin-bottom: 20px;
       }
 
       .messageArea {
@@ -34,17 +34,11 @@
         max-width: 500px;
       }
 
-      .result-container {
-        border: 1px solid rgb(118, 118, 118);
-        height: 150px;
-        background-color: #fafafa;
-      }
-
-      .result-text {
+      #result {
         margin: 0;
         white-space: pre-wrap;
         word-wrap: break-word;
-        height: calc(100% - 10px);
+        height: 100%;
         overflow-y: auto;
         padding: 5px;
       }
@@ -56,11 +50,35 @@
         flex-direction: column;
       }
 
-      #tooltip {
-        text-align: center;
-        color: #555;
-        font-style: italic;
-        height: 20px;
+      .align-start {
+        display: flex;
+      }
+
+      .text-bubble {
+        width: 100%;
+        border-radius: 5px;
+        background-color: lightblue;
+        margin-bottom: 5px;
+      }
+
+      .upper-bubble {
+        border-radius: 5px;
+        padding: 6px;
+      }
+
+      .lower-bubble {
+        border-radius: 5px;
+        padding: 6px;
+      }
+
+      .mute-text {
+        background-color: lightgrey;
+        color: darkgrey;
+      }
+
+      .result-container {
+        height: 100%;
+        border: 1px solid rgb(118, 118, 118);
       }
 
       h3 {
@@ -132,12 +150,8 @@
 
     <div id="appBlock">
       <div class="dialogArea">
-        <h3>Original Memo:</h3>
         <div class="result-container">
-          <pre id="originalText" class="result-text"></pre>
-        </div>
-        <div class="result-container">
-          <pre id="modifiedText" class="result-text"></pre>
+          <pre id="result"></pre>
         </div>
       </div>
 
