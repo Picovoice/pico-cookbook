@@ -126,6 +126,19 @@ class ViewModel: ObservableObject {
         let sourceLanguage = selectedSourceLanguage
         let targetLanguage = selectedTargetLanguage
 
+        do {
+            if selectAudioFile != nil {
+                selectedAudioPCM = try loadPCM(url: selectAudioFile!)
+                
+                if selectedAudioPCM.isEmpty {
+                    throw NSError(domain: "Failed to load \(selectAudioFile!.absoluteString)", code: 1)
+                }
+            }
+        } catch {
+            errorMessage = "\(error.localizedDescription)"
+            return
+        }
+        
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             let setStatusText = {(_ msg: String) in
                 DispatchQueue.main.async { [self] in
@@ -163,12 +176,6 @@ class ViewModel: ObservableObject {
                 setStatusText(ViewModel.statusTextDefault)
 
                 if selectAudioFile != nil {
-                    selectedAudioPCM = try loadPCM(url: selectAudioFile!)
-
-                    if selectedAudioPCM.isEmpty {
-                        throw NSError(domain: "Failed to load \(selectAudioFile!.absoluteString)", code: 1)
-                    }
-
                     speakFile()
                 } else {
                     DispatchQueue.main.async { [self] in
