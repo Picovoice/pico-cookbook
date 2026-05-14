@@ -1,13 +1,17 @@
 import { CheetahTranscript, CheetahWorker } from '@picovoice/cheetah-web';
 import { PicoLLMWorker } from '@picovoice/picollm-web';
 import { OrcaWorker } from '@picovoice/orca-web';
-import { RhinoInference, RhinoWorker } from '@picovoice/rhino-web';
 import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 import { AudioStream } from './audio_stream';
 import { Action, promptFromAction, isTerminalFromAction, allActions } from './action';
 
 const MIN_DB = -40.0;
 const MAX_DB = 0.0;
+
+const TOPK = 3
+const COMPLETION_TOKEN_LIMIT = 256
+const CHUNK_SIZE = 1200
+const CHUNK_OVERLAP = 250
 
 const ASK_FOR_DETAILS_RETRY_LIMIT = 2;
 
@@ -80,11 +84,12 @@ const extractCallerAndReasonFromLLMInference = (inference: string): [string, str
 type PvObject = {
   audio: AudioStream,
   cheetah: CheetahWorker,
-  llm: PicoLLMWorker,
+  llmModel: PicoLLMWorker,
+  llmEmbedding: PicoLLMWorker,
   orca: OrcaWorker,
-  rhino: RhinoWorker,
   action: Action,
-  username: string,
+
+  documentFile: File,
 
   askForDetailsRetryCount: number,
 };
@@ -118,32 +123,58 @@ const BufferedCheetahEngine = {
   }
 }
 
-var rhinoPcmBuffer = new Int16Array();
-const BufferedRhinoEngine = {
-  onmessage: function(e: any) {
-    switch (e.data.command) {
-      case 'process':
-        triggerAudioCallback(e.data.inputFrame);
+// ------------------------------------------------------------------------- //
 
-        var tempPcmBuffer = new Int16Array(rhinoPcmBuffer.length + e.data.inputFrame.length);
-        tempPcmBuffer.set(rhinoPcmBuffer);
-        tempPcmBuffer.set(e.data.inputFrame, rhinoPcmBuffer.length);
-        rhinoPcmBuffer = tempPcmBuffer
+const normalizeVector = (vector: number[]): number[] => {
+  const norm = Math.pow(vector.reduce((partial, x) => partial + x, 0), 0.5);
+}
 
-        if (object !== null && rhinoPcmBuffer.length >= object!.rhino.frameLength) {
-          object!.rhino.process(rhinoPcmBuffer.slice(0, object!.rhino.frameLength));
-          rhinoPcmBuffer = rhinoPcmBuffer.slice(object!.rhino.frameLength)
-        }
-        break;
+const generateEmbeddings = async (chunks: string[]): Promise<number[][]> => {
+  // status = Generating embeddgins x/x
+
+  const embeddings = Promise.all(chunks.map(async (chunk): Promise<number[]> => {
+    const embedding = await object!.llmEmbedding.generateEmbeddings(chunk);
+    return normalizeVector(embedding.embeddings);
+  }));
+  return embeddings;
+}
+
+const chunkDocument = (text: string): string[] => {
+  // TODO: Process line endings?
+
+  let chunks = [];
+  let start = 0;
+
+  while (start < text.length) {
+    let end = Math.min(start + CHUNK_SIZE, text.length);
+
+    if (end < text.length) {
+            // paragraph_break = text.rfind("\n\n", start, end)
+            // if paragraph_break > start + int(chunk_size * 0.5):
+            //     end = paragraph_break
     }
+
+    const chunk = text.slice(start, end).trim();
+
+    if (chunk.length > 0) {
+      chunks.push(chunk);
+    }
+
+    if (end >= text.length) {
+      break;
+    }
+
+    start = Math.max(0, end - CHUNK_OVERLAP);
   }
+
+  return chunks;
 }
 
 // ------------------------------------------------------------------------- //
 
 const init = async (
   accessKey: string,
-  name: string,
+  documentFile: File,
   sendMessage: (message: string, obj: any) => void,
   makeRequest: (message: string) => any,
   onVolumeCallback: (volume: number) => void,
@@ -177,7 +208,7 @@ const init = async (
     const orca = object!.orca;
 
     const synthesis = await orca.synthesize(
-      promptFromAction(object!.action, object!.username), {});
+      promptFromAction(object!.action, "TODO"), {});
     const alignments = synthesis.alignments;
 
     object!.audio.stream(synthesis.pcm);
@@ -244,95 +275,78 @@ const init = async (
     }
   }
 
+  const llmEmbeddingProcessCall = async (file: File) => {
+    //
+  }
+
   const llmProcessCall = async (callerText: string) => {
     sendMessage("start llm spinner", null);
 
-    let dialog = await object!.llm.getDialog(undefined, undefined, SYSTEM);
-    dialog.addHumanRequest(`Caller said: \"${callerText.replace("[CALLER]", "").trim()}\"\n`);
+    // let dialog = await object!.llm.getDialog(undefined, undefined, SYSTEM);
+    // dialog.addHumanRequest(`Caller said: \"${callerText.replace("[CALLER]", "").trim()}\"\n`);
 
-    const completion = await llm.generate(
-        dialog.prompt(),
-        { stopPhrases: ['<|eot_id|>'] });
+    // const completion = await llm.generate(
+    //     dialog.prompt(),
+    //     { stopPhrases: ['<|eot_id|>'] });
 
-    const inference = completion.completion.trim().replace('<|eot_id|>', '');
-    console.log(`# Inference\n${inference}`);
-    const [caller, reason] = extractCallerAndReasonFromLLMInference(inference);
+    // const inference = completion.completion.trim().replace('<|eot_id|>', '');
+    // console.log(`# Inference\n${inference}`);
+    // const [caller, reason] = extractCallerAndReasonFromLLMInference(inference);
 
-    sendMessage("stop llm spinner", null);
+    // sendMessage("stop llm spinner", null);
 
-    if (caller != 'unknown' && reason != 'unknown') {
-      sendMessage(
-          "ai report",
-          `[AI] <b style="color: var(--brand-primary);">${caller}</b> is trying to speak with you about ` +
-          `<b style="color: var(--brand-primary);">${reason}</b>.`);
-      setTimeout(() => { giveUserOptions(); }, 200);
-      return;
-    } else if (object!.askForDetailsRetryCount < ASK_FOR_DETAILS_RETRY_LIMIT) {
-      object!.action = Action.ASK_FOR_DETAILS;
+    // if (caller != 'unknown' && reason != 'unknown') {
+    //   sendMessage(
+    //       "ai report",
+    //       `[AI] <b style="color: var(--brand-primary);">${caller}</b> is trying to speak with you about ` +
+    //       `<b style="color: var(--brand-primary);">${reason}</b>.`);
+    //   setTimeout(() => { giveUserOptions(); }, 200);
+    //   return;
+    // } else if (object!.askForDetailsRetryCount < ASK_FOR_DETAILS_RETRY_LIMIT) {
+    //   object!.action = Action.ASK_FOR_DETAILS;
 
-      if (caller == 'unknown' && reason == 'unknown') {
-        sendMessage("ai report", "[AI] Unknown caller with no specific reason. I will ask for more information.");
-      } else if (caller == 'unknown') {
-        sendMessage(
-            "ai report",
-            `[AI] Unknown caller is trying to speak with you about <b style="color: var(--brand-primary);">${reason}</b>. ` +
-            `I will ask for their identity.`);
-      } else {
-        sendMessage(
-            "ai report",
-            `[AI] <b style="color: var(--brand-primary);">${caller}</b> is trying to speak with you. I will ask for their reason.`);
-      }
-    } else {
-      object!.action = Action.DECLINE_CALL;
+    //   if (caller == 'unknown' && reason == 'unknown') {
+    //     sendMessage("ai report", "[AI] Unknown caller with no specific reason. I will ask for more information.");
+    //   } else if (caller == 'unknown') {
+    //     sendMessage(
+    //         "ai report",
+    //         `[AI] Unknown caller is trying to speak with you about <b style="color: var(--brand-primary);">${reason}</b>. ` +
+    //         `I will ask for their identity.`);
+    //   } else {
+    //     sendMessage(
+    //         "ai report",
+    //         `[AI] <b style="color: var(--brand-primary);">${caller}</b> is trying to speak with you. I will ask for their reason.`);
+    //   }
+    // } else {
+    //   object!.action = Action.DECLINE_CALL;
       
-      sendMessage(
-          "ai report",
-          `[AI] Couldn't understand caller's identity and agenda after <b style="color: var(--brand-primary);">${ASK_FOR_DETAILS_RETRY_LIMIT}</b> ` +
-          "inquiries. Declining their call.");
-    }
+    //   sendMessage(
+    //       "ai report",
+    //       `[AI] Couldn't understand caller's identity and agenda after <b style="color: var(--brand-primary);">${ASK_FOR_DETAILS_RETRY_LIMIT}</b> ` +
+    //       "inquiries. Declining their call.");
+    // }
 
-    object!.askForDetailsRetryCount += 1;
-    setTimeout(() => { speakToCaller(); }, 200);
+    // object!.askForDetailsRetryCount += 1;
+    // setTimeout(() => { speakToCaller(); }, 200);
   };
 
   const giveUserOptions = async () => {
     sendMessage("give user options", allActions());
-    sendMessage("ai state", "AI: Listening for " + object!.username + "'s command");
+    sendMessage("ai state", "AI: Listening for " + "TODO" + "'s command");
 
-    const rhino = BufferedRhinoEngine;
-    await WebVoiceProcessor.subscribe(rhino);
+    // const rhino = BufferedRhinoEngine;
+    // await WebVoiceProcessor.subscribe(rhino);
   };
   const stopGiveUserOptions = async () => {
-    const rhino = BufferedRhinoEngine;
-    await WebVoiceProcessor.unsubscribe(rhino);
+  //   const rhino = BufferedRhinoEngine;
+  //   await WebVoiceProcessor.unsubscribe(rhino);
   };
-  const inferenceCallback = async (
-    inference: RhinoInference
-  ): Promise<void> => {
-    if (!inference.isFinalized) {
-      return;
-    }
-
-    if (inference.isUnderstood && inference.intent === "chooseAction") {
-      object!.action = inference.slots!.action as Action;
-
-      await stopGiveUserOptions();
-      sendMessage("select option", object!.action);
-
-      setTimeout(() => { speakToCaller(); }, 600);
-    } else {
-      sendMessage("unknown user option", 1000);
-    }
-  };
-
-  // If you update your model, you may want to enable force write to update the model in storage.
-  const FORCE_WRITE = false;
 
   sendMessage("status", "Loading Cheetah");
   const cheetah = await CheetahWorker.create(
     accessKey,
     transcriptCallback,
-    { publicPath: "models/cheetah_params.pv", forceWrite: FORCE_WRITE },
+    { publicPath: "models/cheetah_params.pv", forceWrite: true },
     {
       endpointDurationSec: 1.0,
       enableAutomaticPunctuation: true,
@@ -340,26 +354,25 @@ const init = async (
     }
   );
 
-  sendMessage("status", "Loading PicoLLM");
-  const llm = await PicoLLMWorker.create(
+  sendMessage("status", "Loading PicoLLM (model)");
+  const llmModel = await PicoLLMWorker.create(
     accessKey,
-    { modelFile: 'models/llama-3.2-1b-instruct-385.pllm', cacheFileOverwrite: FORCE_WRITE },
+    { modelFile: 'models/llama-3.2-1b-instruct-385.pllm', cacheFileOverwrite: true },
+    {}
+  );
+
+  sendMessage("status", "Loading PicoLLM (embedding)");
+  const llmEmbedding = await PicoLLMWorker.create(
+    accessKey,
+    { modelFile: 'models/embeddinggemma-300m-375.pllm', cacheFileOverwrite: true },
     {}
   );
 
   sendMessage("status", "Loading Orca");
   const orca = await OrcaWorker.create(
     accessKey,
-    { publicPath: "models/orca_params_en_female.pv", forceWrite: FORCE_WRITE },
+    { publicPath: "models/orca_params_en_female.pv", forceWrite: true },
     {}
-  );
-
-  sendMessage("status", "Loading Rhino");
-  const rhino = await RhinoWorker.create(
-    accessKey,
-    { publicPath: 'models/call_assist_demo_web.rhn', forceWrite: FORCE_WRITE },
-    inferenceCallback,
-    { publicPath: 'models/rhino_params.pv', forceWrite: FORCE_WRITE },
   );
 
   sendMessage("ai state", "AI: Connecting caller");
@@ -369,11 +382,11 @@ const init = async (
   object = {
     audio: audio,
     cheetah: cheetah,
-    llm: llm,
+    llmModel: llmModel,
+    llmEmbedding: llmEmbedding,
     orca: orca,
-    rhino: rhino,
     action: Action.GREET,
-    username: name,
+    documentFile: documentFile,
     askForDetailsRetryCount: 0,
   };
 
@@ -381,14 +394,15 @@ const init = async (
 };
 
 const updateStartParameters = async (name: string): Promise<boolean> => {
-  if (object) {
-    object!.action = Action.GREET;
-    object!.username = name;
-    object!.askForDetailsRetryCount = 0;
-    return true;
-  } else {
-    return false;
-  }
+  // if (object) {
+  //   object!.action = Action.GREET;
+  //   object!.username = name;
+  //   object!.askForDetailsRetryCount = 0;
+  //   return true;
+  // } else {
+  //   return false;
+  // }
+  return !!object;
 };
 
 const release = async () => {
@@ -404,10 +418,6 @@ const release = async () => {
 
   if (object && object!.orca) {
     await object!.orca.release();
-  }
-
-  if (object && object!.rhino) {
-    await object!.rhino.release();
   }
 
   object = null;

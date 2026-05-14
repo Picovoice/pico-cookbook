@@ -48,7 +48,7 @@ window.onload = () => {
   const aiState = document.getElementById("ai-state");
 
   const accessKey = document.getElementById("access-key");
-  const name = document.getElementById("name");
+  const documentFile = document.getElementById("documentFile");
   const initButton = document.getElementById("init-button");
   const initButtonTooltip = document.getElementById("init-button-tooltip");
 
@@ -124,17 +124,17 @@ window.onload = () => {
   accessKey.addEventListener("input", enableLoadButton);
 
   const enableStartButton = _ => {
-    if (sanitizeForOrca(name.value).replaceAll(" ", "").length > 0) {
+    if (documentFile.value.length > 0) {
       initButton.removeAttribute("disabled");
       initButton.setAttribute("coloured", "");
       initButtonTooltip.innerHTML = "";
     } else {
       initButton.setAttribute("disabled", "");
       initButton.removeAttribute("coloured");
-      initButtonTooltip.innerHTML = "fill in name";
+      initButtonTooltip.innerHTML = "select document";
     }
   }
-  name.addEventListener("input", enableStartButton);
+  documentFile.addEventListener("input", enableStartButton);
 
   // -----------------------------------------
 
@@ -167,7 +167,7 @@ window.onload = () => {
     initButton.removeAttribute("disabled");
     initButton.setAttribute("coloured", "");
 
-    name.disabled = false;
+    documentFile.disabled = false;
   };
 
   let currentBubbleText = "";
@@ -354,7 +354,7 @@ window.onload = () => {
     try {
       startFunction = await Picovoice.init(
         accessKey.value,
-        sanitizeForOrca(name.value),
+        documentFile.files[0],
         sendMessage,
         makeRequest,
         onVolumeCallback,
@@ -389,9 +389,9 @@ window.onload = () => {
     initButton.setAttribute("disabled", "");
     initButton.removeAttribute("coloured");
 
-    name.disabled = true;
+    documentFile.disabled = true;
 
-    let success = await Picovoice.updateStartParameters(sanitizeForOrca(name.value));
+    let success = await Picovoice.updateStartParameters(sanitizeForOrca(documentFile.value));
     if (!success) {
       console.log("failed to update start parameters");
     }
