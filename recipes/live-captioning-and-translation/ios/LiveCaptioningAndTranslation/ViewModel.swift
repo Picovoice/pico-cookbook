@@ -129,7 +129,7 @@ class ViewModel: ObservableObject {
         do {
             if selectAudioFile != nil {
                 selectedAudioPCM = try loadPCM(url: selectAudioFile!)
-                
+
                 if selectedAudioPCM.isEmpty {
                     throw NSError(domain: "Failed to load \(selectAudioFile!.absoluteString)", code: 1)
                 }
@@ -138,7 +138,7 @@ class ViewModel: ObservableObject {
             errorMessage = "\(error.localizedDescription)"
             return
         }
-        
+
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             let setStatusText = {(_ msg: String) in
                 DispatchQueue.main.async { [self] in
