@@ -98,7 +98,7 @@ struct SelectLanguageView: View {
                                 viewModel.startDemo()
                             },
                             label: {
-                                Text("Mic Demo")
+                                Text("Use Mic")
                                     .padding(.vertical, 8)
                                     .padding(8)
                                     .foregroundStyle(.white)
@@ -115,7 +115,7 @@ struct SelectLanguageView: View {
                                 loadingFile = true
                             },
                             label: {
-                                Text("File Demo")
+                                Text("Use File")
                                     .padding(.vertical, 8)
                                     .padding(8)
                                     .foregroundStyle(.white)
