@@ -206,11 +206,10 @@ const init = async (
     sendMessage("restart demo", null);
   };
 
-  const speakToCaller = async () => {
+  const speakToCaller = async (text: string) => {
     const orca = object!.orca;
 
-    const synthesis = await orca.synthesize(
-      promptFromAction(object!.action, "TODO"), {});
+    const synthesis = await orca.synthesize(text, {});
     const alignments = synthesis.alignments;
 
     object!.audio.stream(synthesis.pcm);
@@ -296,6 +295,7 @@ const init = async (
 
   const llmProcessCall = async (callerText: string) => {
     sendMessage("start llm spinner", null);
+
     const question = callerText.replace("[CALLER]", "").trim();
     const retreivedChunks = await retreiveChunks(question);
     const prompt = await buildPrompt(question, retreivedChunks);
@@ -309,7 +309,12 @@ const init = async (
         streamCallback: (token: string) => {},
       }
     );
-    console.log(completion);
+    const inference = completion.completion.trim().replace('<|eot_id|>', '');
+
+    sendMessage("stop llm spinner", null);
+
+    object!.action = Action.ASK_FOR_DETAILS;
+    speakToCaller(inference);
 
     // let dialog = await object!.llm.getDialog(undefined, undefined, SYSTEM);
     // dialog.addHumanRequest(`Caller said: \"${callerText.replace("[CALLER]", "").trim()}\"\n`);
