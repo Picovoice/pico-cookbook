@@ -25,6 +25,7 @@ import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -128,6 +129,16 @@ public class MainActivity extends AppCompatActivity {
 
     private Button useFileButton;
 
+    private Button backButton;
+
+    private VolumeMeterView volumeMeterView;
+
+    private ConstraintLayout volumeMeterLayout;
+
+    private LinearLayout spinnerLayout;
+
+    private LinearLayout buttonLayout;
+
     private final ArrayList<LinearLayout> chatBubbles = new ArrayList<>();
 
     @Override
@@ -182,10 +193,17 @@ public class MainActivity extends AppCompatActivity {
         targetLanguageSpinner = findViewById(R.id.targetLanguage);
         useMicButton = findViewById(R.id.useMicButton);
         useFileButton = findViewById(R.id.useFileButton);
+        backButton = findViewById(R.id.backButton);
+        volumeMeterView = findViewById(R.id.volumeMeterView);
+
+        volumeMeterLayout = findViewById(R.id.volumeMeterLayout);
+        spinnerLayout = findViewById(R.id.spinnerLayout);
+        buttonLayout = findViewById(R.id.buttonLayout);
 
         targetLanguageSpinner.setEnabled(false);
         useMicButton.setEnabled(false);
         useFileButton.setEnabled(false);
+        volumeMeterLayout.setVisibility(View.GONE);
 
         ArrayAdapter<String> sourceLanguageAdapter = new ArrayAdapter<String>(
                 this,
@@ -317,7 +335,11 @@ public class MainActivity extends AppCompatActivity {
         });
 
         useMicButton.setOnClickListener(v -> {
-            onLanguageSelected();
+            startDemo();
+        });
+
+        backButton.setOnClickListener(v -> {
+            stopDemo();
         });
     }
 
@@ -343,8 +365,13 @@ public class MainActivity extends AppCompatActivity {
                 LinearLayout top = chatBubble.findViewById(R.id.top);
                 TextView topText = chatBubble.findViewById(R.id.topText);
                 TextView bottomText = chatBubble.findViewById(R.id.bottomText);
+                String text = bottomText.getText().toString();
 
-                topText.setText(bottomText.getText());
+                if (text.isEmpty()) {
+                    return;
+                }
+
+                topText.setText(text);
                 bottomText.setText("");
                 top.setVisibility(View.VISIBLE);
                 rootView.invalidate();
@@ -383,7 +410,13 @@ public class MainActivity extends AppCompatActivity {
         mainHandler.post(() -> {
             LinearLayout chatBubble = chatBubbles.get(chatBubbles.size() - 1);
             TextView bottomText = chatBubble.findViewById(R.id.bottomText);
-            bottomText.setText(String.format("%s%s", bottomText.getText(), text));
+            String prevText = bottomText.getText().toString();
+
+            if (prevText.isEmpty()) {
+                bottomText.setText(String.format("%s%s", prevText, text.stripLeading()));
+            } else {
+                bottomText.setText(String.format("%s%s", prevText, text));
+            }
 
             scrollArea.post(() -> {
                 scrollArea.fullScroll(View.FOCUS_DOWN);
@@ -391,25 +424,25 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void onLanguageSelected() {
+    private void startDemo() {
         setStatus("Loading...");
         clearChatArea();
+        translationIndex = 0;
         engineExecutor.submit(this::initEngines);
     }
 
-    private void onButtonPressed() {
-        if (voiceProcessor.getIsRecording()) {
-            stopRecording();
-            flush();
-        } else {
-            startRecording();
-        }
+    private void stopDemo() {
+        volumeMeterLayout.setVisibility(View.GONE);
+        clearChatArea();
+        engineExecutor.submit(this::deleteEngines);
     }
 
     private void initEngines() {
         mainHandler.post(() -> {
             sourceLanguageSpinner.setEnabled(false);
             targetLanguageSpinner.setEnabled(false);
+            useMicButton.setEnabled(false);
+            useFileButton.setEnabled(false);
             rootView.invalidate();
         });
 
@@ -450,6 +483,11 @@ public class MainActivity extends AppCompatActivity {
             statusLayout.setVisibility(View.GONE);
             sourceLanguageSpinner.setEnabled(true);
             targetLanguageSpinner.setEnabled(true);
+            useMicButton.setEnabled(true);
+            useFileButton.setEnabled(true);
+            volumeMeterLayout.setVisibility(View.VISIBLE);
+            spinnerLayout.setVisibility(View.GONE);
+            buttonLayout.setVisibility(View.GONE);
             rootView.invalidate();
         });
     }
@@ -468,6 +506,13 @@ public class MainActivity extends AppCompatActivity {
             zebra.delete();
             zebra = null;
         }
+
+        mainHandler.post(() -> {
+            volumeMeterLayout.setVisibility(View.GONE);
+            spinnerLayout.setVisibility(View.VISIBLE);
+            buttonLayout.setVisibility(View.VISIBLE);
+            rootView.invalidate();
+        });
     }
 
     private void startRecording() {
@@ -512,6 +557,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void frameListener(short[] frame) {
+        volumeMeterView.processFrame(frame);
+
         if (currentState == State.LISTENING) {
             engineExecutor.submit(() -> listenSource(frame));
         }
@@ -535,12 +582,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void flush() {
-        if (currentState == State.LISTENING) {
-            engineExecutor.submit(this::flushSource);
-        }
-    }
-
     private void flushSource() {
         try {
             CheetahTranscript flush = cheetah.flush();
@@ -554,7 +595,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void translateSource() {
         mainHandler.post(() -> {
-            if (translationIndex < chatBubbles.size()) {
+            if (translationIndex < chatBubbles.size() - 1) {
                 int index = translationIndex;
                 translationIndex += 1;
 

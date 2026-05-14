@@ -5,6 +5,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:padding="16dp"
     tools:context=".MainActivity">
 
     <LinearLayout
@@ -42,7 +43,6 @@
             android:id="@+id/scrollArea"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_marginTop="16dp"
             android:layout_weight="1">
 
             <LinearLayout
@@ -60,7 +60,34 @@
             android:orientation="vertical"
             android:textAlignment="center">
 
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/volumeMeterLayout"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="16dp">
+
+                <Button
+                    android:id="@+id/backButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/arrow_back_button"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <ai.picovoice.livecaptioningandtranslation.VolumeMeterView
+                    android:id="@+id/volumeMeterView"
+                    android:layout_width="80dp"
+                    android:layout_height="50dp"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
             <LinearLayout
+                android:id="@+id/spinnerLayout"
                 android:layout_width="match_parent"
                 android:layout_height="80dp"
                 android:orientation="horizontal">
@@ -98,6 +125,7 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/buttonLayout"
                 android:layout_width="match_parent"
                 android:layout_height="80dp"
                 android:gravity="center"
