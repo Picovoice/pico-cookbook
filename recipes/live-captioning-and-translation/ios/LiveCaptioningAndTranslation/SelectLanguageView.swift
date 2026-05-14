@@ -86,12 +86,12 @@ struct SelectLanguageView: View {
                         Spacer()
                     }
                     .frame(maxWidth: .infinity, minHeight: 64)
-                    
+
                     let buttonDisabled = viewModel.selectedSourceLanguage == "invalid" ||
                         viewModel.selectedTargetLanguage == "invalid" ||
                         viewModel.chatState != .SELECTING ||
                         loadingFile
-                    
+
                     HStack {
                         Button(
                             action: {
@@ -109,7 +109,7 @@ struct SelectLanguageView: View {
                             }
                         ).padding(8)
                             .disabled(buttonDisabled)
-                        
+
                         Button(
                             action: {
                                 loadingFile = true
@@ -151,10 +151,10 @@ struct SelectLanguageView: View {
                                 .font(.title3)
                         }).padding(20)
                             .padding(.leading, 10)
-                        
+
                         Spacer()
                     }
-                    
+
                     if viewModel.selectAudioFile == nil {
                         VolumeMeterView(viewModel: viewModel)
                     } else {
