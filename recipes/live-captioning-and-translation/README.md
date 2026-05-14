@@ -9,4 +9,5 @@ Transcribe and optionally translate live audio in real time, powered by on-devic
 
 ## Implementations
 
+- [iOS](ios)
 - [Python](python)
