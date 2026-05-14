@@ -78,8 +78,9 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
                     android:layout_weight="0.001"
-                    android:text="↔"
+                    android:text="→"
                     android:textAlignment="center"
                     android:textColor="@color/colorSecondary"
                     android:textSize="44dp" />
@@ -98,16 +99,29 @@
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="80dp"
                 android:gravity="center"
-                android:orientation="horizontal"
-                android:padding="8dp">
+                android:orientation="horizontal">
 
                 <Button
-                    android:id="@+id/startButton"
+                    android:id="@+id/useMicButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/button" />
+                    android:layout_marginHorizontal="30dp"
+                    android:background="@drawable/pill_shape"
+                    android:paddingHorizontal="30dp"
+                    android:text="Use Mic"
+                    android:textColor="@android:color/white" />
+
+                <Button
+                    android:id="@+id/useFileButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="30dp"
+                    android:background="@drawable/pill_shape"
+                    android:paddingHorizontal="30dp"
+                    android:text="Use File"
+                    android:textColor="@android:color/white" />
             </LinearLayout>
 
         </LinearLayout>
