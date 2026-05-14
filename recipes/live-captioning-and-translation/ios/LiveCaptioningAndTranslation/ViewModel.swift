@@ -75,6 +75,7 @@ class ViewModel: ObservableObject {
     @Published var selectedSourceLanguage: String = "invalid"
     @Published var selectedTargetLanguage: String = "invalid"
     @Published var selectAudioFile: URL? = nil
+    @Published var speaking: Bool = false
     var selectedAudioPCM: [Int16] = []
 
     static let statusTextDefault = ""
@@ -86,6 +87,8 @@ class ViewModel: ObservableObject {
     @Published var errorMessage = ""
 
     @Published var soundLevel: Float = 0.0
+    
+    private let semaphore = DispatchSemaphore(value: 1)
 
     deinit {
         unloadEngines()
@@ -192,12 +195,12 @@ class ViewModel: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             if cheetah != nil {
                 cheetah!.delete()
+                cheetah = nil
             }
             if zebra != nil {
                 zebra!.delete()
+                zebra = nil
             }
-            cheetah = nil
-            zebra = nil
         }
 
         errorMessage = ""
@@ -252,6 +255,7 @@ class ViewModel: ObservableObject {
                     chatState = .LISTENING
                     chatText.removeAll()
                     chatText.append(Message(transcript: ""))
+                    speaking = true
                 }
                 
                 try audioStream!.playStreamPCM(selectedAudioPCM)
@@ -283,6 +287,7 @@ class ViewModel: ObservableObject {
                 
                 await MainActor.run {
                     _ = chatText.popLast()
+                    speaking = false
                 }
             } catch {
                 await MainActor.run {
@@ -315,17 +320,31 @@ class ViewModel: ObservableObject {
     }
 
     private func appendChatText(text: String) {
-        let R0 = /^.*[.!?](?:\s|$)/
+        let R0 = /^(.*[.!?])(\s.*)?$/
         
         if !text.isEmpty {
+            if let result = try? R0.wholeMatch(in: text) {
+                DispatchQueue.main.async { [self] in
+                    if chatText.count > 0 {
+                        chatText[chatText.count - 1].appendTranscript(text: String(result.1))
+                    }
+                }
+                
+                flushChatText()
+                
+                DispatchQueue.main.async { [self] in
+                    if chatText.count > 0 {
+                        chatText[chatText.count - 1].appendTranscript(text: String(result.2 ?? ""))
+                    }
+                }
+
+                return
+            }
+            
             DispatchQueue.main.async { [self] in
                 if chatText.count > 0 {
                     chatText[chatText.count - 1].appendTranscript(text: text)
                 }
-            }
-            
-            if let _ = try? R0.wholeMatch(in: text) {
-                flushChatText()
             }
         }
     }
@@ -346,7 +365,9 @@ class ViewModel: ObservableObject {
                 let index = translatedIndex;
                 translatedIndex += 1;
                 
+                semaphore.wait()
                 let translation = try self.zebra!.translate(text: chatText[index].transcript)
+                semaphore.signal()
                 
                 DispatchQueue.main.async { [self] in
                     if chatText.count > 0 {
@@ -413,7 +434,12 @@ struct Message: Equatable {
     var translated: String?
 
     mutating func appendTranscript(text: String) {
-        self.transcript.append(text)
+        if self.transcript.isEmpty {
+            self.transcript.append(String(text
+                .trimmingPrefix(while: \.isWhitespace)))
+        } else {
+            self.transcript.append(text)
+        }
     }
 
     mutating func appendTranslated(text: String) {

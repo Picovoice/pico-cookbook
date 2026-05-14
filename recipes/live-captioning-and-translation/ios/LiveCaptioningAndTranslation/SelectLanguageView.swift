@@ -148,16 +148,25 @@ struct SelectLanguageView: View {
                             viewModel.stopDemo()
                         }, label: {
                             Image(systemName: "arrowshape.left.fill")
-                                .font(.title)
+                                .font(.title3)
                         }).padding(20)
+                            .padding(.leading, 10)
                         
                         Spacer()
                     }
                     
-                    HStack {
+                    if viewModel.selectAudioFile == nil {
                         VolumeMeterView(viewModel: viewModel)
+                    } else {
+                        HStack {
+                            if viewModel.speaking {
+                                ProgressView()
+                                    .controlSize(.extraLarge)
+                            }
+                        }.frame(width: 50, height: 70)
+                            .padding(20)
                     }
-                }.frame(maxWidth: .infinity, minHeight: 64)
+                }.frame(maxWidth: .infinity)
             }
         }.frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity).background(Color.white)
     }
