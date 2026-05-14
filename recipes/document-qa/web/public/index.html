@@ -6,7 +6,7 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>Call Assist</h1>
+  <h1>Document QA</h1>
 
   <div id="error-container" style="display: none;">
     <div id="error" style="white-space: pre;"></div>
@@ -54,13 +54,13 @@
         
         <div id="user-block">
           <div id="name-container">
-            <label for="name">Your name</label>
-            <input type="text" id="name" name="name" />
+            <label for="document">Your document</label>
+            <input type="file" id="document" name="document" />
           </div>
 
           <button id="init-button" disabled>
             Start Demo
-            <span id="init-button-tooltip" class="tooltip">fill in name</span>
+            <span id="init-button-tooltip" class="tooltip">select document</span>
           </button>
 
           <div id="llm-spinner" style="opacity: 0;">

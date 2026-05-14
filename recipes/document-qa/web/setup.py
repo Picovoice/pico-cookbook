@@ -13,7 +13,6 @@ from typing import Tuple
 ANIMALS = [
     ("cheetah", "4.0.0"),
     ("orca", "3.0.0"),
-    ("rhino", "4.0.0"),
 ]
 
 COPIES = {
@@ -23,9 +22,6 @@ COPIES = {
     "cheetah": [
         ("cheetah_params.pv", "cheetah_params.pv")
     ],
-    "rhino": [
-        ("rhino_params.pv", "rhino_params.pv")
-    ]
 }
 
 
@@ -98,24 +94,24 @@ def clone_repo(animal: str, major: str, minor: str) -> str:
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
-        '--context_path',
-        required=True,
-        help='Absolute path to the Rhino context file (`.rhn`).')
-    parser.add_argument(
         '--picollm_model_path',
         required=True,
         help='Absolute path to the picoLLM model file (`.pllm`).')
+    parser.add_argument(
+        '--picollm_embedding_model_path',
+        required=True,
+        help='Absolute path to the picoLLM embedding model file (`.pllm`).')
     args = parser.parse_args()
 
     public_folder = os.path.join(os.path.dirname(__file__), "public", "models")
 
-    context_target_path = os.path.join(public_folder, "call_assist_demo_web.rhn")
-    shutil.copy(args.context_path, context_target_path)
-    print(f"Copied {args.context_path} to {context_target_path}")
-
     picollm_target_path = os.path.join(public_folder, "llama-3.2-1b-instruct-385.pllm")
     shutil.copy(args.picollm_model_path, picollm_target_path)
     print(f"Copied {args.picollm_model_path} to {picollm_target_path}")
+
+    picollm_embedding_target_path = os.path.join(public_folder, "embeddinggemma-300m-375.pllm")
+    shutil.copy(args.picollm_embedding_model_path, picollm_embedding_target_path)
+    print(f"Copied {args.picollm_embedding_model_path} to {picollm_embedding_target_path}")
 
     for animal, version in ANIMALS:
         major, minor = version.split('.')[:2]
