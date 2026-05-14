@@ -70,6 +70,7 @@ TOPK
 topks
 uids
 venv
+voiceguidedfieldreporting
 voicememoassistant
 wakeword
 xcodeproj
