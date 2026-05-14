@@ -354,7 +354,6 @@ window.onload = () => {
     try {
       startFunction = await Picovoice.init(
         accessKey.value,
-        documentFile.files[0],
         sendMessage,
         makeRequest,
         onVolumeCallback,
@@ -397,7 +396,7 @@ window.onload = () => {
     }
 
     try {
-      await startFunction();
+      await startFunction(documentFile.files[0]);
     } catch (e) {
       writeError(e.message);
     }

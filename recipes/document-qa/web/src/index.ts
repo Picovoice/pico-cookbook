@@ -8,54 +8,21 @@ import { Action, promptFromAction, isTerminalFromAction, allActions } from './ac
 const MIN_DB = -40.0;
 const MAX_DB = 0.0;
 
-const TOPK = 3
+const TOPK = 4
 const COMPLETION_TOKEN_LIMIT = 256
-const CHUNK_SIZE = 1200
-const CHUNK_OVERLAP = 250
+const CHUNK_SIZE = 300
+const CHUNK_OVERLAP = 100
 
 const ASK_FOR_DETAILS_RETRY_LIMIT = 2;
 
-const SYSTEM = `Extract call information.
-
-Return exactly two lines:
-caller: <one short value>
-reason: <one short value>
-
-Rules:
-- Use exactly one value for caller.
-- Use exactly one value for reason.
-- Do not list alternatives.
-- Do not use commas.
-- Do not explain.
-- If the caller says a company or organization, use that as caller.
-- If the caller says only a generic role like customer service, use that as caller.
-- If the caller does not say who they are, use unknown.
-- If the caller does not say why they are calling, use unknown.
-- Use lowercase unless the caller gives a proper name.
-- Avoid responding unknown. Use context.
-
-Examples:
-
-Caller said: "Hello, can you hear me?"
-caller: unknown
-reason: unknown
-
-Caller said: "I'm calling from the bank."
-caller: bank
-reason: unknown
-
-Caller said: "This is UPS with a package delivery."
-caller: UPS
-reason: package delivery
-
-Caller said: "This is customer service."
-caller: customer service
-reason: unknown
-
-Caller said: "I'm george and I'm calling about your sawmill."
-caller: George
-reason: my sawmill
-`;
+const SYSTEM = "You are a document question-answering assistant. "
++ "Answer only using the provided document excerpts. "
++ "If the answer is not in the excerpts, say that you do not know from the provided document. "
++ "Do not give legal advice. "
++ "Keep the answer concise. "
++ "Do not use Markdown formatting. "
++ "Do not use bullet points. "
++ "Use plain text only.";
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -89,7 +56,8 @@ type PvObject = {
   orca: OrcaWorker,
   action: Action,
 
-  documentFile: File,
+  chunks: string[] | null,
+  embeddings: number[][] | null,
 
   askForDetailsRetryCount: number,
 };
@@ -127,17 +95,25 @@ const BufferedCheetahEngine = {
 
 const normalizeVector = (vector: number[]): number[] => {
   const norm = Math.pow(vector.reduce((partial, x) => partial + x, 0), 0.5);
+  return vector.map(x => x / norm);
+};
+
+const dotProduct = (a: number[], b: number[]): number => {
+  return a.reduce((partial, x, i) => partial + (x * b[i]), 0);
 }
 
 const generateEmbeddings = async (chunks: string[]): Promise<number[][]> => {
   // status = Generating embeddgins x/x
 
-  const embeddings = Promise.all(chunks.map(async (chunk): Promise<number[]> => {
-    const embedding = await object!.llmEmbedding.generateEmbeddings(chunk);
-    return normalizeVector(embedding.embeddings);
-  }));
+  let embeddings = []
+  for (let i = 0; i < chunks.length; i++) {
+    console.log(`Generating embeddings ${i + 1}/${chunks.length}`)
+    const embedding = await object!.llmEmbedding.generateEmbeddings(chunks[i]);
+    embeddings.push(normalizeVector(embedding.embeddings));
+  }
+
   return embeddings;
-}
+};
 
 const chunkDocument = (text: string): string[] => {
   // TODO: Process line endings?
@@ -168,17 +144,43 @@ const chunkDocument = (text: string): string[] => {
   }
 
   return chunks;
-}
+};
+
+type chunkEmbeddingType = {
+  score: number;
+  chunk: string;
+};
+const retreiveChunks = async (question: string): Promise<chunkEmbeddingType[]> => {
+  const questionEmbeddingCompletion = await object!.llmEmbedding.generateEmbeddings(question);
+  const questionEmbedding = normalizeVector(questionEmbeddingCompletion.embeddings);
+
+  let scores = object!.embeddings!.map((embedding, i) => {
+    return {
+      score: dotProduct(embedding, questionEmbedding),
+      chunk: object!.chunks![i],
+    };
+  });
+
+  scores.sort((a, b) => b.score - a.score);
+  return scores.slice(0, TOPK);
+};
+
+const buildPrompt = async (question: string, retreivedChunks: chunkEmbeddingType[]): Promise<string> => {
+  const context = retreivedChunks.map(ce => ce.chunk).map((c, i) => `[Excerpt ${i}]\n${c}`).join("\n\n");
+
+  const dialog = await object!.llmModel.getDialog(undefined, undefined, SYSTEM);
+  dialog.addHumanRequest(`Document excerpts:\n\n${context}\n\nQuestion:\n${question}`);
+  return dialog.prompt();
+};
 
 // ------------------------------------------------------------------------- //
 
 const init = async (
   accessKey: string,
-  documentFile: File,
   sendMessage: (message: string, obj: any) => void,
   makeRequest: (message: string) => any,
   onVolumeCallback: (volume: number) => void,
-): Promise<null | (() => Promise<void>)> => {
+): Promise<null | ((file: File) => Promise<void>)> => {
 
   triggerAudioCallback = (frame: Int16Array) => {
     let sum = 0;
@@ -276,11 +278,38 @@ const init = async (
   }
 
   const llmEmbeddingProcessCall = async (file: File) => {
-    //
+    const reader = new FileReader();
+    reader.readAsText(file, 'UTF-8');
+    reader.onload = ({ target }) => {
+      const text = target!.result as string;
+      const chunks = chunkDocument(text);
+      generateEmbeddings(chunks).then((embeddings) => {
+        object!.chunks = chunks;
+        object!.embeddings = embeddings;
+        listenForCaller();
+      });
+    }
+    reader.onerror = () => {
+      // TODO
+    }
   }
 
   const llmProcessCall = async (callerText: string) => {
     sendMessage("start llm spinner", null);
+    const question = callerText.replace("[CALLER]", "").trim();
+    const retreivedChunks = await retreiveChunks(question);
+    const prompt = await buildPrompt(question, retreivedChunks);
+
+    // TODO: Should stream response
+    const completion = await object!.llmModel.generate(
+      prompt,
+      {
+        completionTokenLimit: COMPLETION_TOKEN_LIMIT,
+        stopPhrases: ['<|eot_id|>'],
+        streamCallback: (token: string) => {},
+      }
+    );
+    console.log(completion);
 
     // let dialog = await object!.llm.getDialog(undefined, undefined, SYSTEM);
     // dialog.addHumanRequest(`Caller said: \"${callerText.replace("[CALLER]", "").trim()}\"\n`);
@@ -386,11 +415,14 @@ const init = async (
     llmEmbedding: llmEmbedding,
     orca: orca,
     action: Action.GREET,
-    documentFile: documentFile,
+
+    chunks: null,
+    embeddings: null,
+
     askForDetailsRetryCount: 0,
   };
 
-  return () => speakToCaller();
+  return (documentFile: File) => llmEmbeddingProcessCall(documentFile);
 };
 
 const updateStartParameters = async (name: string): Promise<boolean> => {
