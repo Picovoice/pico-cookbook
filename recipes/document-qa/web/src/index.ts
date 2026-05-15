@@ -1,3 +1,5 @@
+import { Mutex } from 'async-mutex';
+
 import { CheetahTranscript, CheetahWorker } from '@picovoice/cheetah-web';
 import { PicoLLMWorker } from '@picovoice/picollm-web';
 import { OrcaWorker } from '@picovoice/orca-web';
@@ -14,6 +16,8 @@ const CHUNK_SIZE = 300
 const CHUNK_OVERLAP = 100
 
 const ASK_FOR_DETAILS_RETRY_LIMIT = 2;
+
+const STOP_PHRASE = "<|eot_id|>";
 
 const SYSTEM = "You are a document question-answering assistant. "
 + "Answer only using the provided document excerpts. "
@@ -59,6 +63,8 @@ type PvObject = {
   chunks: string[] | null,
   embeddings: number[][] | null,
 
+  sendMessage: (message: string, obj: any) => void,
+
   askForDetailsRetryCount: number,
 };
 
@@ -103,11 +109,9 @@ const dotProduct = (a: number[], b: number[]): number => {
 }
 
 const generateEmbeddings = async (chunks: string[]): Promise<number[][]> => {
-  // status = Generating embeddgins x/x
-
   let embeddings = []
   for (let i = 0; i < chunks.length; i++) {
-    console.log(`Generating embeddings ${i + 1}/${chunks.length}`)
+    object!.sendMessage("ai state", `AI: Generating embeddings ${i + 1}/${chunks.length}`);
     const embedding = await object!.llmEmbedding.generateEmbeddings(chunks[i]);
     embeddings.push(normalizeVector(embedding.embeddings));
   }
@@ -201,45 +205,8 @@ const init = async (
     sendMessage("ai state", "");
 
     await stopListenForCaller();
-    await stopGiveUserOptions();
 
     sendMessage("restart demo", null);
-  };
-
-  const speakToCaller = async (text: string) => {
-    const orca = object!.orca;
-
-    const synthesis = await orca.synthesize(text, {});
-    const alignments = synthesis.alignments;
-
-    object!.audio.stream(synthesis.pcm);
-    object!.audio.play();
-
-    sendMessage("ai state", "AI: Speaking to caller");
-    sendMessage("new ai bubble", "[AI] ");
-
-    for (let alignment of alignments) {
-      const index = alignments.indexOf(alignment);
-      let word = alignment.word;
-      if (index < alignments.length - 1 &&
-          !(/[.,:;!?]/.test(alignments[index + 1].word))
-      ) {
-        word += " ";
-      }
-
-      setTimeout(() => {
-        sendMessage("add to bubble", word);
-      }, alignment.startSec * 1000);
-    }
-
-    await object!.audio.waitPlayback();
-
-    if (isTerminalFromAction(object!.action)) {
-      await sleep(1700);
-      resetDemo();
-    } else {
-      listenForCaller();
-    }
   };
 
   const listenForCaller = async () => {
@@ -280,11 +247,15 @@ const init = async (
     const reader = new FileReader();
     reader.readAsText(file, 'UTF-8');
     reader.onload = ({ target }) => {
+      sendMessage("start llm spinner", null);
+
       const text = target!.result as string;
       const chunks = chunkDocument(text);
       generateEmbeddings(chunks).then((embeddings) => {
         object!.chunks = chunks;
         object!.embeddings = embeddings;
+
+        sendMessage("stop llm spinner", null);
         listenForCaller();
       });
     }
@@ -300,80 +271,51 @@ const init = async (
     const retreivedChunks = await retreiveChunks(question);
     const prompt = await buildPrompt(question, retreivedChunks);
 
-    // TODO: Should stream response
+    const stream = await object!.orca.streamOpen();
+    const streamMutex = new Mutex();
+
+    sendMessage("ai state", "AI: Speaking to caller");
+    sendMessage("new ai bubble", "[AI] ");
+
+    const streamCallback = async (token: string) => {
+      const text = token.replace(STOP_PHRASE, '');
+      sendMessage("add to bubble", text);
+
+      const streamRelease = await streamMutex.acquire();
+      const pcm = await stream.synthesize(text);
+      if (pcm !== null) {
+        // TODO: Should buffer some audio
+        object!.audio.stream(pcm);
+        object!.audio.play();
+      }
+      streamRelease();
+    }
+
     const completion = await object!.llmModel.generate(
       prompt,
       {
         completionTokenLimit: COMPLETION_TOKEN_LIMIT,
-        stopPhrases: ['<|eot_id|>'],
-        streamCallback: (token: string) => {},
+        stopPhrases: [STOP_PHRASE],
+        streamCallback: streamCallback,
       }
     );
-    const inference = completion.completion.trim().replace('<|eot_id|>', '');
+    const inference = completion.completion.trim().replace(STOP_PHRASE, '');
 
     sendMessage("stop llm spinner", null);
 
+    const streamRelease = await streamMutex.acquire();
+    const pcm = await stream.flush();
+    if (pcm !== null) {
+      object!.audio.stream(pcm);
+      object!.audio.play();
+    }
+    streamRelease();
+
+    await object!.audio.waitPlayback();
+    await stream.close();
+
     object!.action = Action.ASK_FOR_DETAILS;
-    speakToCaller(inference);
-
-    // let dialog = await object!.llm.getDialog(undefined, undefined, SYSTEM);
-    // dialog.addHumanRequest(`Caller said: \"${callerText.replace("[CALLER]", "").trim()}\"\n`);
-
-    // const completion = await llm.generate(
-    //     dialog.prompt(),
-    //     { stopPhrases: ['<|eot_id|>'] });
-
-    // const inference = completion.completion.trim().replace('<|eot_id|>', '');
-    // console.log(`# Inference\n${inference}`);
-    // const [caller, reason] = extractCallerAndReasonFromLLMInference(inference);
-
-    // sendMessage("stop llm spinner", null);
-
-    // if (caller != 'unknown' && reason != 'unknown') {
-    //   sendMessage(
-    //       "ai report",
-    //       `[AI] <b style="color: var(--brand-primary);">${caller}</b> is trying to speak with you about ` +
-    //       `<b style="color: var(--brand-primary);">${reason}</b>.`);
-    //   setTimeout(() => { giveUserOptions(); }, 200);
-    //   return;
-    // } else if (object!.askForDetailsRetryCount < ASK_FOR_DETAILS_RETRY_LIMIT) {
-    //   object!.action = Action.ASK_FOR_DETAILS;
-
-    //   if (caller == 'unknown' && reason == 'unknown') {
-    //     sendMessage("ai report", "[AI] Unknown caller with no specific reason. I will ask for more information.");
-    //   } else if (caller == 'unknown') {
-    //     sendMessage(
-    //         "ai report",
-    //         `[AI] Unknown caller is trying to speak with you about <b style="color: var(--brand-primary);">${reason}</b>. ` +
-    //         `I will ask for their identity.`);
-    //   } else {
-    //     sendMessage(
-    //         "ai report",
-    //         `[AI] <b style="color: var(--brand-primary);">${caller}</b> is trying to speak with you. I will ask for their reason.`);
-    //   }
-    // } else {
-    //   object!.action = Action.DECLINE_CALL;
-      
-    //   sendMessage(
-    //       "ai report",
-    //       `[AI] Couldn't understand caller's identity and agenda after <b style="color: var(--brand-primary);">${ASK_FOR_DETAILS_RETRY_LIMIT}</b> ` +
-    //       "inquiries. Declining their call.");
-    // }
-
-    // object!.askForDetailsRetryCount += 1;
-    // setTimeout(() => { speakToCaller(); }, 200);
-  };
-
-  const giveUserOptions = async () => {
-    sendMessage("give user options", allActions());
-    sendMessage("ai state", "AI: Listening for " + "TODO" + "'s command");
-
-    // const rhino = BufferedRhinoEngine;
-    // await WebVoiceProcessor.subscribe(rhino);
-  };
-  const stopGiveUserOptions = async () => {
-  //   const rhino = BufferedRhinoEngine;
-  //   await WebVoiceProcessor.unsubscribe(rhino);
+    listenForCaller();
   };
 
   sendMessage("status", "Loading Cheetah");
@@ -423,6 +365,8 @@ const init = async (
 
     chunks: null,
     embeddings: null,
+
+    sendMessage,
 
     askForDetailsRetryCount: 0,
   };
