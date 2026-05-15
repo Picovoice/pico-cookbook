@@ -52,8 +52,8 @@ def main() -> None:
         if eagle_recognizer is None:
             print(f"[OK] Eagle Speaker Recognition[V{eagle_profiler.version}]")
 
-    pcm, samplerate = soundfile.read(audio_path, dtype='int16', always_2d=True)
-    if samplerate != falcon.sample_rate:
+    pcm, sample_rate = soundfile.read(audio_path, dtype='int16', always_2d=True)
+    if sample_rate != falcon.sample_rate:
         raise RuntimeError()
     pcm = pcm[:, 0]
 
@@ -70,14 +70,18 @@ def main() -> None:
         speaker_intervals = dict()
         for x in segments:
             if x.speaker_tag not in speaker_tag_map:
-                speaker_intervals.setdefault(x.speaker_tag, list()).append((int(x.start_sec * falcon.sample_rate), int(x.end_sec * falcon.sample_rate)))
+                if x.speaker_tag not in speaker_intervals:
+                    speaker_intervals[x.speaker_tag] = list()
+                speaker_intervals[x.speaker_tag].append((int(x.start_sec * sample_rate), int(x.end_sec * sample_rate)))
 
         for speaker, intervals in speaker_intervals.items():
             for (start_sample, end_sample) in intervals:
                 for i in range(start_sample, end_sample, eagle_profiler.frame_length):
                     eagle_profiler.enroll(pcm=pcm[i:i + eagle_profiler.frame_length])
             percentage = eagle_profiler.flush()
-            print(percentage)
+            if percentage == 100.:
+                with open(os.path.join(unknown_speaker_profiles_folder, f"{speaker}.bin"), 'wb') as f:
+                    f.write(eagle_profiler.export().to_bytes())
 
     for x in segments:
         print(f"[{speaker_tag_map.get(x.speaker_tag, x.speaker_tag)}] {x.start_sec:.2f} → {x.end_sec:.2f}")
