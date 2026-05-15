@@ -52,10 +52,16 @@ window.onload = () => {
   const bar5 = document.getElementById('bar5');
   const bar6 = document.getElementById('bar6');
 
-  const writeError = (errorString) => {
+  const writeError = async (errorString) => {
     error.classList.remove('hidden');
     error.innerText = `Error: ${errorString}`;
     startButton.disabled = false;
+
+    status.innerHTML = "";
+    statusSpinner.style.opacity = "0";
+    await Picovoice.sleep(400);
+
+    statusSpinner.style.display = "none";
   };
   const clearError = () => {
     error.classList.add('hidden');
@@ -268,8 +274,6 @@ window.onload = () => {
     }
 
     startButton.disabled = true;
-    // startButton.setAttribute("disabled", "");
-    // startButton.removeAttribute("coloured");
 
     try {
       await Picovoice.updateStartParameters(sanitizeForOrca(name.value));

@@ -264,6 +264,7 @@ const init = async (
   }
 
   const llmProcessCall = async (callerText: string) => {
+    sendMessage("SET_AI_STATE", "AI is analyzing the response");
     sendMessage("START_LLM_SPINNER", null);
 
     let dialog = await object!.llm.getDialog(undefined, undefined, SYSTEM_PROMPT);
