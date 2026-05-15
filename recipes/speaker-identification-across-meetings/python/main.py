@@ -16,24 +16,28 @@ def main() -> None:
     parser.add_argument(
         '--audio_path',
         required=True,
-        help='')
+        help='Path to the input meeting audio file. The audio must be 16 kHz.')
     parser.add_argument(
         '--known_speaker_profile_paths',
         nargs='*',
         default=[],
-        help='')
+        help=(
+            'Paths to Eagle speaker profile files for known speakers. '
+            'The filename, without extension, is used as the speaker name.'))
     parser.add_argument(
         '--profile_unknown_speakers',
         action='store_true',
-        help='')
+        help='Create Eagle speaker profiles for speakers that are not matched to known speakers.')
     parser.add_argument(
         '--unknown_speaker_profiles_folder',
-        help='')
+        help=(
+            'Folder where newly-created unknown speaker profiles are saved. '
+            'Defaults to the folder containing the input audio file.'))
     parser.add_argument(
         '--similarity_threshold',
         type=float,
         default=0.5,
-        help='')
+        help='Minimum Eagle similarity score required to identify a speaker. Defaults to 0.5.')
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -52,21 +56,23 @@ def main() -> None:
 
     try:
         falcon = pvfalcon.create(access_key=access_key)
-        print(f"[OK] Falcon Speaker Diarization[V{falcon.version}]")
+        print(f"[OK] Falcon Speaker Diarization [V{falcon.version}]")
 
         if len(known_speaker_profile_paths) > 0:
             eagle_recognizer = pveagle.create_recognizer(access_key=access_key)
-            print(f"[OK] Eagle Speaker Recognition[V{eagle_recognizer.version}]")
+            print(f"[OK] Eagle Speaker Recognition [V{eagle_recognizer.version}]")
+
         if profile_unknown_speakers:
             eagle_profiler = pveagle.create_profiler(access_key=access_key)
             if eagle_recognizer is None:
-                print(f"[OK] Eagle Speaker Recognition[V{eagle_profiler.version}]")
+                print(f"[OK] Eagle Speaker Recognition [V{eagle_profiler.version}]")
 
         print()
 
         pcm, sample_rate = soundfile.read(audio_path, dtype='int16', always_2d=True)
         if sample_rate != falcon.sample_rate:
-            raise RuntimeError()
+            raise RuntimeError(f"Invalid sample rate: expected {falcon.sample_rate} Hz, got {sample_rate} Hz.")
+
         pcm = pcm[:, 0]
 
         segments = falcon.process(pcm)
@@ -91,7 +97,7 @@ def main() -> None:
                     pcm=speaker_pcm,
                     speaker_profiles=known_speaker_profiles)
 
-                best_index = max(range(len(similarities)), key=lambda i: similarities[i])
+                best_index = max(range(len(similarities)), key=lambda ii: similarities[ii])
                 best_similarity = similarities[best_index]
 
                 if best_similarity >= similarity_threshold:
@@ -102,21 +108,36 @@ def main() -> None:
             print()
 
         if eagle_profiler is not None:
+            os.makedirs(unknown_speaker_profiles_folder, exist_ok=True)
+
             speaker_intervals = dict()
             for x in segments:
                 if x.speaker_tag not in speaker_tag_map:
                     if x.speaker_tag not in speaker_intervals:
                         speaker_intervals[x.speaker_tag] = list()
-                    speaker_intervals[x.speaker_tag].append((int(x.start_sec * sample_rate), int(x.end_sec * sample_rate)))
+                    speaker_intervals[x.speaker_tag].append(
+                        (int(x.start_sec * sample_rate), int(x.end_sec * sample_rate)))
 
             for speaker, intervals in speaker_intervals.items():
                 for start_sample, end_sample in intervals:
                     for i in range(start_sample, end_sample, eagle_profiler.frame_length):
-                        eagle_profiler.enroll(pcm=pcm[i:i + eagle_profiler.frame_length])
+                        frame = pcm[i:i + eagle_profiler.frame_length]
+                        if len(frame) == eagle_profiler.frame_length:
+                            eagle_profiler.enroll(pcm=frame)
+
                 percentage = eagle_profiler.flush()
                 if percentage == 100.:
-                    with open(os.path.join(unknown_speaker_profiles_folder, f"{speaker}.bin"), 'wb') as f:
+                    profile_path = os.path.join(unknown_speaker_profiles_folder, f"{speaker}.bin")
+                    with open(profile_path, 'wb') as f:
                         f.write(eagle_profiler.export().to_bytes())
+                    print(f"Saved unknown speaker `{speaker}` profile to `{profile_path}`.")
+                else:
+                    print(
+                        f"Could not create a profile for unknown speaker `{speaker}`. "
+                        f"Enrollment is {percentage:.1f}% complete.")
+
+            if len(speaker_intervals) > 0:
+                print()
 
         print("Diarization:")
         for x in segments:
