@@ -19,7 +19,7 @@ reason: <one short value>
 
 Rules:
 - Use exactly one value for caller.
-- Use exactly one value for reason.
+- Use exactly one value for the call's reason.
 - Do not list alternatives.
 - Do not use commas.
 - Do not explain.
@@ -27,8 +27,7 @@ Rules:
 - If the caller says only a generic role like customer service, use that as caller.
 - If the caller does not say who they are, use unknown.
 - If the caller does not say why they are calling, use unknown.
-- Use lowercase unless the caller gives a proper name.
-- Avoid responding unknown. Use context.
+- Avoid responding unknown.
 
 Examples:
 
@@ -48,9 +47,13 @@ Caller said: "This is customer service."
 caller: customer service
 reason: unknown
 
-Caller said: "I'm george and I'm calling about your sawmill."
-caller: George
+Caller said: "I'm calling about your sawmill."
+caller: unknown
 reason: my sawmill
+
+Caller said: "About credit cards"
+caller: unknown
+reason: credit cards
 `;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -103,6 +106,8 @@ type PvObject = {
   username: string,
 
   askForDetailsRetryCount: number,
+  storedCallerName: string,
+  storedCallerReason: string,
 };
 
 let object: PvObject | null = null;
@@ -251,6 +256,7 @@ const init = async (
 
     let callerText = makeRequest("BUBBLE_CONTENTS");
     if (transcript.isFlushed && (callerText.trim().length > 0)) {
+      console.log(`Got: '${callerText}' with len ${callerText.trim().length}`)
       await stopListenForCaller();
 
       await llmProcessCall(callerText.trim());
@@ -270,40 +276,48 @@ const init = async (
 
     const inference = completion.completion.trim().replace('<|eot_id|>', '');
     console.log(`# Inference\n${inference}`);
-    const [caller, reason] = extractCallerAndReasonFromLLMInference(inference);
+    let [caller, reason] = extractCallerAndReasonFromLLMInference(inference);
 
     sendMessage("STOP_LLM_SPINNER", null);
 
+    object!.storedCallerName = (caller == "unknown") ? object!.storedCallerName : caller;
+    object!.storedCallerReason = (reason == "unknown") ? object!.storedCallerReason : reason;
+    caller = object!.storedCallerName;
+    reason = object!.storedCallerReason;
+
+    let callerName = caller == 'unknown' ? 'Unknown caller' : htmlEmphasis(caller);
+    let callerReason = reason == 'unknown' ? 'no specific reason' : `about ${htmlEmphasis(reason)}`;
+    
     if (caller != 'unknown' && reason != 'unknown') {
-      sendMessage(
-          "ADD_TO_AI_REPORT",
-          `[AI] ${htmlEmphasis(caller)} is trying to speak with you about ${htmlEmphasis(reason)}.`);
+      let aiReport = `[AI] ${callerName} is trying to speak with you ${callerReason}.`;
+    
+      sendMessage("ADD_TO_AI_REPORT", aiReport);
       setTimeout(() => { giveUserOptions(); }, 200);
       return;
-    } else if (object!.askForDetailsRetryCount < ASK_FOR_DETAILS_RETRY_LIMIT) {
-      object!.action = Action.ASK_FOR_DETAILS;
+    }
 
+    let aiReport = "";
+    if (object!.askForDetailsRetryCount < ASK_FOR_DETAILS_RETRY_LIMIT) {
       if (caller == 'unknown' && reason == 'unknown') {
-        sendMessage("ADD_TO_AI_REPORT", "[AI] Unknown caller with no specific reason. I will ask for more information.");
+        aiReport = `[AI] ${callerName} with ${callerReason}. I will ask for more information.`;
       } else if (caller == 'unknown') {
-        sendMessage(
-            "ADD_TO_AI_REPORT",
-            `[AI] Unknown caller is trying to speak with you about ${htmlEmphasis(reason)}. I will ask for their identity.`);
+        aiReport = `[AI] ${callerName} is trying to speak with you ${callerReason}. I will ask for their identity.`;
       } else {
-        sendMessage(
-            "ADD_TO_AI_REPORT",
-            `[AI] ${htmlEmphasis(caller)} is trying to speak with you. I will ask for their reason.`);
+        aiReport = `[AI] ${callerName} is trying to speak with you. I will ask for their reason.`;
       }
+
+      object!.action = Action.ASK_FOR_DETAILS;
+    
     } else {
+      aiReport = "[AI] Couldn't understand caller's identity and agenda after " +
+                 `${htmlEmphasis(ASK_FOR_DETAILS_RETRY_LIMIT.toString())} inquiries. Declining their call.`;
+
       object!.action = Action.DECLINE_CALL;
-      
-      sendMessage(
-          "ADD_TO_AI_REPORT",
-          `[AI] Couldn't understand caller's identity and agenda after ${htmlEmphasis(ASK_FOR_DETAILS_RETRY_LIMIT.toString())} ` +
-          "inquiries. Declining their call.");
     }
 
     object!.askForDetailsRetryCount += 1;
+
+    sendMessage("ADD_TO_AI_REPORT", aiReport);
     setTimeout(() => { speakToCaller(); }, 200);
   };
 
@@ -387,6 +401,8 @@ const init = async (
       action: Action.GREET,
       username: name,
       askForDetailsRetryCount: 0,
+      storedCallerName: "unknown",
+      storedCallerReason: "unknown",
     };
   }
 
@@ -398,6 +414,8 @@ const updateStartParameters = async (name: string): Promise<void> => {
     object!.action = Action.GREET;
     object!.username = name;
     object!.askForDetailsRetryCount = 0;
+    object!.storedCallerName = "unknown";
+    object!.storedCallerReason = "unknown";
   }
 };
 
