@@ -54,6 +54,7 @@ reason: my sawmill
 `;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const htmlEmphasis = (text: string) => `<b style="color: var(--brand-primary);">${text}</b>`;
 
 const extractCallerAndReasonFromLLMInference = (inference: string): [string, string] => {
   const inferenceLower = inference.toLowerCase();
@@ -281,8 +282,7 @@ const init = async (
     if (caller != 'unknown' && reason != 'unknown') {
       sendMessage(
           "ADD_TO_AI_REPORT",
-          `[AI] <b style="color: var(--brand-primary);">${caller}</b> is trying to speak with you about ` +
-          `<b style="color: var(--brand-primary);">${reason}</b>.`);
+          `[AI] ${htmlEmphasis(caller)} is trying to speak with you about ${htmlEmphasis(reason)}.`);
       setTimeout(() => { giveUserOptions(); }, 200);
       return;
     } else if (object!.askForDetailsRetryCount < ASK_FOR_DETAILS_RETRY_LIMIT) {
@@ -293,19 +293,18 @@ const init = async (
       } else if (caller == 'unknown') {
         sendMessage(
             "ADD_TO_AI_REPORT",
-            `[AI] Unknown caller is trying to speak with you about <b style="color: var(--brand-primary);">${reason}</b>. ` +
-            `I will ask for their identity.`);
+            `[AI] Unknown caller is trying to speak with you about ${htmlEmphasis(reason)}. I will ask for their identity.`);
       } else {
         sendMessage(
             "ADD_TO_AI_REPORT",
-            `[AI] <b style="color: var(--brand-primary);">${caller}</b> is trying to speak with you. I will ask for their reason.`);
+            `[AI] ${htmlEmphasis(caller)} is trying to speak with you. I will ask for their reason.`);
       }
     } else {
       object!.action = Action.DECLINE_CALL;
       
       sendMessage(
           "ADD_TO_AI_REPORT",
-          `[AI] Couldn't understand caller's identity and agenda after <b style="color: var(--brand-primary);">${ASK_FOR_DETAILS_RETRY_LIMIT}</b> ` +
+          `[AI] Couldn't understand caller's identity and agenda after ${htmlEmphasis(ASK_FOR_DETAILS_RETRY_LIMIT.toString())} ` +
           "inquiries. Declining their call.");
     }
 
