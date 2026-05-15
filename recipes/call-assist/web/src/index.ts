@@ -1,4 +1,5 @@
 import { CheetahTranscript, CheetahWorker } from '@picovoice/cheetah-web';
+import { PicoLLMWorker } from '@picovoice/picollm-web';
 import { OrcaWorker } from '@picovoice/orca-web';
 import { RhinoInference, RhinoWorker } from '@picovoice/rhino-web';
 import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
@@ -8,7 +9,75 @@ import { Action, promptFromAction, isTerminalFromAction, allActions } from './ac
 const MIN_DB = -40.0;
 const MAX_DB = 0.0;
 
+const ASK_FOR_DETAILS_RETRY_LIMIT = 2;
+
+const SYSTEM_PROMPT = `Extract call information.
+
+Return exactly two lines:
+caller: <one short value>
+reason: <one short value>
+
+Rules:
+- Use exactly one value for caller.
+- Use exactly one value for the call's reason.
+- Do not list alternatives.
+- Do not use commas.
+- Do not explain.
+- If the caller says a company or organization, use that as caller.
+- If the caller says only a generic role like customer service, use that as caller.
+- If the caller does not say who they are, use unknown.
+- If the caller does not say why they are calling, use unknown.
+- Avoid responding unknown.
+
+Examples:
+
+Caller said: "Hello, can you hear me?"
+caller: unknown
+reason: unknown
+
+Caller said: "I'm calling from the bank."
+caller: bank
+reason: unknown
+
+Caller said: "This is UPS with a package delivery."
+caller: UPS
+reason: package delivery
+
+Caller said: "This is customer service."
+caller: customer service
+reason: unknown
+
+Caller said: "I'm calling about your sawmill."
+caller: unknown
+reason: my sawmill
+
+Caller said: "About credit cards"
+caller: unknown
+reason: credit cards
+`;
+
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const htmlEmphasis = (text: string) => `<b style="color: var(--brand-primary);">${text}</b>`;
+
+const extractCallerAndReasonFromLLMInference = (inference: string): [string, string] => {
+  const inferenceLower = inference.toLowerCase();
+  const callerIndex = inferenceLower.indexOf("caller:");
+  const reasonIndex = inferenceLower.indexOf("reason:");
+
+  if (callerIndex == -1 || reasonIndex == -1) {
+      return ["unknown", "unknown"];
+  }
+
+  let callerEOL = inferenceLower.slice(callerIndex).indexOf("\n");
+  let reasonEOL = inferenceLower.slice(reasonIndex).indexOf("\n");
+  callerEOL = (callerEOL == -1) ? inferenceLower.length : (callerIndex + callerEOL);
+  reasonEOL = (reasonEOL == -1) ? inferenceLower.length : (reasonIndex + reasonEOL);
+  
+  const callerContents = inference.slice(callerIndex, callerEOL).split(":")[1];
+  const reasonContents = inference.slice(reasonIndex, reasonEOL).split(":")[1];
+
+  return [callerContents.trim(), reasonContents.trim()];
+}
 
 type Message =
   "SET_STATUS"
@@ -20,17 +89,25 @@ type Message =
   | "GIVE_USER_OPTIONS"
   | "SELECT_OPTION"
   | "SET_AI_STATE"
-  | "RESTART_DEMO";
+  | "RESTART_DEMO"
+  | "ADD_TO_AI_REPORT"
+  | "START_LLM_SPINNER"
+  | "STOP_LLM_SPINNER";
 
 type Request = "BUBBLE_CONTENTS";
 
 type PvObject = {
   audio: AudioStream,
   cheetah: CheetahWorker,
+  llm: PicoLLMWorker,
   orca: OrcaWorker,
   rhino: RhinoWorker,
   action: Action,
   username: string,
+
+  askForDetailsRetryCount: number,
+  storedCallerName: string,
+  storedCallerReason: string,
 };
 
 let object: PvObject | null = null;
@@ -178,13 +255,71 @@ const init = async (
     }
 
     let callerText = makeRequest("BUBBLE_CONTENTS").replace("[CALLER] ", "").trim();
-    if (transcript.isFlushed && (callerText.trim().length > 0)) {
+    if (transcript.isFlushed && (callerText.length > 0)) {
       await stopListenForCaller();
 
-      setTimeout(() => { giveUserOptions(); }, 600);
+      await llmProcessCall(callerText);
       return;
     }
   }
+
+  const llmProcessCall = async (callerText: string) => {
+    sendMessage("SET_AI_STATE", "AI is analyzing the response");
+    sendMessage("START_LLM_SPINNER", null);
+
+    let dialog = await object!.llm.getDialog(undefined, undefined, SYSTEM_PROMPT);
+    dialog.addHumanRequest(`Caller said: \"${callerText}\"\n`);
+
+    const completion = await object!.llm.generate(
+        dialog.prompt(),
+        { stopPhrases: ['<|eot_id|>'] });
+
+    const inference = completion.completion.trim().replace('<|eot_id|>', '');
+    console.log(`# Inference\n${inference}`);
+    let [caller, reason] = extractCallerAndReasonFromLLMInference(inference);
+
+    sendMessage("STOP_LLM_SPINNER", null);
+
+    object!.storedCallerName = (caller == "unknown") ? object!.storedCallerName : caller;
+    object!.storedCallerReason = (reason == "unknown") ? object!.storedCallerReason : reason;
+    caller = object!.storedCallerName;
+    reason = object!.storedCallerReason;
+
+    let callerName = caller == 'unknown' ? 'Unknown caller' : htmlEmphasis(caller);
+    let callerReason = reason == 'unknown' ? 'no specific reason' : `about ${htmlEmphasis(reason)}`;
+    
+    if (caller != 'unknown' && reason != 'unknown') {
+      let aiReport = `[AI] ${callerName} is trying to speak with you ${callerReason}.`;
+    
+      sendMessage("ADD_TO_AI_REPORT", aiReport);
+      setTimeout(() => { giveUserOptions(); }, 200);
+      return;
+    }
+
+    let aiReport = "";
+    if (object!.askForDetailsRetryCount < ASK_FOR_DETAILS_RETRY_LIMIT) {
+      if (caller == 'unknown' && reason == 'unknown') {
+        aiReport = `[AI] ${callerName} with ${callerReason}. I will ask for more information.`;
+      } else if (caller == 'unknown') {
+        aiReport = `[AI] ${callerName} is trying to speak with you ${callerReason}. I will ask for their identity.`;
+      } else {
+        aiReport = `[AI] ${callerName} is trying to speak with you. I will ask for their reason.`;
+      }
+
+      object!.action = Action.ASK_FOR_DETAILS;
+    
+    } else {
+      aiReport = "[AI] Couldn't understand caller's identity and agenda after " +
+                 `${htmlEmphasis(ASK_FOR_DETAILS_RETRY_LIMIT.toString())} inquiries. Declining their call.`;
+
+      object!.action = Action.DECLINE_CALL;
+    }
+
+    object!.askForDetailsRetryCount += 1;
+
+    sendMessage("ADD_TO_AI_REPORT", aiReport);
+    setTimeout(() => { speakToCaller(); }, 200);
+  };
 
   const giveUserOptions = async () => {
     sendMessage("GIVE_USER_OPTIONS", allActions());
@@ -231,6 +366,13 @@ const init = async (
       }
     );
 
+    sendMessage("SET_STATUS", "Loading PicoLLM");
+    const llm = await PicoLLMWorker.create(
+      accessKey,
+      { modelFile: 'models/llama-3.2-1b-instruct-385.pllm', cacheFileOverwrite: FORCE_WRITE },
+      {}
+    );
+
     sendMessage("SET_STATUS", "Loading Orca");
     const orca = await OrcaWorker.create(
       accessKey,
@@ -241,7 +383,7 @@ const init = async (
     sendMessage("SET_STATUS", "Loading Rhino");
     const rhino = await RhinoWorker.create(
       accessKey,
-      { publicPath: 'models/call_screen_demo_web.rhn', forceWrite: FORCE_WRITE },
+      { publicPath: 'models/call_assist_demo_web.rhn', forceWrite: FORCE_WRITE },
       inferenceCallback,
       { publicPath: 'models/rhino_params.pv', forceWrite: FORCE_WRITE },
     );
@@ -253,10 +395,14 @@ const init = async (
     object = {
       audio: audio,
       cheetah: cheetah,
+      llm: llm,
       orca: orca,
       rhino: rhino,
       action: Action.GREET,
       username: name,
+      askForDetailsRetryCount: 0,
+      storedCallerName: "unknown",
+      storedCallerReason: "unknown",
     };
   }
 
@@ -267,6 +413,9 @@ const updateStartParameters = async (name: string): Promise<void> => {
   if (object) {
     object!.action = Action.GREET;
     object!.username = name;
+    object!.askForDetailsRetryCount = 0;
+    object!.storedCallerName = "unknown";
+    object!.storedCallerReason = "unknown";
   }
 };
 

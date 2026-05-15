@@ -66,5 +66,8 @@
     "**/mcu/**/system*",
     "**/mcu/generate_pv_params_file.py",
     "**/mcu/**/pv_params.h",
+
+    // css
+    "**/*.css"
   ]
 }

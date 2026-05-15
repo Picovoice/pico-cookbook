@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" style="overflow-x: hidden;">
+<html lang="en">
 <head>
   <script src="index.js"></script>
   <script type="application/javascript" src="controller.js"></script>
@@ -9,7 +9,7 @@
   <div>
     <div id="load-container-parent">
       <div id="load-container">
-        <h1>Call Screen</h1>
+        <h1>Call Assist</h1>
         <div id="error" class="hidden"></div>
         <div id="init-container">
           <input type="text" id="access-key" name="access-key" placeholder="Enter AccessKey" />
@@ -26,10 +26,9 @@
 
     <div id="main-container-parent" style="visibility: hidden;">
       <div id="main-container" style="opacity: 0;">
-        <h1 style="text-align: center; margin: 15px 0 40px 0;">Call Screen</h1>
+        <h1 style="text-align: center; margin: 15px 0 40px 0;">Call Assist</h1>
 
         <div style="display: flex; flex-direction: row; height: 100%;">
-
           <div id="chat-block-container">
             <div class="header">Incoming Call</div>
 
@@ -44,10 +43,16 @@
 
             <div id="ai-state">
               <span id="ai-state-text"></span>
+              <div id="llm-spinner" class="loader" style="opacity: 0; display: none;"></div>
             </div>
           </div>
           
           <div id="user-block">
+            <div id="report-container">
+              <h3 style="margin: 0;">AI Call Report</h3>
+              <div id="report"></div>
+            </div>
+
             <div id="hud-container" style="opacity: 0;">
               <div id="hud">Select a call-assist voice action</div>
 
@@ -61,7 +66,6 @@
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>

@@ -41,6 +41,9 @@ window.onload = () => {
   const bar2 = document.getElementById('bar2');
   const bar3 = document.getElementById('bar3');
   const aiState = document.getElementById("ai-state-text");
+  const llmSpinner = document.getElementById("llm-spinner");
+
+  const report = document.getElementById("report");
 
   const hudContainer = document.getElementById("hud-container");
   const hudOptions = document.getElementById("hud-options");
@@ -100,6 +103,8 @@ window.onload = () => {
     mainContainerParent.style.visibility = "hidden";
 
     chatBlock.replaceChildren();
+
+    report.innerHTML = "";
 
     if (hudFadeoutTimeoutHandle && hudFadeoutEndStateFunction) {
       clearTimeout(hudFadeoutTimeoutHandle);
@@ -229,6 +234,20 @@ window.onload = () => {
 
     } else if (message === "RESTART_DEMO") {
       restartDemo();
+    
+    } else if (message === "ADD_TO_AI_REPORT") {
+      let text = obj;
+      report.innerHTML += text + "\n";
+    
+    } else if (message === "START_LLM_SPINNER") {
+      llmSpinner.style.display = "inline";
+      llmSpinner.style.opacity = "1";
+
+    } else if (message === "STOP_LLM_SPINNER") {
+      llmSpinner.style.opacity = "0";
+      await Picovoice.sleep(400);
+
+      llmSpinner.style.display = "none";
     }
   };
 
