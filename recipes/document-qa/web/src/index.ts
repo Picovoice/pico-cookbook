@@ -157,12 +157,17 @@ const buildPrompt = async (question: string, retreivedChunks: chunkEmbeddingType
 
 // ------------------------------------------------------------------------- //
 
+type initReturnType = {
+  startFunction: (file: File) => Promise<void>;
+  resetDemo: () => Promise<void>;
+};
+
 const init = async (
   accessKey: string,
   sendMessage: (message: string, obj: any) => void,
   makeRequest: (message: string) => any,
   onVolumeCallback: (volume: number) => void,
-): Promise<null | ((file: File) => Promise<void>)> => {
+): Promise<null | initReturnType> => {
 
   triggerAudioCallback = (frame: Int16Array) => {
     let sum = 0;
@@ -351,19 +356,10 @@ const init = async (
     askForDetailsRetryCount: 0,
   };
 
-  return (documentFile: File) => llmEmbeddingProcessCall(documentFile);
-};
-
-const updateStartParameters = async (name: string): Promise<boolean> => {
-  // if (object) {
-  //   object!.action = Action.GREET;
-  //   object!.username = name;
-  //   object!.askForDetailsRetryCount = 0;
-  //   return true;
-  // } else {
-  //   return false;
-  // }
-  return !!object;
+  return {
+    startFunction: llmEmbeddingProcessCall,
+    resetDemo
+  };
 };
 
 const release = async () => {
@@ -389,6 +385,5 @@ const release = async () => {
 export default {
   sleep,
   init,
-  updateStartParameters,
   release
 };

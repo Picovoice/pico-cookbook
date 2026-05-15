@@ -145,9 +145,7 @@ window.onload = () => {
       hudTemp.innerHTML = "";
     }
 
-    initButton.disabled = false;
-    initButton.removeAttribute("disabled");
-    initButton.setAttribute("coloured", "");
+    initButton.innerText = "Start Demo";
 
     documentFile.disabled = false;
   };
@@ -189,9 +187,11 @@ window.onload = () => {
         return;
 
       currentBubbleText += text;
-      chatBlock.lastElementChild.innerHTML = currentBubbleText + currentBubbleDots;
-      if (chatBlock.lastElementChild.innerHTML.length > 0) {
-        chatBlock.lastElementChild.style.opacity = "1";
+      if (chatBlock.lastElementChild) {
+        chatBlock.lastElementChild.innerHTML = currentBubbleText + currentBubbleDots;
+        if (chatBlock.lastElementChild.innerHTML.length > 0) {
+          chatBlock.lastElementChild.style.opacity = "1";
+        }
       }
 
     } else if (message === "new caller bubble") {
@@ -259,6 +259,7 @@ window.onload = () => {
   }
 
   let startFunction = null;
+  let resetDemo = null;
 
   loadButton.addEventListener("click", async () => {
     loadButton.disabled = true;
@@ -269,12 +270,14 @@ window.onload = () => {
     startDot();
 
     try {
-      startFunction = await Picovoice.init(
+      const functions = await Picovoice.init(
         accessKey.value,
         sendMessage,
         makeRequest,
         onVolumeCallback,
       );
+      startFunction = functions.startFunction;
+      resetDemo = functions.resetDemo;
     } catch (e) {
       writeError(e.message);
       return;
@@ -301,21 +304,18 @@ window.onload = () => {
   });
 
   initButton.addEventListener("click", async () => {
-    initButton.disabled = true;
-    initButton.setAttribute("disabled", "");
-    initButton.removeAttribute("coloured");
+    if (documentFile.disabled) {
+      stopBubbleDot();
+      await resetDemo();
+    } else {
+      initButton.innerText = "Stop Demo"
+      documentFile.disabled = true;
 
-    documentFile.disabled = true;
-
-    let success = await Picovoice.updateStartParameters(sanitizeForOrca(documentFile.value));
-    if (!success) {
-      console.log("failed to update start parameters");
-    }
-
-    try {
-      await startFunction(documentFile.files[0]);
-    } catch (e) {
-      writeError(e.message);
+      try {
+        await startFunction(documentFile.files[0]);
+      } catch (e) {
+        writeError(e.message);
+      }
     }
   });
 };
