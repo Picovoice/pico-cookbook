@@ -56,26 +56,43 @@ reason: my sawmill
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const extractCallerAndReasonFromLLMInference = (inference: string): [string, string] => {
-    const inferenceLower = inference.toLowerCase();
-    const callerIndex = inferenceLower.indexOf("caller:");
-    const reasonIndex = inferenceLower.indexOf("reason:");
+  const inferenceLower = inference.toLowerCase();
+  const callerIndex = inferenceLower.indexOf("caller:");
+  const reasonIndex = inferenceLower.indexOf("reason:");
 
-    if (callerIndex == -1 || reasonIndex == -1) {
-        return ["unknown", "unknown"];
-    }
+  if (callerIndex == -1 || reasonIndex == -1) {
+      return ["unknown", "unknown"];
+  }
 
-    let callerEOL = inferenceLower.slice(callerIndex).indexOf("\n");
-    let reasonEOL = inferenceLower.slice(reasonIndex).indexOf("\n");
-    callerEOL = (callerEOL == -1) ? inferenceLower.length : (callerIndex + callerEOL);
-    reasonEOL = (reasonEOL == -1) ? inferenceLower.length : (reasonIndex + reasonEOL);
-    
-    const callerContents = inference.slice(callerIndex, callerEOL).split(":")[1];
-    const reasonContents = inference.slice(reasonIndex, reasonEOL).split(":")[1];
+  let callerEOL = inferenceLower.slice(callerIndex).indexOf("\n");
+  let reasonEOL = inferenceLower.slice(reasonIndex).indexOf("\n");
+  callerEOL = (callerEOL == -1) ? inferenceLower.length : (callerIndex + callerEOL);
+  reasonEOL = (reasonEOL == -1) ? inferenceLower.length : (reasonIndex + reasonEOL);
+  
+  const callerContents = inference.slice(callerIndex, callerEOL).split(":")[1];
+  const reasonContents = inference.slice(reasonIndex, reasonEOL).split(":")[1];
 
-    return [callerContents.trim(), reasonContents.trim()];
+  return [callerContents.trim(), reasonContents.trim()];
 }
 
-// ------------------------------------------------------------------------- //
+type Message =
+  "SET_STATUS"
+  | "ADD_TO_BUBBLE"
+  | "NEW_CALLER_BUBBLE"
+  | "NEW_AI_BUBBLE"
+  | "START_LISTENING"
+  | "STOP_LISTENING"
+  | "GIVE_USER_OPTIONS"
+  | "SELECT_OPTION"
+  | "SET_AI_STATE"
+  | "RESTART_DEMO"
+  | "ADD_TO_AI_REPORT"
+  | "START_LLM_SPINNER"
+  | "STOP_LLM_SPINNER";
+
+type Request = 
+  "BUBBLE_LENGTH"
+  | "BUBBLE_CONTENTS";
 
 type PvObject = {
   audio: AudioStream,
@@ -92,8 +109,6 @@ type PvObject = {
 let object: PvObject | null = null;
 
 var triggerAudioCallback = (_: Int16Array) => {};
-
-// ------------------------------------------------------------------------- //
 
 var cheetahPcmBuffer = new Int16Array();
 const BufferedCheetahEngine = {
@@ -139,13 +154,11 @@ const BufferedRhinoEngine = {
   }
 }
 
-// ------------------------------------------------------------------------- //
-
 const init = async (
   accessKey: string,
   name: string,
-  sendMessage: (message: string, obj: any) => void,
-  makeRequest: (message: string) => any,
+  sendMessage: (message: Message, obj: any) => void,
+  makeRequest: (message: Request) => any,
   onVolumeCallback: (volume: number) => void,
 ): Promise<null | (() => Promise<void>)> => {
 
@@ -159,21 +172,24 @@ const init = async (
     const normalized = (db - MIN_DB) / (MAX_DB - MIN_DB);
     const normalizedVolume = Math.max(0.0, Math.min(1.0, normalized));
 
+    console.log("volume callback");
+
     onVolumeCallback(normalizedVolume);
   }
 
   const resetDemo = async () => {
     object!.audio.clear();
 
-    sendMessage("ai state", "");
+    sendMessage("SET_AI_STATE", "");
 
     await stopListenForCaller();
     await stopGiveUserOptions();
 
-    sendMessage("restart demo", null);
+    sendMessage("RESTART_DEMO", null);
   };
 
   const speakToCaller = async () => {
+    console.log("start speaking to caller");
     const orca = object!.orca;
 
     const synthesis = await orca.synthesize(
@@ -183,8 +199,8 @@ const init = async (
     object!.audio.stream(synthesis.pcm);
     object!.audio.play();
 
-    sendMessage("ai state", "AI: Speaking to caller");
-    sendMessage("new ai bubble", "[AI] ");
+    sendMessage("SET_AI_STATE", "AI is speaking to caller");
+    sendMessage("NEW_AI_BUBBLE", "[AI] ");
 
     for (let alignment of alignments) {
       const index = alignments.indexOf(alignment);
@@ -196,7 +212,7 @@ const init = async (
       }
 
       setTimeout(() => {
-        sendMessage("add to bubble", word);
+        sendMessage("ADD_TO_BUBBLE", word);
       }, alignment.startSec * 1000);
     }
 
@@ -211,15 +227,16 @@ const init = async (
   };
 
   const listenForCaller = async () => {
-    sendMessage("new caller bubble", "[CALLER] ");
-    sendMessage("start listening", null);
-    sendMessage("ai state", "AI: Listening to caller");
+    sendMessage("NEW_CALLER_BUBBLE", "[CALLER] ");
+    sendMessage("START_LISTENING", null);
+    sendMessage("SET_AI_STATE", "AI is listening to caller");
 
     const cheetah = BufferedCheetahEngine;
     await WebVoiceProcessor.subscribe(cheetah);
   };
   const stopListenForCaller = async () => {
-    sendMessage("stop listening", null);
+    sendMessage("STOP_LISTENING", null);
+
     const cheetah = BufferedCheetahEngine;
     await WebVoiceProcessor.unsubscribe(cheetah);
   };
@@ -227,30 +244,31 @@ const init = async (
     transcript: CheetahTranscript
   ): Promise<void> => {
     if (transcript.transcript.length > 0) {
-      sendMessage("add to bubble", transcript.transcript);
+      sendMessage("ADD_TO_BUBBLE", transcript.transcript);
     }
 
     if (transcript.isEndpoint) {
-      sendMessage("add to bubble", " ");
+      sendMessage("ADD_TO_BUBBLE", " ");
       const cheetah = object!.cheetah;
       cheetah.flush();
     }
 
-    if (transcript.isFlushed && makeRequest("bubble length") > 0) {
+    let callerText = makeRequest("BUBBLE_CONTENTS");
+    if (transcript.isFlushed && (callerText.trim().length > 0)) {
       await stopListenForCaller();
 
-      let callerText = makeRequest("bubble contents");
-      await llmProcessCall(callerText);
+      await llmProcessCall(callerText.trim());
+      return;
     }
   }
 
   const llmProcessCall = async (callerText: string) => {
-    sendMessage("start llm spinner", null);
+    sendMessage("START_LLM_SPINNER", null);
 
     let dialog = await object!.llm.getDialog(undefined, undefined, SYSTEM);
     dialog.addHumanRequest(`Caller said: \"${callerText.replace("[CALLER]", "").trim()}\"\n`);
 
-    const completion = await llm.generate(
+    const completion = await object!.llm.generate(
         dialog.prompt(),
         { stopPhrases: ['<|eot_id|>'] });
 
@@ -258,11 +276,11 @@ const init = async (
     console.log(`# Inference\n${inference}`);
     const [caller, reason] = extractCallerAndReasonFromLLMInference(inference);
 
-    sendMessage("stop llm spinner", null);
+    sendMessage("STOP_LLM_SPINNER", null);
 
     if (caller != 'unknown' && reason != 'unknown') {
       sendMessage(
-          "ai report",
+          "ADD_TO_AI_REPORT",
           `[AI] <b style="color: var(--brand-primary);">${caller}</b> is trying to speak with you about ` +
           `<b style="color: var(--brand-primary);">${reason}</b>.`);
       setTimeout(() => { giveUserOptions(); }, 200);
@@ -271,22 +289,22 @@ const init = async (
       object!.action = Action.ASK_FOR_DETAILS;
 
       if (caller == 'unknown' && reason == 'unknown') {
-        sendMessage("ai report", "[AI] Unknown caller with no specific reason. I will ask for more information.");
+        sendMessage("ADD_TO_AI_REPORT", "[AI] Unknown caller with no specific reason. I will ask for more information.");
       } else if (caller == 'unknown') {
         sendMessage(
-            "ai report",
+            "ADD_TO_AI_REPORT",
             `[AI] Unknown caller is trying to speak with you about <b style="color: var(--brand-primary);">${reason}</b>. ` +
             `I will ask for their identity.`);
       } else {
         sendMessage(
-            "ai report",
+            "ADD_TO_AI_REPORT",
             `[AI] <b style="color: var(--brand-primary);">${caller}</b> is trying to speak with you. I will ask for their reason.`);
       }
     } else {
       object!.action = Action.DECLINE_CALL;
       
       sendMessage(
-          "ai report",
+          "ADD_TO_AI_REPORT",
           `[AI] Couldn't understand caller's identity and agenda after <b style="color: var(--brand-primary);">${ASK_FOR_DETAILS_RETRY_LIMIT}</b> ` +
           "inquiries. Declining their call.");
     }
@@ -296,8 +314,8 @@ const init = async (
   };
 
   const giveUserOptions = async () => {
-    sendMessage("give user options", allActions());
-    sendMessage("ai state", "AI: Listening for " + object!.username + "'s command");
+    sendMessage("GIVE_USER_OPTIONS", allActions());
+    sendMessage("SET_AI_STATE", "AI is listening for " + object!.username + "'s command");
 
     const rhino = BufferedRhinoEngine;
     await WebVoiceProcessor.subscribe(rhino);
@@ -317,77 +335,78 @@ const init = async (
       object!.action = inference.slots!.action as Action;
 
       await stopGiveUserOptions();
-      sendMessage("select option", object!.action);
+      sendMessage("SELECT_OPTION", object!.action);
 
       setTimeout(() => { speakToCaller(); }, 600);
     } else {
-      sendMessage("unknown user option", 1000);
+      console.log("unknown user option");
     }
   };
 
-  // If you update your model, you may want to enable force write to update the model in storage.
-  const FORCE_WRITE = false;
+  console.log("init...");
 
-  sendMessage("status", "Loading Cheetah");
-  const cheetah = await CheetahWorker.create(
-    accessKey,
-    transcriptCallback,
-    { publicPath: "models/cheetah_params.pv", forceWrite: FORCE_WRITE },
-    {
-      endpointDurationSec: 1.0,
-      enableAutomaticPunctuation: true,
-      enableTextNormalization: true
-    }
-  );
+  if (object == null) {
+    // If you update your model, you may want to enable force write to update the model in storage.
+    const FORCE_WRITE = false;
 
-  sendMessage("status", "Loading PicoLLM");
-  const llm = await PicoLLMWorker.create(
-    accessKey,
-    { modelFile: 'models/llama-3.2-1b-instruct-385.pllm', cacheFileOverwrite: FORCE_WRITE },
-    {}
-  );
+    sendMessage("SET_STATUS", "Loading Cheetah");
+    const cheetah = await CheetahWorker.create(
+      accessKey,
+      transcriptCallback,
+      { publicPath: "models/cheetah_params.pv", forceWrite: FORCE_WRITE },
+      {
+        endpointDurationSec: 1.0,
+        enableAutomaticPunctuation: true,
+        enableTextNormalization: true
+      }
+    );
 
-  sendMessage("status", "Loading Orca");
-  const orca = await OrcaWorker.create(
-    accessKey,
-    { publicPath: "models/orca_params_en_female.pv", forceWrite: FORCE_WRITE },
-    {}
-  );
+    sendMessage("SET_STATUS", "Loading PicoLLM");
+    const llm = await PicoLLMWorker.create(
+      accessKey,
+      { modelFile: 'models/llama-3.2-1b-instruct-385.pllm', cacheFileOverwrite: FORCE_WRITE },
+      {}
+    );
 
-  sendMessage("status", "Loading Rhino");
-  const rhino = await RhinoWorker.create(
-    accessKey,
-    { publicPath: 'models/call_assist_demo_web.rhn', forceWrite: FORCE_WRITE },
-    inferenceCallback,
-    { publicPath: 'models/rhino_params.pv', forceWrite: FORCE_WRITE },
-  );
+    sendMessage("SET_STATUS", "Loading Orca");
+    const orca = await OrcaWorker.create(
+      accessKey,
+      { publicPath: "models/orca_params_en_female.pv", forceWrite: FORCE_WRITE },
+      {}
+    );
 
-  sendMessage("ai state", "AI: Connecting caller");
-  sendMessage("status", "Loading Audio Stream");
-  const audio = new AudioStream(orca.sampleRate);
+    sendMessage("SET_STATUS", "Loading Rhino");
+    const rhino = await RhinoWorker.create(
+      accessKey,
+      { publicPath: 'models/call_assist_demo_web.rhn', forceWrite: FORCE_WRITE },
+      inferenceCallback,
+      { publicPath: 'models/rhino_params.pv', forceWrite: FORCE_WRITE },
+    );
 
-  object = {
-    audio: audio,
-    cheetah: cheetah,
-    llm: llm,
-    orca: orca,
-    rhino: rhino,
-    action: Action.GREET,
-    username: name,
-    askForDetailsRetryCount: 0,
-  };
+    sendMessage("SET_AI_STATE", "AI is connecting caller");
+    sendMessage("SET_STATUS", "Loading Audio Stream");
+    const audio = new AudioStream(orca.sampleRate);
+
+    object = {
+      audio: audio,
+      cheetah: cheetah,
+      llm: llm,
+      orca: orca,
+      rhino: rhino,
+      action: Action.GREET,
+      username: name,
+      askForDetailsRetryCount: 0,
+    };
+  }
 
   return () => speakToCaller();
 };
 
-const updateStartParameters = async (name: string): Promise<boolean> => {
+const updateStartParameters = async (name: string): Promise<void> => {
   if (object) {
     object!.action = Action.GREET;
     object!.username = name;
     object!.askForDetailsRetryCount = 0;
-    return true;
-  } else {
-    return false;
   }
 };
 

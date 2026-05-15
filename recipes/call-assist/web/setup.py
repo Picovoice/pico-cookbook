@@ -11,7 +11,7 @@ from threading import (
 from typing import Tuple
 
 ANIMALS = [
-    ("cheetah", "4.0.0"),
+    ("cheetah", "4.0.3"),
     ("orca", "3.0.0"),
     ("rhino", "4.0.0"),
 ]

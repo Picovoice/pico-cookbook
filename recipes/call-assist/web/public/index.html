@@ -1,90 +1,69 @@
 <!DOCTYPE html>
-<html lang="en" style="overflow-x: hidden;">
+<html lang="en">
 <head>
   <script src="index.js"></script>
   <script type="application/javascript" src="controller.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>Call Assist</h1>
-
-  <div id="error-container" style="display: none;">
-    <div id="error" style="white-space: pre;"></div>
-  </div>
-
   <div>
     <div id="load-container-parent">
       <div id="load-container">
-        <div id="access-key-container">
-          <label for="access-key">
-              <code>AccessKey</code> from <a href="https://console.picovoice.ai/">Picovoice Console</a>
-          </label>
-          <input type="text" id="access-key" name="access-key"/>
+        <h1>Call Assist</h1>
+        <div id="error" class="hidden"></div>
+        <div id="init-container">
+          <input type="text" id="access-key" name="access-key" placeholder="Enter AccessKey" />
+          <input type="text" id="name" name="name" placeholder="Enter Your Name" />
+          <button id="start-button">Start Demo</button>
         </div>
-
-        <button id="load-button" disabled>
-          Load Demo
-          <span id="load-button-tooltip" class="tooltip">fill in access key</span>
-        </button>
 
         <div id="status-container">
           <span id="status"></span>
-          <span id="dotdotdot" style="white-space: pre;"></span>
+          <div id="status-spinner" class="loader" style="opacity: 0; display: none;"></div>
         </div>
       </div>
     </div>
 
     <div id="main-container-parent" style="visibility: hidden;">
       <div id="main-container" style="opacity: 0;">
-        <div id="chat-block-container">
-          <div class="header">Incoming Call</div>
+        <h1 style="text-align: center; margin: 15px 0 40px 0;">Call Assist</h1>
 
-          <div id="chat-block">
-          </div>
+        <div style="display: flex; flex-direction: row; height: 100%;">
+          <div id="chat-block-container">
+            <div class="header">Incoming Call</div>
 
-          <div id="volume-meter-caller" style="opacity: 0;">
-            <div class="volume-bar" id="bar1"></div>
-            <div class="volume-bar" id="bar2"></div>
-            <div class="volume-bar" id="bar3"></div>
-          </div>
-
-          <div id="ai-state">
-          </div>
-        </div>
-        
-        <div id="user-block">
-          <div id="name-container">
-            <label for="name">Your name</label>
-            <input type="text" id="name" name="name" />
-          </div>
-
-          <button id="init-button" disabled>
-            Start Demo
-            <span id="init-button-tooltip" class="tooltip">fill in name</span>
-          </button>
-
-          <div id="llm-spinner" style="opacity: 0;">
-            LLM is analyzing the response <div class='loader'></div>
-          </div>
-
-          <div id="report-container">
-            <h3 style="margin-bottom: 0;">AI Call Report</h3>
-            <div id="report"></div>
-          </div>
-
-          <div id="hud-container" style="opacity: 0;">
-            <div id="hud">Select a call-assist voice action</div>
-
-            <div id="hud-options">
+            <div id="chat-block">
             </div>
 
-            <div id="volume-meter-user" style="opacity: 0;">
-              <div class="volume-bar" id="bar4"></div>
-              <div class="volume-bar" id="bar5"></div>
-              <div class="volume-bar" id="bar6"></div>
+            <div id="volume-meter-caller" style="opacity: 0;">
+              <div class="volume-bar" id="bar1"></div>
+              <div class="volume-bar" id="bar2"></div>
+              <div class="volume-bar" id="bar3"></div>
             </div>
 
-            <div id="hud-temp">
+            <div id="ai-state">
+              <span id="ai-state-text"></span>
+              <div id="llm-spinner" class="loader" style="opacity: 0; display: none;"></div>
+            </div>
+          </div>
+          
+          <div id="user-block">
+            <div id="report-container">
+              <h3 style="margin: 0;">AI Call Report</h3>
+              <div id="report"></div>
+            </div>
+
+            <div id="hud-container" style="opacity: 0;">
+              <div id="hud">Select a call-assist voice action</div>
+
+              <div id="hud-options">
+              </div>
+
+              <div id="volume-meter-user" style="opacity: 0;">
+                <div class="volume-bar" id="bar4"></div>
+                <div class="volume-bar" id="bar5"></div>
+                <div class="volume-bar" id="bar6"></div>
+              </div>
             </div>
           </div>
         </div>

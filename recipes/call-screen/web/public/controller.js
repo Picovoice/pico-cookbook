@@ -32,6 +32,7 @@ window.onload = () => {
   const error = document.getElementById("error");
   const dotdotdot = document.getElementById("dotdotdot");
 
+
   const loadContainerParent = document.getElementById("load-container-parent");
   const loadContainer = document.getElementById("load-container");
   const loadButton = document.getElementById("load-button");
@@ -54,7 +55,6 @@ window.onload = () => {
 
   const hudContainer = document.getElementById("hud-container");
   const hudOptions = document.getElementById("hud-options");
-  const hudTemp = document.getElementById("hud-temp");
   const volumeMeterUser = document.getElementById('volume-meter-user');
   const bar4 = document.getElementById('bar4');
   const bar5 = document.getElementById('bar5');
@@ -73,8 +73,6 @@ window.onload = () => {
     statusContainer.style.display = 'block';
     status.innerText = statusString;
   };
-
-  // -----------------------------------------
 
   const startDot = () => {
     if (dotInterval) {
@@ -104,8 +102,6 @@ window.onload = () => {
     bar6.style.height = `${baseHeight + volume * 24}px`;
   };
 
-  // -----------------------------------------
-
   const enableLoadButton = _ => {
     if (accessKey.value.length > 0) {
       loadButton.removeAttribute("disabled");
@@ -132,11 +128,8 @@ window.onload = () => {
   }
   name.addEventListener("input", enableStartButton);
 
-  // -----------------------------------------
-
   let hudFadeoutTimeoutHandle = null;
   let hudFadeoutEndStateFunction = null;
-  let hudTempTimeoutHandle = null;
 
   const restartDemo = async () => {
     chatBlock.style.opacity = "0";
@@ -148,11 +141,6 @@ window.onload = () => {
     if (hudFadeoutTimeoutHandle && hudFadeoutEndStateFunction) {
       clearTimeout(hudFadeoutTimeoutHandle);
       hudFadeoutEndStateFunction();
-    }
-
-    if (hudTempTimeoutHandle) {
-      clearTimeout(hudTempTimeoutHandle);
-      hudTemp.innerHTML = "";
     }
 
     initButton.disabled = false;
@@ -186,14 +174,12 @@ window.onload = () => {
     chatBlock.lastElementChild.innerHTML = currentBubbleText;
   }
 
-  // -----------------------------------------
-
   const sendMessage = (message, obj) => {
-    if (message === "status") {
+    if (message === "SET_STATUS") {
       let text = obj;
       writeStatus(text);
 
-    } else if (message === "add to bubble") {
+    } else if (message === "ADD_TO_BUBBLE") {
       let text = obj;
       if (text.length === 0)
         return;
@@ -204,7 +190,7 @@ window.onload = () => {
         chatBlock.lastElementChild.style.opacity = "1";
       }
 
-    } else if (message === "new caller bubble") {
+    } else if (message === "NEW_CALLER_BUBBLE") {
       let text = obj;
       let bubble = document.createElement("div");
       bubble.classList.add("caller-bubble");
@@ -217,7 +203,7 @@ window.onload = () => {
       currentBubbleText = text;
       chatBlock.appendChild(bubble);
 
-    } else if (message === "new ai bubble") {
+    } else if (message === "NEW_AI_BUBBLE") {
       let text = obj;
       let bubble = document.createElement("div");
       bubble.classList.add("ai-bubble");
@@ -230,19 +216,17 @@ window.onload = () => {
       currentBubbleText = text;
       chatBlock.appendChild(bubble);
 
-    } else if (message === "start listening") {
+    } else if (message === "START_LISTENING") {
       volumeMeterCaller.style.opacity = "1";
       startBubbleDot();
 
-    } else if (message === "stop listening") {
+    } else if (message === "STOP_LISTENING") {
       volumeMeterCaller.style.opacity = "0";
       stopBubbleDot();
 
-    } else if (message === "give user options") {
+    } else if (message === "GIVE_USER_OPTIONS") {
       volumeMeterUser.style.opacity = "1";
       let text = obj;
-
-      hudTemp.innerHTML = "";
 
       hudOptions.replaceChildren();
       for (text of text.split(",")) {
@@ -264,7 +248,7 @@ window.onload = () => {
 
       hudContainer.style.opacity = "1";
 
-    } else if (message === "select option") {
+    } else if (message === "SELECT_OPTION") {
       volumeMeterUser.style.opacity = "0";
       let text = obj;
 
@@ -279,37 +263,17 @@ window.onload = () => {
         hudFadeoutTimeoutHandle = setTimeout(hudFadeoutEndStateFunction, 2000);
       }
 
-    } else if (message === "unknown user option") {
-      let timeoutMs = obj;
-
-      if (hudTempTimeoutHandle) {
-        clearTimeout(hudTempTimeoutHandle);
-        hudTemp.innerHTML = "";
-        hudTemp.style.opacity = "1";
-      }
-
-      hudTemp.innerHTML = "Unknown Action";
-
-      hudTempTimeoutHandle = setTimeout(
-        async () => {
-          hudTemp.style.opacity = "0";
-          await Picovoice.sleep(200);
-          hudTemp.innerHTML = "";
-          hudTemp.style.opacity = "1";
-        },
-        timeoutMs);
-
-    } else if (message === "ai state") {
+    } else if (message === "SET_AI_STATE") {
       let text = obj;
       aiState.innerHTML = text;
 
-    } else if (message === "restart demo") {
+    } else if (message === "RESTART_DEMO") {
       restartDemo();
     }
   };
 
   const makeRequest = (message) => {
-    if (message === "bubble length") {
+    if (message === "BUBBLE_LENGTH") {
       return chatBlock.lastElementChild.innerHTML.length;
     }
   };

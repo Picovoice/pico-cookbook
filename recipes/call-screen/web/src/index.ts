@@ -10,6 +10,20 @@ const MAX_DB = 0.0;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+type Message =
+  "SET_STATUS"
+  | "ADD_TO_BUBBLE"
+  | "NEW_CALLER_BUBBLE"
+  | "NEW_AI_BUBBLE"
+  | "START_LISTENING"
+  | "STOP_LISTENING"
+  | "GIVE_USER_OPTIONS"
+  | "SELECT_OPTION"
+  | "SET_AI_STATE"
+  | "RESTART_DEMO";
+
+type Request = "BUBBLE_LENGTH";
+
 type PvObject = {
   audio: AudioStream,
   cheetah: CheetahWorker,
@@ -70,8 +84,8 @@ const BufferedRhinoEngine = {
 const init = async (
   accessKey: string,
   name: string,
-  sendMessage: (message: string, obj: any) => void,
-  makeRequest: (message: string) => any,
+  sendMessage: (message: Message, obj: any) => void,
+  makeRequest: (message: Request) => any,
   onVolumeCallback: (volume: number) => void,
 ): Promise<null | (() => Promise<void>)> => {
 
@@ -91,12 +105,12 @@ const init = async (
   const resetDemo = async () => {
     object!.audio.clear();
 
-    sendMessage("ai state", "");
+    sendMessage("SET_AI_STATE", "");
 
     await stopListenForCaller();
     await stopGiveUserOptions();
 
-    sendMessage("restart demo", null);
+    sendMessage("RESTART_DEMO", null);
   };
 
   const speakToCaller = async () => {
@@ -109,8 +123,8 @@ const init = async (
     object!.audio.stream(synthesis.pcm);
     object!.audio.play();
 
-    sendMessage("ai state", "AI: Speaking to caller");
-    sendMessage("new ai bubble", "[AI] ");
+    sendMessage("SET_AI_STATE", "AI: Speaking to caller");
+    sendMessage("NEW_AI_BUBBLE", "[AI] ");
 
     for (let alignment of alignments) {
       const index = alignments.indexOf(alignment);
@@ -122,7 +136,7 @@ const init = async (
       }
 
       setTimeout(() => {
-        sendMessage("add to bubble", word);
+        sendMessage("ADD_TO_BUBBLE", word);
       }, alignment.startSec * 1000);
     }
 
@@ -137,22 +151,22 @@ const init = async (
   };
 
   const listenForCaller = async () => {
-    sendMessage("new caller bubble", "[CALLER] ");
-    sendMessage("start listening", null);
-    sendMessage("ai state", "AI: Listening to caller");
+    sendMessage("NEW_CALLER_BUBBLE", "[CALLER] ");
+    sendMessage("START_LISTENING", null);
+    sendMessage("SET_AI_STATE", "AI: Listening to caller");
 
     const cheetah = BufferedCheetahEngine;
     await WebVoiceProcessor.subscribe(cheetah);
   };
   const stopListenForCaller = async () => {
-    sendMessage("stop listening", null);
+    sendMessage("STOP_LISTENING", null);
     const cheetah = BufferedCheetahEngine;
     await WebVoiceProcessor.unsubscribe(cheetah);
   };
 
   const giveUserOptions = async () => {
-    sendMessage("give user options", allActions());
-    sendMessage("ai state", "AI: Listening for " + object!.username + "'s command");
+    sendMessage("GIVE_USER_OPTIONS", allActions());
+    sendMessage("SET_AI_STATE", "AI: Listening for " + object!.username + "'s command");
 
     const rhino = BufferedRhinoEngine;
     await WebVoiceProcessor.subscribe(rhino);
@@ -166,16 +180,16 @@ const init = async (
     transcript: CheetahTranscript
   ): Promise<void> => {
     if (transcript.transcript.length > 0) {
-      sendMessage("add to bubble", transcript.transcript);
+      sendMessage("ADD_TO_BUBBLE", transcript.transcript);
     }
 
     if (transcript.isEndpoint) {
-      sendMessage("add to bubble", " ");
+      sendMessage("ADD_TO_BUBBLE", " ");
       const cheetah = object!.cheetah;
       cheetah.flush();
     }
 
-    if (transcript.isFlushed && makeRequest("bubble length") > 0) {
+    if (transcript.isFlushed && makeRequest("BUBBLE_LENGTH") > 0) {
       await stopListenForCaller();
 
       setTimeout(() => { giveUserOptions(); }, 600);
@@ -193,67 +207,66 @@ const init = async (
       object!.action = inference.slots!.action as Action;
 
       await stopGiveUserOptions();
-      sendMessage("select option", object!.action);
+      sendMessage("SELECT_OPTION", object!.action);
 
       setTimeout(() => { speakToCaller(); }, 600);
     } else {
-      sendMessage("unknown user option", 1000);
+      console.log("unknown user option");
     }
   };
 
-  // If you update your model, you may want to enable force write to update the model in storage.
-  const FORCE_WRITE = false;
+  if (object == null) {
+    // If you update your model, you may want to enable force write to update the model in storage.
+    const FORCE_WRITE = true;
 
-  sendMessage("status", "Loading Cheetah");
-  const cheetah = await CheetahWorker.create(
-    accessKey,
-    transcriptCallback,
-    { publicPath: "models/cheetah_params.pv", forceWrite: FORCE_WRITE },
-    {
-      endpointDurationSec: 1.0,
-      enableAutomaticPunctuation: true,
-      enableTextNormalization: true
-    }
-  );
+    sendMessage("SET_STATUS", "Loading Cheetah");
+    const cheetah = await CheetahWorker.create(
+      accessKey,
+      transcriptCallback,
+      { publicPath: "models/cheetah_params.pv", forceWrite: FORCE_WRITE },
+      {
+        endpointDurationSec: 1.0,
+        enableAutomaticPunctuation: true,
+        enableTextNormalization: true
+      }
+    );
 
-  sendMessage("status", "Loading Orca");
-  const orca = await OrcaWorker.create(
-    accessKey,
-    { publicPath: "models/orca_params_en_female.pv", forceWrite: FORCE_WRITE },
-    {}
-  );
+    sendMessage("SET_STATUS", "Loading Orca");
+    const orca = await OrcaWorker.create(
+      accessKey,
+      { publicPath: "models/orca_params_en_female.pv", forceWrite: FORCE_WRITE },
+      {}
+    );
 
-  sendMessage("status", "Loading Rhino");
-  const rhino = await RhinoWorker.create(
-    accessKey,
-    { publicPath: 'models/call_screen_demo_web.rhn', forceWrite: FORCE_WRITE },
-    inferenceCallback,
-    { publicPath: 'models/rhino_params.pv', forceWrite: FORCE_WRITE },
-  );
+    sendMessage("SET_STATUS", "Loading Rhino");
+    const rhino = await RhinoWorker.create(
+      accessKey,
+      { publicPath: 'models/call_screen_demo_web.rhn', forceWrite: FORCE_WRITE },
+      inferenceCallback,
+      { publicPath: 'models/rhino_params.pv', forceWrite: FORCE_WRITE },
+    );
 
-  sendMessage("ai state", "AI: Connecting caller");
-  sendMessage("status", "Loading Audio Stream");
-  const audio = new AudioStream(orca.sampleRate);
+    sendMessage("SET_AI_STATE", "AI: Connecting caller");
+    sendMessage("SET_STATUS", "Loading Audio Stream");
+    const audio = new AudioStream(orca.sampleRate);
 
-  object = {
-    audio: audio,
-    cheetah: cheetah,
-    orca: orca,
-    rhino: rhino,
-    action: Action.GREET,
-    username: name,
-  };
+    object = {
+      audio: audio,
+      cheetah: cheetah,
+      orca: orca,
+      rhino: rhino,
+      action: Action.GREET,
+      username: name,
+    };
+  }
 
   return () => speakToCaller();
 };
 
-const updateStartParameters = async (name: string): Promise<boolean> => {
+const updateStartParameters = async (name: string): Promise<void> => {
   if (object) {
     object!.username = name;
     object!.action = Action.GREET;
-    return true;
-  } else {
-    return false;
   }
 };
 
