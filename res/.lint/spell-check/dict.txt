@@ -26,6 +26,7 @@ getpid
 iife
 indice
 libpv
+livecaptioningandtranslation
 liveconversationtranslation
 llmvoiceassistant
 logcat
