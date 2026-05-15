@@ -30,28 +30,6 @@ const SYSTEM = "You are a document question-answering assistant. "
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const extractCallerAndReasonFromLLMInference = (inference: string): [string, string] => {
-    const inferenceLower = inference.toLowerCase();
-    const callerIndex = inferenceLower.indexOf("caller:");
-    const reasonIndex = inferenceLower.indexOf("reason:");
-
-    if (callerIndex == -1 || reasonIndex == -1) {
-        return ["unknown", "unknown"];
-    }
-
-    let callerEOL = inferenceLower.slice(callerIndex).indexOf("\n");
-    let reasonEOL = inferenceLower.slice(reasonIndex).indexOf("\n");
-    callerEOL = (callerEOL == -1) ? inferenceLower.length : (callerIndex + callerEOL);
-    reasonEOL = (reasonEOL == -1) ? inferenceLower.length : (reasonIndex + reasonEOL);
-    
-    const callerContents = inference.slice(callerIndex, callerEOL).split(":")[1];
-    const reasonContents = inference.slice(reasonIndex, reasonEOL).split(":")[1];
-
-    return [callerContents.trim(), reasonContents.trim()];
-}
-
-// ------------------------------------------------------------------------- //
-
 type PvObject = {
   audio: AudioStream,
   cheetah: CheetahWorker,
@@ -235,10 +213,9 @@ const init = async (
       cheetah.flush();
     }
 
-    if (transcript.isFlushed && makeRequest("bubble length") > 0) {
+    let callerText = makeRequest("bubble contents").replace("[CALLER]", "").trim();
+    if (transcript.isFlushed && callerText.length > 0) {
       await stopListenForCaller();
-
-      let callerText = makeRequest("bubble contents");
       await llmProcessCall(callerText);
     }
   }
@@ -264,10 +241,9 @@ const init = async (
     }
   }
 
-  const llmProcessCall = async (callerText: string) => {
+  const llmProcessCall = async (question: string) => {
     sendMessage("start llm spinner", null);
 
-    const question = callerText.replace("[CALLER]", "").trim();
     const retreivedChunks = await retreiveChunks(question);
     const prompt = await buildPrompt(question, retreivedChunks);
 
@@ -277,6 +253,7 @@ const init = async (
     sendMessage("ai state", "AI: Speaking to caller");
     sendMessage("new ai bubble", "[AI] ");
 
+    let pcmBuffered = 0;
     const streamCallback = async (token: string) => {
       const text = token.replace(STOP_PHRASE, '');
       sendMessage("add to bubble", text);
@@ -284,9 +261,12 @@ const init = async (
       const streamRelease = await streamMutex.acquire();
       const pcm = await stream.synthesize(text);
       if (pcm !== null) {
-        // TODO: Should buffer some audio
         object!.audio.stream(pcm);
-        object!.audio.play();
+
+        pcmBuffered += pcm.length
+        if (pcmBuffered >= 16000) {
+          object!.audio.play();
+        }
       }
       streamRelease();
     }
