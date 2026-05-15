@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 
 import pveagle
 import pvfalcon
+from pveagle import EagleProfile
 
 
 def main() -> None:
@@ -33,6 +34,8 @@ def main() -> None:
     falcon = pvfalcon.create(access_key=access_key)
     print(f"[OK] Falcon Speaker Diarization[V{falcon.version}]")
 
+    eagle_recognizer = None
+    eagle_profiler = None
     if len(known_speakers) > 0:
         eagle_recognizer = pveagle.create_recognizer(access_key=access_key)
         print(f"[OK] Eagle Speaker Recognition[V{eagle_recognizer.version}]")
@@ -43,10 +46,19 @@ def main() -> None:
 
     segments = falcon.process_file(audio_path)
     speaker_map = dict()
-    if len(known_speakers) > 0:
+    if eagle_recognizer is not None:
         speaker_segments = dict()
         for x in segments:
-            speaker_segments.setdefault(x.speaker_tag, list()).append(x)
+            speaker_segments.setdefault(x.speaker_tag, list()).append((x.start_sec, x.end_sec))
+
+        known_profiles = list()
+        for x in known_speakers:
+            with open(x, 'rb') as f:
+                known_profiles.append(EagleProfile.from_bytes(f.read()))
+
+        for speaker, ss in speaker_segments.items():
+            for s in ss:
+                eagle_recognizer.process(pcm=None, speaker_profiles=known_profiles)
 
     for x in segments:
         print(f"[{speaker_map.get(x.speaker_tag, x.speaker_tag)}] {x.start_sec:.2f} → {x.end_sec:.2f}")
