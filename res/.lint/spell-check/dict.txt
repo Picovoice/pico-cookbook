@@ -1,3 +1,4 @@
+TOPK
 addch
 addstr
 alireza
@@ -9,8 +10,8 @@ colour
 compat
 dbfs
 declatory
-documentqa
 deepseek
+documentqa
 dotdotdot
 dotnet
 dtype
@@ -33,6 +34,7 @@ millisec
 mixtral
 newwin
 numpy
+pcms
 personalizedwakeword
 pico
 picollm
@@ -45,6 +47,7 @@ psutil
 pvbat
 pvcheetah
 pveagle
+pvfalcon
 pvkoala
 pvleopard
 pvorca
@@ -66,7 +69,6 @@ subwin
 tobytes
 tock
 tock
-TOPK
 topks
 uids
 venv
