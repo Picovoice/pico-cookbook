@@ -29,6 +29,11 @@ def main() -> None:
     parser.add_argument(
         '--unknown_speaker_profiles_folder',
         help='')
+    parser.add_argument(
+        '--similarity_threshold',
+        type=float,
+        default=0.5,
+        help='')
     args = parser.parse_args()
 
     access_key = args.access_key
@@ -36,6 +41,8 @@ def main() -> None:
     known_speaker_profile_paths = args.known_speaker_profile_paths
     profile_unknown_speakers = args.profile_unknown_speakers
     unknown_speaker_profiles_folder = args.unknown_speaker_profiles_folder
+    similarity_threshold = args.similarity_threshold
+
     if unknown_speaker_profiles_folder is None:
         unknown_speaker_profiles_folder = os.path.dirname(audio_path)
 
