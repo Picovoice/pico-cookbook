@@ -93,11 +93,9 @@ public class MainActivity extends AppCompatActivity {
 
     enum CardType {
         UNIT_ID,
-        INCIDENT_TYPE,
-        PATIENT_CONDITION,
-        DESTINATION,
-        HANDOFF_STATUS,
-        HANDOFF_TIME,
+        OIL_CONDITION,
+        TIRE_CONDITION,
+        SERVICE_STATUS,
         NOTES
     }
 
@@ -354,11 +352,9 @@ public class MainActivity extends AppCompatActivity {
         cardMap.clear();
 
         cardMap.put(CardType.UNIT_ID, createCard("UNIT ID"));
-        cardMap.put(CardType.INCIDENT_TYPE, createCard("INCIDENT TYPE"));
-        cardMap.put(CardType.PATIENT_CONDITION, createCard("PATIENT CONDITION"));
-        cardMap.put(CardType.DESTINATION, createCard("DESTINATION"));
-        cardMap.put(CardType.HANDOFF_STATUS, createCard("HANDOFF STATUS"));
-        cardMap.put(CardType.HANDOFF_TIME, createCard("HANDOFF TIME"));
+        cardMap.put(CardType.OIL_CONDITION, createCard("OIL CONDITION"));
+        cardMap.put(CardType.TIRE_CONDITION, createCard("TIRE CONDITION"));
+        cardMap.put(CardType.SERVICE_STATUS, createCard("SERVICE STATUS"));
         cardMap.put(CardType.NOTES, createCard("NOTES"));
     }
 
@@ -731,19 +727,15 @@ public class MainActivity extends AppCompatActivity {
         STANDBY,
         IDENTIFY_UNIT_PROMPT,
         IDENTIFY_UNIT_REPORT,
-        INCIDENT_TYPE_PROMPT,
-        INCIDENT_TYPE_REPORT,
-        PATIENT_CONDITION_PROMPT,
-        PATIENT_CONDITION_REPORT,
-        DESTINATION_PROMPT,
-        DESTINATION_REPORT,
-        HANDOFF_STATUS_PROMPT,
-        HANDOFF_STATUS_REPORT,
-        HANDOFF_TIME_PROMPT,
-        HANDOFF_TIME_REPORT,
+        CHECK_OIL_PROMPT,
+        CHECK_OIL_REPORT,
+        CHECK_TIRE_PROMPT,
+        CHECK_TIRE_REPORT,
+        CHECK_SERVICE_STATUS_PROMPT,
+        CHECK_SERVICE_STATUS_REPORT,
         FINAL_NOTE_PROMPT,
         FINAL_NOTE_REPORT,
-        COMPLETE_PROMPT
+        REPORT_COMPILATION,
     }
 
     class Transition {
@@ -879,58 +871,36 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    class IncidentTypePromptState extends PromptState {
-        public IncidentTypePromptState(WorkflowListener listener, OrcaStep step) {
+    class CheckOilPromptState extends PromptState {
+        public CheckOilPromptState(WorkflowListener listener, OrcaStep step) {
             super(
                     listener,
                     step,
-                    "What was the incident type?",
-                    CardType.INCIDENT_TYPE,
-                    RecipeStates.INCIDENT_TYPE_REPORT);
+                    "What's the oil level?",
+                    CardType.OIL_CONDITION,
+                    RecipeStates.CHECK_OIL_REPORT);
         }
     }
 
-    class PatientConditionPromptState extends PromptState {
-        public PatientConditionPromptState(WorkflowListener listener, OrcaStep step) {
+    class CheckTirePromptState extends PromptState {
+        public CheckTirePromptState(WorkflowListener listener, OrcaStep step) {
             super(
                     listener,
                     step,
-                    "What is the patient condition?",
-                    CardType.PATIENT_CONDITION,
-                    RecipeStates.PATIENT_CONDITION_REPORT);
+                    "What is the tire condition?",
+                    CardType.TIRE_CONDITION,
+                    RecipeStates.CHECK_TIRE_REPORT);
         }
     }
 
-    class DestinationPromptState extends PromptState {
-        public DestinationPromptState(WorkflowListener listener, OrcaStep step) {
+    class CheckServiceStatusPromptState extends PromptState {
+        public CheckServiceStatusPromptState(WorkflowListener listener, OrcaStep step) {
             super(
                     listener,
                     step,
-                    "What was the destination?",
-                    CardType.DESTINATION,
-                    RecipeStates.DESTINATION_REPORT);
-        }
-    }
-
-    class HandoffStatusPromptState extends PromptState {
-        public HandoffStatusPromptState(WorkflowListener listener, OrcaStep step) {
-            super(
-                    listener,
-                    step,
-                    "What is the handoff status?",
-                    CardType.HANDOFF_STATUS,
-                    RecipeStates.HANDOFF_STATUS_REPORT);
-        }
-    }
-
-    class HandoffTimePromptState extends PromptState {
-        public HandoffTimePromptState(WorkflowListener listener, OrcaStep step) {
-            super(
-                    listener,
-                    step,
-                    "What was the handoff time?",
-                    CardType.HANDOFF_TIME,
-                    RecipeStates.HANDOFF_TIME_REPORT);
+                    "What's the vehicle status?",
+                    CardType.SERVICE_STATUS,
+                    RecipeStates.CHECK_SERVICE_STATUS_REPORT);
         }
     }
 
@@ -950,7 +920,7 @@ public class MainActivity extends AppCompatActivity {
             super(
                     listener,
                     step,
-                    "Field report recorded.",
+                    "Inspection report recorded.",
                     null,
                     null);
         }
@@ -965,89 +935,54 @@ public class MainActivity extends AppCompatActivity {
                     CardType.UNIT_ID,
                     "identifyUnit",
                     inf -> inf.getSlots().get("unitId"),
-                    RecipeStates.INCIDENT_TYPE_PROMPT,
+                    RecipeStates.CHECK_OIL_PROMPT,
                     inf -> "Failed to capture unit ID. Retrying...",
                     RecipeStates.IDENTIFY_UNIT_PROMPT);
         }
     }
 
-    class IncidentTypeReportState extends ReportState {
-        public IncidentTypeReportState(WorkflowListener listener, RhinoStep step) {
+    class CheckOilReportState extends ReportState {
+        public CheckOilReportState(WorkflowListener listener, RhinoStep step) {
             super(
                     listener,
                     step,
-                    "Listening for incident type...",
-                    CardType.INCIDENT_TYPE,
-                    "reportIncidentType",
-                    inf -> inf.getSlots().get("incidentType"),
-                    RecipeStates.PATIENT_CONDITION_PROMPT,
-                    inf -> "Failed to capture incident type. Retrying...",
-                    RecipeStates.INCIDENT_TYPE_PROMPT);
+                    "Listening for oil status...",
+                    CardType.OIL_CONDITION,
+                    "reportOilCondition",
+                    inf -> inf.getSlots().get("fluidCondition"),
+                    RecipeStates.CHECK_TIRE_PROMPT,
+                    inf -> "Failed to capture oil condition. Retrying...",
+                    RecipeStates.CHECK_OIL_PROMPT);
         }
     }
 
-    class PatientConditionReportState extends ReportState {
-        public PatientConditionReportState(WorkflowListener listener, RhinoStep step) {
+    class CheckTireReportState extends ReportState {
+        public CheckTireReportState(WorkflowListener listener, RhinoStep step) {
             super(
                     listener,
                     step,
-                    "Listening for patient condition...",
-                    CardType.PATIENT_CONDITION,
-                    "reportPatientCondition",
-                    inf -> inf.getSlots().get("patientCondition"),
-                    RecipeStates.DESTINATION_PROMPT,
-                    inf -> "Failed to capture patient condition. Retrying...",
-                    RecipeStates.PATIENT_CONDITION_PROMPT);
+                    "Listening for tire condition...",
+                    CardType.TIRE_CONDITION,
+                    "reportTireCondition",
+                    inf -> inf.getSlots().get("tireCondition"),
+                    RecipeStates.CHECK_SERVICE_STATUS_PROMPT,
+                    inf -> "Failed to capture tire condition. Retrying...",
+                    RecipeStates.CHECK_TIRE_PROMPT);
         }
     }
 
-    class DestinationReportState extends ReportState {
-        public DestinationReportState(WorkflowListener listener, RhinoStep step) {
+    class CheckServiceStatusReportState extends ReportState {
+        public CheckServiceStatusReportState(WorkflowListener listener, RhinoStep step) {
             super(
                     listener,
                     step,
-                    "Listening for destination...",
-                    CardType.DESTINATION,
-                    "reportDestination",
-                    inf -> inf.getSlots().get("destination"),
-                    RecipeStates.HANDOFF_STATUS_PROMPT,
-                    inf -> "Failed to capture destination. Retrying...",
-                    RecipeStates.DESTINATION_PROMPT);
-        }
-    }
-
-    class HandoffStatusReportState extends ReportState {
-        public HandoffStatusReportState(WorkflowListener listener, RhinoStep step) {
-            super(
-                    listener,
-                    step,
-                    "Listening for handoff status...",
-                    CardType.HANDOFF_STATUS,
-                    "reportHandoffStatus",
-                    inf -> inf.getSlots().get("handoffStatus"),
-                    RecipeStates.HANDOFF_TIME_PROMPT,
-                    inf -> "Failed to capture handoff status. Retrying...",
-                    RecipeStates.HANDOFF_STATUS_PROMPT);
-        }
-    }
-
-    class HandoffTimeReportState extends ReportState {
-        public HandoffTimeReportState(WorkflowListener listener, RhinoStep step) {
-            super(
-                    listener,
-                    step,
-                    "Listening for handoff time...",
-                    CardType.HANDOFF_TIME,
-                    "reportHandoffTime",
-                    inf -> {
-                        String hour = HOUR_MAP.get(inf.getSlots().get("hour"));
-                        int minute = Integer.parseInt(inf.getSlots().get("minute"));
-                        String meridiem = inf.getSlots().get("meridiem");
-                        return String.format("%s:%02d %s", hour, minute, meridiem.toUpperCase());
-                    },
+                    "Listening for vehicle status...",
+                    CardType.SERVICE_STATUS,
+                    "reportServiceStatus",
+                    inf -> inf.getSlots().get("serviceStatus"),
                     RecipeStates.FINAL_NOTE_PROMPT,
-                    inf -> "I'm sorry. What was the handoff time again?",
-                    RecipeStates.HANDOFF_TIME_PROMPT);
+                    inf -> "Failed to capture vehicle status. Retrying...",
+                    RecipeStates.CHECK_SERVICE_STATUS_PROMPT);
         }
     }
 
@@ -1114,27 +1049,21 @@ public class MainActivity extends AppCompatActivity {
             states.put(RecipeStates.IDENTIFY_UNIT_PROMPT, new IdentifyUnitPromptState(listener, orcaStep));
             states.put(RecipeStates.IDENTIFY_UNIT_REPORT, new IdentifyUnitReportState(listener, rhinoStep));
 
-            states.put(RecipeStates.INCIDENT_TYPE_PROMPT, new IncidentTypePromptState(listener, orcaStep));
-            states.put(RecipeStates.INCIDENT_TYPE_REPORT, new IncidentTypeReportState(listener, rhinoStep));
+            states.put(RecipeStates.CHECK_OIL_PROMPT, new CheckOilPromptState(listener, orcaStep));
+            states.put(RecipeStates.CHECK_OIL_REPORT, new CheckOilReportState(listener, rhinoStep));
 
-            states.put(RecipeStates.PATIENT_CONDITION_PROMPT, new PatientConditionPromptState(listener, orcaStep));
-            states.put(RecipeStates.PATIENT_CONDITION_REPORT, new PatientConditionReportState(listener, rhinoStep));
+            states.put(RecipeStates.CHECK_TIRE_PROMPT, new CheckTirePromptState(listener, orcaStep));
+            states.put(RecipeStates.CHECK_TIRE_REPORT, new CheckTireReportState(listener, rhinoStep));
 
-            states.put(RecipeStates.DESTINATION_PROMPT, new DestinationPromptState(listener, orcaStep));
-            states.put(RecipeStates.DESTINATION_REPORT, new DestinationReportState(listener, rhinoStep));
-
-            states.put(RecipeStates.HANDOFF_STATUS_PROMPT, new HandoffStatusPromptState(listener, orcaStep));
-            states.put(RecipeStates.HANDOFF_STATUS_REPORT, new HandoffStatusReportState(listener, rhinoStep));
-
-            states.put(RecipeStates.HANDOFF_TIME_PROMPT, new HandoffTimePromptState(listener, orcaStep));
-            states.put(RecipeStates.HANDOFF_TIME_REPORT, new HandoffTimeReportState(listener, rhinoStep));
+            states.put(RecipeStates.CHECK_SERVICE_STATUS_PROMPT, new CheckServiceStatusPromptState(listener, orcaStep));
+            states.put(RecipeStates.CHECK_SERVICE_STATUS_REPORT, new CheckServiceStatusReportState(listener, rhinoStep));
 
             states.put(RecipeStates.FINAL_NOTE_PROMPT, new FinalNotePromptState(listener, orcaStep));
             states.put(
                     RecipeStates.FINAL_NOTE_REPORT,
-                    new DictationState(listener, cheetahStep, CardType.NOTES, RecipeStates.COMPLETE_PROMPT));
+                    new DictationState(listener, cheetahStep, CardType.NOTES, RecipeStates.REPORT_COMPILATION));
 
-            states.put(RecipeStates.COMPLETE_PROMPT, new CompletePromptState(listener, orcaStep));
+            states.put(RecipeStates.REPORT_COMPILATION, new CompletePromptState(listener, orcaStep));
         }
 
         public void run() throws Exception {
