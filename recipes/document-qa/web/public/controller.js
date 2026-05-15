@@ -54,16 +54,6 @@ window.onload = () => {
 
   const llmSpinner = document.getElementById("llm-spinner");
 
-  const report = document.getElementById("report");
-
-  const hudContainer = document.getElementById("hud-container");
-  const hudOptions = document.getElementById("hud-options");
-  const hudTemp = document.getElementById("hud-temp");
-  const volumeMeterUser = document.getElementById('volume-meter-user');
-  const bar4 = document.getElementById('bar4');
-  const bar5 = document.getElementById('bar5');
-  const bar6 = document.getElementById('bar6');
-
   const writeError = (errorString) => {
     errorContainer.style.display = 'block';
     error.innerText = `Error: ${errorString}`;
@@ -102,10 +92,6 @@ window.onload = () => {
     bar1.style.height = `${baseHeight + volume * 20}px`;
     bar2.style.height = `${baseHeight + volume * 32}px`;
     bar3.style.height = `${baseHeight + volume * 24}px`;
-
-    bar4.style.height = `${baseHeight + volume * 20}px`;
-    bar5.style.height = `${baseHeight + volume * 32}px`;
-    bar6.style.height = `${baseHeight + volume * 24}px`;
   };
 
   // -----------------------------------------
@@ -144,14 +130,10 @@ window.onload = () => {
 
   const restartDemo = async () => {
     chatBlock.style.opacity = "0";
-    report.style.opacity = "0";
     await Picovoice.sleep(400);
     
     chatBlock.replaceChildren();
     chatBlock.style.opacity = "1";
-
-    report.innerHTML = "";
-    report.style.opacity = "1";
 
     if (hudFadeoutTimeoutHandle && hudFadeoutEndStateFunction) {
       clearTimeout(hudFadeoutTimeoutHandle);
@@ -246,77 +228,12 @@ window.onload = () => {
       volumeMeterCaller.style.opacity = "0";
       stopBubbleDot();
 
-    } else if (message === "give user options") {
-      volumeMeterUser.style.opacity = "1";
-      let text = obj;
-
-      hudTemp.innerHTML = "";
-
-      hudOptions.replaceChildren();
-      for (text of text.split(",")) {
-        if (text.length === 0)
-          continue;
-
-        let option = document.createElement("div");
-        option.innerHTML = text;
-        option.id = "option-" + text.replace(" ", "_").toLowerCase();
-
-        let tooltip = document.createElement("span");
-        tooltip.classList.add("tooltip");
-        tooltip.innerHTML = "To select this voice command, speak into your microphone"
-        
-        option.appendChild(tooltip);
-        
-        hudOptions.appendChild(option);
-      }
-
-      hudContainer.style.opacity = "1";
-
-    } else if (message === "select option") {
-      volumeMeterUser.style.opacity = "0";
-      let text = obj;
-
-      let element = document.getElementById("option-" + text.replace(" ", "_").toLowerCase());
-      if (element) {
-        element.setAttribute("coloured", "");
-
-        hudFadeoutEndStateFunction = () => {
-            hudContainer.style.opacity = "0";
-            element.removeAttribute("coloured");
-        };
-        hudFadeoutTimeoutHandle = setTimeout(hudFadeoutEndStateFunction, 2000);
-      }
-
-    } else if (message === "unknown user option") {
-      let timeoutMs = obj;
-
-      if (hudTempTimeoutHandle) {
-        clearTimeout(hudTempTimeoutHandle);
-        hudTemp.innerHTML = "";
-        hudTemp.style.opacity = "1";
-      }
-
-      hudTemp.innerHTML = "Unknown Action";
-
-      hudTempTimeoutHandle = setTimeout(
-        async () => {
-          hudTemp.style.opacity = "0";
-          await Picovoice.sleep(200);
-          hudTemp.innerHTML = "";
-          hudTemp.style.opacity = "1";
-        },
-        timeoutMs);
-
     } else if (message === "ai state") {
       let text = obj;
       aiState.innerHTML = text;
 
     } else if (message === "restart demo") {
       restartDemo();
-    
-    } else if (message === "ai report") {
-      let text = obj;
-      report.innerHTML += text + "\n";
     
     } else if (message === "start llm spinner") {
       llmSpinner.style.opacity = "1";
