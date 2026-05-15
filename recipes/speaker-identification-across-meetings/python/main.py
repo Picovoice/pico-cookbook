@@ -61,10 +61,22 @@ def main() -> None:
 
     speaker_tag_map = dict()
     if eagle_recognizer is not None:
+        speaker_pcms = dict()
+        for x in segments:
+            if x.speaker_tag not in speaker_pcms:
+                speaker_pcms[x.speaker_tag] = list()
+            speaker_pcms[x.speaker_tag].extend(pcm[int(x.start_sec * sample_rate): int(x.end_sec * sample_rate)])
+
         known_speaker_profiles = list()
         for x in known_speaker_profile_paths:
             with open(x, 'rb') as f:
                 known_speaker_profiles.append(EagleProfile.from_bytes(f.read()))
+
+        for speaker, speaker_pcm in speaker_pcms.items():
+            similarities = eagle_recognizer.process(
+                pcm=speaker_pcm,
+                speaker_profiles=known_speaker_profiles)
+            print(similarities)
 
     if eagle_profiler is not None:
         speaker_intervals = dict()
@@ -75,7 +87,7 @@ def main() -> None:
                 speaker_intervals[x.speaker_tag].append((int(x.start_sec * sample_rate), int(x.end_sec * sample_rate)))
 
         for speaker, intervals in speaker_intervals.items():
-            for (start_sample, end_sample) in intervals:
+            for start_sample, end_sample in intervals:
                 for i in range(start_sample, end_sample, eagle_profiler.frame_length):
                     eagle_profiler.enroll(pcm=pcm[i:i + eagle_profiler.frame_length])
             percentage = eagle_profiler.flush()
