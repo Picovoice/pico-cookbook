@@ -216,7 +216,6 @@ const init = async (
   };
 
   if (object == null) {
-    // If you update your model, you may want to enable force write to update the model in storage.
     const FORCE_WRITE = true;
 
     sendMessage("SET_STATUS", "Loading Cheetah");

@@ -11,7 +11,7 @@ const MAX_DB = 0.0;
 
 const ASK_FOR_DETAILS_RETRY_LIMIT = 2;
 
-const SYSTEM = `Extract call information.
+const SYSTEM_PROMPT = `Extract call information.
 
 Return exactly two lines:
 caller: <one short value>
@@ -91,9 +91,7 @@ type Message =
   | "START_LLM_SPINNER"
   | "STOP_LLM_SPINNER";
 
-type Request = 
-  "BUBBLE_LENGTH"
-  | "BUBBLE_CONTENTS";
+type Request = "BUBBLE_CONTENTS";
 
 type PvObject = {
   audio: AudioStream,
@@ -173,8 +171,6 @@ const init = async (
     const normalized = (db - MIN_DB) / (MAX_DB - MIN_DB);
     const normalizedVolume = Math.max(0.0, Math.min(1.0, normalized));
 
-    console.log("volume callback");
-
     onVolumeCallback(normalizedVolume);
   }
 
@@ -190,7 +186,6 @@ const init = async (
   };
 
   const speakToCaller = async () => {
-    console.log("start speaking to caller");
     const orca = object!.orca;
 
     const synthesis = await orca.synthesize(
@@ -266,7 +261,7 @@ const init = async (
   const llmProcessCall = async (callerText: string) => {
     sendMessage("START_LLM_SPINNER", null);
 
-    let dialog = await object!.llm.getDialog(undefined, undefined, SYSTEM);
+    let dialog = await object!.llm.getDialog(undefined, undefined, SYSTEM_PROMPT);
     dialog.addHumanRequest(`Caller said: \"${callerText.replace("[CALLER]", "").trim()}\"\n`);
 
     const completion = await object!.llm.generate(
@@ -342,11 +337,8 @@ const init = async (
     }
   };
 
-  console.log("init...");
-
   if (object == null) {
-    // If you update your model, you may want to enable force write to update the model in storage.
-    const FORCE_WRITE = false;
+    const FORCE_WRITE = true;
 
     sendMessage("SET_STATUS", "Loading Cheetah");
     const cheetah = await CheetahWorker.create(
