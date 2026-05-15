@@ -22,21 +22,15 @@ function sanitizeForOrca(str) {
 window.onload = () => {
   const ANIMATION_FRAMES = ["   ", ".  ", ".. ", "...", " ..", "  ."];
 
-  let dotIdx = 0;
-  let dotInterval = null;
-  let bubbleDotInterval = null;
-
-  const statusContainer = document.getElementById("status-container");
-  const status = document.getElementById("status");
-  const errorContainer = document.getElementById("error-container");
-  const error = document.getElementById("error");
-  const dotdotdot = document.getElementById("dotdotdot");
-
-
   const loadContainerParent = document.getElementById("load-container-parent");
   const loadContainer = document.getElementById("load-container");
-  const loadButton = document.getElementById("load-button");
-  const loadButtonTooltip = document.getElementById("load-button-tooltip");
+  const error = document.getElementById("error");
+  const accessKey = document.getElementById("access-key");
+  const name = document.getElementById("name");
+  const startButton = document.getElementById("start-button");
+  const statusContainer = document.getElementById("status-container");
+  const status = document.getElementById("status");
+  const statusSpinner = document.getElementById("status-spinner");
 
   const mainContainerParent = document.getElementById("main-container-parent");
   const mainContainer = document.getElementById("main-container");
@@ -46,12 +40,7 @@ window.onload = () => {
   const bar1 = document.getElementById('bar1');
   const bar2 = document.getElementById('bar2');
   const bar3 = document.getElementById('bar3');
-  const aiState = document.getElementById("ai-state");
-
-  const accessKey = document.getElementById("access-key");
-  const name = document.getElementById("name");
-  const initButton = document.getElementById("init-button");
-  const initButtonTooltip = document.getElementById("init-button-tooltip");
+  const aiState = document.getElementById("ai-state-text");
 
   const hudContainer = document.getElementById("hud-container");
   const hudOptions = document.getElementById("hud-options");
@@ -61,35 +50,19 @@ window.onload = () => {
   const bar6 = document.getElementById('bar6');
 
   const writeError = (errorString) => {
-    errorContainer.style.display = 'block';
+    error.classList.remove('hidden');
     error.innerText = `Error: ${errorString}`;
+    startButton.disabled = false;
   };
   const clearError = () => {
-    errorContainer.style.display = 'none';
+    error.classList.add('hidden');
     error.innerText = "";
   };
 
   const writeStatus = (statusString) => {
-    statusContainer.style.display = 'block';
+    statusContainer.style.display = 'flex';
     status.innerText = statusString;
   };
-
-  const startDot = () => {
-    if (dotInterval) {
-      clearInterval(dotInterval);
-    }
-    dotInterval = setInterval(() => {
-      dotIdx = (dotIdx + 1) % ANIMATION_FRAMES.length;
-      dotdotdot.innerText = ANIMATION_FRAMES[dotIdx];
-    }, 200);
-  }
-  const stopDot = () => {
-    if (dotInterval) {
-      clearInterval(dotInterval);
-    }
-    dotIdx = 0;
-    dotdotdot.innerText = '';
-  }
 
   const onVolumeCallback = volume => {
     const baseHeight = 8;
@@ -102,56 +75,37 @@ window.onload = () => {
     bar6.style.height = `${baseHeight + volume * 24}px`;
   };
 
-  const enableLoadButton = _ => {
-    if (accessKey.value.length > 0) {
-      loadButton.removeAttribute("disabled");
-      loadButton.setAttribute("coloured", "");
-      loadButtonTooltip.innerHTML = "";
-    } else {
-      loadButton.setAttribute("disabled", "");
-      loadButton.removeAttribute("coloured");
-      loadButtonTooltip.innerHTML = "fill in access key";
-    }
-  }
-  accessKey.addEventListener("input", enableLoadButton);
-
-  const enableStartButton = _ => {
-    if (sanitizeForOrca(name.value).replaceAll(" ", "").length > 0) {
-      initButton.removeAttribute("disabled");
-      initButton.setAttribute("coloured", "");
-      initButtonTooltip.innerHTML = "";
-    } else {
-      initButton.setAttribute("disabled", "");
-      initButton.removeAttribute("coloured");
-      initButtonTooltip.innerHTML = "fill in name";
-    }
-  }
-  name.addEventListener("input", enableStartButton);
-
   let hudFadeoutTimeoutHandle = null;
   let hudFadeoutEndStateFunction = null;
 
   const restartDemo = async () => {
-    chatBlock.style.opacity = "0";
-    await Picovoice.sleep(400);
-    
+    startButton.removeAttribute("disabled");
+    startButton.setAttribute("coloured", "");
+
+    await Picovoice.sleep(200);
+    startButton.disabled = false;
+
+    loadContainer.style.opacity = "1";
+    mainContainer.style.opacity = "0";
+    loadContainerParent.style.visibility = "visible";
+
+    await Picovoice.sleep(700);
+
+    mainContainerParent.style.visibility = "hidden";
+
     chatBlock.replaceChildren();
-    chatBlock.style.opacity = "1";
 
     if (hudFadeoutTimeoutHandle && hudFadeoutEndStateFunction) {
       clearTimeout(hudFadeoutTimeoutHandle);
       hudFadeoutEndStateFunction();
     }
-
-    initButton.disabled = false;
-    initButton.removeAttribute("disabled");
-    initButton.setAttribute("coloured", "");
-
-    name.disabled = false;
   };
 
   let currentBubbleText = "";
   let currentBubbleDots = "";
+
+  let dotIdx = 0;
+  let bubbleDotInterval = null;
 
   const startBubbleDot = () => {
     if (bubbleDotInterval) {
@@ -174,7 +128,7 @@ window.onload = () => {
     chatBlock.lastElementChild.innerHTML = currentBubbleText;
   }
 
-  const sendMessage = (message, obj) => {
+  const sendMessage = async (message, obj) => {
     if (message === "SET_STATUS") {
       let text = obj;
       writeStatus(text);
@@ -273,28 +227,38 @@ window.onload = () => {
   };
 
   const makeRequest = (message) => {
-    if (message === "BUBBLE_LENGTH") {
-      return chatBlock.lastElementChild.innerHTML.length;
+    if (message === "BUBBLE_CONTENTS") {
+      return chatBlock.lastElementChild.innerHTML;
     }
   };
 
   if (typeof Picovoice === 'undefined') {
     writeError("You must run `yarn build` before running yarn start");
-    loadButtonTooltip.innerHTML = "fix error first";
     return;
   }
 
   let startFunction = null;
 
-  loadButton.addEventListener("click", async () => {
-    loadButton.disabled = true;
-    loadButton.setAttribute("disabled", "");
-    loadButton.removeAttribute("coloured");
+  startButton.addEventListener("click", async () => {
+    if (accessKey.value.length <= 0) {
+      writeError("Please input your accessKey");
+      return;
+    } else if (sanitizeForOrca(name.value).replaceAll(" ", "").length <= 0) {
+      writeError("Please input your name");
+      return;
+    }
 
-    writeStatus("Loading");
-    startDot();
+    startButton.disabled = true;
+    // startButton.setAttribute("disabled", "");
+    // startButton.removeAttribute("coloured");
 
     try {
+      await Picovoice.updateStartParameters(sanitizeForOrca(name.value));
+
+      writeStatus("Loading");
+      statusSpinner.style.display = "inline";
+      statusSpinner.style.opacity = "1";
+
       startFunction = await Picovoice.init(
         accessKey.value,
         sanitizeForOrca(name.value),
@@ -302,43 +266,31 @@ window.onload = () => {
         makeRequest,
         onVolumeCallback,
       );
-
     } catch (e) {
       writeError(e.message);
       return;
-    } finally {
-      stopDot();
     }
-
-    clearError();
 
     if (startFunction === null) {
-      writeStatus("Loading failed");
+      writeError("Loading failed");
       return;
-    } else {
-      writeStatus("");
     }
+
+    writeStatus("");
+    statusSpinner.style.opacity = "0";
+    await Picovoice.sleep(400);
+
+    statusSpinner.style.display = "none";
+    clearError();
 
     loadContainer.style.opacity = "0";
     mainContainer.style.opacity = "1";
     mainContainerParent.style.visibility = "visible";
 
-    await Picovoice.sleep(400);
+    await Picovoice.sleep(700);
 
     loadContainerParent.style.visibility = "hidden";
-  });
-
-  initButton.addEventListener("click", async () => {
-    initButton.disabled = true;
-    initButton.setAttribute("disabled", "");
-    initButton.removeAttribute("coloured");
-
-    name.disabled = true;
-
-    let success = await Picovoice.updateStartParameters(sanitizeForOrca(name.value));
-    if (!success) {
-      console.log("failed to update start parameters");
-    }
+    accessKey.style.display = "none";
 
     try {
       await startFunction();

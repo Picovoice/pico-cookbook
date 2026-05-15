@@ -22,7 +22,7 @@ type Message =
   | "SET_AI_STATE"
   | "RESTART_DEMO";
 
-type Request = "BUBBLE_LENGTH";
+type Request = "BUBBLE_CONTENTS";
 
 type PvObject = {
   audio: AudioStream,
@@ -123,7 +123,7 @@ const init = async (
     object!.audio.stream(synthesis.pcm);
     object!.audio.play();
 
-    sendMessage("SET_AI_STATE", "AI: Speaking to caller");
+    sendMessage("SET_AI_STATE", "AI is speaking to caller");
     sendMessage("NEW_AI_BUBBLE", "[AI] ");
 
     for (let alignment of alignments) {
@@ -153,29 +153,17 @@ const init = async (
   const listenForCaller = async () => {
     sendMessage("NEW_CALLER_BUBBLE", "[CALLER] ");
     sendMessage("START_LISTENING", null);
-    sendMessage("SET_AI_STATE", "AI: Listening to caller");
+    sendMessage("SET_AI_STATE", "AI is listening to caller");
 
     const cheetah = BufferedCheetahEngine;
     await WebVoiceProcessor.subscribe(cheetah);
   };
   const stopListenForCaller = async () => {
     sendMessage("STOP_LISTENING", null);
+
     const cheetah = BufferedCheetahEngine;
     await WebVoiceProcessor.unsubscribe(cheetah);
   };
-
-  const giveUserOptions = async () => {
-    sendMessage("GIVE_USER_OPTIONS", allActions());
-    sendMessage("SET_AI_STATE", "AI: Listening for " + object!.username + "'s command");
-
-    const rhino = BufferedRhinoEngine;
-    await WebVoiceProcessor.subscribe(rhino);
-  };
-  const stopGiveUserOptions = async () => {
-    const rhino = BufferedRhinoEngine;
-    await WebVoiceProcessor.unsubscribe(rhino);
-  };
-
   const transcriptCallback = async (
     transcript: CheetahTranscript
   ): Promise<void> => {
@@ -189,13 +177,27 @@ const init = async (
       cheetah.flush();
     }
 
-    if (transcript.isFlushed && makeRequest("BUBBLE_LENGTH") > 0) {
+    let callerText = makeRequest("BUBBLE_CONTENTS");
+    if (transcript.isFlushed && (callerText.trim().length > 0)) {
+      console.log(`Got: '${callerText}' with len ${callerText.trim().length}`);
       await stopListenForCaller();
 
       setTimeout(() => { giveUserOptions(); }, 600);
+      return;
     }
   }
 
+  const giveUserOptions = async () => {
+    sendMessage("GIVE_USER_OPTIONS", allActions());
+    sendMessage("SET_AI_STATE", `AI is listening for ${object!.username}'s command`);
+
+    const rhino = BufferedRhinoEngine;
+    await WebVoiceProcessor.subscribe(rhino);
+  };
+  const stopGiveUserOptions = async () => {
+    const rhino = BufferedRhinoEngine;
+    await WebVoiceProcessor.unsubscribe(rhino);
+  };
   const inferenceCallback = async (
     inference: RhinoInference
   ): Promise<void> => {
@@ -245,7 +247,7 @@ const init = async (
       { publicPath: 'models/rhino_params.pv', forceWrite: FORCE_WRITE },
     );
 
-    sendMessage("SET_AI_STATE", "AI: Connecting caller");
+    sendMessage("SET_AI_STATE", "AI is connecting caller");
     sendMessage("SET_STATUS", "Loading Audio Stream");
     const audio = new AudioStream(orca.sampleRate);
 
@@ -264,8 +266,8 @@ const init = async (
 
 const updateStartParameters = async (name: string): Promise<void> => {
   if (object) {
-    object!.username = name;
     object!.action = Action.GREET;
+    object!.username = name;
   }
 };
 

@@ -246,9 +246,7 @@ window.onload = () => {
   };
 
   const makeRequest = (message) => {
-    if (message === "BUBBLE_LENGTH") {
-      return chatBlock.lastElementChild.innerHTML.length;
-    } else if (message === "BUBBLE_CONTENTS") {
+    if (message === "BUBBLE_CONTENTS") {
       return chatBlock.lastElementChild.innerHTML;
     }
   };
@@ -270,12 +268,12 @@ window.onload = () => {
     }
 
     startButton.disabled = true;
-    startButton.setAttribute("disabled", "");
-    startButton.removeAttribute("coloured");
-
-    await Picovoice.updateStartParameters(sanitizeForOrca(name.value));
+    // startButton.setAttribute("disabled", "");
+    // startButton.removeAttribute("coloured");
 
     try {
+      await Picovoice.updateStartParameters(sanitizeForOrca(name.value));
+
       writeStatus("Loading");
       statusSpinner.style.display = "inline";
       statusSpinner.style.opacity = "1";
@@ -295,15 +293,13 @@ window.onload = () => {
     if (startFunction === null) {
       writeError("Loading failed");
       return;
-    } else {
-      writeStatus("");
-
-      statusSpinner.style.opacity = "0";
-      await Picovoice.sleep(400);
-
-      statusSpinner.style.display = "none";
     }
 
+    writeStatus("");
+    statusSpinner.style.opacity = "0";
+    await Picovoice.sleep(400);
+
+    statusSpinner.style.display = "none";
     clearError();
 
     loadContainer.style.opacity = "0";

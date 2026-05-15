@@ -323,7 +323,7 @@ const init = async (
 
   const giveUserOptions = async () => {
     sendMessage("GIVE_USER_OPTIONS", allActions());
-    sendMessage("SET_AI_STATE", "AI is listening for " + object!.username + "'s command");
+    sendMessage("SET_AI_STATE", `AI is listening for ${object!.username}'s command`);
 
     const rhino = BufferedRhinoEngine;
     await WebVoiceProcessor.subscribe(rhino);
