@@ -1,15 +1,21 @@
 package ai.picovoice.livecaptioningandtranslation;
 
 import android.Manifest;
+import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioTrack;
+import android.media.MediaCodec;
+import android.media.MediaExtractor;
+import android.media.MediaFormat;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.ParcelFileDescriptor;
 import android.util.TypedValue;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,11 +23,14 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -31,10 +40,17 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import ai.picovoice.android.voiceprocessor.VoiceProcessor;
 import ai.picovoice.android.voiceprocessor.VoiceProcessorException;
@@ -97,6 +113,8 @@ public class MainActivity extends AppCompatActivity {
 
     private final ExecutorService engineExecutor = Executors.newSingleThreadExecutor();
 
+    private final ExecutorService speakingExecutor = Executors.newSingleThreadExecutor();
+
     private String sourceLanguage;
 
     private String targetLanguage;
@@ -133,6 +151,8 @@ public class MainActivity extends AppCompatActivity {
 
     private VolumeMeterView volumeMeterView;
 
+    private ProgressBar progressBarView;
+
     private ConstraintLayout volumeMeterLayout;
 
     private LinearLayout spinnerLayout;
@@ -140,6 +160,8 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout buttonLayout;
 
     private final ArrayList<LinearLayout> chatBubbles = new ArrayList<>();
+
+    Pattern pattern = Pattern.compile("^(.*[.!?])(\\s.*)?$");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -195,6 +217,7 @@ public class MainActivity extends AppCompatActivity {
         useFileButton = findViewById(R.id.useFileButton);
         backButton = findViewById(R.id.backButton);
         volumeMeterView = findViewById(R.id.volumeMeterView);
+        progressBarView = findViewById(R.id.progressBarView);
 
         volumeMeterLayout = findViewById(R.id.volumeMeterLayout);
         spinnerLayout = findViewById(R.id.spinnerLayout);
@@ -338,9 +361,123 @@ public class MainActivity extends AppCompatActivity {
             startDemo();
         });
 
+        ActivityResultLauncher<Intent> fileSelectLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK) {
+                        Intent intent = result.getData();
+                        if (intent != null) {
+                            Uri data = intent.getData();
+                            if (data != null) {
+                                short[] pcm = loadPCM(data);
+                                if (pcm != null) {
+                                    speakDemo(pcm);
+                                }
+                            }
+                        }
+                    }
+                }
+        );
+
+        useFileButton.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("audio/*");
+            fileSelectLauncher.launch(intent);
+        });
+
         backButton.setOnClickListener(v -> {
             stopDemo();
         });
+    }
+
+    public short[] loadPCM(Uri file) {
+        try (ParcelFileDescriptor fd = getContentResolver().openFileDescriptor(file, "r")) {
+            if (fd == null) {
+                return null;
+            }
+
+            MediaExtractor extractor = new MediaExtractor();
+            extractor.setDataSource(fd.getFileDescriptor());
+
+            int trackIndex = -1;
+            MediaFormat format = null;
+
+            for (int i = 0; i < extractor.getTrackCount(); i++) {
+                MediaFormat f = extractor.getTrackFormat(i);
+                String mime = f.getString(MediaFormat.KEY_MIME);
+                if (mime != null && mime.startsWith("audio/")) {
+                    trackIndex = i;
+                    format = f;
+                    break;
+                }
+            }
+
+            if (trackIndex == -1) {
+                return null;
+            }
+
+            extractor.selectTrack(trackIndex);
+
+            format.setString(MediaFormat.KEY_MIME, MediaFormat.MIMETYPE_AUDIO_RAW);
+            format.setInteger(MediaFormat.KEY_SAMPLE_RATE, 16000);
+            format.setInteger(MediaFormat.KEY_CHANNEL_COUNT, 1);
+            format.setInteger(MediaFormat.KEY_PCM_ENCODING, AudioFormat.ENCODING_PCM_16BIT);
+
+            String mime = format.getString(MediaFormat.KEY_MIME);
+            if (mime == null) {
+                return null;
+            }
+
+            MediaCodec codec = MediaCodec.createDecoderByType(mime);
+            codec.configure(format, null, null, 0);
+            codec.start();
+
+            ByteBuffer[] inputBuffers = codec.getInputBuffers();
+            ByteBuffer[] outputBuffers = codec.getOutputBuffers();
+            MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+
+            ByteArrayOutputStream pcmOutputStream = new ByteArrayOutputStream();
+            boolean isEOS = false;
+
+            while (!isEOS) {
+                int inIndex = codec.dequeueInputBuffer(10000);
+                if (inIndex >= 0) {
+                    ByteBuffer buffer = inputBuffers[inIndex];
+                    int sampleSize = extractor.readSampleData(buffer, 0);
+                    if (sampleSize < 0) {
+                        codec.queueInputBuffer(inIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                        isEOS = true;
+                    } else {
+                        codec.queueInputBuffer(inIndex, 0, sampleSize, extractor.getSampleTime(), 0);
+                        extractor.advance();
+                    }
+                }
+
+                int outIndex = codec.dequeueOutputBuffer(info, 10000);
+                if (outIndex >= 0) {
+                    ByteBuffer outBuffer = outputBuffers[outIndex];
+                    byte[] chunk = new byte[info.size];
+                    outBuffer.get(chunk);
+                    pcmOutputStream.write(chunk, 0, info.size);
+                    codec.releaseOutputBuffer(outIndex, false);
+                }
+            }
+
+            codec.stop();
+            codec.release();
+            extractor.release();
+
+            byte[] bytes = pcmOutputStream.toByteArray();
+            ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+            byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
+            ShortBuffer shortBuffer = byteBuffer.asShortBuffer();
+            short[] shorts = new short[shortBuffer.remaining()];
+            shortBuffer.get(shorts);
+            return shorts;
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     private void initChatArea() {
@@ -428,7 +565,7 @@ public class MainActivity extends AppCompatActivity {
         setStatus("Loading...");
         clearChatArea();
         translationIndex = 0;
-        engineExecutor.submit(this::initEngines);
+        engineExecutor.submit(() -> initEngines(true));
     }
 
     private void stopDemo() {
@@ -437,7 +574,82 @@ public class MainActivity extends AppCompatActivity {
         engineExecutor.submit(this::deleteEngines);
     }
 
-    private void initEngines() {
+    private void speakDemo(short[] pcm) {
+        setStatus("Loading...");
+        clearChatArea();
+        translationIndex = 0;
+
+        speakingExecutor.submit(() -> {
+            initEngines(false);
+
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build();
+
+            AudioFormat audioFormat = new AudioFormat.Builder()
+                    .setSampleRate(cheetah.getSampleRate())
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .build();
+
+            AudioTrack ttsOutput = new AudioTrack(
+                    audioAttributes,
+                    audioFormat,
+                    AudioTrack.getMinBufferSize(
+                            cheetah.getSampleRate(),
+                            AudioFormat.CHANNEL_OUT_MONO,
+                            AudioFormat.ENCODING_PCM_16BIT),
+                    AudioTrack.MODE_STREAM,
+                    0);
+
+            ttsOutput.play();
+            int pcnWritten = ttsOutput.write(
+                    pcm,
+                    0,
+                    pcm.length,
+                    AudioTrack.WRITE_NON_BLOCKING);
+
+            final int frameLength = cheetah.getFrameLength();
+            long startTime = System.currentTimeMillis();
+            for (int i = 0; i < pcm.length - frameLength + 1; i += frameLength) {
+                short[] frame = new short[frameLength];
+                System.arraycopy(pcm, i, frame, 0, frameLength);
+
+                if (pcnWritten < pcm.length) {
+                    pcnWritten += ttsOutput.write(
+                            pcm,
+                            pcnWritten,
+                            pcm.length - pcnWritten,
+                            AudioTrack.WRITE_NON_BLOCKING);
+                }
+
+                long duration = System.currentTimeMillis() - startTime;
+                long expected = i * 1000L / cheetah.getSampleRate();
+                if (expected > duration) {
+                    try {
+                        Thread.sleep(expected - duration);
+                    } catch (InterruptedException ignored) {}
+                }
+
+                if (currentState != State.LISTENING) {
+                    ttsOutput.stop();
+                    break;
+                }
+
+                frameListener(frame);
+            }
+
+            if (ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
+                ttsOutput.flush();
+                ttsOutput.stop();
+            }
+
+            ttsOutput.release();
+        });
+    }
+
+    private void initEngines(boolean useMic) {
         mainHandler.post(() -> {
             sourceLanguageSpinner.setEnabled(false);
             targetLanguageSpinner.setEnabled(false);
@@ -476,7 +688,10 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        startRecording();
+        if (useMic) {
+            startRecording();
+        }
+
         startListeningSource();
 
         mainHandler.post(() -> {
@@ -485,6 +700,8 @@ public class MainActivity extends AppCompatActivity {
             targetLanguageSpinner.setEnabled(true);
             useMicButton.setEnabled(true);
             useFileButton.setEnabled(true);
+            volumeMeterView.setVisibility(useMic ? View.VISIBLE : View.GONE);
+            progressBarView.setVisibility(useMic ? View.GONE : View.VISIBLE);
             volumeMeterLayout.setVisibility(View.VISIBLE);
             spinnerLayout.setVisibility(View.GONE);
             buttonLayout.setVisibility(View.GONE);
@@ -572,24 +789,31 @@ public class MainActivity extends AppCompatActivity {
     private void listenSource(short[] frame) {
         try {
             CheetahTranscript transcript = cheetah.process(frame);
-            sendText(transcript.getTranscript());
+            processText(transcript.getTranscript());
 
             if (transcript.getIsEndpoint()) {
-                flushSource();
+                CheetahTranscript flush = cheetah.flush();
+                processText(flush.getTranscript());
+                appendChatBubble();
+                translateSource();
             }
         } catch (CheetahException e) {
             setError(e.getMessage());
         }
     }
 
-    private void flushSource() {
-        try {
-            CheetahTranscript flush = cheetah.flush();
-            sendText(flush.getTranscript());
+    private void processText(String text) {
+        Matcher matcher = pattern.matcher(text);
+
+        if (matcher.find()) {
+            String t0 = matcher.group(1);
+            String t1 = matcher.group(2);
+            sendText(t0 != null ? t0 : "");
             appendChatBubble();
             translateSource();
-        } catch (CheetahException e) {
-            setError(e.getMessage());
+            sendText(t1 != null ? t1 : "");
+        } else {
+            sendText(text);
         }
     }
 
@@ -610,9 +834,13 @@ public class MainActivity extends AppCompatActivity {
                                 currentTranscript.substring(0, Math.min(
                                         currentTranscript.length(),
                                         zebra.getMaxCharacterLimit())));
-    
+
                         mainHandler.post(() -> {
                             bottomText.setText(outputText);
+
+                            scrollArea.post(() -> {
+                                scrollArea.fullScroll(View.FOCUS_DOWN);
+                            });
                         });
                     } catch (ZebraException e) {
                         setError(e.getMessage());
