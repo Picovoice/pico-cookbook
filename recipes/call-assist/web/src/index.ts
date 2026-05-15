@@ -254,12 +254,11 @@ const init = async (
       cheetah.flush();
     }
 
-    let callerText = makeRequest("BUBBLE_CONTENTS");
-    if (transcript.isFlushed && (callerText.trim().length > 0)) {
-      console.log(`Got: '${callerText}' with len ${callerText.trim().length}`)
+    let callerText = makeRequest("BUBBLE_CONTENTS").replace("[CALLER] ", "").trim();
+    if (transcript.isFlushed && (callerText.length > 0)) {
       await stopListenForCaller();
 
-      await llmProcessCall(callerText.trim());
+      await llmProcessCall(callerText);
       return;
     }
   }
@@ -268,7 +267,7 @@ const init = async (
     sendMessage("START_LLM_SPINNER", null);
 
     let dialog = await object!.llm.getDialog(undefined, undefined, SYSTEM_PROMPT);
-    dialog.addHumanRequest(`Caller said: \"${callerText.replace("[CALLER]", "").trim()}\"\n`);
+    dialog.addHumanRequest(`Caller said: \"${callerText}\"\n`);
 
     const completion = await object!.llm.generate(
         dialog.prompt(),

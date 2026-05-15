@@ -177,9 +177,8 @@ const init = async (
       cheetah.flush();
     }
 
-    let callerText = makeRequest("BUBBLE_CONTENTS");
+    let callerText = makeRequest("BUBBLE_CONTENTS").replace("[CALLER] ", "").trim();
     if (transcript.isFlushed && (callerText.trim().length > 0)) {
-      console.log(`Got: '${callerText}' with len ${callerText.trim().length}`);
       await stopListenForCaller();
 
       setTimeout(() => { giveUserOptions(); }, 600);
