@@ -1,6 +1,12 @@
-# Speaker Aware Wake Word on the Web
+# Speaker-Aware Voice Assistant on the Web
 
-Detect wake words and recognize who said them, powered by on-device voice AI.
+Build voice assistants that can personalize behavior and enforce access control based on who is speaking.
+
+This demo shows how to combine wake word detection, speech-to-intent, speaker recognition, and text-to-speech to create
+a voice assistant that reacts differently for different users. It can allow everyone to use basic commands, personalize
+responses for recognized speakers, and restrict sensitive actions to authorized admins. This enables use cases like
+personal dashboards, user-specific settings, family profiles, workplace permissions, protected device controls,
+and admin-only operations.
 
 ## Compatibility
 
@@ -18,42 +24,60 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ## Usage
 
-These instructions assume your current working directory is `recipes/speaker-aware-wake-word/web`.
+These instructions assume your current working directory is `recipes/speaker-aware-voice-assistant/web`.
 
 ### 1. Train a Wake Word Model
 
-Follow instruction on Porcupine Wake Word [documentation](https://picovoice.ai/docs/porcupine/#custom-wake-words) to
-train a wake word model on [Picovoice Console](https://console.picovoice.ai/) in minutes.
+1. Open [Picovoice Console](https://console.picovoice.ai/)
+2. Go to Porcupine Wake Word.
+3. Enter your desired wake phrase.
+4. Click Train.
+5. Select your target platform and download the generated wake word model file (`.ppn`).
 
-### 2. Download the Required Models
+### 2. Train the Speech-to-Intent Model
 
-Run the setup script to download the models for [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/) and
-[Eagle Speaker Recognition](https://picovoice.ai/docs/eagle/), as well as add your wake word file (`.ppn`) to the project:
+1. Open [Picovoice Console](https://console.picovoice.ai/)
+2. Go to Rhino Speech-to-Intent.
+3. Create an empty Rhino context.
+4. Click Import YAML in the top-right corner.
+5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
+6. Download the generated Rhino context file (`.rhn`) for your target platform.
+
+### 3. Download the Required Models
+
+Run the setup script to download the models for
+- [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/)
+- [Eagle Speaker Recognition](https://picovoice.ai/docs/eagle/)
+
+This script will also add your wake word (`.ppn`) and rhino context (`.rhn`) files to the project:
 
 ```console
-python setup.py --porcupine_keyword_path ${PATH_TO_PPN_FILE}
+python setup.py \
+    --porcupine_keyword_path ${PATH_TO_PPN_FILE} \
+    --rhino_context_path ${PATH_TO_RHN_FILE}
 ```
 
-### 3. Install Dependencies
+### 4. Install Dependencies
 
-```console
+```bash
+# install dependencies
 yarn
-```
 
-### 4. Build the Demo
-
-```console
+# build the demo
 yarn build
-```
 
-### 5. Run the Demo
-
-```console
+# run the demo
 yarn start
 ```
 
-### 6. Open the Demo page
+### 5. Open the Demo page
 
 <!-- markdown-link-check-disable -->
-- go to [localhost:5000](http://localhost:5000) in your web browser.
+- Go to [localhost:5000](http://localhost:5000) in your web browser.
 <!-- markdown-link-check-enable -->
+- Enter your AccessKey, then press the `Start Enrollment` button.
+- Create an Eagle speaker profile for each user you want the assistant to recognize.
+- Have different people try to speak the commands
+  - `do something that requires admin permission`
+  - `do something just for me`
+  - `do something anyone can do`

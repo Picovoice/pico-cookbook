@@ -13,7 +13,6 @@ from typing import Tuple
 
 
 ANIMALS = [
-    ("cheetah", "4.0.3"),
     ("eagle", "3.0.1"),
     ("orca", "3.0.0"),
     ("porcupine", "4.0.0"),
@@ -21,9 +20,6 @@ ANIMALS = [
 ]
 
 COPIES = {
-    "cheetah": [
-        ("cheetah_params.pv", "cheetah_params.pv")
-    ],
     "eagle": [
         ("eagle_params.pv", "eagle_params.pv")
     ],
@@ -108,7 +104,7 @@ def clone_repo(animal: str, major: str, minor: str) -> str:
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
-        '--context_path',
+        '--rhino_context_path',
         required=True,
         help='Absolute path to the Rhino context file (`.rhn`).')
     parser.add_argument(
@@ -117,13 +113,15 @@ def main() -> None:
         help='Absolute path to the wake word model file (`.ppn`).')
     args = parser.parse_args()
 
-    public_folder = os.path.join(os.path.dirname(__file__), "public", "models")
+    models_folder = os.path.join(os.path.dirname(__file__), "public", "models")
 
-    context_target_path = os.path.join(public_folder, "speaker_aware_voice_assistant_demo_web.rhn")
+    context_target_path = os.path.join(models_folder, "speaker_aware_voice_assistant_demo_web.rhn")
     shutil.copy(args.context_path, context_target_path)
     print(f"Copied {args.context_path} to {context_target_path}")
 
-    wakeword_target_path = os.path.join(public_folder, "speaker_aware_voice_assistant_demo_web.ppn")
+    keywords_folder = os.path.join(os.path.dirname(__file__), "public", "keywords")
+
+    wakeword_target_path = os.path.join(keywords_folder, "speaker_aware_voice_assistant_demo_web.ppn")
     shutil.copy(args.porcupine_keyword_path, wakeword_target_path)
     print(f"Copied {args.porcupine_keyword_path} to {wakeword_target_path}")
 
@@ -133,7 +131,7 @@ def main() -> None:
         model_folder = os.path.join(folder, "lib", "common")
         for src_filename, dst_filename in COPIES[animal]:
             src_path = os.path.join(model_folder, src_filename)
-            dst_path = os.path.join(public_folder, dst_filename)
+            dst_path = os.path.join(models_folder, dst_filename)
             shutil.copy(src_path, dst_path)
 
 if __name__ == '__main__':

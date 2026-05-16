@@ -1,33 +1,55 @@
+import { AudioStream } from './audio_stream';
 import { PorcupineWorker } from '@picovoice/porcupine-web';
 import {
   EagleProfilerWorker,
   EagleWorker,
   EagleProfile,
 } from '@picovoice/eagle-web';
+import { OrcaWorker } from '@picovoice/orca-web';
+import { RhinoInference, RhinoWorker } from '@picovoice/rhino-web';
 import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 import { PvEngine } from '@picovoice/web-voice-processor/dist/types/types';
 
 export type DemoCallbacks = {
+  onUpdateStatus: (newStatus: string) => void;
   onVolume: (volume: number) => void;
   onEnrollProgress: (progress: number) => void;
   onEnrollComplete: (profile: EagleProfile) => void;
-  onWakeWordRecognized: (scores: number[]) => void;
+  onWakeWordRecognized: () => void;
+  onWordSpoken: (word: string) => void;
   onError: (error: string) => void;
 };
 
-let porcupine: PorcupineWorker | null = null;
+enum UserRole {
+  ADMIN = 'admin',
+  USER = 'user',
+}
+
+type UserProfile = {
+  profile: EagleProfile;
+  name: string;
+  role: UserRole;
+};
+
+let audio: AudioStream | null = null;
 let eagleProfiler: EagleProfilerWorker | null = null;
 let eagle: EagleWorker | null = null;
-let enrolledProfiles: EagleProfile[] = [];
+let orca: OrcaWorker | null = null;
+let porcupine: PorcupineWorker | null = null;
+let rhino: RhinoWorker | null = null;
 
-let currentState: 'IDLE' | 'ENROLLING' | 'TESTING' = 'IDLE';
+let enrolledProfiles: UserProfile[] = [];
+let enrollProgress = 0;
 
-let enrollMaxSamples = 0;
-let enrollValidSamples = 0;
-let enrollSlidingBuffer: Int16Array | null = null;
-
-let testSlidingBuffer: Int16Array | null = null;
-let callbacks: DemoCallbacks | null = null;
+let callbacks: DemoCallbacks = {
+  onUpdateStatus: (_) => undefined,
+  onVolume: (_) => undefined,
+  onEnrollProgress: (_) => undefined,
+  onEnrollComplete: (_) => undefined,
+  onWakeWordRecognized: () => undefined,
+  onWordSpoken: (_) => undefined,
+  onError: (_) => undefined
+};
 
 const MIN_DB = -40.0;
 const MAX_DB = 0.0;
@@ -40,177 +62,329 @@ const ENROLLMENT_SENTENCES = [
     "Voice recognition works best with clean and natural speech.",
 ];
 
-const customAudioEngine: PvEngine = {
+const ADMIN_SIMILARITY_THRESHOLD = 0.9;
+
+const normalizeAudio = (frame: Int16Array) => {
+  let sum = 0;
+  for (let i = 0; i < frame.length; i++) {
+    sum += Math.pow(frame[i], 2);
+  }
+  const rms = sum / frame.length / Math.pow(32767, 2);
+  const db = 10 * Math.log10(Math.max(rms, 1e-9));
+  const normalized = (db - MIN_DB) / (MAX_DB - MIN_DB);
+  const normalizedVolume = Math.max(0.0, Math.min(1.0, normalized));
+
+  return normalizedVolume;
+}
+
+const callbackAudioEngine: PvEngine = {
   onmessage: async (event: MessageEvent) => {
     if (event.data.command !== 'process') return;
     const frame: Int16Array = event.data.inputFrame;
 
-    let sum = 0;
-    for (let i = 0; i < frame.length; i++) {
-      sum += Math.pow(frame[i], 2);
-    }
-    const rms = sum / frame.length / Math.pow(32767, 2);
-    const db = 10 * Math.log10(Math.max(rms, 1e-9));
-    const normalized = (db - MIN_DB) / (MAX_DB - MIN_DB);
-    const normalizedVolume = Math.max(0.0, Math.min(1.0, normalized));
+    callbacks.onVolume(normalizeAudio(frame));
+  },
+};
 
-    if (callbacks?.onVolume) {
-      callbacks.onVolume(normalizedVolume);
-    }
+var eagleProfilerPcmBuffer = new Int16Array();
+const eagleProfilerAudioEngine: PvEngine = {
+  onmessage: async (event: MessageEvent) => {
+    if (event.data.command !== 'process')
+      return;
+    else if (eagleProfiler == null)
+      throw Error("bad state. unexpected eagleProfiler to be null");
 
-    if (currentState === 'ENROLLING') {
-      enrollSlidingBuffer!.copyWithin(0, frame.length);
-      enrollSlidingBuffer!.set(frame, enrollMaxSamples - frame.length);
-      enrollValidSamples = Math.min(
-        enrollMaxSamples,
-        enrollValidSamples + frame.length
-      );
-    } else if (currentState === 'TESTING') {
-      testSlidingBuffer!.copyWithin(0, frame.length);
-      testSlidingBuffer!.set(frame, testSlidingBuffer!.length - frame.length);
+    const frame: Int16Array = event.data.inputFrame;
+
+    var tempPcmBuffer = new Int16Array(eagleProfilerPcmBuffer.length + frame.length);
+    tempPcmBuffer.set(eagleProfilerPcmBuffer);
+    tempPcmBuffer.set(frame, eagleProfilerPcmBuffer.length);
+    eagleProfilerPcmBuffer = tempPcmBuffer
+
+    if (eagleProfilerPcmBuffer.length >= eagleProfiler.frameLength) {
+      enrollProgress = await eagleProfiler.enroll(eagleProfilerPcmBuffer.slice(0, eagleProfiler.frameLength));
+      callbacks.onEnrollProgress(enrollProgress);
+
+      eagleProfilerPcmBuffer = eagleProfilerPcmBuffer.slice(eagleProfiler.frameLength);
+
+      if (enrollProgress >= 100) {
+        const profile = await eagleProfiler.export();
+        await stopEnrollment();
+
+        callbacks.onEnrollComplete(profile);
+        eagleProfilerPcmBuffer = new Int16Array();
+      }
     }
   },
 };
 
-const porcupineKeywordCallback = async (): Promise<void> => {
-  try {
-    if (currentState === 'ENROLLING') {
-      const eagleFrameLength = eagleProfiler!.frameLength;
-      const startIndex = enrollMaxSamples - enrollValidSamples;
-      const numChunks = Math.floor(enrollValidSamples / eagleFrameLength);
+var porcupinePcmBuffer = new Int16Array();
+const bufferedPorcupineEngine: PvEngine = {
+  onmessage: async (e: MessageEvent) => {
+    if (e.data.command !== 'process') return;
+    const frame: Int16Array = e.data.inputFrame;
 
-      let progress = 0;
-      for (let i = 0; i < numChunks; i++) {
-        const chunkStart = startIndex + i * eagleFrameLength;
-        const chunk = enrollSlidingBuffer!.slice(
-          chunkStart,
-          chunkStart + eagleFrameLength
-        );
-        progress = await eagleProfiler!.enroll(chunk);
-      }
+    var tempPcmBuffer = new Int16Array(porcupinePcmBuffer.length + frame.length);
+    tempPcmBuffer.set(porcupinePcmBuffer);
+    tempPcmBuffer.set(frame, porcupinePcmBuffer.length);
+    porcupinePcmBuffer = tempPcmBuffer
 
-      enrollValidSamples = 0;
-
-      if (callbacks?.onEnrollProgress) {
-        callbacks.onEnrollProgress(progress);
-      }
-
-      if (progress >= 100) {
-        const profile = await eagleProfiler!.export();
-        await stop();
-        if (callbacks?.onEnrollComplete) {
-          callbacks.onEnrollComplete(profile);
-        }
-      }
-    } else if (currentState === 'TESTING') {
-      const scores = await eagle!.process(testSlidingBuffer!, enrolledProfiles);
-
-      if (callbacks?.onWakeWordRecognized) {
-        callbacks.onWakeWordRecognized(scores);
-      }
-    }
-  } catch (e: any) {
-    if (callbacks?.onError) {
-      callbacks.onError(e.toString());
+    if (porcupine !== null && porcupinePcmBuffer.length >= porcupine.frameLength) {
+      porcupine.process(porcupinePcmBuffer.slice(0, porcupine.frameLength));
+      porcupinePcmBuffer = porcupinePcmBuffer.slice(porcupine.frameLength);
     }
   }
+}
+
+var rhinoPcmBuffer = new Int16Array();
+const bufferedRhinoEngine: PvEngine = {
+  onmessage: async (e: MessageEvent) => {
+    if (e.data.command !== 'process') return;
+    const frame: Int16Array = e.data.inputFrame;
+
+    var tempPcmBuffer = new Int16Array(rhinoPcmBuffer.length + frame.length);
+    tempPcmBuffer.set(rhinoPcmBuffer);
+    tempPcmBuffer.set(frame, rhinoPcmBuffer.length);
+    rhinoPcmBuffer = tempPcmBuffer
+
+    if (rhino !== null && rhinoPcmBuffer.length >= rhino.frameLength) {
+      rhino.process(rhinoPcmBuffer.slice(0, rhino.frameLength));
+      rhinoPcmBuffer = rhinoPcmBuffer.slice(rhino.frameLength);
+    }
+  }
+}
+
+// -------------------------------------------------------------------------- //
+
+const synthesizeAndPlayback = async (
+  orca: OrcaWorker,
+  audio: AudioStream,
+  text: string,
+  addWord: (word: string) => void
+) => {
+  const synthesis = await orca.synthesize(text, {});
+  const alignments = synthesis.alignments;
+
+  audio.stream(synthesis.pcm);
+  audio.play();
+
+  for (let alignment of alignments) {
+    const index = alignments.indexOf(alignment);
+    let word = alignment.word;
+    if (index < alignments.length - 1 &&
+        !(/[.,:;!?]/.test(alignments[index + 1].word))
+    ) {
+      word += " ";
+    }
+
+    setTimeout(() => {
+      addWord(word);
+    }, alignment.startSec * 1000);
+  }
+
+  await audio.waitPlayback();
+};
+
+// -------------------------------------------------------------------------- //
+
+const porcupineKeywordCallback = async (): Promise<void> => {
+  try {
+    await WebVoiceProcessor.unsubscribe(bufferedPorcupineEngine);
+    porcupinePcmBuffer = new Int16Array();
+    
+    await WebVoiceProcessor.subscribe(bufferedRhinoEngine);
+    callbacks.onWakeWordRecognized();
+
+  } catch (e: any) {
+    callbacks.onError(e.toString());
+  }
+};
+
+const rhinoInferenceCallback = async (
+  inference: RhinoInference
+): Promise<void> => {
+  if (!inference.isFinalized) {
+    return;
+  } else if (!inference.isUnderstood) {
+    rhinoPcmBuffer = new Int16Array();
+    console.log("unknown option selected");
+    return;
+  }
+
+  if (rhinoPcmBuffer.length < eagle.minProcessSamples()) {
+    rhinoPcmBuffer.fill(0, rhinoPcmBuffer.length, eagle.minProcessSamples());
+  }
+
+  await WebVoiceProcessor.unsubscribe(bufferedRhinoEngine);
+
+  let similarities = await eagle.process(rhinoPcmBuffer, enrolledProfiles.map(x => x.profile));
+  if (similarities == null) {
+    await synthesizeAndPlayback(orca!, audio!, "Sorry, I could not identify who is speaking.", callbacks.onWordSpoken);
+  } else {
+    let highestSimilarityUserIndex = 0;
+    for (let i = 1; i < similarities.length; i++) {
+      if (similarities[i] > similarities[highestSimilarityUserIndex]) {
+        highestSimilarityUserIndex = i;
+      }
+    }
+
+    const similarityScore = similarities[highestSimilarityUserIndex];
+    const user = enrolledProfiles[highestSimilarityUserIndex];
+
+    if (inference.intent === "adminOnly") {
+      if (similarityScore >= ADMIN_SIMILARITY_THRESHOLD) {
+        if (user.role === UserRole.ADMIN) {
+          await synthesizeAndPlayback(orca!, audio!, "Admin command approved.", callbacks.onWordSpoken);
+        } else {
+          await synthesizeAndPlayback(orca!, audio!, "Permission denied. This command requires an admin.", callbacks.onWordSpoken);
+        }
+      } else {
+        await synthesizeAndPlayback(orca!, audio!, "Sorry, I could not verify your voice.", callbacks.onWordSpoken);
+      }
+    } else if (inference.intent === "speakerPersonalized") {
+      await synthesizeAndPlayback(orca!, audio!, `Hi ${user.name}. I will personalize this command for you.`, callbacks.onWordSpoken);
+    } else if (inference.intent === "generic") {
+      await synthesizeAndPlayback(orca!, audio!, 'Okay. This command is available to everyone.', callbacks.onWordSpoken);
+    }
+  }
+
+  rhinoPcmBuffer = new Int16Array();
+  await WebVoiceProcessor.subscribe(bufferedRhinoEngine);
 };
 
 const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
   callbacks = cb;
-  try {
-    const porcupineModel = { publicPath: 'models/porcupine_params.pv' };
-    const eagleModel = { publicPath: 'models/eagle_params.pv' };
-    const keyword = {
-      publicPath: 'keywords/keyword.ppn',
-      label: 'wake word',
-      sensitivity: 0.5,
-      forceWrite: true,
-    };
 
+  try {
+    const FORCE_WRITE = true;
+
+    callbacks.onUpdateStatus("Loading Porcupine");
     porcupine = await PorcupineWorker.create(
       accessKey,
-      [keyword],
+      [{
+        publicPath: 'keywords/speaker_aware_voice_assistant_demo_web.ppn',
+        label: 'wake word',
+        sensitivity: 0.5,
+        forceWrite: FORCE_WRITE
+      }],
       porcupineKeywordCallback,
-      porcupineModel
+      { publicPath: 'models/porcupine_params.pv', forceWrite: FORCE_WRITE }
     );
 
-    eagleProfiler = await EagleProfilerWorker.create(accessKey, eagleModel, {
+    const EAGLE_MODEL = {
+      publicPath: 'models/eagle_params.pv',
+      forceWrite: FORCE_WRITE
+    };
+
+    callbacks.onUpdateStatus("Loading Eagle Profiler");
+    eagleProfiler = await EagleProfilerWorker.create(accessKey, EAGLE_MODEL, {
       minEnrollmentChunks: 4,
       voiceThreshold: 0.0,
     });
-    eagle = await EagleWorker.create(accessKey, eagleModel, {
-      voiceThreshold: 0.0,
+    callbacks.onUpdateStatus("Loading Eagle");
+    eagle = await EagleWorker.create(accessKey, EAGLE_MODEL, {
+      voiceThreshold: 0.0
     });
 
-    enrollMaxSamples = porcupine.sampleRate * 2;
-    enrollSlidingBuffer = new Int16Array(enrollMaxSamples);
-    testSlidingBuffer = new Int16Array(eagle.minProcessSamples);
+    callbacks.onUpdateStatus("Loading Orca");
+    orca = await OrcaWorker.create(
+      accessKey,
+      { publicPath: "models/orca_params_en_female.pv", forceWrite: FORCE_WRITE },
+      {}
+    );
+
+    callbacks.onUpdateStatus("Loading Rhino");
+    rhino = await RhinoWorker.create(
+      accessKey,
+      { publicPath: 'models/call_assist_demo_web.rhn', forceWrite: FORCE_WRITE },
+      rhinoInferenceCallback,
+      { publicPath: 'models/rhino_params.pv', forceWrite: FORCE_WRITE },
+    );
+
+    callbacks.onUpdateStatus("Loading Audio Stream");
+    audio = new AudioStream(orca.sampleRate);
+
+    await WebVoiceProcessor.subscribe(callbackAudioEngine);
+
   } catch (e: any) {
-    if (callbacks?.onError) {
-      callbacks.onError(e.toString());
-    }
+    callbacks.onError(e.toString());
     throw e;
   }
 };
 
-const startEnrollment = async (): Promise<void> => {
-  if (WebVoiceProcessor.isRecording) {
-    await stop();
+const startEnrollment = async (userRole:string): Promise<void> => {
+  if (userRole != UserRole.ADMIN && userRole != UserRole.USER) {
+    throw new Error('Got unknown user role');
   }
-  currentState = 'ENROLLING';
+  
   await eagleProfiler!.reset();
-  enrollValidSamples = 0;
-  enrollSlidingBuffer!.fill(0);
-
-  await WebVoiceProcessor.subscribe(porcupine!);
-  await WebVoiceProcessor.subscribe(customAudioEngine);
+  
+  enrollProgress = 0;
+  await WebVoiceProcessor.subscribe(eagleProfilerAudioEngine);
 };
 
-const startTesting = async (profiles: EagleProfile[]): Promise<void> => {
+const stopEnrollment = async (): Promise<void> => {
+  await WebVoiceProcessor.unsubscribe(eagleProfilerAudioEngine);
+};
+
+const startTesting = async (profiles: UserProfile[]): Promise<void> => {
   if (profiles.length === 0) {
     throw new Error('No speaker profiles enrolled.');
   }
 
-  if (WebVoiceProcessor.isRecording) {
-    await stop();
-  }
-  currentState = 'TESTING';
   enrolledProfiles = profiles;
-  testSlidingBuffer!.fill(0);
 
-  await WebVoiceProcessor.subscribe(porcupine!);
-  await WebVoiceProcessor.subscribe(customAudioEngine);
+  await WebVoiceProcessor.subscribe(bufferedPorcupineEngine);
 };
 
-const stop = async (): Promise<void> => {
-  currentState = 'IDLE';
-  await WebVoiceProcessor.unsubscribe(porcupine!);
-  await WebVoiceProcessor.unsubscribe(customAudioEngine);
+const stopTesting = async (): Promise<void> => {
+  await WebVoiceProcessor.unsubscribe(bufferedPorcupineEngine);
 };
 
 const release = async (): Promise<void> => {
-  await stop();
+  await WebVoiceProcessor.reset();
+  enrolledProfiles = [];
+
+  if (rhino) {
+    await rhino.release();
+    rhino = null;
+  }
+
   if (porcupine) {
-    porcupine.terminate();
+    await porcupine.terminate();
     porcupine = null;
   }
+
+  if (orca) {
+    await orca.release();
+    orca = null;
+  }
+
   if (eagleProfiler) {
-    eagleProfiler.terminate();
+    await eagleProfiler.terminate();
     eagleProfiler = null;
   }
+
   if (eagle) {
-    eagle.terminate();
+    await eagle.terminate();
     eagle = null;
   }
-  enrolledProfiles = [];
-  WebVoiceProcessor.reset();
+
+  if (audio) {
+    audio.clear();
+    audio = null;
+  }
+
+  rhinoPcmBuffer = new Int16Array();
+  porcupinePcmBuffer = new Int16Array();
+  eagleProfilerPcmBuffer = new Int16Array();
 };
 
 export default {
   init,
   startEnrollment,
+  stopEnrollment,
   startTesting,
-  stop,
+  stopTesting,
   release,
 };
