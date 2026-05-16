@@ -226,23 +226,36 @@ const init = async (
   }
 
   const llmEmbeddingProcessCall = async (file: File) => {
-    const reader = new FileReader();
-    reader.readAsText(file, 'UTF-8');
-    reader.onload = ({ target }) => {
-      sendMessage("start llm spinner", null);
+    const cachedStr = localStorage.getItem(file.name)
+    if (cachedStr !== null && window.confirm("Cached embeddings found, use?")) {
+      const cached = JSON.parse(cachedStr);
+      object!.chunks = cached.chunks;
+      object!.embeddings = cached.embeddings;
+      listenForCaller();
+    } else {
+      const reader = new FileReader();
+      reader.readAsText(file, 'UTF-8');
+      reader.onload = ({ target }) => {
+        sendMessage("start llm spinner", null);
 
-      const text = target!.result as string;
-      const chunks = chunkDocument(text);
-      generateEmbeddings(chunks).then((embeddings) => {
-        object!.chunks = chunks;
-        object!.embeddings = embeddings;
+        const text = target!.result as string;
+        const chunks = chunkDocument(text);
+        generateEmbeddings(chunks).then((embeddings) => {
+          object!.chunks = chunks;
+          object!.embeddings = embeddings;
 
-        sendMessage("stop llm spinner", null);
-        listenForCaller();
-      });
-    }
-    reader.onerror = () => {
-      // TODO
+          localStorage.setItem(file.name, JSON.stringify({
+            chunks,
+            embeddings
+          }));
+
+          sendMessage("stop llm spinner", null);
+          listenForCaller();
+        });
+      }
+      reader.onerror = () => {
+        // TODO
+      }
     }
   }
 
