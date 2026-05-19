@@ -441,28 +441,25 @@ public class MainActivity extends AppCompatActivity {
                 callerScrollView.fullScroll(ScrollView.FOCUS_DOWN);
             });
 
-            new Thread(() -> {
-                trySleep(200);
+            trySleep(200);
+            if (action.isTerminal()) {
+                trySleep(1500);
+                mainHandler.post(() -> {
+                    loadingText.setText("Press the Start Demo button to try again.");
 
-                if (action.isTerminal()) {
-                    trySleep(1500);
-                    mainHandler.post(() -> {
-                        loadingText.setText("Press the Start Demo button to try again.");
+                    chatLayout.setAlpha(1f);
+                    loadingLayout.setAlpha(0f);
+                    loadingLayout.setVisibility(View.VISIBLE);
 
-                        chatLayout.setAlpha(1f);
-                        loadingLayout.setAlpha(0f);
-                        loadingLayout.setVisibility(View.VISIBLE);
+                    chatLayout.animate().alpha(0f).setDuration(600);
+                    loadingLayout.animate().alpha(1f).setDuration(600);
+                });
 
-                        chatLayout.animate().alpha(0f).setDuration(600);
-                        loadingLayout.animate().alpha(1f).setDuration(600);
-                    });
-
-                    trySleep(600);
-                    updateUIState(UIState.BEFORE_DEMO);
-                } else {
-                    listenForCaller();
-                }
-            }).start();
+                trySleep(600);
+                updateUIState(UIState.BEFORE_DEMO);
+            } else {
+                listenForCaller();
+            }
         });
 
         Future<?> playbackFuture = ttsPlaybackExecutor.submit(() -> {
