@@ -24,7 +24,9 @@ import android.view.ViewGroup;
 import android.view.animation.OvershootInterpolator;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -47,10 +49,17 @@ import ai.picovoice.eagle.EagleProfiler;
 import ai.picovoice.porcupine.Porcupine;
 import ai.picovoice.porcupine.PorcupineException;
 
+enum UserRole {
+    ADMIN,
+    USER
+}
+
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "PICOVOICE";
     private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
     private static final String WAKE_WORD_FILE = "${YOUR_WAKE_WORD_HERE}.ppn";
+    private static final String CONTEXT_FILE = "${YOUR_CONTEXT_HERE}.ppn";
+    private static final String ORCA_MODEL_FILE = "${ORCA_MODEL_HERE}.pv";
     private static final float EAGLE_THRESHOLD = 0.75f;
     private static final int EAGLE_MIN_ENROLLMENT_CHUNKS = 4;
     private static final int MAX_SPEAKERS = 10;
@@ -66,7 +75,10 @@ public class MainActivity extends AppCompatActivity {
 
     private final List<EagleProfile> speakerProfiles = new ArrayList<>();
     private final List<String> speakerNames = new ArrayList<>();
+
+    private final List<UserRole> speakerRoles = new ArrayList<>();
     private String pendingSpeakerName = "";
+    private UserRole pendingUserRole = UserRole.USER;
 
     private AppState currentState = AppState.IDLE;
 
@@ -151,8 +163,9 @@ public class MainActivity extends AppCompatActivity {
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
         input.setHint("Speaker " + (speakerProfiles.size() + 1));
 
-        android.widget.FrameLayout container = new android.widget.FrameLayout(this);
-        android.widget.FrameLayout.LayoutParams params = new android.widget.FrameLayout.LayoutParams(
+        android.widget.LinearLayout container = new android.widget.LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        android.widget.LinearLayout.LayoutParams params = new android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT
         );
@@ -161,6 +174,22 @@ public class MainActivity extends AppCompatActivity {
         input.setLayoutParams(params);
         container.addView(input);
 
+        android.widget.LinearLayout adminContainer = new android.widget.LinearLayout(this);
+        android.widget.LinearLayout.LayoutParams adminParams = new android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        adminParams.setMargins(margin, 0, margin, 0);
+        adminContainer.setLayoutParams(adminParams);
+
+        final TextView adminText = new TextView(this);
+        adminText.setText("Admin Permissions:");
+        adminContainer.addView(adminText);
+
+        final Switch adminSwitch = new Switch(this);
+        adminContainer.addView(adminSwitch);
+
+        container.addView(adminContainer);
         builder.setView(container);
 
         builder.setPositiveButton("Enroll", (dialog, which) -> {
@@ -168,6 +197,7 @@ public class MainActivity extends AppCompatActivity {
             if (pendingSpeakerName.isEmpty()) {
                 pendingSpeakerName = "Speaker " + (speakerProfiles.size() + 1);
             }
+            pendingUserRole = adminSwitch.isChecked() ? UserRole.ADMIN : UserRole.USER;
             checkPermissionsAndStart(AppState.ENROLLING);
         });
         builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
@@ -334,6 +364,16 @@ public class MainActivity extends AppCompatActivity {
                     .setSensitivity(0.5f)
                     .build(this);
 
+            rhino = new Rhino.Builder()
+                    .setAccessKey(ACCESS_KEY)
+                    .setContextPath(CONTEXT_FILE)
+                    .build(this);
+
+            orca = new Orca.Builder()
+                    .setAccessKey(ACCESS_KEY)
+                    .setModelPath(ORCA_MODEL_FILE)
+                    .build(this);
+
             eagle = new Eagle.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setVoiceThreshold(0.0f)
@@ -371,6 +411,7 @@ public class MainActivity extends AppCompatActivity {
             EagleProfile newProfile = eagleProfiler.export();
             speakerProfiles.add(newProfile);
             speakerNames.add(pendingSpeakerName);
+            speakerRoles.add(pendingUserRole);
             cancelActiveSession();
         } catch (Exception e) {
             Log.e(TAG, "Failed to export profile", e);
@@ -424,8 +465,10 @@ public class MainActivity extends AppCompatActivity {
         int paddingV = (int) (8 * density);
 
         for (int i = 0; i < speakerNames.size(); i++) {
+            final String chipText = String.format("%s [%s]", speakerNames.get(i), speakerRoles.get(i));
+
             TextView chip = new TextView(this);
-            chip.setText(speakerNames.get(i));
+            chip.setText(chipText);
             chip.setTextColor(getResources().getColor(R.color.white, getTheme()));
 
             GradientDrawable bg = (GradientDrawable) getResources()

@@ -10,11 +10,11 @@
         android:id="@+id/titleText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Speaker Aware Wake Word"
-        android:textSize="24sp"
-        android:textStyle="bold"
+        android:layout_marginBottom="32dp"
+        android:text="Speaker Aware Voice Assistant"
         android:textColor="@color/brand_primary"
-        android:layout_marginBottom="32dp"/>
+        android:textSize="24sp"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/statusText"
