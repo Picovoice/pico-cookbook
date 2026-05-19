@@ -54,7 +54,7 @@ in [MainActivity.java](voice-guided-maintenance-and-inspection/src/main/java/ai/
 python setup.py \
     --access_key ${ACCESS_KEY} \
     --keyword_path ${PATH_TO_PPN} \
-    --context_path ${PATH_TO_RHN} \
+    --context_path ${PATH_TO_RHN}
 ```
 
 ### 4. Run the Android Demo
