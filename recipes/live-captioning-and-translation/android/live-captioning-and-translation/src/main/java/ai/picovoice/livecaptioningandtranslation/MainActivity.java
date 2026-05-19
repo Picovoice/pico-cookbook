@@ -103,6 +103,17 @@ public class MainActivity extends AppCompatActivity {
         "Italian"
     };
 
+    private static final String[] dots = {
+            " .  ",
+            " .. ",
+            " ...",
+            "  ..",
+            "   .",
+            "    "
+    };
+
+    private int dotIndex = 0;
+
     private enum State {
         IDLE,
         LISTENING,
@@ -121,7 +132,11 @@ public class MainActivity extends AppCompatActivity {
 
     private State currentState = State.IDLE;
 
-    private int translationIndex = 0;
+    private String chatText = "";
+
+    private ArrayList<Integer> chatBoundaries = new ArrayList<>();
+
+    private ArrayList<String> chatTranslations = new ArrayList<>();
 
     private final VoiceProcessor voiceProcessor = VoiceProcessor.getInstance();
 
@@ -153,6 +168,10 @@ public class MainActivity extends AppCompatActivity {
 
     private ProgressBar progressBarView;
 
+    private TextView timerView;
+
+    private LinearLayout titleLayout;
+
     private ConstraintLayout volumeMeterLayout;
 
     private LinearLayout spinnerLayout;
@@ -181,8 +200,22 @@ public class MainActivity extends AppCompatActivity {
         initStatusLayout();
         initSpinners();
         initChatArea();
+        animateDots();
 
         rootView.invalidate();
+    }
+
+    private void animateDots() {
+        dotIndex = (dotIndex + 1) % dots.length;
+        if (!chatBubbles.isEmpty()) {
+            int chatIndex = chatBubbles.size() - 1;
+            LinearLayout chatBubble = chatBubbles.get(chatIndex);
+            TextView bottomText = chatBubble.findViewById(R.id.bottomText);
+            if (chatTranscript(chatIndex).isEmpty()) {
+                bottomText.setText(dots[dotIndex]);
+            }
+        }
+        mainHandler.postDelayed(this::animateDots, 100);
     }
 
     private void initStatusLayout() {
@@ -218,7 +251,9 @@ public class MainActivity extends AppCompatActivity {
         backButton = findViewById(R.id.backButton);
         volumeMeterView = findViewById(R.id.volumeMeterView);
         progressBarView = findViewById(R.id.progressBarView);
+        timerView = findViewById(R.id.timerView);
 
+        titleLayout = findViewById(R.id.titleLayout);
         volumeMeterLayout = findViewById(R.id.volumeMeterLayout);
         spinnerLayout = findViewById(R.id.spinnerLayout);
         buttonLayout = findViewById(R.id.buttonLayout);
@@ -498,18 +533,18 @@ public class MainActivity extends AppCompatActivity {
     private void appendChatBubble() {
         mainHandler.post(() -> {
             if (!chatBubbles.isEmpty()) {
-                LinearLayout chatBubble = chatBubbles.get(chatBubbles.size() - 1);
-                LinearLayout top = chatBubble.findViewById(R.id.top);
-                TextView topText = chatBubble.findViewById(R.id.topText);
-                TextView bottomText = chatBubble.findViewById(R.id.bottomText);
-                String text = bottomText.getText().toString();
-
-                if (text.isEmpty()) {
+                int chatIndex = chatBubbles.size() - 1;
+                if (chatIndex >= chatTranslations.size()) {
                     return;
                 }
 
-                topText.setText(text);
-                bottomText.setText("");
+                LinearLayout chatBubble = chatBubbles.get(chatIndex);
+                LinearLayout top = chatBubble.findViewById(R.id.top);
+                TextView topText = chatBubble.findViewById(R.id.topText);
+                TextView bottomText = chatBubble.findViewById(R.id.bottomText);
+
+                topText.setText(chatTranscript(chatIndex));
+                bottomText.setText(chatTranslations.get(chatIndex));
                 top.setVisibility(View.VISIBLE);
                 rootView.invalidate();
 
@@ -539,36 +574,67 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void sendText(String text) {
-        if (text.isEmpty()) {
-            return;
-        }
+    private String chatTranscript(int index) {
+        int start = chatBoundaries.get(index);
+        int end = index + 1 < chatBoundaries.size() ?
+                chatBoundaries.get(index + 1) :
+                chatText.length();
 
-        mainHandler.post(() -> {
-            LinearLayout chatBubble = chatBubbles.get(chatBubbles.size() - 1);
-            TextView bottomText = chatBubble.findViewById(R.id.bottomText);
-            String prevText = bottomText.getText().toString();
+        return chatText.substring(start, end).stripLeading();
+    }
 
-            if (prevText.isEmpty()) {
-                bottomText.setText(String.format("%s%s", prevText, text.stripLeading()));
-            } else {
-                bottomText.setText(String.format("%s%s", prevText, text));
-            }
+    private void appendChatText(String text, Boolean flush) {
+        Matcher matcher = pattern.matcher(text);
 
-            scrollArea.post(() -> {
-                scrollArea.fullScroll(View.FOCUS_DOWN);
+        if (!text.isEmpty()) {
+            mainHandler.post(() -> {
+                int currentBoundary = chatBoundaries.get(chatBoundaries.size() - 1);
+                int sizeBefore = chatText.length();
+                chatText += text;
+
+                LinearLayout chatBubble = chatBubbles.get(chatBubbles.size() - 1);
+                TextView bottomText = chatBubble.findViewById(R.id.bottomText);
+                bottomText.setText(chatTranscript(chatBubbles.size() - 1));
+
+                scrollArea.post(() -> {
+                    scrollArea.fullScroll(View.FOCUS_DOWN);
+                });
+
+                if (matcher.find()) {
+                    int after = matcher.group(2) != null ?
+                            matcher.group(2).length() :
+                            0;
+                    chatBoundaries.add(chatText.length() - after);
+                } else if (flush || chatText.length() - currentBoundary >= zebra.getMaxCharacterLimit()) {
+                    chatBoundaries.add(chatText.length());
+                }
+
+                if (chatBoundaries.size() > 1) {
+                    int b0 = chatBoundaries.get(chatBoundaries.size() - 2);
+                    int b1 = chatBoundaries.get(chatBoundaries.size() - 1);
+
+                    if (b1 - b0 > zebra.getMaxCharacterLimit()) {
+                        chatBoundaries.set(chatBoundaries.size() - 1, b0 + sizeBefore);
+                    }
+                }
+
+                translateSource();
             });
-        });
+        }
     }
 
     private void startDemo() {
         setStatus("Loading...");
         clearChatArea();
-        translationIndex = 0;
+        chatText = "";
+        chatBoundaries.clear();
+        chatTranslations.clear();
+        chatBoundaries.add(0);
         engineExecutor.submit(() -> initEngines(true));
     }
 
     private void stopDemo() {
+        titleLayout.setVisibility(View.VISIBLE);
         volumeMeterLayout.setVisibility(View.GONE);
         clearChatArea();
         engineExecutor.submit(this::deleteEngines);
@@ -577,7 +643,10 @@ public class MainActivity extends AppCompatActivity {
     private void speakDemo(short[] pcm) {
         setStatus("Loading...");
         clearChatArea();
-        translationIndex = 0;
+        chatText = "";
+        chatBoundaries.clear();
+        chatTranslations.clear();
+        chatBoundaries.add(0);
 
         speakingExecutor.submit(() -> {
             initEngines(false);
@@ -610,6 +679,8 @@ public class MainActivity extends AppCompatActivity {
                     pcm.length,
                     AudioTrack.WRITE_NON_BLOCKING);
 
+            final int totalTime = pcm.length / cheetah.getSampleRate();
+
             final int frameLength = cheetah.getFrameLength();
             long startTime = System.currentTimeMillis();
             for (int i = 0; i < pcm.length - frameLength + 1; i += frameLength) {
@@ -623,6 +694,16 @@ public class MainActivity extends AppCompatActivity {
                             pcm.length - pcnWritten,
                             AudioTrack.WRITE_NON_BLOCKING);
                 }
+
+                int elapsedTime = i / cheetah.getSampleRate();
+
+                mainHandler.post(() -> {
+                    timerView.setText(String.format("%d:%02d/%d:%02d",
+                            elapsedTime / 60,
+                            elapsedTime % 60,
+                            totalTime / 60,
+                            totalTime % 60));
+                });
 
                 long duration = System.currentTimeMillis() - startTime;
                 long expected = i * 1000L / cheetah.getSampleRate();
@@ -646,6 +727,14 @@ public class MainActivity extends AppCompatActivity {
             }
 
             ttsOutput.release();
+
+            mainHandler.post(() -> {
+                if (!chatBubbles.isEmpty()) {
+                    progressBarView.setVisibility(View.GONE);
+                    timerView.setText("");
+                    chatArea.removeView(chatBubbles.get(chatBubbles.size() - 1));
+                }
+            });
         });
     }
 
@@ -702,6 +791,8 @@ public class MainActivity extends AppCompatActivity {
             useFileButton.setEnabled(true);
             volumeMeterView.setVisibility(useMic ? View.VISIBLE : View.GONE);
             progressBarView.setVisibility(useMic ? View.GONE : View.VISIBLE);
+            timerView.setText("");
+            titleLayout.setVisibility(View.GONE);
             volumeMeterLayout.setVisibility(View.VISIBLE);
             spinnerLayout.setVisibility(View.GONE);
             buttonLayout.setVisibility(View.GONE);
@@ -725,6 +816,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         mainHandler.post(() -> {
+            titleLayout.setVisibility(View.VISIBLE);
             volumeMeterLayout.setVisibility(View.GONE);
             spinnerLayout.setVisibility(View.VISIBLE);
             buttonLayout.setVisibility(View.VISIBLE);
@@ -789,59 +881,29 @@ public class MainActivity extends AppCompatActivity {
     private void listenSource(short[] frame) {
         try {
             CheetahTranscript transcript = cheetah.process(frame);
-            processText(transcript.getTranscript());
+            appendChatText(transcript.getTranscript(), false);
 
             if (transcript.getIsEndpoint()) {
                 CheetahTranscript flush = cheetah.flush();
-                processText(flush.getTranscript());
-                appendChatBubble();
-                translateSource();
+                appendChatText(flush.getTranscript(), true);
             }
         } catch (CheetahException e) {
             setError(e.getMessage());
         }
     }
 
-    private void processText(String text) {
-        Matcher matcher = pattern.matcher(text);
-
-        if (matcher.find()) {
-            String t0 = matcher.group(1);
-            String t1 = matcher.group(2);
-            sendText(t0 != null ? t0 : "");
-            appendChatBubble();
-            translateSource();
-            sendText(t1 != null ? t1 : "");
-        } else {
-            sendText(text);
-        }
-    }
-
     private void translateSource() {
         mainHandler.post(() -> {
-            if (translationIndex < chatBubbles.size() - 1) {
-                int index = translationIndex;
-                translationIndex += 1;
-
-                LinearLayout chatBubble = chatBubbles.get(index);
-                TextView topText = chatBubble.findViewById(R.id.topText);
-                TextView bottomText = chatBubble.findViewById(R.id.bottomText);
-                String currentTranscript = topText.getText().toString();
-
+            int translationIndex = chatTranslations.size();
+            if (translationIndex < chatBoundaries.size() - 1) {
                 engineExecutor.submit(() -> {
                     try {
-                        String outputText = zebra.translate(
-                                currentTranscript.substring(0, Math.min(
-                                        currentTranscript.length(),
-                                        zebra.getMaxCharacterLimit())));
+                        String currentTranscript = chatTranscript(translationIndex);
+                        String outputText = zebra.translate(currentTranscript);
 
-                        mainHandler.post(() -> {
-                            bottomText.setText(outputText);
-
-                            scrollArea.post(() -> {
-                                scrollArea.fullScroll(View.FOCUS_DOWN);
-                            });
-                        });
+                        chatTranslations.add(outputText);
+                        appendChatBubble();
+                        mainHandler.post(this::translateSource);
                     } catch (ZebraException e) {
                         setError(e.getMessage());
                     }
