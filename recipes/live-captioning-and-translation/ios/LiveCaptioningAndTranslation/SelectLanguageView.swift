@@ -21,6 +21,10 @@ struct SelectLanguageView: View {
 
             if viewModel.chatState == ChatState.LISTENING {
                 ChatView(viewModel: viewModel)
+            } else {
+                Text("Live Captioning And Translation")
+                    .foregroundStyle(Constants.activeBlue)
+                    .font(.title)
             }
 
             Spacer()
@@ -128,7 +132,7 @@ struct SelectLanguageView: View {
                             .disabled(buttonDisabled)
                             .fileImporter(
                                 isPresented: $loadingFile,
-                                allowedContentTypes: [.item]
+                                allowedContentTypes: [.audio]
                             ) { result in
                                 switch result {
                                 case .success(let url):
@@ -153,13 +157,18 @@ struct SelectLanguageView: View {
                             .padding(.leading, 10)
 
                         Spacer()
+
+                        if viewModel.speaking && !viewModel.finalized {
+                            Text(viewModel.timerView)
+                                .padding(.trailing, 10)
+                        }
                     }
 
                     if viewModel.selectAudioFile == nil {
                         VolumeMeterView(viewModel: viewModel)
                     } else {
                         HStack {
-                            if viewModel.speaking {
+                            if viewModel.speaking && !viewModel.finalized {
                                 ProgressView()
                                     .controlSize(.extraLarge)
                             }

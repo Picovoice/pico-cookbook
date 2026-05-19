@@ -76,17 +76,20 @@ class ViewModel: ObservableObject {
     @Published var selectedTargetLanguage: String = "invalid"
     @Published var selectAudioFile: URL?
     @Published var speaking: Bool = false
+    @Published var finalized: Bool = false
     var selectedAudioPCM: [Int16] = []
 
     static let statusTextDefault = ""
     @Published var statusText = statusTextDefault
 
-    @Published var chatText: [Message] = []
-    var translatedIndex: Int = 0
+    @Published var chatText: String = ""
+    @Published var chatBoundaries: [Int] = []
+    @Published var chatTranslations: [String] = []
 
     @Published var errorMessage = ""
 
     @Published var soundLevel: Float = 0.0
+    @Published var timerView: String = ""
 
     private let semaphore = DispatchSemaphore(value: 1)
 
@@ -161,8 +164,6 @@ class ViewModel: ObservableObject {
                     .path(forResource: "zebra_params_\(sourceLanguage)_\(targetLanguage)", ofType: "pv")!
                 zebra = try Zebra(accessKey: ACCESS_KEY, modelPath: zebraModelPath)
 
-                translatedIndex = 0
-
                 if selectAudioFile != nil {
                     setStatusText("Loading Audio Player...")
                     audioStream = try AudioPlayerStream(sampleRate: Double(Cheetah.sampleRate))
@@ -181,7 +182,11 @@ class ViewModel: ObservableObject {
                     DispatchQueue.main.async { [self] in
                         chatState = .LISTENING
                         chatText.removeAll()
-                        chatText.append(Message(transcript: ""))
+                        chatBoundaries.removeAll()
+                        chatTranslations.removeAll()
+                        chatBoundaries.append(0)
+                        speaking = false
+                        finalized = false
                     }
                 }
             } catch {
@@ -261,20 +266,31 @@ class ViewModel: ObservableObject {
                 await MainActor.run {
                     chatState = .LISTENING
                     chatText.removeAll()
-                    chatText.append(Message(transcript: ""))
+                    chatBoundaries.removeAll()
+                    chatTranslations.removeAll()
+                    chatBoundaries.append(0)
                     speaking = true
+                    finalized = false
+                    timerView = ""
                 }
 
                 try audioStream!.playStreamPCM(selectedAudioPCM)
                 let clock = ContinuousClock()
                 let start = clock.now
 
+                let totalTime = selectedAudioPCM.count / Int(Cheetah.sampleRate)
+                let totalTimeString = String(format: "%d:%02d", totalTime / 60, totalTime % 60)
+
                 for index in stride(
                     from: 0,
                     to: selectedAudioPCM.count - Int(Cheetah.frameLength) + 1,
                     by: Int(Cheetah.frameLength)
                 ) {
+                    let elapsedTime = index / Int(Cheetah.sampleRate)
+                    let elapsedTimeString = String(format: "%d:%02d", elapsedTime / 60, elapsedTime % 60)
+
                     let quit = await MainActor.run {
+                        timerView = "\(elapsedTimeString)/\(totalTimeString)"
                         return chatState != .LISTENING
                     }
 
@@ -293,8 +309,9 @@ class ViewModel: ObservableObject {
                 }
 
                 await MainActor.run {
-                    _ = chatText.popLast()
                     speaking = false
+                    finalized = true
+                    timerView = ""
                 }
             } catch {
                 await MainActor.run {
@@ -326,60 +343,73 @@ class ViewModel: ObservableObject {
         }
     }
 
-    private func appendChatText(text: String) {
+    private func appendChatText(text: String, flush: Bool = false) {
         let R0 = /^(.*[.!?])(\s.*)?$/
 
         if !text.isEmpty {
-            if let result = try? R0.wholeMatch(in: text) {
-                DispatchQueue.main.async { [self] in
-                    if chatText.count > 0 {
-                        chatText[chatText.count - 1].appendTranscript(text: String(result.1))
-                    }
-                }
-
-                flushChatText()
-
-                DispatchQueue.main.async { [self] in
-                    if chatText.count > 0 {
-                        chatText[chatText.count - 1].appendTranscript(text: String(result.2 ?? ""))
-                    }
-                }
-
-                return
-            }
-
             DispatchQueue.main.async { [self] in
-                if chatText.count > 0 {
-                    chatText[chatText.count - 1].appendTranscript(text: text)
+                let sizeBefore = chatText.count
+                chatText += text
+
+                if let result = try? R0.wholeMatch(in: text) {
+                    let after = result.2?.count ?? 0
+                    chatBoundaries.append(chatText.count - after)
+                } else if flush {
+                    chatBoundaries.append(chatText.count)
                 }
+
+                if chatBoundaries.count > 1 {
+                    let b0 = chatBoundaries[chatBoundaries.count - 2]
+                    let b1 = chatBoundaries[chatBoundaries.count - 1]
+
+                    if b1 - b0 > zebra!.maxCharacterLimit! {
+                        chatBoundaries[chatBoundaries.count - 1] = b0 + sizeBefore
+                    }
+                }
+
+                translate()
             }
         }
     }
 
-    private func flushChatText() {
-        DispatchQueue.main.async { [self] in
-            if chatText.count > 0 && !chatText[chatText.count - 1].transcript.isEmpty {
-                chatText[chatText.count - 1].appendTranslated(text: "")
-                chatText.append(Message(transcript: ""))
-                translate()
+    public func chatTranscript(index: Int) -> String {
+        let start = chatBoundaries[index]
+        let end = if index + 1 < chatBoundaries.count {
+            chatBoundaries[index + 1]
+        } else {
+            chatText.count
+        }
+
+        if let startIndex = chatText.index(chatText.startIndex, offsetBy: start, limitedBy: chatText.endIndex) {
+            if let endIndex = chatText.index(chatText.startIndex, offsetBy: end, limitedBy: chatText.endIndex) {
+                return String(chatText[startIndex..<endIndex]
+                    .trimmingPrefix(while: \.isWhitespace))
+            } else {
+                return ""
             }
+        } else {
+            return ""
         }
     }
 
     private func translate() {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             do {
-                let index = translatedIndex
-                translatedIndex += 1
-
                 semaphore.wait()
-                let translation = try self.zebra!.translate(text: chatText[index].transcript)
-                semaphore.signal()
+
+                let translateIndex = chatTranslations.count
+                if translateIndex >= chatBoundaries.count - 1 {
+                    semaphore.signal()
+                    return
+                }
+
+                let text = chatTranscript(index: translateIndex)
+                let translation = try self.zebra!.translate(text: text)
 
                 DispatchQueue.main.async { [self] in
-                    if chatText.count > 0 {
-                        chatText[index].appendTranslated(text: translation)
-                    }
+                    chatTranslations.append(translation)
+                    semaphore.signal()
+                    translate()
                 }
             } catch {
                 DispatchQueue.main.async { [self] in
@@ -399,8 +429,7 @@ class ViewModel: ObservableObject {
 
                 if partialTranscript.1 && self.cheetah != nil {
                     let finalTranscript = try self.cheetah!.flush()
-                    appendChatText(text: finalTranscript)
-                    flushChatText()
+                    appendChatText(text: finalTranscript, flush: true)
                 }
             }
         } catch {
@@ -417,43 +446,21 @@ class ViewModel: ObservableObject {
     }
 
     func computeSoundLevel(frame: [Int16]) {
-            let MIN_DB: Double = -40
-            let MAX_DB: Double = 0
+        let MIN_DB: Double = -40
+        let MAX_DB: Double = 0
 
-            var sum: Double = 0
-            for sample in frame {
-                sum += pow(Double(sample), 2)
-            }
-
-            let rms = (sum / Double(frame.count)) / pow(Double(Int16.max), 2)
-            let db: Double = 10 * log10(max(rms, 1e-9))
-            let normalized = (db - MIN_DB) / (MAX_DB - MIN_DB)
-            let clamped = max(0.0, min(1.0, normalized))
-
-            DispatchQueue.main.async { [self] in
-                soundLevel = soundLevel * 0.5 + Float(clamped) * 0.5
-            }
+        var sum: Double = 0
+        for sample in frame {
+            sum += pow(Double(sample), 2)
         }
-}
 
-struct Message: Equatable {
-    var transcript: String
-    var translated: String?
+        let rms = (sum / Double(frame.count)) / pow(Double(Int16.max), 2)
+        let db: Double = 10 * log10(max(rms, 1e-9))
+        let normalized = (db - MIN_DB) / (MAX_DB - MIN_DB)
+        let clamped = max(0.0, min(1.0, normalized))
 
-    mutating func appendTranscript(text: String) {
-        if self.transcript.isEmpty {
-            self.transcript.append(String(text
-                .trimmingPrefix(while: \.isWhitespace)))
-        } else {
-            self.transcript.append(text)
-        }
-    }
-
-    mutating func appendTranslated(text: String) {
-        if self.translated != nil {
-            self.translated!.append(text)
-        } else {
-            self.translated = text
+        DispatchQueue.main.async { [self] in
+            soundLevel = soundLevel * 0.5 + Float(clamped) * 0.5
         }
     }
 }

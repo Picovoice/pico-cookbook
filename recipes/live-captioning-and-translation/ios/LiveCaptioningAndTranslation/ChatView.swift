@@ -9,8 +9,18 @@
 
 import SwiftUI
 
+let DOTS = [
+    ".  ",
+    ".. ",
+    "...",
+    " ..",
+    "  .",
+    "   "
+]
+
 struct ChatView: View {
     @ObservedObject var viewModel: ViewModel
+    let startDate = Date()
 
     var body: some View {
         ZStack {
@@ -22,29 +32,53 @@ struct ChatView: View {
         }
     }
 
+    @ViewBuilder
+    func TextBox(text: String, color: Color) -> some View {
+        Text(text)
+            .foregroundColor(color)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    @ViewBuilder
+    func AnimatedDots() -> some View {
+        TimelineView(.periodic(from: startDate, by: 0.1)) { context in
+            let index = Int64(context.date.timeIntervalSince1970 * 10) % Int64(DOTS.count)
+            TextBox(text: DOTS[Int(index)], color: Constants.activeBlue)
+        }
+    }
+
     var resultsBox: some View {
         VStack {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading) {
-                        ForEach(0..<viewModel.chatText.count, id: \.self) { i in
-                            let transcript = viewModel.chatText[i].transcript
-                            let translated = viewModel.chatText[i].translated
+                    VStack(alignment: .leading) {
+                        ForEach(0..<viewModel.chatTranslations.count, id: \.self) { i in
+                            let transcript = viewModel.chatTranscript(index: i)
+                            let translated = viewModel.chatTranslations[i]
 
                             VStack(spacing: 0) {
-                                Text(transcript)
-                                    .foregroundColor(translated == nil ? Constants.activeBlue : .gray)
-                                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 8)
-                                if translated != nil {
-                                    Text(translated!)
-                                        .foregroundColor(Constants.activeBlue)
-                                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                                        .padding(.horizontal, 8)
-                                        .padding(.bottom, 8)
+                                TextBox(text: transcript, color: .gray)
+                                TextBox(text: translated, color: Constants.activeBlue)
+                            }
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .background(Constants.backgroundGrey)
+                            .cornerRadius(3.0)
+                            .padding(.bottom, 8)
+                        }
+
+                        let chatText = viewModel.chatTranscript(
+                            index: viewModel.chatTranslations.count)
+
+                        if !viewModel.finalized {
+                            VStack(spacing: 0) {
+                                if chatText.isEmpty {
+                                    AnimatedDots()
+                                } else {
+                                    TextBox(text: chatText, color: Constants.activeBlue)
                                 }
                             }
+                            .padding(8)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
                             .background(Constants.backgroundGrey)
                             .cornerRadius(3.0)
@@ -54,6 +88,10 @@ struct ChatView: View {
                     .padding(12)
                     .id(0)
                 }.onChange(of: viewModel.chatText) { () in
+                    proxy.scrollTo(0, anchor: .bottom)
+                }.onChange(of: viewModel.chatBoundaries) { () in
+                    proxy.scrollTo(0, anchor: .bottom)
+                }.onChange(of: viewModel.chatTranslations) { () in
                     proxy.scrollTo(0, anchor: .bottom)
                 }
             }
@@ -70,8 +108,4 @@ struct ChatView: View {
             alignment: .topLeading
         )
     }
-}
-
-#Preview {
-    ChatView(viewModel: ViewModel())
 }
