@@ -1016,10 +1016,24 @@
   dependencies:
     "@picovoice/web-utils" "=1.4.3"
 
+"@picovoice/orca-web@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@picovoice/orca-web/-/orca-web-3.0.0.tgz#774f76a827f1ad09c0557c163e1b6f0af0f250bf"
+  integrity sha512-ZkUDA0zgjHQupFWOtUnpNskvDiqZdYx5DXCh2Mypzz/f8YvQ8YavrGvyDM2o9n/nei4PF2Czck6x4YtxMl/5vA==
+  dependencies:
+    "@picovoice/web-utils" "=1.4.3"
+
 "@picovoice/porcupine-web@^4.0.0":
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/@picovoice/porcupine-web/-/porcupine-web-4.0.0.tgz#33946e43a48db84a8c27d6fd4b61a747304af085"
   integrity sha512-YqXBp6R9od6NTgcm80UyyB71c4eBArxD3BtX1SKQC4/xAvThM2VgwtPj4J7gvjl9yqqlcr+0Mg3T4lbKIOziTw==
+  dependencies:
+    "@picovoice/web-utils" "=1.4.3"
+
+"@picovoice/rhino-web@^4.0.0":
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/@picovoice/rhino-web/-/rhino-web-4.0.0.tgz#ca2a69dd968427359045506a9d840f99bfb2b2b8"
+  integrity sha512-wI8cFj6dTCDYm5SOjyQI94MKlIFFWQ5MIJ/UbJVi4tuEi0MGCXTpbKMpuxbnqpG/hskKqQzOtjs7jy/7DWQhwQ==
   dependencies:
     "@picovoice/web-utils" "=1.4.3"
 
