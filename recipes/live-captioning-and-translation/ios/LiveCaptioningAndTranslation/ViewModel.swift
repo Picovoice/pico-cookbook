@@ -348,13 +348,14 @@ class ViewModel: ObservableObject {
 
         if !text.isEmpty {
             DispatchQueue.main.async { [self] in
+                let currentBoundary = chatBoundaries.last!
                 let sizeBefore = chatText.count
                 chatText += text
 
                 if let result = try? R0.wholeMatch(in: text) {
                     let after = result.2?.count ?? 0
                     chatBoundaries.append(chatText.count - after)
-                } else if flush {
+                } else if flush || chatText.count - currentBoundary >= zebra!.maxCharacterLimit! {
                     chatBoundaries.append(chatText.count)
                 }
 

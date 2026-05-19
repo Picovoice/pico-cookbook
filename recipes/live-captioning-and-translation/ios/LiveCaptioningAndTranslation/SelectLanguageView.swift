@@ -160,7 +160,7 @@ struct SelectLanguageView: View {
 
                         if viewModel.speaking && !viewModel.finalized {
                             Text(viewModel.timerView)
-                                .padding(.trailing, 10)
+                                .padding(.trailing, 20)
                         }
                     }
 
