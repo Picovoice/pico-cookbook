@@ -1,7 +1,6 @@
-# Speech-to-Speech Translation on the Web
+# Live Captioning and Translation on the Web
 
-Real-time speech-to-speech translation powered by on-device AI. Speak in one language and hear it translated in real
-time into another.
+Transcribe and optionally translate live audio in real time, powered by on-device AI.
 
 ## Compatibility
 
@@ -19,13 +18,12 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ## Usage
 
-These instructions assume your current working directory is `recipes/speech-to-speech-translation/web`.
+These instructions assume your current working directory is `recipes/live-captioning-and-translation/web`.
 
 ### 1. Download the Required Models
 
-Run the setup script to download the models for [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/),
-[Zebra Translation](https://picovoice.ai/docs/zebra/), and
-[Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/):
+Run the setup script to download the models for [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/) and
+[Zebra Translation](https://picovoice.ai/docs/zebra/):
 
 ```console
 python setup.py

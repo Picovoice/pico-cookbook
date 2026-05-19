@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="index.js"></script>
+    <script type="application/javascript" src="controller.js"></script>
+    <style>
+      html,
+      body {
+        height: 90%;
+        font-family: sans-serif;
+      }
+
+      #error {
+        white-space: pre;
+        background: red;
+        color: white;
+        padding: 5px;
+        font-size: 16px;
+      }
+
+      #appBlock {
+        display: none;
+        align-items: center;
+        flex-flow: column;
+        height: 100%;
+        font-size: 14px;
+        width: 100%;
+        margin-top: 75px;
+      }
+
+      .dialogArea {
+        flex: 0 0 auto;
+        height: calc(95% - 110px);
+        width: 60%;
+        max-width: 500px;
+      }
+
+      .messageArea {
+        flex: 0 0 auto;
+        width: 60%;
+        display: flex;
+        max-width: 500px;
+      }
+
+      #result {
+        margin: 0;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        height: 100%;
+        overflow-y: auto;
+        padding: 5px;
+      }
+
+      #message {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+      }
+
+      .align-start {
+        display: flex;
+      }
+
+      .text-bubble {
+        width: 100%;
+        border-radius: 5px;
+        background-color: lightblue;
+        margin-bottom: 5px;
+      }
+
+      .upper-bubble {
+        border-radius: 5px;
+        padding: 6px;
+      }
+
+      .lower-bubble {
+        border-radius: 5px;
+        padding: 6px;
+      }
+
+      .mute-text {
+        background-color: lightgrey;
+        color: darkgrey;
+      }
+
+      .result-container {
+        height: 100%;
+        border: 1px solid rgb(118, 118, 118);
+      }
+
+      h3 {
+        margin-bottom: 5px;
+        color: #333;
+      }
+
+      #meterContainer {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        height: 80px;
+        margin-top: 8px;
+      }
+
+      .volume-bar {
+        width: 8px;
+        height: 8px;
+        background-color: #377dff;
+        border-radius: 4px;
+        transition: transform 0.05s ease-in-out;
+        transform-origin: center;
+      }
+
+      #resetContainer {
+        align-items: center;
+        margin-top: 8px;
+        height: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Live Captioning & Translation</h1>
+
+    <div id="topStatusBlock">
+      <div>
+        <b>Status:</b> <span id="topStatus">Not loaded.</span>
+        <div id="error" style="white-space: pre; display: none;"></div>
+      </div>
+      <hr />
+    </div>
+
+    <div id="initBlock">
+      <label for="accessKey">AccessKey: </label>
+      <input type="text" id="accessKey" name="accessKey" />
+      <br /><br />
+      <label for="audioFile">Audio File: </label>
+      <button id="audioFileClear">clear</button>
+      <input type="file" id="audioFile" name="audioFile" />
+      <br /><br />
+      <label for="sourceLanguage">
+        Select source language:
+      </label>
+      <select name="sourceLanguage" id="sourceLanguage">
+        <option value="de">de</option>
+        <option value="en">en</option>
+        <option value="es">es</option>
+        <option value="fr">fr</option>
+        <option value="it">it</option>
+      </select>
+      <br />
+      <label for="targetLanguage">
+        Select target language:
+      </label>
+      <select name="targetLanguage" id="targetLanguage">
+        <option value="de">de</option>
+        <option value="en">en</option>
+        <option value="es">es</option>
+        <option value="fr">fr</option>
+        <option value="it">it</option>
+      </select>
+      <br /><br />
+      <button id="init" disabled>Start demo</button>
+    </div>
+
+    <div id="appBlock">
+      <div class="dialogArea">
+        <div class="result-container">
+          <pre id="result"></pre>
+        </div>
+      </div>
+
+      <div id="message" class="messageArea">
+        <div id="meterContainer" style="display: none">
+          <div id="bar1" class="volume-bar"></div>
+          <div id="bar2" class="volume-bar"></div>
+          <div id="bar3" class="volume-bar"></div>
+        </div>
+        <div id="resetContainer">
+          <button id="reset">Reset demo</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
