@@ -116,8 +116,8 @@ def main() -> None:
     models_folder = os.path.join(os.path.dirname(__file__), "public", "models")
 
     context_target_path = os.path.join(models_folder, "speaker_aware_voice_assistant_demo_web.rhn")
-    shutil.copy(args.context_path, context_target_path)
-    print(f"Copied {args.context_path} to {context_target_path}")
+    shutil.copy(args.rhino_context_path, context_target_path)
+    print(f"Copied {args.rhino_context_path} to {context_target_path}")
 
     keywords_folder = os.path.join(os.path.dirname(__file__), "public", "keywords")
 

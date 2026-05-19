@@ -13,6 +13,13 @@
       <div class="modal-box">
         <h2>Speaker Name</h2>
         <input type="text" id="speakerNameInput" autocomplete="off" />
+
+        <div id="role-select-container">
+            <h3>Speaker Role</h3>
+            <div id="role-user" class="role-option">User</div>
+            <div id="role-admin" class="role-option">Admin</div>
+        </div>
+
         <div class="modal-buttons">
           <button id="btnModalCancel" class="secondary">Cancel</button>
           <button id="btnModalEnroll">Enroll</button>
@@ -21,11 +28,16 @@
     </div>
 
     <div class="container">
-      <h1 id="titleText">Speaker Aware Wake Word</h1>
+      <h1 id="titleText">Speaker Aware Voice Assistant</h1>
       <div id="errorText" class="hidden"></div>
       <div id="initContainer">
         <input type="text" id="accessKey" placeholder="Enter AccessKey" />
         <button id="btnInit">Start Enrollment</button>
+
+        <div id="status-container" style="display: none;">
+          <span id="status"></span>
+          <div id="status-spinner" class="loader" style="opacity: 0; display: none;"></div>
+        </div>
       </div>
 
       <div
@@ -38,7 +50,9 @@
           align-items: center;
         "
       >
-        <div id="statusText">Ready to Enroll</div>
+        <div id="notice-text">Ready to Enroll</div>
+
+        <div id="extra-text" class="hidden"></div>
 
         <div id="layoutDashboard" class="hidden">
           <div class="dashboard-title">Enrolled Profiles</div>

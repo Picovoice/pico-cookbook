@@ -1,4 +1,4 @@
-# Speaker-Aware Voice Assistant on the Web
+# Speaker Aware Voice Assistant on the Web
 
 Build voice assistants that can personalize behavior and enforce access control based on who is speaking.
 

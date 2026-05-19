@@ -10,13 +10,41 @@ import { RhinoInference, RhinoWorker } from '@picovoice/rhino-web';
 import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 import { PvEngine } from '@picovoice/web-voice-processor/dist/types/types';
 
+class Mutex {
+  private locked: boolean = false;
+  private queue: Array<(unlock: () => void) => void> = [];
+
+  async lock(): Promise<() => void> {
+    return new Promise(resolve => {
+      const unlock = () => {
+        const next = this.queue.shift();
+        if (next) {
+          next(unlock);
+        } else {
+          this.locked = false;
+        }
+      };
+
+      if (this.locked) {
+        this.queue.push(resolve);
+      } else {
+        this.locked = true;
+        resolve(unlock);
+      }
+    });
+  }
+}
+
 export type DemoCallbacks = {
   onUpdateStatus: (newStatus: string) => void;
+  setLoadingState: (enabled: boolean) => Promise<void>,
   onVolume: (volume: number) => void;
   onEnrollProgress: (progress: number) => void;
   onEnrollComplete: (profile: EagleProfile) => void;
   onWakeWordRecognized: () => void;
+  beforeInferenceResponse: (intent: string | undefined, similarityScore: number) => void;
   onWordSpoken: (word: string) => void;
+  afterInferenceResponse: () => void;
   onError: (error: string) => void;
 };
 
@@ -40,27 +68,23 @@ let rhino: RhinoWorker | null = null;
 
 let enrolledProfiles: UserProfile[] = [];
 let enrollProgress = 0;
+let enrollLock = new Mutex();
 
 let callbacks: DemoCallbacks = {
   onUpdateStatus: (_) => undefined,
+  setLoadingState: async (_) => undefined,
   onVolume: (_) => undefined,
   onEnrollProgress: (_) => undefined,
   onEnrollComplete: (_) => undefined,
   onWakeWordRecognized: () => undefined,
+  beforeInferenceResponse: (a, b) => undefined,
   onWordSpoken: (_) => undefined,
+  afterInferenceResponse: () => undefined,
   onError: (_) => undefined
 };
 
 const MIN_DB = -40.0;
 const MAX_DB = 0.0;
-
-const ENROLLMENT_SENTENCES = [
-    "The quick brown fox jumps over the lazy dog.",
-    "I am recording my voice for speaker enrollment.",
-    "This is my normal speaking voice in a quiet room.",
-    "The assistant should recognize me when I speak.",
-    "Voice recognition works best with clean and natural speech.",
-];
 
 const ADMIN_SIMILARITY_THRESHOLD = 0.9;
 
@@ -96,24 +120,36 @@ const eagleProfilerAudioEngine: PvEngine = {
 
     const frame: Int16Array = event.data.inputFrame;
 
-    var tempPcmBuffer = new Int16Array(eagleProfilerPcmBuffer.length + frame.length);
-    tempPcmBuffer.set(eagleProfilerPcmBuffer);
-    tempPcmBuffer.set(frame, eagleProfilerPcmBuffer.length);
-    eagleProfilerPcmBuffer = tempPcmBuffer
+    const unlock = await enrollLock.lock();
 
-    if (eagleProfilerPcmBuffer.length >= eagleProfiler.frameLength) {
-      enrollProgress = await eagleProfiler.enroll(eagleProfilerPcmBuffer.slice(0, eagleProfiler.frameLength));
-      callbacks.onEnrollProgress(enrollProgress);
-
-      eagleProfilerPcmBuffer = eagleProfilerPcmBuffer.slice(eagleProfiler.frameLength);
-
+    try {
       if (enrollProgress >= 100) {
-        const profile = await eagleProfiler.export();
-        await stopEnrollment();
-
-        callbacks.onEnrollComplete(profile);
-        eagleProfilerPcmBuffer = new Int16Array();
+        return;
       }
+
+      var tempPcmBuffer = new Int16Array(eagleProfilerPcmBuffer.length + frame.length);
+      tempPcmBuffer.set(eagleProfilerPcmBuffer);
+      tempPcmBuffer.set(frame, eagleProfilerPcmBuffer.length);
+      eagleProfilerPcmBuffer = tempPcmBuffer;
+
+      if (eagleProfilerPcmBuffer.length >= eagleProfiler.frameLength) {
+        // NOTE: eagleProfiler is not threadsafe, and this callback can be invoked in-between awaits.
+        enrollProgress = await eagleProfiler.enroll(eagleProfilerPcmBuffer.slice(0, eagleProfiler.frameLength));
+        callbacks.onEnrollProgress(enrollProgress);
+
+        eagleProfilerPcmBuffer = eagleProfilerPcmBuffer.slice(eagleProfiler.frameLength);
+
+        if (enrollProgress >= 100) {
+          await stopEnrollment();
+
+          const profile = await eagleProfiler.export();
+
+          callbacks.onEnrollComplete(profile);
+          eagleProfilerPcmBuffer = new Int16Array();
+        }
+      }
+    } finally {
+      unlock();
     }
   },
 };
@@ -145,7 +181,7 @@ const bufferedRhinoEngine: PvEngine = {
     var tempPcmBuffer = new Int16Array(rhinoPcmBuffer.length + frame.length);
     tempPcmBuffer.set(rhinoPcmBuffer);
     tempPcmBuffer.set(frame, rhinoPcmBuffer.length);
-    rhinoPcmBuffer = tempPcmBuffer
+    rhinoPcmBuffer = tempPcmBuffer;
 
     if (rhino !== null && rhinoPcmBuffer.length >= rhino.frameLength) {
       rhino.process(rhinoPcmBuffer.slice(0, rhino.frameLength));
@@ -203,7 +239,9 @@ const porcupineKeywordCallback = async (): Promise<void> => {
 const rhinoInferenceCallback = async (
   inference: RhinoInference
 ): Promise<void> => {
-  if (!inference.isFinalized) {
+  if (!eagle) {
+    throw Error("Eagle was not initialized")
+  } else if (!inference.isFinalized) {
     return;
   } else if (!inference.isUnderstood) {
     rhinoPcmBuffer = new Int16Array();
@@ -211,11 +249,13 @@ const rhinoInferenceCallback = async (
     return;
   }
 
-  if (rhinoPcmBuffer.length < eagle.minProcessSamples()) {
-    rhinoPcmBuffer.fill(0, rhinoPcmBuffer.length, eagle.minProcessSamples());
+  if (rhinoPcmBuffer.length < eagle.minProcessSamples) {
+    rhinoPcmBuffer.fill(0, rhinoPcmBuffer.length, eagle.minProcessSamples);
   }
 
   await WebVoiceProcessor.unsubscribe(bufferedRhinoEngine);
+
+  console.log(`Internal enrolledProfiles = ${enrolledProfiles}`);
 
   let similarities = await eagle.process(rhinoPcmBuffer, enrolledProfiles.map(x => x.profile));
   if (similarities == null) {
@@ -231,6 +271,8 @@ const rhinoInferenceCallback = async (
     const similarityScore = similarities[highestSimilarityUserIndex];
     const user = enrolledProfiles[highestSimilarityUserIndex];
 
+    callbacks.beforeInferenceResponse(inference.intent, similarityScore);
+
     if (inference.intent === "adminOnly") {
       if (similarityScore >= ADMIN_SIMILARITY_THRESHOLD) {
         if (user.role === UserRole.ADMIN) {
@@ -245,8 +287,10 @@ const rhinoInferenceCallback = async (
       await synthesizeAndPlayback(orca!, audio!, `Hi ${user.name}. I will personalize this command for you.`, callbacks.onWordSpoken);
     } else if (inference.intent === "generic") {
       await synthesizeAndPlayback(orca!, audio!, 'Okay. This command is available to everyone.', callbacks.onWordSpoken);
-    }
+    }    
   }
+
+  callbacks.afterInferenceResponse();
 
   rhinoPcmBuffer = new Int16Array();
   await WebVoiceProcessor.subscribe(bufferedRhinoEngine);
@@ -257,6 +301,8 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
 
   try {
     const FORCE_WRITE = true;
+
+    callbacks.setLoadingState(true);
 
     callbacks.onUpdateStatus("Loading Porcupine");
     porcupine = await PorcupineWorker.create(
@@ -279,11 +325,11 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
     callbacks.onUpdateStatus("Loading Eagle Profiler");
     eagleProfiler = await EagleProfilerWorker.create(accessKey, EAGLE_MODEL, {
       minEnrollmentChunks: 4,
-      voiceThreshold: 0.0,
+      voiceThreshold: 0.3,
     });
     callbacks.onUpdateStatus("Loading Eagle");
     eagle = await EagleWorker.create(accessKey, EAGLE_MODEL, {
-      voiceThreshold: 0.0
+      voiceThreshold: 0.3
     });
 
     callbacks.onUpdateStatus("Loading Orca");
@@ -296,7 +342,7 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
     callbacks.onUpdateStatus("Loading Rhino");
     rhino = await RhinoWorker.create(
       accessKey,
-      { publicPath: 'models/call_assist_demo_web.rhn', forceWrite: FORCE_WRITE },
+      { publicPath: 'models/speaker_aware_voice_assistant_demo_web.rhn', forceWrite: FORCE_WRITE },
       rhinoInferenceCallback,
       { publicPath: 'models/rhino_params.pv', forceWrite: FORCE_WRITE },
     );
@@ -309,6 +355,9 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
   } catch (e: any) {
     callbacks.onError(e.toString());
     throw e;
+  } finally {
+    callbacks.onUpdateStatus("");
+    await callbacks.setLoadingState(false);
   }
 };
 
@@ -331,6 +380,7 @@ const startTesting = async (profiles: UserProfile[]): Promise<void> => {
   if (profiles.length === 0) {
     throw new Error('No speaker profiles enrolled.');
   }
+  console.log(`start testing ${profiles}`);
 
   enrolledProfiles = profiles;
 
