@@ -277,7 +277,7 @@ button[coloured] {
     transition: opacity 0.4s ease;
 }
 
-.caller-bubble {
+.ai-bubble {
     display: inline-block;
 
     white-space: pre-wrap;
@@ -295,7 +295,7 @@ button[coloured] {
     font-size: 14px;
 }
 
-.ai-bubble {
+.user-bubble {
     display: table;
 
     white-space: pre-wrap;
@@ -420,7 +420,7 @@ button[coloured] {
 
 /* ---------------------------------------------------------------- */
 
-#volume-meter-user, #volume-meter-caller {
+#volume-meter-user, #volume-meter-user {
   display: flex;
   gap: 6px;
   height: 40px;

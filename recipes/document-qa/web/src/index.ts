@@ -5,7 +5,6 @@ import { PicoLLMWorker } from '@picovoice/picollm-web';
 import { OrcaWorker } from '@picovoice/orca-web';
 import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 import { AudioStream } from './audio_stream';
-import { Action, promptFromAction, isTerminalFromAction, allActions } from './action';
 
 const MIN_DB = -40.0;
 const MAX_DB = 0.0;
@@ -36,14 +35,11 @@ type PvObject = {
   llmModel: PicoLLMWorker,
   llmEmbedding: PicoLLMWorker,
   orca: OrcaWorker,
-  action: Action,
 
   chunks: string[] | null,
   embeddings: number[][] | null,
 
   sendMessage: (message: string, obj: any) => void,
-
-  askForDetailsRetryCount: number,
 };
 
 let object: PvObject | null = null;
@@ -98,8 +94,6 @@ const generateEmbeddings = async (chunks: string[]): Promise<number[][]> => {
 };
 
 const chunkDocument = (text: string): string[] => {
-  // TODO: Process line endings?
-
   let chunks = [];
   let start = 0;
 
@@ -107,9 +101,10 @@ const chunkDocument = (text: string): string[] => {
     let end = Math.min(start + CHUNK_SIZE, text.length);
 
     if (end < text.length) {
-            // paragraph_break = text.rfind("\n\n", start, end)
-            // if paragraph_break > start + int(chunk_size * 0.5):
-            //     end = paragraph_break
+      const paragraph_break = text.lastIndexOf("\n\n", end);
+      if (paragraph_break > start + (CHUNK_SIZE * 0.5)) {
+        end = paragraph_break;
+      }
     }
 
     const chunk = text.slice(start, end).trim();
@@ -187,20 +182,20 @@ const init = async (
 
     sendMessage("ai state", "");
 
-    await stopListenForCaller();
+    await stopListenForUser();
 
     sendMessage("restart demo", null);
   };
 
-  const listenForCaller = async () => {
-    sendMessage("new caller bubble", "[CALLER] ");
+  const listenForUser = async () => {
+    sendMessage("new user bubble", "[USER] ");
     sendMessage("start listening", null);
-    sendMessage("ai state", "AI: Listening to caller");
+    sendMessage("ai state", "AI: Listening");
 
     const cheetah = BufferedCheetahEngine;
     await WebVoiceProcessor.subscribe(cheetah);
   };
-  const stopListenForCaller = async () => {
+  const stopListenForUser = async () => {
     sendMessage("stop listening", null);
     const cheetah = BufferedCheetahEngine;
     await WebVoiceProcessor.unsubscribe(cheetah);
@@ -218,10 +213,10 @@ const init = async (
       cheetah.flush();
     }
 
-    let callerText = makeRequest("bubble contents").replace("[CALLER]", "").trim();
-    if (transcript.isFlushed && callerText.length > 0) {
-      await stopListenForCaller();
-      await llmProcessCall(callerText);
+    let userText = makeRequest("bubble contents").replace("[USER]", "").trim();
+    if (transcript.isFlushed && userText.length > 0) {
+      await stopListenForUser();
+      await llmProcessCall(userText);
     }
   }
 
@@ -231,7 +226,7 @@ const init = async (
       const cached = JSON.parse(cachedStr);
       object!.chunks = cached.chunks;
       object!.embeddings = cached.embeddings;
-      listenForCaller();
+      listenForUser();
     } else {
       const reader = new FileReader();
       reader.readAsText(file, 'UTF-8');
@@ -250,11 +245,8 @@ const init = async (
           }));
 
           sendMessage("stop llm spinner", null);
-          listenForCaller();
+          listenForUser();
         });
-      }
-      reader.onerror = () => {
-        // TODO
       }
     }
   }
@@ -268,7 +260,7 @@ const init = async (
     const stream = await object!.orca.streamOpen();
     const streamMutex = new Mutex();
 
-    sendMessage("ai state", "AI: Speaking to caller");
+    sendMessage("ai state", "AI: Speaking");
     sendMessage("new ai bubble", "[AI] ");
 
     let pcmBuffered = 0;
@@ -312,8 +304,7 @@ const init = async (
     await object!.audio.waitPlayback();
     await stream.close();
 
-    object!.action = Action.ASK_FOR_DETAILS;
-    listenForCaller();
+    listenForUser();
   };
 
   sendMessage("status", "Loading Cheetah");
@@ -349,7 +340,7 @@ const init = async (
     {}
   );
 
-  sendMessage("ai state", "AI: Connecting caller");
+  sendMessage("ai state", "AI: Waiting for Document");
   sendMessage("status", "Loading Audio Stream");
   const audio = new AudioStream(orca.sampleRate);
 
@@ -359,14 +350,11 @@ const init = async (
     llmModel: llmModel,
     llmEmbedding: llmEmbedding,
     orca: orca,
-    action: Action.GREET,
 
     chunks: null,
     embeddings: null,
 
     sendMessage,
-
-    askForDetailsRetryCount: 0,
   };
 
   return {

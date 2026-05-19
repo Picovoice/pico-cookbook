@@ -16,3 +16,4 @@ with a picoLLM chat model, and speaks the answer with Orca Streaming Text-to-Spe
 - [Android](android)
 - [iOS](ios)
 - [Python](python)
+- [Web](web)

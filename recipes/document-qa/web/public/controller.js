@@ -41,7 +41,7 @@ window.onload = () => {
   const mainContainer = document.getElementById("main-container");
 
   const chatBlock = document.getElementById("chat-block");
-  const volumeMeterCaller = document.getElementById('volume-meter-caller');
+  const volumeMeterUser = document.getElementById('volume-meter-user');
   const bar1 = document.getElementById('bar1');
   const bar2 = document.getElementById('bar2');
   const bar3 = document.getElementById('bar3');
@@ -194,19 +194,6 @@ window.onload = () => {
         }
       }
 
-    } else if (message === "new caller bubble") {
-      let text = obj;
-      let bubble = document.createElement("div");
-      bubble.classList.add("caller-bubble");
-      bubble.style.opacity = "0";
-      bubble.innerHTML += text;
-      if (bubble.innerHTML.length > 0) {
-        bubble.style.opacity = "1";
-      }
-
-      currentBubbleText = text;
-      chatBlock.appendChild(bubble);
-
     } else if (message === "new ai bubble") {
       let text = obj;
       let bubble = document.createElement("div");
@@ -220,12 +207,25 @@ window.onload = () => {
       currentBubbleText = text;
       chatBlock.appendChild(bubble);
 
+    } else if (message === "new user bubble") {
+      let text = obj;
+      let bubble = document.createElement("div");
+      bubble.classList.add("user-bubble");
+      bubble.style.opacity = "0";
+      bubble.innerHTML += text;
+      if (bubble.innerHTML.length > 0) {
+        bubble.style.opacity = "1";
+      }
+
+      currentBubbleText = text;
+      chatBlock.appendChild(bubble);
+
     } else if (message === "start listening") {
-      volumeMeterCaller.style.opacity = "1";
+      volumeMeterUser.style.opacity = "1";
       startBubbleDot();
 
     } else if (message === "stop listening") {
-      volumeMeterCaller.style.opacity = "0";
+      volumeMeterUser.style.opacity = "0";
       stopBubbleDot();
 
     } else if (message === "ai state") {
@@ -233,13 +233,20 @@ window.onload = () => {
       aiState.innerHTML = text;
 
     } else if (message === "restart demo") {
+      volumeMeterUser.style.opacity = "0";
+      stopBubbleDot();
+
       restartDemo();
     
     } else if (message === "start llm spinner") {
       llmSpinner.style.opacity = "1";
+      initButton.disabled = true;
+      initButton.removeAttribute("coloured");
 
     } else if (message === "stop llm spinner") {
       llmSpinner.style.opacity = "0";
+      initButton.disabled = false;
+      initButton.setAttribute("coloured", "");
     
     }
   };
