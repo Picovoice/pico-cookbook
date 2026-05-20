@@ -10,6 +10,8 @@ import { RhinoInference, RhinoWorker } from '@picovoice/rhino-web';
 import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 import { PvEngine } from '@picovoice/web-voice-processor/dist/types/types';
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 class Mutex {
   private locked: boolean = false;
   private queue: Array<(unlock: () => void) => void> = [];
@@ -44,7 +46,7 @@ export type DemoCallbacks = {
   onWakeWordRecognized: () => void;
   beforeInferenceResponse: (intent: string | undefined, similarityScore: number) => void;
   onWordSpoken: (word: string) => void;
-  afterInferenceResponse: () => void;
+  afterInferenceResponse: (success: boolean) => void;
   onError: (error: string) => void;
 };
 
@@ -79,7 +81,7 @@ let callbacks: DemoCallbacks = {
   onWakeWordRecognized: () => undefined,
   beforeInferenceResponse: (a, b) => undefined,
   onWordSpoken: (_) => undefined,
-  afterInferenceResponse: () => undefined,
+  afterInferenceResponse: (_) => undefined,
   onError: (_) => undefined
 };
 
@@ -99,6 +101,13 @@ const normalizeAudio = (frame: Int16Array) => {
   const normalizedVolume = Math.max(0.0, Math.min(1.0, normalized));
 
   return normalizedVolume;
+}
+
+const concat = (frame1: Int16Array, frame2: Int16Array): Int16Array => {
+  const tempPcmBuffer = new Int16Array(frame1.length + frame2.length);
+  tempPcmBuffer.set(frame1);
+  tempPcmBuffer.set(frame2, frame1.length);
+  return tempPcmBuffer;
 }
 
 const callbackAudioEngine: PvEngine = {
@@ -127,13 +136,9 @@ const eagleProfilerAudioEngine: PvEngine = {
         return;
       }
 
-      var tempPcmBuffer = new Int16Array(eagleProfilerPcmBuffer.length + frame.length);
-      tempPcmBuffer.set(eagleProfilerPcmBuffer);
-      tempPcmBuffer.set(frame, eagleProfilerPcmBuffer.length);
-      eagleProfilerPcmBuffer = tempPcmBuffer;
+      eagleProfilerPcmBuffer = concat(eagleProfilerPcmBuffer, frame);
 
       if (eagleProfilerPcmBuffer.length >= eagleProfiler.frameLength) {
-        // NOTE: eagleProfiler is not threadsafe, and this callback can be invoked in-between awaits.
         enrollProgress = await eagleProfiler.enroll(eagleProfilerPcmBuffer.slice(0, eagleProfiler.frameLength));
         callbacks.onEnrollProgress(enrollProgress);
 
@@ -158,34 +163,40 @@ var porcupinePcmBuffer = new Int16Array();
 const bufferedPorcupineEngine: PvEngine = {
   onmessage: async (e: MessageEvent) => {
     if (e.data.command !== 'process') return;
+    else if (porcupine == null) return;
     const frame: Int16Array = e.data.inputFrame;
 
-    var tempPcmBuffer = new Int16Array(porcupinePcmBuffer.length + frame.length);
-    tempPcmBuffer.set(porcupinePcmBuffer);
-    tempPcmBuffer.set(frame, porcupinePcmBuffer.length);
-    porcupinePcmBuffer = tempPcmBuffer
+    porcupinePcmBuffer = concat(porcupinePcmBuffer, frame);
 
-    if (porcupine !== null && porcupinePcmBuffer.length >= porcupine.frameLength) {
+    if (porcupinePcmBuffer.length >= porcupine.frameLength) {
       porcupine.process(porcupinePcmBuffer.slice(0, porcupine.frameLength));
       porcupinePcmBuffer = porcupinePcmBuffer.slice(porcupine.frameLength);
     }
   }
 }
 
+const RUNNING_PCM_BUFFER_MAX_LENGTH_S = 15;
+
 var rhinoPcmBuffer = new Int16Array();
+var rhinoRunningPcmBuffer = new Int16Array();
 const bufferedRhinoEngine: PvEngine = {
   onmessage: async (e: MessageEvent) => {
     if (e.data.command !== 'process') return;
+    else if (rhino == null) return;
     const frame: Int16Array = e.data.inputFrame;
 
-    var tempPcmBuffer = new Int16Array(rhinoPcmBuffer.length + frame.length);
-    tempPcmBuffer.set(rhinoPcmBuffer);
-    tempPcmBuffer.set(frame, rhinoPcmBuffer.length);
-    rhinoPcmBuffer = tempPcmBuffer;
+    rhinoPcmBuffer = concat(rhinoPcmBuffer, frame);
+    rhinoRunningPcmBuffer = concat(rhinoRunningPcmBuffer, frame);
 
-    if (rhino !== null && rhinoPcmBuffer.length >= rhino.frameLength) {
+    if (rhinoPcmBuffer.length >= rhino.frameLength) {
       rhino.process(rhinoPcmBuffer.slice(0, rhino.frameLength));
       rhinoPcmBuffer = rhinoPcmBuffer.slice(rhino.frameLength);
+    }
+    
+    if (rhinoRunningPcmBuffer.length >= (rhino.sampleRate * RUNNING_PCM_BUFFER_MAX_LENGTH_S)) {
+      rhinoRunningPcmBuffer = rhinoRunningPcmBuffer.slice(
+        rhinoRunningPcmBuffer.length - RUNNING_PCM_BUFFER_MAX_LENGTH_S
+      );
     }
   }
 }
@@ -245,19 +256,19 @@ const rhinoInferenceCallback = async (
     return;
   } else if (!inference.isUnderstood) {
     rhinoPcmBuffer = new Int16Array();
+    rhinoRunningPcmBuffer = new Int16Array();
     console.log("unknown option selected");
     return;
   }
 
-  if (rhinoPcmBuffer.length < eagle.minProcessSamples) {
-    rhinoPcmBuffer.fill(0, rhinoPcmBuffer.length, eagle.minProcessSamples);
-  }
+  let paddedPcmBuffer = new Int16Array(Math.max(eagle.minProcessSamples, rhinoRunningPcmBuffer.length));
+  paddedPcmBuffer.set(rhinoRunningPcmBuffer);
 
   await WebVoiceProcessor.unsubscribe(bufferedRhinoEngine);
 
-  console.log(`Internal enrolledProfiles = ${enrolledProfiles}`);
+  let success = false;
 
-  let similarities = await eagle.process(rhinoPcmBuffer, enrolledProfiles.map(x => x.profile));
+  let similarities = await eagle.process(paddedPcmBuffer, enrolledProfiles.map(x => x.profile));
   if (similarities == null) {
     await synthesizeAndPlayback(orca!, audio!, "Sorry, I could not identify who is speaking.", callbacks.onWordSpoken);
   } else {
@@ -277,23 +288,36 @@ const rhinoInferenceCallback = async (
       if (similarityScore >= ADMIN_SIMILARITY_THRESHOLD) {
         if (user.role === UserRole.ADMIN) {
           await synthesizeAndPlayback(orca!, audio!, "Admin command approved.", callbacks.onWordSpoken);
+          success = true;
         } else {
           await synthesizeAndPlayback(orca!, audio!, "Permission denied. This command requires an admin.", callbacks.onWordSpoken);
+          success = true;
         }
       } else {
         await synthesizeAndPlayback(orca!, audio!, "Sorry, I could not verify your voice.", callbacks.onWordSpoken);
+        success = true;
       }
     } else if (inference.intent === "speakerPersonalized") {
       await synthesizeAndPlayback(orca!, audio!, `Hi ${user.name}. I will personalize this command for you.`, callbacks.onWordSpoken);
+      success = true;
     } else if (inference.intent === "generic") {
       await synthesizeAndPlayback(orca!, audio!, 'Okay. This command is available to everyone.', callbacks.onWordSpoken);
-    }    
+      success = true;
+    }
   }
 
-  callbacks.afterInferenceResponse();
+  await sleep(1500);
+
+  callbacks.afterInferenceResponse(success);
 
   rhinoPcmBuffer = new Int16Array();
-  await WebVoiceProcessor.subscribe(bufferedRhinoEngine);
+  rhinoRunningPcmBuffer = new Int16Array();
+
+  if (success) {
+    await WebVoiceProcessor.subscribe(bufferedPorcupineEngine);
+  } else {
+    await WebVoiceProcessor.subscribe(bufferedRhinoEngine);
+  }
 };
 
 const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
@@ -380,7 +404,6 @@ const startTesting = async (profiles: UserProfile[]): Promise<void> => {
   if (profiles.length === 0) {
     throw new Error('No speaker profiles enrolled.');
   }
-  console.log(`start testing ${profiles}`);
 
   enrolledProfiles = profiles;
 
@@ -426,6 +449,7 @@ const release = async (): Promise<void> => {
   }
 
   rhinoPcmBuffer = new Int16Array();
+  rhinoRunningPcmBuffer = new Int16Array();
   porcupinePcmBuffer = new Int16Array();
   eagleProfilerPcmBuffer = new Int16Array();
 };
@@ -437,4 +461,5 @@ export default {
   startTesting,
   stopTesting,
   release,
+  sleep,
 };

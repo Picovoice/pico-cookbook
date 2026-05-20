@@ -45,6 +45,8 @@ h1 {
   letter-spacing: 0.04ch;
   color: #333;
 
+  width: 100%;
+
   margin-bottom: 16px;
   white-space: pre-line;
 }
@@ -60,6 +62,7 @@ h1 {
   background-color: #eee;
   border-radius: 6px;
   padding: 10px;
+  margin-bottom: 16px;
 
   white-space: pre-line;
 }
@@ -184,6 +187,8 @@ button.text-btn {
   background: none;
   color: #888;
   font-weight: normal;
+
+  padding-bottom: 0;
 }
 
 button.text-btn:hover {
@@ -241,7 +246,7 @@ button.text-btn:hover {
   font-size: 13px;
   margin-left: 8px;
   display: inline-block;
-  vertical-align: top;
+  vertical-align: center;
 
   transition: transform 0.15s ease;
 }
@@ -297,7 +302,7 @@ progress {
   width: 100%;
   height: 30px;
   border-radius: 10px;
-  margin: 32px 0 16px 0;
+  margin: 16px 0 16px 0;
 }
 
 progress::-webkit-progress-bar {
@@ -403,4 +408,68 @@ progress::-webkit-progress-value {
 
   color: var(--brand-primary);
   border: 1px solid var(--brand-primary);
+}
+
+.tooltip {
+  visibility: hidden;
+
+  position: absolute;
+  transform: translateX(10px);
+  padding: 0 2px;
+
+  max-width: 185px;
+
+  font-size: 10px;
+  text-align: start;
+
+  background-color: #ddd;
+  color: #666;
+
+  z-index: 1;
+}
+#hud-options div div:hover .tooltip {
+  visibility: visible;
+}
+
+#hud-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  transition: opacity 0.4s ease;
+}
+#hud-options div {
+  flex: 0 0 calc(33% - ((2 * 8px) / 3));
+}
+#hud-options div .label {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  
+  margin: 0;
+
+  padding: 12px 4px;
+
+  height: 76px;
+
+  font-size: 13.5px;
+  font-weight: bolder;
+  letter-spacing: -0.04ch;
+
+  border-radius: 11px;
+
+  cursor: not-allowed;
+
+  color: #666;
+  border: 2px dashed #d7d7d7;
+
+  transition: border 0.4s ease, color 0.4s ease;
+}
+#hud-options div .subtext {
+  color: #333;
+  font-size: 12px;
+  padding: 12px 8px;
+}
+#hud-options div[coloured] {
+  color: var(--brand-primary);
+  border-color: var(--brand-primary);
 }

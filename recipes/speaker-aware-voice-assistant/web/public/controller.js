@@ -1,5 +1,3 @@
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
 window.onload = () => {
   const accessKeyInput = document.getElementById('accessKey');
   const btnInit = document.getElementById('btnInit');
@@ -13,13 +11,10 @@ window.onload = () => {
   const titleText = document.getElementById('titleText');
   const noticeText = document.getElementById('notice-text');
   const extraText = document.getElementById('extra-text');
+  const hudOptions = document.getElementById('hud-options');
 
   const layoutDashboard = document.getElementById('layoutDashboard');
   const chipContainer = document.getElementById('chipContainer');
-
-  const layoutGreeting = document.getElementById('layoutGreeting');
-  const tvSpeakerName = document.getElementById('tvSpeakerName');
-  const tvGreetingPrefix = document.getElementById('tvGreetingPrefix');
 
   const enrollProgress = document.getElementById('enrollProgress');
   const volumeMeter = document.getElementById('volumeMeter');
@@ -41,7 +36,6 @@ window.onload = () => {
   const btnModalEnroll = document.getElementById('btnModalEnroll');
 
   const MAX_SPEAKERS = 10;
-  const EAGLE_THRESHOLD = 0.75;
   const SPEAKER_PALETTE = [
     '#377dff',
     '#10B981',
@@ -95,7 +89,7 @@ window.onload = () => {
       } else {
         statusSpinner.style.opacity = "0";
         
-        await sleep(200);
+        await Picovoice.sleep(200);
         
         statusSpinner.style.display = "none";
       }
@@ -110,9 +104,6 @@ window.onload = () => {
       enrollProgress.value = progress;
     },
     onEnrollComplete: profile => {
-      console.log("on enroll complete:");
-      console.log(profile);
-
       speakerProfiles.push(profile);
       speakerNames.push(pendingSpeakerName);
       speakerRoles.push(pendingSpeakerRole);
@@ -120,48 +111,63 @@ window.onload = () => {
 
       updateUIForState('IDLE');
     },
-    onWakeWordRecognized: () => {
-      noticeText.innerText = "Speak Command";
+    onWakeWordRecognized: async () => {
+      noticeText.innerHTML = "Speak Command";
 
-      // TODO: use the same voice command styled buttons from call-assist?
-      extraText.innerText =
-        '1. "do something that requires admin permission" [ Will only work if you are an admin ]\n' +
-        '2. "do something just for me" [ Will trigger a personalized response ]\n' + 
-        '3. "do something anyone can do" [ Will trigger a generic response ]\n';
+      hudOptions.style.opacity = '0';
+      hudOptions.replaceChildren();
 
-      /*let bestScore = 0;
-      let bestIndex = -1;
-      if (scores) {
-        for (let i = 0; i < scores.length; i++) {
-          if (scores[i] > bestScore) {
-            bestScore = scores[i];
-            bestIndex = i;
-          }
-        }
-      }
+      const createOption = (text, subtext) => {
+        let optionContainer = document.createElement("div");
 
-      if (bestIndex !== -1 && bestScore >= EAGLE_THRESHOLD) {
-        showGreeting(speakerNames[bestIndex], SPEAKER_PALETTE[bestIndex]);
-      }*/
+        let option = document.createElement("div");
+        option.innerHTML = text;
+        option.className = "label";
+
+        let tooltip = document.createElement("span");
+        tooltip.classList.add("tooltip");
+        tooltip.innerHTML = "To select this voice command, speak into your microphone"
+
+        option.appendChild(tooltip);
+        
+        let subtextObject = document.createElement("div");
+        subtextObject.innerHTML = subtext;
+        subtextObject.className = "subtext";
+
+        optionContainer.appendChild(option);
+        optionContainer.appendChild(subtextObject);
+
+        hudOptions.appendChild(optionContainer);
+      };
+
+      createOption("Do something that requires admin permission", "Will only work if you are an admin");
+      createOption("Do something just for me", "Will trigger a personalized response");
+      createOption("Do something anyone can do", "Will trigger a generic response");
+
+      hudOptions.style.display = 'flex';
+      await Picovoice.sleep(100);
+
+      hudOptions.style.opacity = '1';
     },
-    beforeInferenceResponse: (intent, similarityScore) => {
-      if (intent !== undefined) {
-        console.log(`similarityScore = ${similarityScore}`)
-      }
-
-      noticeText.innerText = "";
+    beforeInferenceResponse: (_intent, _similarityScore) => {
+      noticeText.innerHTML = "&nbsp;";
     },
     onWordSpoken: (word) => {
-      console.log(`on word spoken: ${word}`);
-
-      if (extraText.innerHTML.length != 0) {
-        extraText.innerHTML += " ";
+      if (noticeText.innerHTML === "&nbsp;") {
+        noticeText.innerHTML = word;
+      } else {
+        noticeText.innerHTML += word;
       }
-  
-      extraText.innerHTML += word;
     },
-    afterInferenceResponse: () => {
-      noticeText.innerText = "Say the wakeword";
+    afterInferenceResponse: async (success) => {
+      hudOptions.style.opacity = '0';
+
+      await Picovoice.sleep(400);
+      hudOptions.style.display = 'none';
+
+      if (success) {
+        noticeText.innerText = "Say the wakeword";
+      }
     },
     onError: err => {
       showError(err);
@@ -193,16 +199,11 @@ window.onload = () => {
   btnStartEnroll.onclick = promptForSpeakerName;
 
   btnStartTest.onclick = async () => {
-    console.log(speakerProfiles);
-    console.log(speakerNames);
-    console.log(speakerRoles);
-    const zippedProfiles = speakerProfiles.map((p, i) => {
-      profile: p;
-      name: speakerNames[i];
-      role: speakerRoles[i];
-    });
-    console.log("zippedProfiles");
-    console.log(zippedProfiles);
+    const zippedProfiles = speakerProfiles.map((p, i) => ({
+      profile: p,
+      name: speakerNames[i],
+      role: speakerRoles[i],
+    }));
   
     await Picovoice.startTesting(zippedProfiles);
     updateUIForState('TESTING');
@@ -285,8 +286,8 @@ window.onload = () => {
                                 <span>Hello ${pendingSpeakerName},</span>
                                 <div style="margin-left: auto; display: inline-block;">Role: <b>${pendingSpeakerRole}</b></div>
                               </div>\n` +
-                             "Read the following sentences aloud in your normal voice.\n" +
-                             "Keep speaking until enrollment reaches 100%.";
+                             "<span style='font-size: 14px;'>Read the following sentences aloud in your normal voice.<br>" +
+                             "Keep speaking until enrollment reaches 100%.</span>";
       noticeText.style.textAlign = 'start';
       noticeText.classList.remove('hidden');
       extraText.classList.remove('hidden');
@@ -301,7 +302,6 @@ window.onload = () => {
       titleText.classList.add('hidden');
       layoutDashboard.classList.add('hidden');
       buttonContainer.classList.add('hidden');
-      layoutGreeting.classList.add('hidden');
       volumeMeter.classList.remove('hidden');
 
       btnCancel.innerText = 'Cancel';
@@ -311,14 +311,15 @@ window.onload = () => {
       noticeText.innerText = "Say the wakeword";
       noticeText.style.textAlign = 'center';
       noticeText.classList.remove('hidden');
-      extraText.classList.remove('hidden');
-      extraText.innerHTML = "";
+      extraText.classList.add('hidden');
       enrollProgress.classList.add('hidden');
+
+      hudOptions.style.opacity = '0';
+      hudOptions.style.display = 'none';
 
       titleText.classList.add('hidden');
       layoutDashboard.classList.add('hidden');
       buttonContainer.classList.add('hidden');
-      layoutGreeting.classList.add('hidden');
       volumeMeter.classList.remove('hidden');
 
       btnCancel.innerText = 'Stop Testing';
@@ -330,10 +331,12 @@ window.onload = () => {
       noticeText.style.textAlign = 'center';
       extraText.classList.add('hidden');
 
+      hudOptions.style.opacity = '0';
+      hudOptions.style.display = 'none';
+
       enrollProgress.classList.add('hidden');
       volumeMeter.classList.add('hidden');
       btnCancel.classList.add('hidden');
-      layoutGreeting.classList.add('hidden');
 
       titleText.classList.remove('hidden');
       buttonContainer.classList.remove('hidden');
@@ -383,34 +386,6 @@ window.onload = () => {
       addBtn.onclick = promptForSpeakerName;
       chipContainer.appendChild(addBtn);
     }
-  }
-
-  // TODO: update this
-  function showGreeting(speakerName, speakerColour) {
-    volumeMeter.classList.add('hidden');
-    noticeText.classList.add('hidden');
-    btnCancel.classList.add('hidden');
-
-    layoutGreeting.classList.remove('hidden');
-
-    tvGreetingPrefix.classList.remove('hidden');
-    tvSpeakerName.innerText = speakerName;
-    tvSpeakerName.style.backgroundColor = speakerColour;
-    tvSpeakerName.style.color = 'white';
-
-    setTimeout(() => layoutGreeting.classList.add('pop'), 10);
-
-    setTimeout(() => {
-      layoutGreeting.classList.remove('pop');
-      setTimeout(() => {
-        layoutGreeting.classList.add('hidden');
-        if (currentState === 'TESTING') {
-          noticeText.classList.remove('hidden');
-          volumeMeter.classList.remove('hidden');
-          btnCancel.classList.remove('hidden');
-        }
-      }, 300);
-    }, 2000);
   }
 };
 

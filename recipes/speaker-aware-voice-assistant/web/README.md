@@ -46,8 +46,10 @@ These instructions assume your current working directory is `recipes/speaker-awa
 ### 3. Download the Required Models
 
 Run the setup script to download the models for
-- [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/)
 - [Eagle Speaker Recognition](https://picovoice.ai/docs/eagle/)
+- [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/)
+- [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/)
+- [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/)
 
 This script will also add your wake word (`.ppn`) and rhino context (`.rhn`) files to the project:
 
@@ -57,7 +59,7 @@ python setup.py \
     --rhino_context_path ${PATH_TO_RHN_FILE}
 ```
 
-### 4. Install Dependencies
+### 4. Build and Run the Demo
 
 ```bash
 # install dependencies
@@ -76,8 +78,10 @@ yarn start
 - Go to [localhost:5000](http://localhost:5000) in your web browser.
 <!-- markdown-link-check-enable -->
 - Enter your AccessKey, then press the `Start Enrollment` button.
-- Create an Eagle speaker profile for each user you want the assistant to recognize.
-- Have different people try to speak the commands
+
+- Enter the name and role of each user, then create a speaker profile by capturing each person's voice.
+
+- Say the wakeword, then have different users speak the following commands
   - `do something that requires admin permission`
   - `do something just for me`
   - `do something anyone can do`

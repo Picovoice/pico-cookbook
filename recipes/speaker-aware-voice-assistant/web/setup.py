@@ -134,5 +134,6 @@ def main() -> None:
             dst_path = os.path.join(models_folder, dst_filename)
             shutil.copy(src_path, dst_path)
 
+
 if __name__ == '__main__':
     main()

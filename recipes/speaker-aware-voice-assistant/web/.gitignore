@@ -12,5 +12,7 @@ rhino
 public/index.js
 public/models/*.pv
 public/keywords/*.ppn
+*.rhn
+*.ppn
 types/*.d.ts*
 venv
