@@ -15,6 +15,7 @@ struct LoadingView: View {
     var body: some View {
         VStack {
             Text("Voice Guided Maintenance and Inspection")
+                .multilineTextAlignment(.center)
                 .font(.title)
                 .foregroundStyle(.blue)
                 .bold()

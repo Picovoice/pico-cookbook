@@ -17,16 +17,19 @@ extension Color {
 struct CardView: View {
     let title: String
     let content: String?
+    let isActive: Bool
     
     var body: some View {
         VStack {
             HStack {
                 Text(title)
                     .padding(.bottom, 8)
+                    .foregroundStyle(isActive ? .blue : .gray)
                 Spacer()
             }
             HStack {
-                Text(content != nil ? content! : "-")
+                Text(content != nil ? content! : (isActive ? "..." : "-"))
+                    .foregroundStyle(isActive ? .blue : .gray)
                 Spacer()
             }
         }.padding(14)
@@ -34,9 +37,10 @@ struct CardView: View {
             .cornerRadius(10)
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.lightGray, lineWidth: 1)
+                    .stroke(
+                        isActive ? .blue : .lightGray,
+                        lineWidth: 1)
             )
-        
     }
 }
 
@@ -46,8 +50,11 @@ struct MainView: View {
     var body: some View {
         VStack {
             ScrollView {
-                ForEach(Array(viewModel.cardViews.enumerated()), id: \.offset) {_, card in
-                    CardView(title: card.title, content: card.value)
+                ForEach(CardType.allCases, id: \.self) {card in
+                    CardView(
+                        title: viewModel.cardTitles[card]!,
+                        content: viewModel.cardValues[card],
+                        isActive: viewModel.activeCard == card)
                 }
             }
 
@@ -55,7 +62,15 @@ struct MainView: View {
             
             Text(viewModel.statusText)
             
-            VolumeMeterView(viewModel: viewModel)
+            if viewModel.listenState == .listening {
+                VolumeMeterView(viewModel: viewModel)
+            } else {
+                HStack {
+                    ProgressView()
+                        .controlSize(.extraLarge)
+                }.frame(width: 50, height: 70)
+                    .padding(20)
+            }
             
             Button(
                 action: {
@@ -72,6 +87,6 @@ struct MainView: View {
                                 cornerRadius: 8))
                 }
             )
-        }.padding()
+        }
     }
 }
