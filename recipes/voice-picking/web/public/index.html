@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voice Picking</title>
+    <script src="index.js"></script>
+    <script src="controller.js"></script>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1 id="titleText">Voice Picking</h1>
+      <div id="errorText" class="hidden"></div>
+      <div id="initContainer">
+        <input type="text" id="accessKey" placeholder="Enter AccessKey" />
+        <button id="btnInit">Begin Demo</button>
+
+        <div id="status-container" style="display: none;">
+          <span id="status"></span>
+          <div id="status-spinner" class="loader" style="opacity: 0; display: none;"></div>
+        </div>
+      </div>
+
+      <div
+        id="appContainer"
+        class="hidden"
+        style="
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        "
+      >
+        <div id="notice-text">Ready to Enroll</div>
+
+        <div id="extra-text" class="hidden"></div>
+
+        <div id="volumeMeter" class="hidden">
+          <div class="volume-bar" id="bar1"></div>
+          <div class="volume-bar" id="bar2"></div>
+          <div class="volume-bar" id="bar3"></div>
+        </div>
+
+        <button id="btnCancel" class="text-btn hidden">Cancel</button>
+      </div>
+    </div>
+  </body>
+</html>
