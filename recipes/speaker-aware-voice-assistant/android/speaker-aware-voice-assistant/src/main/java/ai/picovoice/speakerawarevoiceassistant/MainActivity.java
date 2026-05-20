@@ -42,6 +42,8 @@ import androidx.core.app.ActivityCompat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import ai.picovoice.android.voiceprocessor.VoiceProcessor;
 import ai.picovoice.android.voiceprocessor.VoiceProcessorArgumentException;
@@ -94,8 +96,9 @@ public class MainActivity extends AppCompatActivity {
     private UserRole pendingUserRole = UserRole.USER;
 
     private AppState currentState = AppState.IDLE;
-
     private TestingState testingState = TestingState.PPN;
+
+    private final ExecutorService ttsPlaybackExecutor = Executors.newSingleThreadExecutor();
 
     private enum AppState {
         IDLE,
@@ -240,6 +243,7 @@ public class MainActivity extends AppCompatActivity {
         }
         speakerProfiles.clear();
         speakerNames.clear();
+        speakerRoles.clear();
         updateUIForState();
     }
 
@@ -304,15 +308,13 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
 
-                        if (bestScore >= EAGLE_THRESHOLD) {
-                            final String speakerName = speakerNames.get(bestIndex);
-                            final int speakerColour = Color.parseColor(SPEAKER_PALETTE[bestIndex]);
+                        final String speakerName = (bestScore >= EAGLE_THRESHOLD) ? speakerNames.get(bestIndex) : null;
+                        final int speakerColour = Color.parseColor(SPEAKER_PALETTE[bestIndex]);
 
-                            runOnUiThread(() -> showGreeting(speakerName, speakerColour));
+                        runOnUiThread(() -> showGreeting(speakerName, speakerColour));
 
-                            testingState = TestingState.RHN;
-                            inferenceBuffer = new ArrayList<>();
-                        }
+                        testingState = TestingState.RHN;
+                        inferenceBuffer = new ArrayList<>();
                     }
                 } else if (currentState == AppState.TESTING && testingState == TestingState.RHN) {
                     for (short pcm : frame) {
@@ -388,60 +390,63 @@ public class MainActivity extends AppCompatActivity {
 
     private void synthesizeAndPlayback(String text) {
         testingState = TestingState.ORCA;
+        volumeMeterView.setVisibility(View.INVISIBLE);
 
-        OrcaAudio audio;
-        try {
-            audio = orca.synthesize(
-                    text,
-                new OrcaSynthesizeParams.Builder().build());
-        } catch (OrcaException e) {
-            Log.e(TAG, "Audio synthesize error: ", e);
-            hideGreeting();
-            return;
-        }
+        ttsPlaybackExecutor.submit(() -> {
+            OrcaAudio audio;
+            try {
+                audio = orca.synthesize(
+                        text,
+                        new OrcaSynthesizeParams.Builder().build());
+            } catch (OrcaException e) {
+                Log.e(TAG, "Audio synthesize error: ", e);
+                runOnUiThread(this::hideGreeting);
+                return;
+            }
 
-        AudioTrack ttsOutput;
-        try {
-            AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build();
+            AudioTrack ttsOutput;
+            try {
+                AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build();
 
-            AudioFormat audioFormat = new AudioFormat.Builder()
-                    .setSampleRate(orca.getSampleRate())
-                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                    .build();
+                AudioFormat audioFormat = new AudioFormat.Builder()
+                        .setSampleRate(orca.getSampleRate())
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build();
 
-            ttsOutput = new AudioTrack(
-                    audioAttributes,
-                    audioFormat,
-                    AudioTrack.getMinBufferSize(
-                            orca.getSampleRate(),
-                            AudioFormat.CHANNEL_OUT_MONO,
-                            AudioFormat.ENCODING_PCM_16BIT),
-                    AudioTrack.MODE_STREAM,
-                    0);
+                ttsOutput = new AudioTrack(
+                        audioAttributes,
+                        audioFormat,
+                        AudioTrack.getMinBufferSize(
+                                orca.getSampleRate(),
+                                AudioFormat.CHANNEL_OUT_MONO,
+                                AudioFormat.ENCODING_PCM_16BIT),
+                        AudioTrack.MODE_STREAM,
+                        0);
 
-            ttsOutput.play();
-        } catch (Exception e) {
-            Log.e(TAG, "Audio synthesize error: ", e);
-            hideGreeting();
-            return;
-        }
+                ttsOutput.play();
+            } catch (Exception e) {
+                Log.e(TAG, "Audio synthesize error: ", e);
+                runOnUiThread(this::hideGreeting);
+                return;
+            }
 
-        short[] pcm = audio.getPcm();
-        if (pcm != null && pcm.length > 0) {
-            int written = ttsOutput.write(pcm, 0, pcm.length);
-        }
+            short[] pcm = audio.getPcm();
+            if (pcm != null && pcm.length > 0) {
+                ttsOutput.write(pcm, 0, pcm.length);
+            }
 
-        if (ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
-            ttsOutput.flush();
-            ttsOutput.stop();
-        }
-        ttsOutput.release();
+            if (ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
+                ttsOutput.flush();
+                ttsOutput.stop();
+            }
+            ttsOutput.release();
 
-        hideGreeting();
+            runOnUiThread(this::hideGreeting);
+        });
     }
 
     private void checkPermissionsAndStart(AppState targetState) {
@@ -572,6 +577,7 @@ public class MainActivity extends AppCompatActivity {
         greetingSpeakerNameText.setBackground(bg);
         greetingSpeakerNameText.setText(" " + speakerName + " ");
         greetingSpeakerNameText.setTextColor(getResources().getColor(R.color.white, getTheme()));
+        greetingSpeakerNameText.setVisibility(speakerName != null ? View.VISIBLE : View.GONE);
 
         layoutGreeting.setScaleX(0.8f);
         layoutGreeting.setScaleY(0.8f);
@@ -710,6 +716,14 @@ public class MainActivity extends AppCompatActivity {
             porcupine.delete();
             porcupine = null;
         }
+        if (rhino != null) {
+            rhino.delete();
+            rhino = null;
+        }
+        if (orca != null) {
+            orca.delete();
+            orca = null;
+        }
         if (eagleProfiler != null) {
             eagleProfiler.delete();
             eagleProfiler = null;
@@ -725,6 +739,7 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         stopAudio();
         clearAllProfiles();
+        ttsPlaybackExecutor.shutdownNow();
         if (voiceProcessor != null) {
             voiceProcessor.clearFrameListeners();
             voiceProcessor.clearErrorListeners();
