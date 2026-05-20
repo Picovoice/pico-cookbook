@@ -13,6 +13,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="32dp"
         android:text="Speaker Aware Voice Assistant"
+        android:textAlignment="center"
         android:textColor="@color/brand_primary"
         android:textSize="24sp"
         android:textStyle="bold" />

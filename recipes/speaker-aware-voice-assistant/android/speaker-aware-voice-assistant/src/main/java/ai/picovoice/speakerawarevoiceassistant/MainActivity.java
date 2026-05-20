@@ -74,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String WAKE_WORD_FILE = "keyword.ppn";
     private static final String CONTEXT_FILE = "context.rhn";
     private static final String ORCA_MODEL_FILE = "orca_params_en_female.pv";
-    private static final float EAGLE_THRESHOLD = 0.75f;
+    private static final float EAGLE_THRESHOLD = 0.50f;
 
     private static final int EAGLE_MIN_ENROLLMENT_CHUNKS = 6;
     private static final int MAX_SPEAKERS = 10;
@@ -562,7 +562,7 @@ public class MainActivity extends AppCompatActivity {
         statusText.setVisibility(View.GONE);
         tooltipText.setVisibility(View.VISIBLE);
         tooltipText.setText(
-                "Try one of the following commands:" +
+                "Available commands:\n" +
                         "\n\"do something that requires admin permission\"" +
                         "\n\"do something just for me\"" +
                         "\n\"do something anyone can do\"");
@@ -638,10 +638,9 @@ public class MainActivity extends AppCompatActivity {
         if (currentState == AppState.ENROLLING) {
             titleText.setVisibility(View.GONE);
             statusText.setVisibility(View.VISIBLE);
-            statusText.setText("Hello " + pendingSpeakerName + "\n\nSpeak until the circle is full");
+            statusText.setText("Hello " + pendingSpeakerName + "\n\nSpeak these phrases until the circle is full:");
             tooltipText.setVisibility(View.VISIBLE);
             tooltipText.setText(
-                    "Try the following phrases:" +
                     "\n\"The quick brown fox jumps over the lazy dog.\"" +
                     "\n\"I am recording my voice for speaker enrollment.\"" +
                     "\n\"This is my normal speaking voice in a quiet room.\"" +

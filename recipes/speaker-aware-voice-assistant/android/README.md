@@ -58,7 +58,7 @@ in [MainActivity.java](speaker-aware-voice-assistant/src/main/java/ai/picovoice/
 python setup.py \
     --access_key ${ACCESS_KEY} \
     --keyword_path ${PATH_TO_PPN} \
-    --context_path ${PATH_TO_RHN} \
+    --context_path ${PATH_TO_RHN}
 ```
 
 ### 4. Run the Android Demo
