@@ -16,6 +16,9 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.media.AudioAttributes;
+import android.media.AudioFormat;
+import android.media.AudioTrack;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
@@ -37,6 +40,7 @@ import androidx.core.app.ActivityCompat;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import ai.picovoice.android.voiceprocessor.VoiceProcessor;
 import ai.picovoice.android.voiceprocessor.VoiceProcessorArgumentException;
@@ -46,8 +50,15 @@ import ai.picovoice.eagle.Eagle;
 import ai.picovoice.eagle.EagleException;
 import ai.picovoice.eagle.EagleProfile;
 import ai.picovoice.eagle.EagleProfiler;
+import ai.picovoice.orca.Orca;
+import ai.picovoice.orca.OrcaAudio;
+import ai.picovoice.orca.OrcaException;
+import ai.picovoice.orca.OrcaSynthesizeParams;
 import ai.picovoice.porcupine.Porcupine;
 import ai.picovoice.porcupine.PorcupineException;
+import ai.picovoice.rhino.Rhino;
+import ai.picovoice.rhino.RhinoException;
+import ai.picovoice.rhino.RhinoInference;
 
 enum UserRole {
     ADMIN,
@@ -61,6 +72,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String CONTEXT_FILE = "${YOUR_CONTEXT_HERE}.ppn";
     private static final String ORCA_MODEL_FILE = "${ORCA_MODEL_HERE}.pv";
     private static final float EAGLE_THRESHOLD = 0.75f;
+
     private static final int EAGLE_MIN_ENROLLMENT_CHUNKS = 4;
     private static final int MAX_SPEAKERS = 10;
 
@@ -82,13 +94,26 @@ public class MainActivity extends AppCompatActivity {
 
     private AppState currentState = AppState.IDLE;
 
+    private TestingState testingState = TestingState.PPN;
+
     private enum AppState {
         IDLE,
         ENROLLING,
         TESTING
     }
 
+    private enum TestingState {
+        PPN,
+        RHN,
+        ORCA
+    }
+
     private Porcupine porcupine;
+
+    private Rhino rhino;
+
+    private Orca orca;
+
     private EagleProfiler eagleProfiler;
     private Eagle eagle;
 
@@ -98,6 +123,8 @@ public class MainActivity extends AppCompatActivity {
     private int enrollMaxSamples;
     private int enrollValidSamples = 0;
     private short[] slidingBuffer;
+
+    private ArrayList<Short> inferenceBuffer;
 
     private static final String[] SPEAKER_PALETTE = {
             "#377dff", // Blue
@@ -226,35 +253,32 @@ public class MainActivity extends AppCompatActivity {
                     System.arraycopy(frame, 0, enrollSlidingBuffer, enrollMaxSamples - frame.length, frame.length);
                     enrollValidSamples = Math.min(enrollMaxSamples, enrollValidSamples + frame.length);
 
-                    int keywordIndex = porcupine.process(frame);
-                    if (keywordIndex == 0) {
-                        int eagleFrameLength = eagleProfiler.getFrameLength();
-                        float progress = 0f;
+                    int eagleFrameLength = eagleProfiler.getFrameLength();
+                    float progress = 0f;
 
-                        int startIndex = enrollMaxSamples - enrollValidSamples;
-                        int numEagleFrames = enrollValidSamples / eagleFrameLength;
+                    int startIndex = enrollMaxSamples - enrollValidSamples;
+                    int numEagleFrames = enrollValidSamples / eagleFrameLength;
 
-                        for (int i = 0; i < numEagleFrames; i++) {
-                            short[] eagleFrame = new short[eagleFrameLength];
-                            System.arraycopy(
-                                    enrollSlidingBuffer,
-                                    startIndex + (i * eagleFrameLength),
-                                    eagleFrame,
-                                    0,
-                                    eagleFrameLength);
-                            progress = eagleProfiler.enroll(eagleFrame);
-                        }
-                        enrollValidSamples = 0;
-
-                        float finalProgress = progress;
-                        runOnUiThread(() -> {
-                            enrollProgressBar.setProgress((int) finalProgress);
-                            if (finalProgress >= 100f) {
-                                finishEnrollment();
-                            }
-                        });
+                    for (int i = 0; i < numEagleFrames; i++) {
+                        short[] eagleFrame = new short[eagleFrameLength];
+                        System.arraycopy(
+                                enrollSlidingBuffer,
+                                startIndex + (i * eagleFrameLength),
+                                eagleFrame,
+                                0,
+                                eagleFrameLength);
+                        progress = eagleProfiler.enroll(eagleFrame);
                     }
-                } else if (currentState == AppState.TESTING) {
+                    enrollValidSamples = 0;
+
+                    float finalProgress = progress;
+                    runOnUiThread(() -> {
+                        enrollProgressBar.setProgress((int) finalProgress);
+                        if (finalProgress >= 100f) {
+                            finishEnrollment();
+                        }
+                    });
+                } else if (currentState == AppState.TESTING && testingState == TestingState.PPN) {
                     int minProcessSamples = eagle.getMinProcessSamples();
                     System.arraycopy(slidingBuffer, frame.length, slidingBuffer, 0, minProcessSamples - frame.length);
                     System.arraycopy(frame, 0, slidingBuffer, minProcessSamples - frame.length, frame.length);
@@ -268,19 +292,85 @@ public class MainActivity extends AppCompatActivity {
                         int bestIndex = -1;
 
                         if (scores != null) {
+                            Log.e(TAG, String.format("scores %f", scores[0]));
+
                             for (int i = 0; i < scores.length; i++) {
-                                if (scores[i] > bestScore) {
+                                if (scores[i] >= bestScore) {
                                     bestScore = scores[i];
                                     bestIndex = i;
                                 }
                             }
                         }
 
-                        if (bestScore >= EAGLE_THRESHOLD && bestIndex != -1) {
+                        if (bestScore >= EAGLE_THRESHOLD) {
                             final String speakerName = speakerNames.get(bestIndex);
                             final int speakerColour = Color.parseColor(SPEAKER_PALETTE[bestIndex]);
 
                             runOnUiThread(() -> showGreeting(speakerName, speakerColour));
+
+                            testingState = TestingState.RHN;
+                            inferenceBuffer = new ArrayList<>();
+                        }
+                    }
+                } else if (currentState == AppState.TESTING && testingState == TestingState.RHN) {
+                    for (short pcm : frame) {
+                        inferenceBuffer.add(pcm);
+                    }
+
+                    Boolean is_complete = rhino.process(frame);
+                    if (is_complete) {
+                        RhinoInference inference = rhino.getInference();
+                        if (inference.getIsUnderstood()) {
+                            short[] inferenceArray = new short[Math.max(inferenceBuffer.size(), eagle.getMinProcessSamples())];
+                            for (int i = 0; i < inferenceBuffer.size(); i++) {
+                                inferenceArray[i] = inferenceBuffer.get(i);
+                            }
+                            for (int i = inferenceBuffer.size(); i < inferenceArray.length; i++) {
+                                inferenceArray[i] = 0;
+                            }
+
+                            EagleProfile[] profilesArray = speakerProfiles.toArray(new EagleProfile[0]);
+                            float[] scores = eagle.process(inferenceArray, profilesArray);
+
+                            float bestScore = 0f;
+                            int bestIndex = -1;
+
+                            if (scores != null) {
+                                Log.e(TAG, String.format("scores %f", scores[0]));
+
+                                for (int i = 0; i < scores.length; i++) {
+                                    if (scores[i] >= bestScore) {
+                                        bestScore = scores[i];
+                                        bestIndex = i;
+                                    }
+                                }
+                            } else {
+                                Log.e(TAG, "SCORES NULL");
+                            }
+
+                            Log.e(TAG, String.format("%f %d", bestScore, bestIndex));
+
+                            if (Objects.equals(inference.getIntent(), "adminOnly")) {
+                                if (bestScore >= EAGLE_THRESHOLD) {
+                                    final String speakerName = speakerNames.get(bestIndex);
+                                    final UserRole speakerRole = speakerRoles.get(bestIndex);
+
+                                    if (speakerRole == UserRole.ADMIN) {
+                                        synthesizeAndPlayback("Admin command approved.");
+                                    } else {
+                                        synthesizeAndPlayback("Permission denied. This command requires an admin.");
+                                    }
+                                } else {
+                                    synthesizeAndPlayback("Sorry, I could not verify your voice.");
+                                }
+                            } else if (Objects.equals(inference.getIntent(), "speakerPersonalized")) {
+                                final String speakerName = speakerNames.get(bestIndex);
+                                synthesizeAndPlayback(String.format("Hi %s. I will personalize this command for you.", speakerName));
+                            } else if (Objects.equals(inference.getIntent(), "generic")) {
+                                synthesizeAndPlayback("Okay. This command is available to everyone.");
+                            }
+                        } else {
+                            synthesizeAndPlayback("Sorry, I did not understand that command.");
                         }
                     }
                 }
@@ -292,6 +382,64 @@ public class MainActivity extends AppCompatActivity {
         VoiceProcessorErrorListener errorListener = error -> Log.e(TAG, "Audio Error: ", error);
         voiceProcessor.addFrameListener(frameListener);
         voiceProcessor.addErrorListener(errorListener);
+    }
+
+    private void synthesizeAndPlayback(String text) {
+        testingState = TestingState.ORCA;
+
+        OrcaAudio audio;
+        try {
+            audio = orca.synthesize(
+                    text,
+                new OrcaSynthesizeParams.Builder().build());
+        } catch (OrcaException e) {
+            Log.e(TAG, "Audio synthesize error: ", e);
+            hideGreeting();
+            return;
+        }
+
+        AudioTrack ttsOutput;
+        try {
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build();
+
+            AudioFormat audioFormat = new AudioFormat.Builder()
+                    .setSampleRate(orca.getSampleRate())
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .build();
+
+            ttsOutput = new AudioTrack(
+                    audioAttributes,
+                    audioFormat,
+                    AudioTrack.getMinBufferSize(
+                            orca.getSampleRate(),
+                            AudioFormat.CHANNEL_OUT_MONO,
+                            AudioFormat.ENCODING_PCM_16BIT),
+                    AudioTrack.MODE_STREAM,
+                    0);
+
+            ttsOutput.play();
+        } catch (Exception e) {
+            Log.e(TAG, "Audio synthesize error: ", e);
+            hideGreeting();
+            return;
+        }
+
+        short[] pcm = audio.getPcm();
+        if (pcm != null && pcm.length > 0) {
+            int written = ttsOutput.write(pcm, 0, pcm.length);
+        }
+
+        if (ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
+            ttsOutput.flush();
+            ttsOutput.stop();
+        }
+        ttsOutput.release();
+
+        hideGreeting();
     }
 
     private void checkPermissionsAndStart(AppState targetState) {
@@ -329,7 +477,6 @@ public class MainActivity extends AppCompatActivity {
             eagleProfiler = new EagleProfiler.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setMinEnrollmentChunks(EAGLE_MIN_ENROLLMENT_CHUNKS)
-                    .setVoiceThreshold(.0f)
                     .build(this);
 
             enrollMaxSamples = eagleProfiler.getFrameLength() * 96;
@@ -357,6 +504,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             stopAudio();
             currentState = AppState.TESTING;
+            testingState = TestingState.PPN;
 
             porcupine = new Porcupine.Builder()
                     .setAccessKey(ACCESS_KEY)
@@ -376,7 +524,7 @@ public class MainActivity extends AppCompatActivity {
 
             eagle = new Eagle.Builder()
                     .setAccessKey(ACCESS_KEY)
-                    .setVoiceThreshold(0.0f)
+                    .setVoiceThreshold(0.1f)
                     .build(this);
 
             slidingBuffer = new short[eagle.getMinProcessSamples()];
@@ -384,7 +532,7 @@ public class MainActivity extends AppCompatActivity {
             updateUIForState();
             voiceProcessor.start(porcupine.getFrameLength(), porcupine.getSampleRate());
 
-        } catch (PorcupineException | EagleException e) {
+        } catch (PorcupineException | RhinoException | OrcaException | EagleException e) {
             statusText.setText("Engine init error: " + e.getMessage());
             Log.e(TAG, "Init error", e);
         } catch (VoiceProcessorArgumentException e) {
@@ -448,13 +596,15 @@ public class MainActivity extends AppCompatActivity {
                 .setDuration(300)
                 .setInterpolator(new OvershootInterpolator())
                 .start();
+    }
 
-        layoutGreeting.postDelayed(() -> {
-            layoutGreeting.setVisibility(View.GONE);
-            statusText.setVisibility(View.VISIBLE);
-            volumeMeterView.setVisibility(View.VISIBLE);
-            btnCancel.setVisibility(View.VISIBLE);
-        }, 2500);
+    private void hideGreeting() {
+        testingState = TestingState.PPN;
+
+        layoutGreeting.setVisibility(View.GONE);
+        statusText.setVisibility(View.VISIBLE);
+        volumeMeterView.setVisibility(View.VISIBLE);
+        btnCancel.setVisibility(View.VISIBLE);
     }
 
     private void renderSpeakerChips() {
@@ -495,7 +645,7 @@ public class MainActivity extends AppCompatActivity {
         if (currentState == AppState.ENROLLING) {
             titleText.setVisibility(View.GONE);
             statusText.setVisibility(View.VISIBLE);
-            statusText.setText("Hello " + pendingSpeakerName + "\n\nSay the wake word until\nthe circle is full");
+            statusText.setText("Hello " + pendingSpeakerName + "\n\nSay phrases until\nthe circle is full");
             enrollProgressBar.setVisibility(View.VISIBLE);
             enrollProgressBar.setProgress(0);
 
