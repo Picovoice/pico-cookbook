@@ -264,40 +264,6 @@ button.text-btn:hover {
   background-color: rgba(55, 125, 255, 0.1);
 }
 
-#layoutGreeting {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: white;
-  border: 1px solid var(--gray-light);
-  border-radius: 16px;
-  padding: 24px 32px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  margin-bottom: 24px;
-  transform: scale(0.8);
-  opacity: 0;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-#layoutGreeting.pop {
-  transform: scale(1);
-  opacity: 1;
-}
-#tvGreetingPrefix {
-  font-size: 34px;
-  font-weight: bold;
-  color: #333;
-}
-#tvSpeakerName {
-  color: white;
-  padding: 8px 24px;
-  border-radius: 16px;
-  font-weight: bold;
-  font-size: 32px;
-}
-
 progress {
   width: 100%;
   height: 30px;
