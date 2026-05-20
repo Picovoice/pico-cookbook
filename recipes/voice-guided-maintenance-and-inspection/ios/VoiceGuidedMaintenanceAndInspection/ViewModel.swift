@@ -209,9 +209,14 @@ class ViewModel: ObservableObject {
     public func startDemo() {
         Task.detached(priority: .background) { [self] in
             do {
-                await setStatusText(text: "")
-                await setViewState(state: .main)
-
+                await MainActor.run {
+                    viewState = .main
+                    listenState = .idle
+                    statusText = ""
+                    activeCard = nil
+                    cardValues.removeAll()
+                }
+                
                 try await workflow!.run()
 
                 await setViewState(state: .loading)
@@ -222,15 +227,7 @@ class ViewModel: ObservableObject {
     }
     
     public func stopDemo() {
-//        Task.detached(priority: .background) { [self] in
-//            do {
-//                await MainActor.run {
-//                    viewState = .loading
-//                }
-//            } catch {
-//                await setErrorText(text: error.localizedDescription)
-//            }
-//        }
+        workflow!.cancel()
     }
 
     func computeSoundLevel(frame: [Int16]) async {
@@ -365,6 +362,12 @@ class Workflow {
             currentArgs = transition.nextStateArgs
         }
     }
+    
+    func cancel() {
+        for state in states.values {
+            state.cancel()
+        }
+    }
 }
 
 protocol Recorder {
@@ -473,19 +476,21 @@ class AINoiseSuppressionRecorder: Recorder {
 class CheetahStep {
     let recorder: Recorder
     let cheetah: Cheetah
+    var shouldCancel: Bool = false
     
     init(recorder: Recorder, cheetah: Cheetah) {
         self.recorder = recorder
         self.cheetah = cheetah
     }
     
-    func run() async throws -> String {
+    func run() async throws -> String? {
         var result = ""
         
         try recorder.start()
         
         var isEndpoint = false
-        while !isEndpoint {
+        shouldCancel = false
+        while !isEndpoint && !shouldCancel {
             let frame = try await recorder.read(frameLength: Cheetah.frameLength)
             let (transcript, endpoint) = try cheetah.process(frame)
             result += transcript
@@ -499,69 +504,114 @@ class CheetahStep {
         
         try recorder.stop()
         
-        return result
+        if shouldCancel {
+            return nil
+        } else {
+            return result
+        }
+    }
+    
+    func cancel() {
+        shouldCancel = true
     }
 }
 
 class OrcaStep {
     let speaker: AudioPlayerStream
     let orca: Orca
+    var shouldCancel: Bool = false
     
     init(speaker: AudioPlayerStream, orca: Orca) {
         self.speaker = speaker
         self.orca = orca
     }
     
-    func run(prompt: String) async throws {
+    func run(prompt: String) async throws -> Bool {
+        shouldCancel = false
         let audio = try orca.synthesize(text: prompt)
+        if shouldCancel {
+            return false
+        }
+
+        speaker.resetAudioPlayer()
         try speaker.playStreamPCM(audio.pcm)
-        try await Task.sleep(for: .milliseconds(audio.pcm.count * 1000 / Int(orca.sampleRate!)))
+    
+        while speaker.isPlaying && !shouldCancel {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+
+        speaker.stopStreamPCM()
+
+        return !shouldCancel
+    }
+    
+    func cancel() {
+        shouldCancel = true
     }
 }
 
 class PorcupineStep {
     let recorder: Recorder
     let porcupine: Porcupine
+    var shouldCancel: Bool = false
     
     init(recorder: Recorder, porcupine: Porcupine) {
         self.recorder = recorder
         self.porcupine = porcupine
     }
     
-    func run() async throws {
+    func run() async throws -> Bool {
         try recorder.start()
         
         var isDetected = false
-        while !isDetected {
+        shouldCancel = false
+        while !isDetected && !shouldCancel {
             let frame = try await recorder.read(frameLength: Porcupine.frameLength)
             isDetected = try porcupine.process(pcm: frame) == 0
         }
         
         try recorder.stop()
+        
+        return !shouldCancel
+    }
+    
+    func cancel() {
+        shouldCancel = true
     }
 }
 
 class RhinoStep {
     let recorder: Recorder
     let rhino: Rhino
+    var shouldCancel: Bool = false
     
     init(recorder: Recorder, rhino: Rhino) {
         self.recorder = recorder
         self.rhino = rhino
     }
     
-    func run() async throws -> Inference {
+    func run() async throws -> Inference? {
         try recorder.start()
+        try rhino.reset()
         
         var isFinalized = false
-        while !isFinalized {
+        shouldCancel = false
+        while !isFinalized && !shouldCancel {
             let frame = try await recorder.read(frameLength: Rhino.frameLength)
             isFinalized = try rhino.process(pcm: frame)
         }
         
         try recorder.stop()
         
-        return try rhino.getInference()
+        if shouldCancel {
+            return nil
+        } else {
+            return try rhino.getInference()
+        }
+    }
+    
+    func cancel() {
+        shouldCancel = true
     }
 }
 
@@ -572,6 +622,7 @@ struct Transition {
 
 protocol State {
     func run(args: [String: Any]) async throws -> Transition
+    func cancel()
 }
 
 class StandbyState: State {
@@ -592,9 +643,17 @@ class StandbyState: State {
     func run(args: [String: Any]) async throws -> Transition {
         await viewModel.setStatusText(text: "Listening for wake word...")
         await viewModel.setListenState(state: .listening)
-        try await porcupineStep.run()
-        await viewModel.setListenState(state: .idle)
-        return Transition(nextState: self.nextState, nextStateArgs: [:])
+        if try await porcupineStep.run() {
+            await viewModel.setListenState(state: .idle)
+            return Transition(nextState: self.nextState, nextStateArgs: [:])
+        } else {
+            await viewModel.setListenState(state: .idle)
+            return Transition(nextState: nil, nextStateArgs: [:])
+        }
+    }
+    
+    func cancel() {
+        porcupineStep.cancel()
     }
 }
 
@@ -633,8 +692,15 @@ class PromptState: State {
         await viewModel.setActiveCard(card: self.cardType)
         await viewModel.setStatusText(text: prompt)
         await viewModel.setListenState(state: .idle)
-        try await orcaStep.run(prompt: prompt)
-        return Transition(nextState: self.nextState, nextStateArgs: [:])
+        if try await orcaStep.run(prompt: prompt) {
+            return Transition(nextState: self.nextState, nextStateArgs: [:])
+        } else {
+            return Transition(nextState: nil, nextStateArgs: [:])
+        }
+    }
+    
+    func cancel() {
+        orcaStep.cancel()
     }
 }
 
@@ -676,16 +742,22 @@ class ReportState: State {
         await viewModel.setListenState(state: .listening)
         let inference = try await rhinoStep.run()
         await viewModel.setListenState(state: .listening)
-        if inference.isUnderstood && inference.intent == expectedIntent {
-            await viewModel.setCardValue(card: cardType, value: successLogGen(inference))
+        if inference == nil {
+            return Transition(nextState: nil, nextStateArgs: [:])
+        } else if inference!.isUnderstood && inference!.intent == expectedIntent {
+            await viewModel.setCardValue(card: cardType, value: successLogGen(inference!))
             await viewModel.setActiveCard(card: nil)
             
             return Transition(nextState: self.successNextState, nextStateArgs: [:])
         } else {
             return Transition(nextState: self.failureNextState, nextStateArgs: [
-                "prompt": failurePromptGen(inference)
+                "prompt": failurePromptGen(inference!)
             ])
         }
+    }
+    
+    func cancel() {
+        rhinoStep.cancel()
     }
 }
 
@@ -714,9 +786,17 @@ class DictationState: State {
         await viewModel.setStatusText(text: listeningPrompt)
         await viewModel.setListenState(state: .listening)
         let transcript = try await cheetahStep.run()
-        await viewModel.setCardValue(card: cardType, value: transcript)
-        await viewModel.setActiveCard(card: nil)
-        await viewModel.setListenState(state: .listening)
-        return Transition(nextState: self.nextState, nextStateArgs: [:])
+        if transcript != nil {
+            await viewModel.setCardValue(card: cardType, value: transcript!)
+            await viewModel.setActiveCard(card: nil)
+            await viewModel.setListenState(state: .listening)
+            return Transition(nextState: self.nextState, nextStateArgs: [:])
+        } else {
+            return Transition(nextState: nil, nextStateArgs: [:])
+        }
+    }
+    
+    func cancel() {
+        cheetahStep.cancel()
     }
 }
