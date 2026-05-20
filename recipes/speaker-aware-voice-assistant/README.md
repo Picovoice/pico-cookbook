@@ -17,4 +17,5 @@ and admin-only operations.
 
 ## Implementations
 
+- [Android](android)
 - [Python](python)
