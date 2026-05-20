@@ -230,16 +230,6 @@ button.text-btn:hover {
   border-radius: 16px;
   font-weight: bold;
   font-size: 14px;
-
-  cursor: pointer;
-
-  transition: filter 0.2s ease-out;
-}
-.speaker-chip:hover {
-  filter: hue-rotate(5deg) grayscale(0.3);
-}
-.speaker-chip:hover .delete-cross {
-  transform: scale(1.2);
 }
 .delete-cross {
   font-family: monospace;
@@ -279,7 +269,7 @@ progress::-webkit-progress-bar {
 progress::-webkit-progress-value {
   background-color: var(--brand-primary);
   border-radius: 10px;
-  transition: width 0.1s ease;
+  transition: width 0.2s ease;
 }
 
 #volumeMeter {

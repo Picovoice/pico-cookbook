@@ -149,8 +149,12 @@ window.onload = () => {
 
       hudOptions.style.opacity = '1';
     },
-    beforeInferenceResponse: (_intent, _similarityScore) => {
+    beforeInferenceResponse: async () => {
       noticeText.innerHTML = "&nbsp;";
+      hudOptions.style.opacity = '0';
+
+      await Picovoice.sleep(400);
+      hudOptions.style.display = 'none';
     },
     onWordSpoken: (word) => {
       if (noticeText.innerHTML === "&nbsp;") {
@@ -159,15 +163,8 @@ window.onload = () => {
         noticeText.innerHTML += word;
       }
     },
-    afterInferenceResponse: async (success) => {
-      hudOptions.style.opacity = '0';
-
-      await Picovoice.sleep(400);
-      hudOptions.style.display = 'none';
-
-      if (success) {
-        noticeText.innerText = "Say the wakeword";
-      }
+    afterInferenceResponse: () => {
+      noticeText.innerText = "Say the wakeword";
     },
     onError: err => {
       showError(err);
@@ -366,16 +363,7 @@ window.onload = () => {
       chip.className = 'speaker-chip';
       chip.innerText = speakerNames[i];
       chip.style.backgroundColor = SPEAKER_PALETTE[i];
-      chip.addEventListener("click", () => {
-        speakerNames.splice(i, 1);
-        renderSpeakerChips();
-      });
 
-      const deleteCross = document.createElement('div');
-      deleteCross.className = "delete-cross";
-      deleteCross.innerHTML = "✕";
-      chip.appendChild(deleteCross);
-      
       chipContainer.appendChild(chip);
     }
   
