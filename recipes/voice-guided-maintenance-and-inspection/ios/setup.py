@@ -114,10 +114,8 @@ def main() -> None:
 
     public_folder = os.path.join(
         os.path.dirname(__file__),
-        "voice-guided-field-reporting",
-        "src",
-        "main",
-        "assets")
+        "VoiceGuidedMaintenanceAndInspection",
+        "resources")
     for animal, version in ANIMALS:
         major, minor = version.split('.')[:2]
         folder = clone_repo(animal, major, minor)
@@ -132,11 +130,8 @@ def main() -> None:
 
     main_activity_path = os.path.join(
         os.path.dirname(__file__),
-        "voice-guided-field-reporting",
-        "src",
-        "main",
-        "java/ai/picovoice/voiceguidedfieldreporting",
-        "MainActivity.java")
+        "VoiceGuidedMaintenanceAndInspection",
+        "ViewModel.swift")
     with open(main_activity_path, 'r') as main_activity_file:
         main_activity_contents = main_activity_file.read()
     main_activity_contents = main_activity_contents.replace("${YOUR_ACCESS_KEY_HERE}", args.access_key)

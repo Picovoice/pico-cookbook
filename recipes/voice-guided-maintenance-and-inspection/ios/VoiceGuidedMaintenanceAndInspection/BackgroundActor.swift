@@ -7,13 +7,17 @@
 //  specific language governing permissions and limitations under the License.
 //
 
-import SwiftUI
+import Foundation
 
-@main
-struct VoiceGuidedMaintenanceAndInspectionApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
+@globalActor
+actor BackgroundActor: GlobalActor {
+    static let shared = BackgroundActor()
+
+    func run(_ f: @Sendable () async -> Void) async -> Void {
+        await f()
+    }
+
+    func run(_ f: @Sendable () async throws -> Void) async throws -> Void {
+        try await f()
     }
 }
