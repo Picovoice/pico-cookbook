@@ -201,8 +201,6 @@ const bufferedRhinoEngine: PvEngine = {
   }
 }
 
-// -------------------------------------------------------------------------- //
-
 const synthesizeAndPlayback = async (
   orca: OrcaWorker,
   audio: AudioStream,
@@ -231,8 +229,6 @@ const synthesizeAndPlayback = async (
 
   await audio.waitPlayback();
 };
-
-// -------------------------------------------------------------------------- //
 
 const porcupineKeywordCallback = async (): Promise<void> => {
   try {

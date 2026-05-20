@@ -337,8 +337,6 @@ progress::-webkit-progress-value {
   display: none !important;
 }
 
-/* NEW CSS ---------------------------------------------------------- */
-
 #status-container {
   align-items: center;
   justify-content: center;
