@@ -21,11 +21,12 @@
                 android:id="@+id/titleText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
                 android:text="Voice Guided Maintenance and Inspection"
-                android:textSize="26sp"
-                android:textStyle="bold"
+                android:textAlignment="center"
                 android:textColor="#377dff"
-                android:layout_marginBottom="16dp"/>
+                android:textSize="26sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/startStatusText"
