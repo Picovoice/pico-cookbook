@@ -1,0 +1,2 @@
+rootProject.name = "SpeakerAwareVoiceAssistant"
+include ':speaker-aware-voice-assistant'

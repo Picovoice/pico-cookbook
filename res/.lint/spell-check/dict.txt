@@ -62,6 +62,7 @@ sdcard
 sigwinch
 socialtext
 spannable
+speakerawarevoiceassistant
 speakerawarewakeword
 speechtospeechtranslation
 subheadline
