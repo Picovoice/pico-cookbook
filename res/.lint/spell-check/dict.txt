@@ -9,8 +9,8 @@ colour
 compat
 dbfs
 declatory
-documentqa
 deepseek
+documentqa
 dotdotdot
 dotnet
 dtype
@@ -59,6 +59,7 @@ sdcard
 sigwinch
 socialtext
 spannable
+speakerawarevoiceassistant
 speakerawarewakeword
 speechtospeechtranslation
 subheadline
