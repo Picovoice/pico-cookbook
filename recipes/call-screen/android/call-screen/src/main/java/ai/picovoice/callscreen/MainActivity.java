@@ -91,6 +91,7 @@ public class MainActivity extends AppCompatActivity {
 
     private final ExecutorService textExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService ttsPlaybackExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService engineExecutor = Executors.newSingleThreadExecutor();
 
     private SpannableTextAnimation animation;
 
@@ -167,6 +168,8 @@ public class MainActivity extends AppCompatActivity {
         startButton.setVisibility(View.INVISIBLE);
         loadModelProgress.setVisibility(View.VISIBLE);
 
+        voiceProcessor.addFrameListener(this::frameListener);
+
         new Thread(() -> {
             initEngines();
         }).start();
@@ -207,8 +210,6 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        mainHandler.post(() -> loadingText.setText("Loading Voice Processor..."));
-
         if (voiceProcessor.hasRecordAudioPermission(this)) {
             enableStartButton();
         } else {
@@ -235,15 +236,27 @@ public class MainActivity extends AppCompatActivity {
         enableStartButton();
     }
 
+    void trySleep(long ms) {
+        try {
+            Thread.sleep((int) ms);
+        } catch (InterruptedException e) { }
+    }
+
+    void appendAndScroll(SpannableStringBuilder textBuilder, String text, TextView textView, ScrollView scrollView) {
+        mainHandler.post(() -> {
+            textBuilder.append(text);
+            textView.setText(textBuilder);
+
+            textView.post(() -> {
+                scrollView.fullScroll(ScrollView.FOCUS_DOWN);
+            });
+        });
+    }
+
     private void enableStartButton() {
         mainHandler.post(() -> {
             startButton.setVisibility(View.VISIBLE);
             loadModelProgress.setVisibility(View.INVISIBLE);
-        });
-
-        voiceProcessor.addFrameListener(this::frameListener);
-        voiceProcessor.addErrorListener(error -> {
-            onEngineProcessError(error.getMessage());
         });
 
         mainHandler.post(() -> loadingText.setText("Press the Start Demo button to begin."));
@@ -261,35 +274,30 @@ public class MainActivity extends AppCompatActivity {
             chatLayout.animate().alpha(1f).setDuration(400);
 
             new Thread(() -> {
-                try {
-                    Thread.sleep(400);
-                } catch (InterruptedException e) { }
+                trySleep(400);
 
                 updateUIState(UIState.CALL_SCREEN);
                 view.setEnabled(true);
 
-                callerTextBuilder.append("[SYSTEM] ");
-
+                mainHandler.post(() -> {
+                    callerTextBuilder.append("[SYSTEM] ");
+                });
                 animation = new SpannableTextAnimation(callerTextBuilder, callerText, callerScrollView);
                 animation.start();
 
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) { }
+                trySleep(100);
+                animation.appendText("Connecting caller");
 
-                callerTextBuilder.append("Connecting caller");
-
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) { }
-
+                trySleep(1000);
                 animation.end();
                 animation = null;
 
-                callerTextBuilder.clear();
-                callerTextBuilder.append("[SYSTEM] Caller connected.\n");
+                mainHandler.post(() -> {
+                    callerTextBuilder.clear();
+                    callerTextBuilder.append("[SYSTEM] Caller connected.\n");
+                });
 
-                speakToCaller(Action.GREET);
+                engineExecutor.submit(() -> speakToCaller(Action.GREET));
 
                 startButtonInProgress = false;
             }).start();
@@ -306,83 +314,69 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (uiState == UIState.CALL_SCREEN && appState == AppState.LISTEN_TO_CALLER) {
-            try {
-                CheetahTranscript result = cheetah.process(frame);
+            engineExecutor.submit(() -> listenCaller(frame));
+        } else if (uiState == UIState.CALL_SCREEN && appState == AppState.LISTEN_TO_USER) {
+            engineExecutor.submit(() -> listenUser(frame));
+        }
+    }
+    private void listenCaller(short[] frame) {
+        try {
+            CheetahTranscript result = cheetah.process(frame);
+            animation.appendStyledText(result.getTranscript(), new ForegroundColorSpan(callerColour));
 
-                appendStyledText(
-                        callerTextBuilder,
-                        result.getTranscript(),
-                        new ForegroundColorSpan(callerColour));
+            if (result.getIsEndpoint()) {
+                CheetahTranscript finalResult = cheetah.flush();
+                animation.appendStyledText(finalResult.getTranscript() + "\n", new ForegroundColorSpan(callerColour));
 
-                if (result.getIsEndpoint()) {
-                    CheetahTranscript finalResult = cheetah.flush();
-                    appendStyledText(
-                            callerTextBuilder,
-                            finalResult.getTranscript() + "\n",
-                            new ForegroundColorSpan(callerColour));
+                animation.end();
+                animation = null;
+                engineExecutor.submit(() -> giveUserOptions());
+            }
+        } catch (CheetahException e) {
+            onEngineProcessError(e.getMessage());
+        }
+    }
 
+    private void listenUser(short[] frame) {
+        try {
+            boolean finalized = rhino.process(frame);
+            if (finalized) {
+                RhinoInference inference = rhino.getInference();
+                if (inference.getIsUnderstood() && (inference.getIntent().equals("chooseAction"))) {
+                    Action action = Action.fromString(inference.getSlots().get("action"));
+
+                    animation.clearTimed();
+                    animation.appendStyledText(action.toString() + "\n", new ForegroundColorSpan(spanColour));
                     animation.end();
                     animation = null;
-                    giveUserOptions();
-                }
-            } catch (CheetahException e) {
-                onEngineProcessError(e.getMessage());
-            }
-        } else if (uiState == UIState.CALL_SCREEN && appState == AppState.LISTEN_TO_USER) {
-            try {
-                boolean finalized = rhino.process(frame);
 
-                if (finalized) {
-                    RhinoInference inference = rhino.getInference();
+                    givingOptions = false;
 
-                    if (inference.getIsUnderstood() && (inference.getIntent().equals("chooseAction"))) {
-                        Action action = Action.fromString(inference.getSlots().get("action"));
+                    engineExecutor.submit(() -> speakToCaller(action));
 
-                        animation.clearTimed();
-                        appendStyledText(
-                                userTextBuilder,
-                                action.toString() + "\n",
-                                new ForegroundColorSpan(spanColour));
+                    new Thread(() -> {
+                        trySleep(1200);
+                        mainHandler.post(() -> {
+                            userText.setAlpha(1f);
+                            userText.animate().alpha(0f).setDuration(400);
+                        });
 
-                        animation.end();
-                        animation = null;
-
-                        givingOptions = false;
-
-                        new Thread(() -> {
-                            speakToCaller(action);
-                        }).start();
-
-                        new Thread(() -> {
-                            try {
-                                Thread.sleep(1200);
-                            } catch (InterruptedException e) { }
-
-                            mainHandler.post(() -> {
+                        trySleep(400);
+                        mainHandler.post(() -> {
+                            if (!givingOptions) {
+                                userTextBuilder.clear();
+                                userText.setText(userTextBuilder);
                                 userText.setAlpha(1f);
-                                userText.animate().alpha(0f).setDuration(400);
-                            });
-
-                            try {
-                                Thread.sleep(400);
-                            } catch (InterruptedException e) { }
-
-                            mainHandler.post(() -> {
-                                if (!givingOptions) {
-                                    userTextBuilder.clear();
-                                    userText.setText(userTextBuilder);
-                                    userText.setAlpha(1f);
-                                }
-                            });
-                        }).start();
-                    } else {
-                        animation.appendTimed("Unknown Action", 1000);
-                    }
+                            }
+                        });
+                    }).start();
+                } else {
+                    animation.appendTimed("Unknown Action", 1000);
                 }
-            } catch (RhinoException e) {
-                onEngineProcessError(e.getMessage());
             }
-        } 
+        } catch (RhinoException e) {
+            onEngineProcessError(e.getMessage());
+        }
     }
 
     private void onEngineInitError(String message) {
@@ -411,11 +405,7 @@ public class MainActivity extends AppCompatActivity {
         final double start_s = (double)System.nanoTime() / 1_000_000_000.0;
 
         Future<?> textFuture = textExecutor.submit(() -> {
-            mainHandler.post(() -> {
-                callerTextBuilder.append("[AI] ");
-                callerText.setText(callerTextBuilder);
-                callerScrollView.fullScroll(ScrollView.FOCUS_DOWN);
-            });
+            appendAndScroll(callerTextBuilder, "[AI] ", callerText, callerScrollView);
 
             OrcaWord[] words = audio.getWordArray();
             for (int i = 0; i < words.length; i++) {
@@ -424,37 +414,21 @@ public class MainActivity extends AppCompatActivity {
                 double now_s = (double)System.nanoTime() / 1_000_000_000.0 - start_s;
                 long sleepMs = (long)((word.getStartSec() - now_s) * 1000.0);
                 sleepMs = sleepMs < 0 ? 0 : sleepMs;
-                try {
-                    Thread.sleep(sleepMs);
-                } catch (InterruptedException e) { }
+                trySleep(sleepMs);
 
                 boolean no_trailing_space =
                     i == (words.length - 1) ||
                     (words[i+1].getWord().length() == 1 && PUNCTUATION.indexOf(words[i+1].getWord().charAt(0)) != -1);
                 String suffix = no_trailing_space ? "" : " ";
 
-                mainHandler.post(() -> {
-                    callerTextBuilder.append(word.getWord() + suffix);
-                    callerText.setText(callerTextBuilder);
-                    callerScrollView.fullScroll(ScrollView.FOCUS_DOWN);
-                });
+                appendAndScroll(callerTextBuilder, word.getWord() + suffix, callerText, callerScrollView);
             }
 
-            mainHandler.post(() -> {
-                callerTextBuilder.append("\n");
-                callerText.setText(callerTextBuilder);
-                callerScrollView.fullScroll(ScrollView.FOCUS_DOWN);
-            });
+            appendAndScroll(callerTextBuilder, "\n", callerText, callerScrollView);
 
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) { }
-
+            trySleep(200);
             if (action.isTerminal()) {
-                try {
-                    Thread.sleep(1500);
-                } catch (InterruptedException e) { }
-
+                trySleep(1500);
                 mainHandler.post(() -> {
                     loadingText.setText("Press the Start Demo button to try again.");
 
@@ -466,13 +440,10 @@ public class MainActivity extends AppCompatActivity {
                     loadingLayout.animate().alpha(1f).setDuration(600);
                 });
 
-                try {
-                    Thread.sleep(600);
-                } catch (InterruptedException e) { }
-
+                trySleep(600);
                 updateUIState(UIState.BEFORE_DEMO);
             } else {
-                listenForCaller();
+                engineExecutor.submit(() -> listenForCaller());
             }
         });
 
@@ -507,7 +478,7 @@ public class MainActivity extends AppCompatActivity {
 
             short[] pcm = audio.getPcm();
             if (pcm != null && pcm.length > 0 && ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
-                int written = ttsOutput.write(pcm, 0, pcm.length);
+                ttsOutput.write(pcm, 0, pcm.length);
             }
 
             if (ttsOutput.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
@@ -527,12 +498,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void listenForCaller() {
-        animation = new SpannableTextAnimation(callerTextBuilder, callerText, callerScrollView);
-
-        appendStyledText(callerTextBuilder, "[CALLER] ", new ForegroundColorSpan(callerColour));
-
         mainHandler.post(() -> {
-            callerScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+            appendStyledText(callerTextBuilder, "[CALLER] ", new ForegroundColorSpan(callerColour));
+
+            mainHandler.post(() -> {
+                callerScrollView.fullScroll(ScrollView.FOCUS_DOWN);
+            });
         });
 
         try {
@@ -546,6 +517,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        animation = new SpannableTextAnimation(callerTextBuilder, callerText, callerScrollView);
         animation.start();
 
         updateAppState(AppState.LISTEN_TO_CALLER);
@@ -556,21 +528,17 @@ public class MainActivity extends AppCompatActivity {
             givingOptions = true;
             userText.animate().cancel();
             userText.setAlpha(1f);
-        });
 
-        userTextBuilder.clear();
-        userTextBuilder.append("Select a call-assist action:\n");
-        userTextBuilder.append(Action.all());
-        appendStyledText(userTextBuilder, "[" + username.toUpperCase() + "] ", new ForegroundColorSpan(spanColour));
+            userTextBuilder.clear();
+            userTextBuilder.append("Select a call-assist action:\n");
+            userTextBuilder.append(Action.all());
+            appendStyledText(userTextBuilder, "[" + username.toUpperCase() + "] ", new ForegroundColorSpan(spanColour));
 
-        mainHandler.post(() -> {
             userText.setText(userTextBuilder);
             userText.post(() -> {
                 userScrollView.fullScroll(ScrollView.FOCUS_DOWN);
             });
         });
-
-        animation = new SpannableTextAnimation(userTextBuilder, userText);
 
         try {
             if (voiceProcessor.getIsRecording()) {
@@ -583,6 +551,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        animation = new SpannableTextAnimation(userTextBuilder, userText);
         animation.start();
 
         updateAppState(AppState.LISTEN_TO_USER);
