@@ -13,6 +13,7 @@
 package ai.picovoice.speakerawarevoiceassistant;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
@@ -73,10 +74,10 @@ public class MainActivity extends AppCompatActivity {
     private static final String ORCA_MODEL_FILE = "${ORCA_MODEL_HERE}.pv";
     private static final float EAGLE_THRESHOLD = 0.75f;
 
-    private static final int EAGLE_MIN_ENROLLMENT_CHUNKS = 4;
+    private static final int EAGLE_MIN_ENROLLMENT_CHUNKS = 6;
     private static final int MAX_SPEAKERS = 10;
 
-    private TextView titleText, statusText;
+    private TextView titleText, statusText, tooltipText;
     private View layoutGreeting, layoutEnroll;
     private ViewGroup speakerChipContainer;
     private TextView greetingPrefixText, greetingSpeakerNameText, btnAddSpeaker;
@@ -146,6 +147,7 @@ public class MainActivity extends AppCompatActivity {
 
         titleText = findViewById(R.id.titleText);
         statusText = findViewById(R.id.statusText);
+        tooltipText = findViewById(R.id.tooltipText);
 
         layoutEnroll = findViewById(R.id.layoutEnroll);
         speakerChipContainer = findViewById(R.id.speakerChipContainer);
@@ -572,11 +574,17 @@ public class MainActivity extends AppCompatActivity {
         updateUIForState();
     }
 
+    @SuppressLint("SetTextI18n")
     private void showGreeting(String speakerName, int speakerColour) {
-        volumeMeterView.setVisibility(View.GONE);
+        volumeMeterView.setVisibility(View.VISIBLE);
         statusText.setVisibility(View.GONE);
+        tooltipText.setVisibility(View.VISIBLE);
+        tooltipText.setText(
+                "Try one of the following commands:" +
+                        "\n\"do something that requires admin permission\"" +
+                        "\n\"do something just for me\"" +
+                        "\n\"do something anyone can do\"");
         btnCancel.setVisibility(View.GONE);
-
         layoutGreeting.setVisibility(View.VISIBLE);
 
         greetingPrefixText.setVisibility(View.VISIBLE);
@@ -603,6 +611,7 @@ public class MainActivity extends AppCompatActivity {
 
         layoutGreeting.setVisibility(View.GONE);
         statusText.setVisibility(View.VISIBLE);
+        tooltipText.setVisibility(View.GONE);
         volumeMeterView.setVisibility(View.VISIBLE);
         btnCancel.setVisibility(View.VISIBLE);
     }
@@ -639,13 +648,22 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @SuppressLint("SetTextI18n")
     private void updateUIForState() {
         boolean hasProfiles = !speakerProfiles.isEmpty();
 
         if (currentState == AppState.ENROLLING) {
             titleText.setVisibility(View.GONE);
             statusText.setVisibility(View.VISIBLE);
-            statusText.setText("Hello " + pendingSpeakerName + "\n\nSay phrases until\nthe circle is full");
+            statusText.setText("Hello " + pendingSpeakerName + "\n\nSpeak until the circle is full");
+            tooltipText.setVisibility(View.VISIBLE);
+            tooltipText.setText(
+                    "Try the following phrases:" +
+                    "\n\"The quick brown fox jumps over the lazy dog.\"" +
+                    "\n\"I am recording my voice for speaker enrollment.\"" +
+                    "\n\"This is my normal speaking voice in a quiet room.\"" +
+                    "\n\"The assistant should recognize me when I speak.\"" +
+                    "\n\"Voice recognition works best with clean and natural speech.\"");
             enrollProgressBar.setVisibility(View.VISIBLE);
             enrollProgressBar.setProgress(0);
 
@@ -661,6 +679,7 @@ public class MainActivity extends AppCompatActivity {
             titleText.setVisibility(View.GONE);
             statusText.setVisibility(View.VISIBLE);
             statusText.setText("Listening for wake word...");
+            tooltipText.setVisibility(View.GONE);
             enrollProgressBar.setVisibility(View.GONE);
 
             layoutEnroll.setVisibility(View.GONE);
@@ -676,6 +695,7 @@ public class MainActivity extends AppCompatActivity {
             statusText.setVisibility(hasProfiles ? View.GONE : View.VISIBLE);
             statusText.setText("Ready to Enroll");
 
+            tooltipText.setVisibility(View.GONE);
             enrollProgressBar.setVisibility(View.GONE);
             volumeMeterView.setVisibility(View.GONE);
             btnCancel.setVisibility(View.GONE);
