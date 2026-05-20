@@ -83,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
     private View layoutGreeting, layoutEnroll;
     private ViewGroup speakerChipContainer;
     private TextView greetingPrefixText, greetingSpeakerNameText, btnAddSpeaker;
-    private ProgressBar enrollProgressBar;
+    private ProgressBar enrollProgressBar, loadingProgressBar;
     private Button btnStartEnroll, btnStartTest, btnClearAll, btnCancel;
     private View buttonContainer;
     private VolumeMeterView volumeMeterView;
@@ -98,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
     private AppState currentState = AppState.IDLE;
     private TestingState testingState = TestingState.PPN;
 
-    private final ExecutorService ttsPlaybackExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService engineExecutor = Executors.newSingleThreadExecutor();
 
     private enum AppState {
         IDLE,
@@ -161,6 +161,7 @@ public class MainActivity extends AppCompatActivity {
         greetingSpeakerNameText = findViewById(R.id.greetingSpeakerNameText);
 
         enrollProgressBar = findViewById(R.id.enrollProgressBar);
+        loadingProgressBar = findViewById(R.id.loadingProgressBar);
 
         btnStartEnroll = findViewById(R.id.btnStartEnroll);
         btnStartTest = findViewById(R.id.btnStartTest);
@@ -298,8 +299,6 @@ public class MainActivity extends AppCompatActivity {
                         int bestIndex = -1;
 
                         if (scores != null) {
-                            Log.e(TAG, String.format("scores %f", scores[0]));
-
                             for (int i = 0; i < scores.length; i++) {
                                 if (scores[i] >= bestScore) {
                                     bestScore = scores[i];
@@ -340,19 +339,13 @@ public class MainActivity extends AppCompatActivity {
                             int bestIndex = -1;
 
                             if (scores != null) {
-                                Log.e(TAG, String.format("scores %f", scores[0]));
-
                                 for (int i = 0; i < scores.length; i++) {
                                     if (scores[i] >= bestScore) {
                                         bestScore = scores[i];
                                         bestIndex = i;
                                     }
                                 }
-                            } else {
-                                Log.e(TAG, "SCORES NULL");
                             }
-
-                            Log.e(TAG, String.format("%f %d", bestScore, bestIndex));
 
                             if (Objects.equals(inference.getIntent(), "adminOnly")) {
                                 if (bestScore >= EAGLE_THRESHOLD) {
@@ -390,9 +383,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void synthesizeAndPlayback(String text) {
         testingState = TestingState.ORCA;
-        volumeMeterView.setVisibility(View.INVISIBLE);
+        volumeMeterView.setVisibility(View.GONE);
+        loadingProgressBar.setVisibility(View.VISIBLE);
 
-        ttsPlaybackExecutor.submit(() -> {
+        engineExecutor.submit(() -> {
             OrcaAudio audio;
             try {
                 audio = orca.synthesize(
@@ -498,44 +492,50 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startTesting() {
-        try {
-            stopAudio();
-            currentState = AppState.TESTING;
-            testingState = TestingState.PPN;
+        loadingProgressBar.setVisibility(View.VISIBLE);
+        buttonContainer.setVisibility(View.GONE);
 
-            porcupine = new Porcupine.Builder()
-                    .setAccessKey(ACCESS_KEY)
-                    .setKeywordPath(WAKE_WORD_FILE)
-                    .setSensitivity(0.5f)
-                    .build(this);
+        engineExecutor.submit(() -> {
+            try {
+                stopAudio();
+                currentState = AppState.TESTING;
+                testingState = TestingState.PPN;
 
-            rhino = new Rhino.Builder()
-                    .setAccessKey(ACCESS_KEY)
-                    .setContextPath(CONTEXT_FILE)
-                    .build(this);
+                porcupine = new Porcupine.Builder()
+                        .setAccessKey(ACCESS_KEY)
+                        .setKeywordPath(WAKE_WORD_FILE)
+                        .setSensitivity(0.5f)
+                        .build(this);
 
-            orca = new Orca.Builder()
-                    .setAccessKey(ACCESS_KEY)
-                    .setModelPath(ORCA_MODEL_FILE)
-                    .build(this);
+                rhino = new Rhino.Builder()
+                        .setAccessKey(ACCESS_KEY)
+                        .setContextPath(CONTEXT_FILE)
+                        .build(this);
 
-            eagle = new Eagle.Builder()
-                    .setAccessKey(ACCESS_KEY)
-                    .setVoiceThreshold(0.1f)
-                    .build(this);
+                orca = new Orca.Builder()
+                        .setAccessKey(ACCESS_KEY)
+                        .setModelPath(ORCA_MODEL_FILE)
+                        .build(this);
 
-            slidingBuffer = new short[eagle.getMinProcessSamples()];
+                eagle = new Eagle.Builder()
+                        .setAccessKey(ACCESS_KEY)
+                        .setVoiceThreshold(0.1f)
+                        .build(this);
 
-            updateUIForState();
-            voiceProcessor.start(porcupine.getFrameLength(), porcupine.getSampleRate());
+                slidingBuffer = new short[eagle.getMinProcessSamples()];
 
-        } catch (PorcupineException | RhinoException | OrcaException | EagleException e) {
-            statusText.setText("Engine init error: " + e.getMessage());
-            Log.e(TAG, "Init error", e);
-        } catch (VoiceProcessorArgumentException e) {
-            statusText.setText("Audio error: " + e.getMessage());
-            Log.e(TAG, "Audio error", e);
-        }
+                runOnUiThread(() -> loadingProgressBar.setVisibility(View.GONE));
+                runOnUiThread(this::updateUIForState);
+                voiceProcessor.start(porcupine.getFrameLength(), porcupine.getSampleRate());
+
+            } catch (PorcupineException | RhinoException | OrcaException | EagleException e) {
+                statusText.setText("Engine init error: " + e.getMessage());
+                Log.e(TAG, "Init error", e);
+            } catch (VoiceProcessorArgumentException e) {
+                statusText.setText("Audio error: " + e.getMessage());
+                Log.e(TAG, "Audio error", e);
+            }
+        });
     }
 
     private void finishEnrollment() {
@@ -597,6 +597,7 @@ public class MainActivity extends AppCompatActivity {
         tooltipText.setVisibility(View.GONE);
         volumeMeterView.setVisibility(View.VISIBLE);
         btnCancel.setVisibility(View.VISIBLE);
+        loadingProgressBar.setVisibility(View.GONE);
     }
 
     private void renderSpeakerChips() {
@@ -738,7 +739,7 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         stopAudio();
         clearAllProfiles();
-        ttsPlaybackExecutor.shutdownNow();
+        engineExecutor.shutdownNow();
         if (voiceProcessor != null) {
             voiceProcessor.clearFrameListeners();
             voiceProcessor.clearErrorListeners();
