@@ -69,9 +69,9 @@ enum UserRole {
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "PICOVOICE";
     private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
-    private static final String WAKE_WORD_FILE = "${YOUR_WAKE_WORD_HERE}.ppn";
-    private static final String CONTEXT_FILE = "${YOUR_CONTEXT_HERE}.ppn";
-    private static final String ORCA_MODEL_FILE = "${ORCA_MODEL_HERE}.pv";
+    private static final String WAKE_WORD_FILE = "keyword.ppn";
+    private static final String CONTEXT_FILE = "context.rhn";
+    private static final String ORCA_MODEL_FILE = "orca_params_en_female.pv";
     private static final float EAGLE_THRESHOLD = 0.75f;
 
     private static final int EAGLE_MIN_ENROLLMENT_CHUNKS = 6;
@@ -461,11 +461,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startEnrollment() {
-        if (checkDefaultArgs()) {
-            currentState = AppState.IDLE;
-            return;
-        }
-
         try {
             stopAudio();
             currentState = AppState.ENROLLING;
@@ -498,11 +493,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startTesting() {
-        if (checkDefaultArgs()) {
-            currentState = AppState.IDLE;
-            return;
-        }
-
         try {
             stopAudio();
             currentState = AppState.TESTING;
@@ -541,19 +531,6 @@ public class MainActivity extends AppCompatActivity {
             statusText.setText("Audio error: " + e.getMessage());
             Log.e(TAG, "Audio error", e);
         }
-    }
-
-    private boolean checkDefaultArgs() {
-        if (ACCESS_KEY.equals("${YOUR_ACCESS_KEY_HERE}")) {
-            statusText.setText("Please set your Picovoice AccessKey in MainActivity.java");
-            return true;
-        }
-
-        if (WAKE_WORD_FILE.equals("${YOUR_WAKE_WORD_HERE}.ppn")) {
-            statusText.setText("Please set your Porcupine Wake Word file in MainActivity.java");
-            return true;
-        }
-        return false;
     }
 
     private void finishEnrollment() {
