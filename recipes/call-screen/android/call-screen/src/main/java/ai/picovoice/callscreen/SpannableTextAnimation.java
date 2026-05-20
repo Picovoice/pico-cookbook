@@ -2,6 +2,7 @@ package ai.picovoice.callscreen;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.text.style.CharacterStyle;
 import android.text.style.ForegroundColorSpan;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
@@ -16,11 +17,13 @@ import java.util.concurrent.ExecutionException;
 
 public class SpannableTextAnimation {
 
+    private static final int DEFAULT_REFRESH_MS = 200;
     private static final String[] DOTS = { ".  ", ".. ", "...", " ..", "  .", "   " };
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private final ExecutorService animationExecutor = Executors.newSingleThreadExecutor();
+    private final Object builderCopyLock = new Object();
 
     private boolean exitThread = false;
     private Future<?> animationThread;
@@ -33,6 +36,7 @@ public class SpannableTextAnimation {
     private String appendString = "";
     private long endMs = -1;
 
+
     public SpannableTextAnimation(SpannableStringBuilder stringBuilder, TextView targetView, ScrollView scrollView, int refreshMs) {
         this.stringBuilder = stringBuilder;
         this.targetView = targetView;
@@ -41,58 +45,69 @@ public class SpannableTextAnimation {
     }
 
     public SpannableTextAnimation(SpannableStringBuilder stringBuilder, TextView targetView, ScrollView scrollView) {
-        this(stringBuilder, targetView, scrollView, 100);
+        this(stringBuilder, targetView, scrollView, DEFAULT_REFRESH_MS);
     }
 
     public SpannableTextAnimation(SpannableStringBuilder stringBuilder, TextView targetView) {
-        this(stringBuilder, targetView, null, 100);
+        this(stringBuilder, targetView, null, DEFAULT_REFRESH_MS);
     }
 
     public void start() {
         animationThread = animationExecutor.submit(() -> {
             int[] i = new int[1];
             while (!exitThread) {
-                SpannableStringBuilder stringBuilderCopy = new SpannableStringBuilder(stringBuilder);
-
-                ForegroundColorSpan spanOverLastChar = null;
-                ForegroundColorSpan[] spans = stringBuilderCopy.getSpans(
-                        stringBuilderCopy.length() - 1,
-                        stringBuilderCopy.length(),
-                        ForegroundColorSpan.class);
-                for (ForegroundColorSpan span : spans) {
-                    spanOverLastChar = span;
-                    break;
-                }
-
-                String dots = "";
-                if (System.currentTimeMillis() < endMs) {
-                    dots += " " + this.appendString;
-                }
-                dots += " " + DOTS[i[0] % DOTS.length];
-
-                stringBuilderCopy.append(dots);
-
-                if (spanOverLastChar != null) {
-                    stringBuilderCopy.setSpan(
-                            new ForegroundColorSpan(spanOverLastChar.getForegroundColor()),
-                            stringBuilderCopy.length() - dots.length(),
-                            stringBuilderCopy.length(),
-                            Spannable.SPAN_INCLUSIVE_EXCLUSIVE);
-                }
-
-                mainHandler.post(() -> {
-                    targetView.setText(stringBuilderCopy);
-
-                    if (scrollView != null) {
-                        scrollView.fullScroll(ScrollView.FOCUS_DOWN);
+                try {
+                    SpannableStringBuilder stringBuilderCopy;
+                    synchronized (builderCopyLock) {
+                        stringBuilderCopy = new SpannableStringBuilder(stringBuilder);
                     }
-                });
+
+                    ForegroundColorSpan spanOverLastChar = null;
+                    ForegroundColorSpan[] spans = stringBuilderCopy.getSpans(
+                            stringBuilderCopy.length() - 1,
+                            stringBuilderCopy.length(),
+                            ForegroundColorSpan.class);
+                    for (ForegroundColorSpan span : spans) {
+                        spanOverLastChar = span;
+                        break;
+                    }
+
+                    String dots = "";
+                    if (System.currentTimeMillis() < endMs) {
+                        dots += " " + this.appendString;
+                    }
+                    dots += " " + DOTS[i[0] % DOTS.length];
+
+                    stringBuilderCopy.append(dots);
+
+                    if (spanOverLastChar != null) {
+                        stringBuilderCopy.setSpan(
+                                new ForegroundColorSpan(spanOverLastChar.getForegroundColor()),
+                                stringBuilderCopy.length() - dots.length(),
+                                stringBuilderCopy.length(),
+                                Spannable.SPAN_INCLUSIVE_EXCLUSIVE);
+                    }
+
+                    mainHandler.post(() -> {
+                        targetView.setText(stringBuilderCopy);
+
+                        if (scrollView == null) {
+                            return;
+                        }
+
+                        mainHandler.post(() -> {
+                            scrollView.fullScroll(ScrollView.FOCUS_DOWN);
+                        });
+                    });
+
+                    i[0]++;
+                } catch (Exception e) {
+                    Log.e("PICOVOICE", "Inside animation thread, failed with: ", e);
+                }
 
                 try {
                     Thread.sleep(refreshMs);
                 } catch (InterruptedException e) { }
-
-                i[0]++;
             }
         });
     }
@@ -100,6 +115,23 @@ public class SpannableTextAnimation {
     public void appendTimed(String appendString, int delayMs) {
         this.appendString = appendString;
         this.endMs = System.currentTimeMillis() + (long)delayMs;
+    }
+
+    public void appendStyledText(String text, CharacterStyle span) {
+        synchronized (builderCopyLock) {
+            stringBuilder.append(text);
+            stringBuilder.setSpan(
+                    span,
+                    stringBuilder.length() - text.length(),
+                    stringBuilder.length(),
+                    Spannable.SPAN_INCLUSIVE_EXCLUSIVE);
+        }
+    }
+
+    public void appendText(String text) {
+        synchronized (builderCopyLock) {
+            stringBuilder.append(text);
+        }
     }
 
     public void clearTimed() {
@@ -122,9 +154,13 @@ public class SpannableTextAnimation {
         mainHandler.post(() -> {
             targetView.setText(stringBuilder);
 
-            if (scrollView != null) {
-                scrollView.fullScroll(ScrollView.FOCUS_DOWN);
+            if (scrollView == null) {
+                return;
             }
+
+            mainHandler.post(() -> {
+                scrollView.fullScroll(ScrollView.FOCUS_DOWN);
+            });
         });
     }
 }
