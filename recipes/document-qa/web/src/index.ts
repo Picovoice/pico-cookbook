@@ -127,7 +127,7 @@ type chunkEmbeddingType = {
   score: number;
   chunk: string;
 };
-const retreiveChunks = async (question: string): Promise<chunkEmbeddingType[]> => {
+const retrieveChunks = async (question: string): Promise<chunkEmbeddingType[]> => {
   const questionEmbeddingCompletion = await object!.llmEmbedding.generateEmbeddings(question);
   const questionEmbedding = normalizeVector(questionEmbeddingCompletion.embeddings);
 
@@ -142,8 +142,8 @@ const retreiveChunks = async (question: string): Promise<chunkEmbeddingType[]> =
   return scores.slice(0, TOPK);
 };
 
-const buildPrompt = async (question: string, retreivedChunks: chunkEmbeddingType[]): Promise<string> => {
-  const context = retreivedChunks.map(ce => ce.chunk).map((c, i) => `[Excerpt ${i}]\n${c}`).join("\n\n");
+const buildPrompt = async (question: string, retrievedChunks: chunkEmbeddingType[]): Promise<string> => {
+  const context = retrievedChunks.map(ce => ce.chunk).map((c, i) => `[Excerpt ${i}]\n${c}`).join("\n\n");
 
   const dialog = await object!.llmModel.getDialog(undefined, undefined, SYSTEM);
   dialog.addHumanRequest(`Document excerpts:\n\n${context}\n\nQuestion:\n${question}`);
@@ -254,8 +254,8 @@ const init = async (
   const llmProcessCall = async (question: string) => {
     sendMessage("start llm spinner", null);
 
-    const retreivedChunks = await retreiveChunks(question);
-    const prompt = await buildPrompt(question, retreivedChunks);
+    const retrievedChunks = await retrieveChunks(question);
+    const prompt = await buildPrompt(question, retrievedChunks);
 
     const stream = await object!.orca.streamOpen();
     const streamMutex = new Mutex();
