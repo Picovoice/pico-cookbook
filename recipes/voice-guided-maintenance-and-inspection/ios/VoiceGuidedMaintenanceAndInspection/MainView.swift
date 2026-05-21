@@ -10,37 +10,60 @@
 import SwiftUI
 
 extension Color {
+    static let darkGray = Color(red: 0.5, green: 0.5, blue: 0.5)
     static let lightGray = Color(red: 0.8, green: 0.8, blue: 0.8)
     static let offWhite = Color(red: 0.93, green: 0.93, blue: 0.93)
 }
+
+let DOTS = [
+    ".  ",
+    ".. ",
+    "...",
+    " ..",
+    "  .",
+    "   "
+]
 
 struct CardView: View {
     let title: String
     let content: String?
     let isActive: Bool
-    
+    let startDate = Date()
+
     var body: some View {
-        VStack {
-            HStack {
-                Text(title)
-                    .padding(.bottom, 8)
-                    .foregroundStyle(isActive ? .blue : .gray)
-                Spacer()
-            }
-            HStack {
-                Text(content != nil ? content! : (isActive ? "..." : "-"))
-                    .foregroundStyle(isActive ? .blue : .gray)
-                Spacer()
-            }
-        }.padding(14)
-            .background(Color.offWhite)
-            .cornerRadius(10)
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(
-                        isActive ? .blue : .lightGray,
-                        lineWidth: 1)
-            )
+        HStack {
+            VStack {
+                HStack {
+                    Text(title)
+                        .foregroundStyle((isActive || content != nil) ? .blue : .darkGray)
+                        .bold()
+                    Spacer()
+                }
+                HStack {
+                    if content == nil && isActive {
+                        TimelineView(.periodic(from: startDate, by: 0.1)) { context in
+                            let index = Int64(context.date.timeIntervalSince1970 * 7) % Int64(DOTS.count)
+                            Text(DOTS[Int(index)])
+                                .foregroundStyle(isActive ? .blue : .darkGray)
+                        }
+                    } else {
+                        Text(content != nil ? content! : "-")
+                            .foregroundStyle(isActive ? .blue : .darkGray)
+                            .bold()
+                    }
+
+                    Spacer()
+                }
+            }.padding(14)
+                .background(Color.offWhite)
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(
+                            isActive ? .blue : .lightGray,
+                            lineWidth: 1)
+                )
+        }.padding(8)
     }
 }
 
@@ -49,18 +72,28 @@ struct MainView: View {
     
     var body: some View {
         VStack {
-            ScrollView {
-                ForEach(CardType.allCases, id: \.self) {card in
-                    CardView(
-                        title: viewModel.cardTitles[card]!,
-                        content: viewModel.cardValues[card],
-                        isActive: viewModel.activeCard == card)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    ForEach(CardType.allCases, id: \.self) {card in
+                        CardView(
+                            title: viewModel.cardTitles[card]!,
+                            content: viewModel.cardValues[card],
+                            isActive: viewModel.activeCard == card)
+                    }.onChange(of: viewModel.cardValues, {
+                        if viewModel.activeCard != nil {
+                            proxy.scrollTo(
+                                viewModel.activeCard!,
+                                anchor: .bottom)
+                        }
+                    })
                 }
             }
 
             Spacer()
             
             Text(viewModel.statusText)
+                .foregroundStyle(.gray)
+                .padding(8)
             
             if viewModel.listenState == .listening {
                 VolumeMeterView(viewModel: viewModel)
@@ -69,7 +102,6 @@ struct MainView: View {
                     ProgressView()
                         .controlSize(.extraLarge)
                 }.frame(width: 50, height: 70)
-                    .padding(20)
             }
             
             Button(
@@ -81,7 +113,7 @@ struct MainView: View {
                         .padding(.vertical, 8)
                         .padding(8)
                         .foregroundStyle(.black)
-                        .background(.gray)
+                        .background(Color.lightGray)
                         .clipShape(
                             RoundedRectangle(
                                 cornerRadius: 8))

@@ -25,7 +25,6 @@ struct VolumeMeterView: View {
             }
         }
         .frame(width: 50, height: 70)
-        .padding(20)
         .animation(.easeInOut(duration: 0.05), value: viewModel.soundLevel)
     }
 }

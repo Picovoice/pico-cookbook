@@ -219,6 +219,8 @@ class ViewModel: ObservableObject {
                 
                 try await workflow!.run()
 
+                try? await Task.sleep(for: .seconds(1))
+                
                 await setViewState(state: .loading)
             } catch {
                 await setErrorText(text: error.localizedDescription)
@@ -483,9 +485,7 @@ class CheetahStep {
         self.cheetah = cheetah
     }
     
-    func run() async throws -> String? {
-        var result = ""
-        
+    func run(onText: (String) async -> Void) async throws -> Bool {
         try recorder.start()
         
         var isEndpoint = false
@@ -493,22 +493,18 @@ class CheetahStep {
         while !isEndpoint && !shouldCancel {
             let frame = try await recorder.read(frameLength: Cheetah.frameLength)
             let (transcript, endpoint) = try cheetah.process(frame)
-            result += transcript
+            await onText(transcript)
             
             if endpoint {
                 let flush = try cheetah.flush()
-                result += flush
+                await onText(flush)
                 isEndpoint = true
             }
         }
         
         try recorder.stop()
         
-        if shouldCancel {
-            return nil
-        } else {
-            return result
-        }
+        return !shouldCancel
     }
     
     func cancel() {
@@ -785,12 +781,15 @@ class DictationState: State {
     func run(args: [String : Any]) async throws -> Transition {
         await viewModel.setStatusText(text: listeningPrompt)
         await viewModel.setListenState(state: .listening)
-        let transcript = try await cheetahStep.run()
-        if transcript != nil {
-            await viewModel.setCardValue(card: cardType, value: transcript!)
+        var transcript = ""
+        let onText: (String) async -> Void = {[self] text in
+            transcript += text
+            await viewModel.setCardValue(card: cardType, value: transcript)
+        }
+        if try await cheetahStep.run(onText: onText) {   
             await viewModel.setActiveCard(card: nil)
             await viewModel.setListenState(state: .listening)
-            return Transition(nextState: self.nextState, nextStateArgs: [:])
+            return Transition(nextState: nextState, nextStateArgs: [:])
         } else {
             return Transition(nextState: nil, nextStateArgs: [:])
         }

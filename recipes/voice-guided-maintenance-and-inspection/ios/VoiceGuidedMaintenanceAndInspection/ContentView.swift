@@ -24,5 +24,6 @@ struct ContentView: View {
                 MainView(viewModel: viewModel)
             }
         }.padding()
+            .animation(.easeInOut, value: viewModel.viewState)
     }
 }

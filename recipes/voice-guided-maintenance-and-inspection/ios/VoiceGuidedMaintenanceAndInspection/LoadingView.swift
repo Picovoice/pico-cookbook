@@ -20,6 +20,8 @@ struct LoadingView: View {
                 .foregroundStyle(.blue)
                 .bold()
             Text(viewModel.statusText)
+                .foregroundStyle(.gray)
+                .padding()
             
             if viewModel.enginesLoaded {
                 Button(
@@ -37,6 +39,10 @@ struct LoadingView: View {
                                     cornerRadius: 8))
                     }
                 ).animation(.easeInOut, value: viewModel.enginesLoaded)
+            } else {
+                ProgressView()
+                    .controlSize(.extraLarge)
+                    .padding(8)
             }
         }
         .padding()
