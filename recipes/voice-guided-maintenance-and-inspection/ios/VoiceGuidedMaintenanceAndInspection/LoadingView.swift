@@ -11,7 +11,7 @@ import SwiftUI
 
 struct LoadingView: View {
     @ObservedObject var viewModel: ViewModel
-    
+
     var body: some View {
         VStack {
             Text("Voice Guided Maintenance and Inspection")
@@ -22,7 +22,7 @@ struct LoadingView: View {
             Text(viewModel.statusText)
                 .foregroundStyle(.gray)
                 .padding()
-            
+
             if viewModel.enginesLoaded {
                 Button(
                     action: {

@@ -5,8 +5,7 @@ free-form voice notes. Powered by on-device voice AI.
 
 ## Compatibility
 
-- Runs on Linux (x86_64), macOS (arm64, x86_64), Windows (arm64, x86_64), and Raspberry Pi (5, 4, and 3).
-- Python>=3.9
+- iOS 17.0+
 
 ## AccessKey
 
@@ -17,70 +16,49 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ## Usage
 
-These instructions assume your current working directory is `recipes/voice-guided-maintenance-and-inspection/python`.
+These instructions assume your current working directory is `recipes/voice-guided-maintenance-and-inspection/ios`.
 
-### 1. Create a Virtual Environment
-
-```console
-python -m venv .venv
-```
-
-### 2. Activate the Virtual Environment
-
-On Linux, macOS, or Raspberry Pi:
-
-```console
-source .venv/bin/activate
-```
-
-On Windows:
-
-```console
-.venv\Scripts\activate
-```
-
-### 3. Install Dependencies
-
-```console
-pip install -r requirements.txt
-```
-
-### 4. Train a Wake Word Model
+### 1. Train a Wake Word Model
 
 1. Open [Picovoice Console](https://console.picovoice.ai/)
 2. Go to Porcupine Wake Word.
 3. Enter your desired wake phrase.
 4. Click Train.
-5. Select your target platform and download the generated wake word model file (`.ppn`).
+5. Select target platform **iOS** and download the generated wake word model file (`.ppn`).
 
-Save the downloaded file somewhere accessible on your machine. You will pass its path to the demo with `--keyword_path`.
+Save the downloaded file somewhere accessible on your machine. You will pass its path to the setup script with `--keyword_path`.
 
-### 5. Train the Speech-to-Intent Model
+### 2. Train the Speech-to-Intent Model
 
 1. Open [Picovoice Console](https://console.picovoice.ai/)
 2. Go to Rhino Speech-to-Intent.
 3. Create an empty Rhino context.
 4. Click Import YAML in the top-right corner.
 5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
-6. Download the generated Rhino context file (`.rhn`) for your target platform.
+6. Download the generated Rhino context file (`.rhn`) for target platform **iOS**.
 
-### 6. Run the Demo
+Save the downloaded file somewhere accessible on your machine. You will pass its path to the setup script with `--context_path`.
 
-```console
-python main.py \
-  --access_key ${ACCESS_KEY} \
-  --keyword_path ${KEYWORD_PATH} \
-  --context_path ${CONTEXT_PATH}
-```
+### 3. Run the Setup Script
 
-Where:
+Run the setup script to download and copy the models for [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/)
+and [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/).
 
-* `${ACCESS_KEY}` is your Picovoice AccessKey from Picovoice Console.
-* `${KEYWORD_PATH}` is the path to the Porcupine wake word model file (`.ppn`).
-* `${CONTEXT_PATH}` is the path to the Rhino Speech-to-Intent context file (`.rhn`).
+It will also copy the models provided for [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/) and
+[Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) to the assets folder.
 
-### 7. View All Options
+Lastly, it will place your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable
+in [ViewModel.swift](VoiceGuidedMaintenanceAndInspection/ViewModel.swift).
 
 ```console
-python main.py --help
+python setup.py \
+    --access_key ${ACCESS_KEY} \
+    --keyword_path ${PATH_TO_PPN} \
+    --context_path ${PATH_TO_RHN}
 ```
+
+### 3. Run the XCode project
+
+1. Open the `VoiceGuidedMaintenanceAndInspection` project in XCode
+2. Build and run the demo.
+3. Tap the `Start Demo` button in the demo.

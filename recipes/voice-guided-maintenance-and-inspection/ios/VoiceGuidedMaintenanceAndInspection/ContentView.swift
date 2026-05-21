@@ -11,7 +11,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject var viewModel: ViewModel = ViewModel()
-    
+
     var body: some View {
         ZStack {
             if viewModel.errorText != nil {

@@ -83,7 +83,7 @@ class ViewModel: ObservableObject {
         .SERVICE_STATUS: "SERVICE STATUS",
         .NOTES: "NOTES"
     ]
-    
+
     @Published var viewState: ViewState = .loading
     @Published var listenState: ListenState = .idle
     @Published var statusText: String = ""
@@ -102,13 +102,13 @@ class ViewModel: ObservableObject {
     private var audioPlayerStream: AudioPlayerStream?
     private var basicRecorder: BasicRecorder?
     private var noiseSuppressionRecorder: AINoiseSuppressionRecorder?
-    
+
     private var cheetahStep: CheetahStep?
     private var orcaStep: OrcaStep?
     private var porcupineStep: PorcupineStep?
     private var rhinoStep: RhinoStep?
     private var workflow: Workflow?
-    
+
     init() {
         Task.detached(priority: .background) { [self] in
             do {
@@ -118,13 +118,13 @@ class ViewModel: ObservableObject {
             }
         }
     }
-    
+
     func setViewState(state: ViewState) async {
         await MainActor.run {
             viewState = state
         }
     }
-    
+
     func setListenState(state: ListenState) async {
         await MainActor.run {
             listenState = state
@@ -142,23 +142,23 @@ class ViewModel: ObservableObject {
             errorText = text
         }
     }
-    
+
     func setActiveCard(card: CardType?) async {
         await MainActor.run {
             activeCard = card
         }
     }
-    
+
     func setCardValue(card: CardType, value: String) async {
         await MainActor.run {
             cardValues[card] = value
         }
     }
-    
+
     private func preloadDemo() async throws {
         await setStatusText(text: "Loading Koala Noise Suppression...")
         koala = try Koala(accessKey: ACCESS_KEY)
-        
+
         await setStatusText(text: "Loading Porcupine Wake Word...")
         porcupine = try Porcupine(accessKey: ACCESS_KEY, keywordPath: KEYWORD_MODEL)
 
@@ -205,7 +205,7 @@ class ViewModel: ObservableObject {
             enginesLoaded = true
         }
     }
-    
+
     public func startDemo() {
         Task.detached(priority: .background) { [self] in
             do {
@@ -216,18 +216,18 @@ class ViewModel: ObservableObject {
                     activeCard = nil
                     cardValues.removeAll()
                 }
-                
+
                 try await workflow!.run()
 
-                try? await Task.sleep(for: .seconds(1))
-                
+                try await Task.sleep(for: .seconds(1))
+
                 await setViewState(state: .loading)
             } catch {
                 await setErrorText(text: error.localizedDescription)
             }
         }
     }
-    
+
     public func stopDemo() {
         workflow!.cancel()
     }
@@ -254,7 +254,7 @@ class ViewModel: ObservableObject {
 
 class Workflow {
     let states: [RecipeStates: State]
-    
+
     init(
         viewModel: ViewModel,
         cheetahStep: CheetahStep,
@@ -282,7 +282,7 @@ class Workflow {
                 cardType: .UNIT_ID,
                 successLogGen: {inf in inf.slots["unitId"]!},
                 successNextState: .CHECK_OIL_PROMPT,
-                failurePromptGen: {inf in "Failed to capture unit ID. Retrying..."},
+                failurePromptGen: {_ in "Failed to capture unit ID. Retrying..."},
                 failureNextState: .IDENTIFY_UNIT_PROMPT),
             .CHECK_OIL_PROMPT: PromptState(
                 viewModel: viewModel,
@@ -298,7 +298,7 @@ class Workflow {
                 cardType: .OIL_CONDITION,
                 successLogGen: {inf in inf.slots["fluidCondition"]!},
                 successNextState: .CHECK_TIRE_PROMPT,
-                failurePromptGen: {inf in "Failed to capture oil condition. Retrying..."},
+                failurePromptGen: {_ in "Failed to capture oil condition. Retrying..."},
                 failureNextState: .CHECK_OIL_PROMPT),
             .CHECK_TIRE_PROMPT: PromptState(
                 viewModel: viewModel,
@@ -314,7 +314,7 @@ class Workflow {
                 cardType: .TIRE_CONDITION,
                 successLogGen: {inf in inf.slots["tireCondition"]!},
                 successNextState: .CHECK_SERVICE_STATUS_PROMPT,
-                failurePromptGen: {inf in "Failed to capture tire condition. Retrying..."},
+                failurePromptGen: {_ in "Failed to capture tire condition. Retrying..."},
                 failureNextState: .CHECK_TIRE_PROMPT),
             .CHECK_SERVICE_STATUS_PROMPT: PromptState(
                 viewModel: viewModel,
@@ -330,7 +330,7 @@ class Workflow {
                 cardType: .SERVICE_STATUS,
                 successLogGen: {inf in inf.slots["serviceStatus"]!},
                 successNextState: .FINAL_NOTE_PROMPT,
-                failurePromptGen: {inf in "Failed to capture vehicle status. Retrying..."},
+                failurePromptGen: {_ in "Failed to capture vehicle status. Retrying..."},
                 failureNextState: .CHECK_SERVICE_STATUS_PROMPT),
             .FINAL_NOTE_PROMPT: PromptState(
                 viewModel: viewModel,
@@ -352,7 +352,7 @@ class Workflow {
                 cardType: nil)
         ]
     }
-    
+
     func run() async throws {
         var currentState: RecipeStates? = .STANDBY
         var currentArgs: [String: Any] = [:]
@@ -364,7 +364,7 @@ class Workflow {
             currentArgs = transition.nextStateArgs
         }
     }
-    
+
     func cancel() {
         for state in states.values {
             state.cancel()
@@ -395,7 +395,7 @@ class BasicRecorder: Recorder {
         self.sampleRate = sampleRate
         self.frameCallback = frameCallback
         self.listener = VoiceProcessorFrameListener(audioCallback)
-        
+
         VoiceProcessor.instance.addFrameListener(listener!)
     }
 
@@ -407,7 +407,7 @@ class BasicRecorder: Recorder {
         try VoiceProcessor.instance.start(
             frameLength: frameLength,
             sampleRate: sampleRate)
-        
+
         let (stream, continuation) = AsyncStream.makeStream(of: Int16.self)
         self.stream = stream
         self.continuation = continuation
@@ -435,7 +435,7 @@ class BasicRecorder: Recorder {
                 await frameCallback!(frame)
             }
         }
-        
+
         let cont = continuation
         if cont != nil {
             for sample in frame {
@@ -448,29 +448,29 @@ class BasicRecorder: Recorder {
 class AINoiseSuppressionRecorder: Recorder {
     let recorder: Recorder
     let koala: Koala
-    
+
     init(recorder: Recorder, koala: Koala) {
         self.recorder = recorder
         self.koala = koala
     }
-    
+
     func start() throws {
         try recorder.start()
     }
-    
+
     func stop() throws {
         try recorder.stop()
     }
-    
+
     func read(frameLength: UInt32) async throws -> [Int16] {
         var buffer: [Int16] = []
-        
+
         while buffer.count < frameLength {
             let rawFrame = try await recorder.read(frameLength: Koala.frameLength)
             let nsFrame = try koala.process(rawFrame)
             buffer.append(contentsOf: nsFrame)
         }
-        
+
         return buffer
     }
 }
@@ -479,34 +479,34 @@ class CheetahStep {
     let recorder: Recorder
     let cheetah: Cheetah
     var shouldCancel: Bool = false
-    
+
     init(recorder: Recorder, cheetah: Cheetah) {
         self.recorder = recorder
         self.cheetah = cheetah
     }
-    
+
     func run(onText: (String) async -> Void) async throws -> Bool {
         try recorder.start()
-        
+
         var isEndpoint = false
         shouldCancel = false
         while !isEndpoint && !shouldCancel {
             let frame = try await recorder.read(frameLength: Cheetah.frameLength)
             let (transcript, endpoint) = try cheetah.process(frame)
             await onText(transcript)
-            
+
             if endpoint {
                 let flush = try cheetah.flush()
                 await onText(flush)
                 isEndpoint = true
             }
         }
-        
+
         try recorder.stop()
-        
+
         return !shouldCancel
     }
-    
+
     func cancel() {
         shouldCancel = true
     }
@@ -516,12 +516,12 @@ class OrcaStep {
     let speaker: AudioPlayerStream
     let orca: Orca
     var shouldCancel: Bool = false
-    
+
     init(speaker: AudioPlayerStream, orca: Orca) {
         self.speaker = speaker
         self.orca = orca
     }
-    
+
     func run(prompt: String) async throws -> Bool {
         shouldCancel = false
         let audio = try orca.synthesize(text: prompt)
@@ -531,7 +531,7 @@ class OrcaStep {
 
         speaker.resetAudioPlayer()
         try speaker.playStreamPCM(audio.pcm)
-    
+
         while speaker.isPlaying && !shouldCancel {
             try await Task.sleep(for: .milliseconds(100))
         }
@@ -540,7 +540,7 @@ class OrcaStep {
 
         return !shouldCancel
     }
-    
+
     func cancel() {
         shouldCancel = true
     }
@@ -550,27 +550,27 @@ class PorcupineStep {
     let recorder: Recorder
     let porcupine: Porcupine
     var shouldCancel: Bool = false
-    
+
     init(recorder: Recorder, porcupine: Porcupine) {
         self.recorder = recorder
         self.porcupine = porcupine
     }
-    
+
     func run() async throws -> Bool {
         try recorder.start()
-        
+
         var isDetected = false
         shouldCancel = false
         while !isDetected && !shouldCancel {
             let frame = try await recorder.read(frameLength: Porcupine.frameLength)
             isDetected = try porcupine.process(pcm: frame) == 0
         }
-        
+
         try recorder.stop()
-        
+
         return !shouldCancel
     }
-    
+
     func cancel() {
         shouldCancel = true
     }
@@ -580,32 +580,32 @@ class RhinoStep {
     let recorder: Recorder
     let rhino: Rhino
     var shouldCancel: Bool = false
-    
+
     init(recorder: Recorder, rhino: Rhino) {
         self.recorder = recorder
         self.rhino = rhino
     }
-    
+
     func run() async throws -> Inference? {
         try recorder.start()
         try rhino.reset()
-        
+
         var isFinalized = false
         shouldCancel = false
         while !isFinalized && !shouldCancel {
             let frame = try await recorder.read(frameLength: Rhino.frameLength)
             isFinalized = try rhino.process(pcm: frame)
         }
-        
+
         try recorder.stop()
-        
+
         if shouldCancel {
             return nil
         } else {
             return try rhino.getInference()
         }
     }
-    
+
     func cancel() {
         shouldCancel = true
     }
@@ -625,7 +625,7 @@ class StandbyState: State {
     let viewModel: ViewModel
     let porcupineStep: PorcupineStep
     let nextState: RecipeStates
-    
+
     init(
         viewModel: ViewModel,
         porcupineStep: PorcupineStep,
@@ -635,7 +635,7 @@ class StandbyState: State {
         self.porcupineStep = porcupineStep
         self.nextState = nextState
     }
-    
+
     func run(args: [String: Any]) async throws -> Transition {
         await viewModel.setStatusText(text: "Listening for wake word...")
         await viewModel.setListenState(state: .listening)
@@ -647,7 +647,7 @@ class StandbyState: State {
             return Transition(nextState: nil, nextStateArgs: [:])
         }
     }
-    
+
     func cancel() {
         porcupineStep.cancel()
     }
@@ -659,7 +659,7 @@ class PromptState: State {
     let defaultPrompt: String
     let nextState: RecipeStates?
     let cardType: CardType?
-    
+
     init(
         viewModel: ViewModel,
         orcaStep: OrcaStep,
@@ -673,7 +673,7 @@ class PromptState: State {
         self.nextState = nextState
         self.cardType = cardType
     }
-    
+
     func run(args: [String: Any]) async throws -> Transition {
         let prompt: String = if args["prompt"] != nil {
             if args["prompt"]! is String {
@@ -684,7 +684,7 @@ class PromptState: State {
         } else {
             defaultPrompt
         }
-        
+
         await viewModel.setActiveCard(card: self.cardType)
         await viewModel.setStatusText(text: prompt)
         await viewModel.setListenState(state: .idle)
@@ -694,7 +694,7 @@ class PromptState: State {
             return Transition(nextState: nil, nextStateArgs: [:])
         }
     }
-    
+
     func cancel() {
         orcaStep.cancel()
     }
@@ -710,7 +710,7 @@ class ReportState: State {
     let successNextState: RecipeStates
     let failurePromptGen: (Inference) -> String
     let failureNextState: RecipeStates
-    
+
     init(
         viewModel: ViewModel,
         rhinoStep: RhinoStep,
@@ -732,7 +732,7 @@ class ReportState: State {
         self.failurePromptGen = failurePromptGen
         self.failureNextState = failureNextState
     }
-    
+
     func run(args: [String: Any]) async throws -> Transition {
         await viewModel.setStatusText(text: listeningPrompt)
         await viewModel.setListenState(state: .listening)
@@ -743,7 +743,7 @@ class ReportState: State {
         } else if inference!.isUnderstood && inference!.intent == expectedIntent {
             await viewModel.setCardValue(card: cardType, value: successLogGen(inference!))
             await viewModel.setActiveCard(card: nil)
-            
+
             return Transition(nextState: self.successNextState, nextStateArgs: [:])
         } else {
             return Transition(nextState: self.failureNextState, nextStateArgs: [
@@ -751,7 +751,7 @@ class ReportState: State {
             ])
         }
     }
-    
+
     func cancel() {
         rhinoStep.cancel()
     }
@@ -763,7 +763,7 @@ class DictationState: State {
     let listeningPrompt: String
     let nextState: RecipeStates
     let cardType: CardType
-    
+
     init(
         viewModel: ViewModel,
         cheetahStep: CheetahStep,
@@ -777,8 +777,8 @@ class DictationState: State {
         self.nextState = nextState
         self.cardType = cardType
     }
-    
-    func run(args: [String : Any]) async throws -> Transition {
+
+    func run(args: [String: Any]) async throws -> Transition {
         await viewModel.setStatusText(text: listeningPrompt)
         await viewModel.setListenState(state: .listening)
         var transcript = ""
@@ -786,7 +786,7 @@ class DictationState: State {
             transcript += text
             await viewModel.setCardValue(card: cardType, value: transcript)
         }
-        if try await cheetahStep.run(onText: onText) {   
+        if try await cheetahStep.run(onText: onText) {
             await viewModel.setActiveCard(card: nil)
             await viewModel.setListenState(state: .listening)
             return Transition(nextState: nextState, nextStateArgs: [:])
@@ -794,7 +794,7 @@ class DictationState: State {
             return Transition(nextState: nil, nextStateArgs: [:])
         }
     }
-    
+
     func cancel() {
         cheetahStep.cancel()
     }

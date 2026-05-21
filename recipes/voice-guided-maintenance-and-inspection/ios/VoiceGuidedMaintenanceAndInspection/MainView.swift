@@ -69,7 +69,7 @@ struct CardView: View {
 
 struct MainView: View {
     @ObservedObject var viewModel: ViewModel
-    
+
     var body: some View {
         VStack {
             ScrollViewReader { proxy in
@@ -90,11 +90,11 @@ struct MainView: View {
             }
 
             Spacer()
-            
+
             Text(viewModel.statusText)
                 .foregroundStyle(.gray)
                 .padding(8)
-            
+
             if viewModel.listenState == .listening {
                 VolumeMeterView(viewModel: viewModel)
             } else {
@@ -103,7 +103,7 @@ struct MainView: View {
                         .controlSize(.extraLarge)
                 }.frame(width: 50, height: 70)
             }
-            
+
             Button(
                 action: {
                     viewModel.stopDemo()
