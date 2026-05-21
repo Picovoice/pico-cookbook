@@ -147,7 +147,7 @@ export class Workflow {
                 this.recorder,
                 this.audio,
                 stepOptions);
-            // TODO: trigger callback here
+            // TODO: trigger status here
             console.log(`[OK] ${this.steps[uid]}`);
         }
 
@@ -214,16 +214,15 @@ export class Workflow {
         this.outcomes = [];
     }
 
-    // TODO: replace all delete() with release()
-    delete() {
+    release() {
         for (const step of reversed(this.steps.values()) {
-            step.delete()
+            await step.release();
         }
 
         this.audio.clear();
 
-        this._recorder.stop()
-        this._recorder.delete()
+        await this.recorder.stop();
+        await this.recorder.release();
     }
 
     toString(): string {
@@ -263,7 +262,7 @@ class RecipePromptState extends State {
             timer_thread = time_async(alignments=alignments, on_tick=on_tick)
         }
 
-        this.step.run(prompt, onSynthesis);
+        await this.step.run(prompt, onSynthesis);
 
         // noinspection PyUnresolvedReferences
         timer_thread.join()
@@ -290,7 +289,8 @@ class RecipeStandbyState extends State {
         }
 
         event, thread = print_async(get_text=get_text)
-        this._step.run()
+        await this.step.run();
+
         text = "Detected wake word. Starting picking workflow..."
         sleep(.1)
         event.set()
@@ -365,7 +365,7 @@ class RecipeTaskLocationReportState extends State {
         }
 
         event, thread = print_async(get_text=get_text)
-        inference = this._step.run()
+        const inference = await this.step.run();
 
         is_valid_location = \
             inference is not None and \
@@ -461,7 +461,7 @@ class RecipeTaskPickReportState extends State {
         }
 
         event, thread = print_async(get_text=get_text)
-        inference = this._step.run()
+        const inference = await this.step.run();
 
         valid_intents = {
             'confirmPickedQuantity',

@@ -1,5 +1,4 @@
 
-import { CheetahTranscript, CheetahWorker } from '@picovoice/cheetah-web';
 import { OrcaWorker, OrcaAlignment } from '@picovoice/orca-web';
 import { PorcupineDetection, PorcupineWorker } from '@picovoice/porcupine-web';
 import { RhinoInference, RhinoWorker } from '@picovoice/rhino-web';
@@ -18,10 +17,7 @@ export type StepOptions =
   | { step: Steps.PORCUPINE; keywordPath: string }
   | { step: Steps.RHINO; contextPath: string };
 
-// TODO: ensure this class is implemented correctly!
 export abstract class Step {
-    // TODO: unsure how to do kwargs in ts
-    // abstract run(options: any): Record<string, any> | undefined;
     abstract release(): Promise<void>;
     abstract toString(): string;
 
@@ -129,42 +125,36 @@ export class PorcupineStep extends Step {
 
     private keywordCallback(detection: PorcupineDetection) {
         if (!this.isDetected && detection.index == 0) {
+            this.isDetected = true;
+
             if (this.interrupter.onInterrupt) {
                 this.interrupter.onInterrupt();
             }
-    
-            this.isDetected = true;
         }
     }
 
-    async run(): Promise<void> {
-        return new Promise(async (resolve, reject) => {
-            try {
-                this.isDetected = false;
+    async run() {
+        try {
+            this.isDetected = false;
 
-                await this.recorder.start();
+            await this.recorder.start();
 
-                while (true) {
-                    this.interrupter = {};
-                    const frame = await this.recorder.read(this.porcupine.frameLength, this.interrupter);
-                    if (this.isDetected) {
-                        break;
-                    }
-
-                    this.interrupter = {};
-                    await this.porcupine.process(frame);
-                    if (this.isDetected) {
-                        break;
-                    }
+            while (true) {
+                this.interrupter = {};
+                const frame = await this.recorder.read(this.porcupine.frameLength, this.interrupter);
+                if (this.isDetected) {
+                    break;
                 }
 
-                resolve();
-            } catch(e) {
-                reject(e);
-            } finally {
-                await this.recorder.stop();
+                this.interrupter = {};
+                await this.porcupine.process(frame);
+                if (this.isDetected) {
+                    break;
+                }
             }
-        });
+        } finally {
+            await this.recorder.stop();
+        }
     }
 
     async release() {
@@ -183,14 +173,12 @@ export class RhinoStep extends Step {
     private rhino: RhinoWorker;
 
     private interrupter: Interrupter;
-    private isDetected: boolean;
+    private inference?: RhinoInference;
 
-    // TODO: options pattern?
     constructor(
         accessKey: string,
         recorder: AINoiseSuppressedRecorder,
         _audio: AudioStream,
-
         contextPath: string,
         modelPath?: string,
         sensitivity: number = 0.5,
@@ -218,42 +206,51 @@ export class RhinoStep extends Step {
             }
         );
 
-        this.isDetected = false;
         this.interrupter = {};
     }
 
     private inferenceCallback(inference: RhinoInference) {
-        if (!this.isDetected && detection.index == 0) {
+        if (!this.inference && inference.isFinalized) {
+            this.inference = inference;
+
             if (this.interrupter.onInterrupt) {
                 this.interrupter.onInterrupt();
             }
-    
-            this.isDetected = true;
         }
     }
 
-    run(): Record<string, any> {
+    async run(): Promise<Record<string, any>> {
         try {
+            this.inference = undefined;
+
             await this.recorder.start();
 
-            while (!) {
-                this.rhino.process(this._recorder.read(this._rhino.frame_length)))
+            while (true) {
+                this.interrupter = {};
+                const frame = await this.recorder.read(this.rhino.frame_length);
+                if (this.inference) {
+                    break;
+                }
+
+                this.interrupter = {};
+                await this.rhino.process(frame);
+                if (this.inference) {
+                    break;
+                }
             }
     
-            inference = this.rhino.get_inference();
-
             return {
-                'is_understood': inference.is_understood,
-                'intent': inference.intent,
-                'slots': inference.slots,
+                isUnderstood: this.inference.isUnderstood,
+                intent: this.inference.intent,
+                slots: this.inference.slots,
             };
         } finally {
             await this.recorder.stop();
         }
     }
 
-    release() {
-        this.rhino.release()
+    async release() {
+        await this.rhino.release();
     }
 
     toString(): string {

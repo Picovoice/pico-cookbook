@@ -1,7 +1,3 @@
-//import { AudioStream } from './audio_stream';
-//import { PorcupineWorker } from '@picovoice/porcupine-web';
-//import { OrcaWorker } from '@picovoice/orca-web';
-//import { RhinoInference, RhinoWorker } from '@picovoice/rhino-web';
 import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 import { PvEngine } from '@picovoice/web-voice-processor/dist/types/types';
 
@@ -11,6 +7,7 @@ import { Steps } from './steps';
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /*
+// Might be needed
 class Mutex {
   private locked: boolean = false;
   private queue: Array<(unlock: () => void) => void> = [];
@@ -44,8 +41,6 @@ export type DemoCallbacks = {
   onWordSpoken: (word: string) => void;
   onError: (error: string) => void;
 };
-
-// also -> cheeah + koala
 
 let workflow: Workflow | null = null;
 
@@ -125,8 +120,6 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
   callbacks = cb;
 
   try {
-    // const FORCE_WRITE = true;
-
     callbacks.setLoadingState(true);
 
     callbacks.onUpdateStatus("Loading Workflow");
