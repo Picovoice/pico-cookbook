@@ -13,5 +13,6 @@ free-form voice notes. Powered by on-device voice AI.
 
 ## Implementations
 
+- [Android](android)
 - [iOS](ios)
 - [Python](python)

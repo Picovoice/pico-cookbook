@@ -75,6 +75,7 @@ topks
 uids
 venv
 voiceguidedfieldreporting
+voiceguidedmaintenanceandinspection
 voicememoassistant
 wakeword
 xcodeproj

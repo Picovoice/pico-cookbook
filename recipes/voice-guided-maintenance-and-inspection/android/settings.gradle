@@ -1,0 +1,2 @@
+rootProject.name = "VoiceGuidedMaintenanceAndInspection"
+include ':voice-guided-maintenance-and-inspection'
