@@ -4,39 +4,7 @@ import { PvEngine } from '@picovoice/web-voice-processor/dist/types/types';
 import { PickTask, Workflow, RecipeSteps, RecipeStates, State } from './states';
 import { Steps } from './steps';
 
-export const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-export type DemoCallbacks = {
-  setLoadingState: (enabled: boolean) => Promise<void>,
-  setStatusText: (newStatus: string) => void;
-  clearStatus: () => void;
-  setErrorText: (error: string) => void;
-  clearError: () => void;
-
-  onVolume: (volume: number) => void;
-  onListening: (isListening: boolean) => void;
-
-  createCard: (id: string, title: string) => void,
-  setActiveCard: (id: string, value: boolean) => void,
-  setCardValue: (id: string, value: string) => void,
-};
-
-export let callbacks: DemoCallbacks = {
-  setLoadingState: async (_) => undefined,
-  setStatusText: (_) => undefined,
-  clearStatus: () => undefined,
-  setErrorText: (_) => undefined,
-  clearError: () => undefined,
-
-  onVolume: (_) => undefined,
-  onListening: (_) => undefined,
-
-  createCard: (_a, _b) => undefined,
-  setActiveCard: (_a, _b) => undefined,
-  setCardValue: (_a, _b) => undefined,
-};
-
-export let isRunning = true;
+import { sleep, DemoCallbacks, callbacks, updateCallbacks, setIsRunning } from './config';
 
 let workflow: Workflow | null = null;
 
@@ -65,92 +33,100 @@ const callbackAudioEngine: PvEngine = {
   },
 };
 
-export const TASKS: PickTask[] = [
-    {
-        locationName: "bin bravo",
-        checkDigit: "four two",
-        itemName: "blue widgets",
-        quantity: 3
-    },
-    {
-        locationName: "bin delta",
-        checkDigit: "five seven",
-        itemName: "battery packs",
-        quantity: 5
-    },
-    {
-        locationName: "zone one",
-        checkDigit: "one nine",
-        itemName: "safety gloves",
-        quantity: 1
-    },
+const TASKS: PickTask[] = [
+  {
+    locationName: "bin bravo",
+    checkDigit: "four two",
+    itemName: "blue widgets",
+    quantity: 3
+  },
+  {
+    locationName: "bin delta",
+    checkDigit: "five seven",
+    itemName: "battery packs",
+    quantity: 5
+  },
+  {
+    locationName: "zone one",
+    checkDigit: "one nine",
+    itemName: "safety gloves",
+    quantity: 1
+  },
 ];
 
 const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
-  if (callbacks === null) {
-    
-    cb.clearStatus();
-    callbacks = cb;
+  cb.clearStatus();
+  updateCallbacks(cb);
 
-    let i = 0;
-    for (const task of TASKS) {
-      callbacks.createCard(`location-${i}`, `CONFIRM LOCATION ${task.locationName} (${task.checkDigit})`);
-      callbacks.createCard(`item-${i}`, `PICK ITEM ${task.itemName} (${task.quantity})`);
-      i += 1;
-    }
+  let i = 0;
+  for (const task of TASKS) {
+    callbacks.createCard(`location-${i}`, `CONFIRM LOCATION ${task.locationName} (${task.checkDigit})`);
+    callbacks.createCard(`item-${i}`, `PICK ITEM ${task.itemName} (${task.quantity})`);
+    i += 1;
+  }
 
-    try {
-      await callbacks.setLoadingState(true);
-      callbacks.setStatusText("Loading Workflow");
+  try {
+    await callbacks.setLoadingState(true);
+    callbacks.setStatusText("Loading Workflow");
 
-      workflow = new Workflow(
-        accessKey,
-        {
-          steps: {
-            [RecipeSteps.STANDBY]:     { step: Steps.PORCUPINE, keywordPath: "keywords/voice_picking_web.ppn" },
-            [RecipeSteps.PROMPT_USER]: { step: Steps.ORCA },
-            [RecipeSteps.RECORD_USER]: { step: Steps.RHINO, contextPath: "models/voice_picking_web.rhn" },
+    workflow = await Workflow.create(
+      accessKey,
+      {
+        steps: {
+          [RecipeSteps.STANDBY]: { 
+              step: Steps.PORCUPINE,
+              keywordPath: "keywords/voice_picking_web.ppn",
+              publicPath: "models/porcupine_params.pv",
           },
-          all_states: [
-            RecipeStates.STANDBY,
-            RecipeStates.TASK_LOCATION_PROMPT,
-            RecipeStates.TASK_LOCATION_REPORT,
-            RecipeStates.TASK_PICK_PROMPT,
-            RecipeStates.TASK_PICK_REPORT,
-            RecipeStates.COMPLETE_PROMPT,
-          ],
-          state_creator: State.create,
-          state_steps: {
-            [RecipeStates.STANDBY]: RecipeSteps.STANDBY,
-            [RecipeStates.TASK_LOCATION_PROMPT]: RecipeSteps.PROMPT_USER,
-            [RecipeStates.TASK_LOCATION_REPORT]: RecipeSteps.RECORD_USER,
-            [RecipeStates.TASK_PICK_PROMPT]: RecipeSteps.PROMPT_USER,
-            [RecipeStates.TASK_PICK_REPORT]: RecipeSteps.RECORD_USER,
-            [RecipeStates.COMPLETE_PROMPT]: RecipeSteps.PROMPT_USER,
+          [RecipeSteps.PROMPT_USER]: {
+              step: Steps.ORCA,
+              publicPath: "models/orca_params_en_female.pv",
           },
-          start_state: { state: RecipeStates.STANDBY, tasks: TASKS },
-        }
-      );
+          [RecipeSteps.RECORD_USER]: {
+              step: Steps.RHINO,
+              publicPath: "models/rhino_params.pv",
+              contextPath: "models/voice_picking_web.rhn",
+          },
+        },
+        all_states: [
+          RecipeStates.STANDBY,
+          RecipeStates.TASK_LOCATION_PROMPT,
+          RecipeStates.TASK_LOCATION_REPORT,
+          RecipeStates.TASK_PICK_PROMPT,
+          RecipeStates.TASK_PICK_REPORT,
+          RecipeStates.COMPLETE_PROMPT,
+        ],
+        state_creator: State.create,
+        state_steps: {
+          [RecipeStates.STANDBY]: RecipeSteps.STANDBY,
+          [RecipeStates.TASK_LOCATION_PROMPT]: RecipeSteps.PROMPT_USER,
+          [RecipeStates.TASK_LOCATION_REPORT]: RecipeSteps.RECORD_USER,
+          [RecipeStates.TASK_PICK_PROMPT]: RecipeSteps.PROMPT_USER,
+          [RecipeStates.TASK_PICK_REPORT]: RecipeSteps.RECORD_USER,
+          [RecipeStates.COMPLETE_PROMPT]: RecipeSteps.PROMPT_USER,
+        },
+        start_state: { state: RecipeStates.STANDBY, tasks: TASKS },
+      }
+    );
 
-      await WebVoiceProcessor.subscribe(callbackAudioEngine);
+    await WebVoiceProcessor.subscribe(callbackAudioEngine);
 
-    } catch (e: any) {
-      callbacks.setErrorText(e.toString());
-      throw e;
-    } finally {
-      callbacks.clearStatus();
-      await callbacks.setLoadingState(false);
-    }
+  } catch (e: any) {
+    callbacks.setErrorText(e.toString());
+    throw e;
+  } finally {
+    callbacks.clearStatus();
+    await callbacks.setLoadingState(false);
   }
 };
 
 const start = async (): Promise<void> => {
-  isRunning = true;
+  setIsRunning(true);
   await workflow!.run();
 };
 
 const stop = async (): Promise<void> => {
-  isRunning = false;
+  setIsRunning(false);
   workflow!.reset();
 };
 

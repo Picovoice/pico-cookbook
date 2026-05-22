@@ -13,15 +13,15 @@ from typing import Tuple
 
 
 ANIMALS = [
-    ("eagle", "3.0.1"),
+    ("koala", "3.0.0"),
     ("orca", "3.0.0"),
     ("porcupine", "4.0.0"),
     ("rhino", "4.0.0"),
 ]
 
 COPIES = {
-    "eagle": [
-        ("eagle_params.pv", "eagle_params.pv")
+    "koala": [
+        ("koala_params.pv", "koala_params.pv")
     ],
     "orca": [
         ("orca_params_en_female.pv", "orca_params_en_female.pv")

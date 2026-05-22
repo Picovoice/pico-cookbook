@@ -1,7 +1,11 @@
 import { KoalaWorker } from '@picovoice/koala-web';
-import { WebVoiceProcessor, PvEngine } from '@picovoice/web-voice-processor';
+import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 
-import { callbacks } from './index';
+import { callbacks } from './config';
+
+type PvEngine = {
+    onmessage?: ((e: MessageEvent) => any) | null;
+}
 
 const concat = (frame1: Int16Array, frame2: Int16Array): Int16Array => {
   const tempPcmBuffer = new Int16Array(frame1.length + frame2.length);
@@ -25,40 +29,59 @@ export class AINoiseSuppressedRecorder {
     }[];
     private aiNoiseSuppressedEngine: PvEngine;
 
-    constructor(accessKey: string) {
-        callbacks.onUpdateStatus("Loading Koala");
-        this.koala = KoalaWorker.create(accessKey);
+    private constructor(koala: KoalaWorker, engine: PvEngine) {
+        this.koala = koala;
         this.rawBuffer = new Int16Array();
         this.processedBuffer = new Int16Array();
 
         this.eventQueue = [];
+        this.aiNoiseSuppressedEngine = engine;
+    }
+
+    static async create(accessKey: string) {
+        callbacks.setStatusText("Loading Koala");
+
+        const processCallback = (enhancedPcm: Int16Array) => {
+            recorder.processedBuffer = concat(recorder.processedBuffer, enhancedPcm);
+
+            while (recorder.eventQueue.length >= 0) {
+                let request = recorder.eventQueue[0];
+                if (recorder.processedBuffer.length >= request.numSamples) {
+                    recorder.eventQueue[0].resolve(recorder.processedBuffer.slice(0, request.numSamples));
+                    recorder.processedBuffer = recorder.processedBuffer.slice(request.numSamples);
+
+                    recorder.eventQueue = recorder.eventQueue.slice(1);
+                } else {
+                    break;
+                }
+            }
+        }
+
+        const koala = await KoalaWorker.create(
+            accessKey,
+            processCallback,
+            {
+                publicPath: "models/koala_params.pv",
+                forceWrite: true,
+            },
+            {}
+        );
 
         const onmessage = (e: any) => {
             switch (e.data.command) {
                 case 'process':
-                    this.rawBuffer = concat(this.rawBuffer, e.data.inputFrame);
+                    recorder.rawBuffer = concat(recorder.rawBuffer, e.data.inputFrame);
 
-                    while (this.rawBuffer.length > this.koala.frameLength) {
-                        const frame = this.koala.process(this.rawBuffer.slice(0, this.koala.frameLength));
-                        this.rawBuffer = this.rawBuffer.slice(this.koala.frameLength);
-
-                        this.processedBuffer = concat(this.processedBuffer, frame);
+                    while (recorder.rawBuffer.length > recorder.koala.frameLength) {
+                        recorder.koala.process(recorder.rawBuffer.slice(0, recorder.koala.frameLength));
+                        recorder.rawBuffer = recorder.rawBuffer.slice(recorder.koala.frameLength);
                     }
-
-                    while (this.eventQueue.length >= 0) {
-                        let request = this.eventQueue[0];
-                        if (this.processedBuffer.length >= request.numSamples) {
-                            this.eventQueue[0].resolve(this.processedBuffer.slice(0, request.numSamples));
-                            this.processedBuffer = this.processedBuffer.slice(request.numSamples);
-                            this.eventQueue = this.eventQueue.slice(1);
-                        } else {
-                            break;
-                        }
-                    }
-                    break;
+                    return;
             }
         };
-        this.aiNoiseSuppressedEngine = { onmessage };
+
+        const recorder = new AINoiseSuppressedRecorder(koala, { onmessage });
+        return recorder;
     }
 
     async start() {

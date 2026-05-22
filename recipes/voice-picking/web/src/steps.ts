@@ -1,12 +1,12 @@
 
-import { OrcaWorker, OrcaAlignment } from '@picovoice/orca-web';
+import { OrcaWorker, OrcaAlignment, Orca } from '@picovoice/orca-web';
 import { PorcupineDetection, PorcupineWorker } from '@picovoice/porcupine-web';
 import { RhinoInference, RhinoWorker } from '@picovoice/rhino-web';
 
 import { Interrupter, AINoiseSuppressedRecorder } from './ai_noise_suppressed_recorder';
 import { AudioStream } from './audio_stream';
 
-import { callbacks, isRunning } from './index';
+import { callbacks, isRunning } from './config';
 
 export enum Steps {
     ORCA = "Orca",
@@ -15,49 +15,79 @@ export enum Steps {
 }
 
 export type StepOptions =
-  | { step: Steps.ORCA }
-  | { step: Steps.PORCUPINE; keywordPath: string }
-  | { step: Steps.RHINO; contextPath: string };
+  | { 
+    step: Steps.ORCA;
+    publicPath?: string
+  }
+  | {
+    step: Steps.PORCUPINE;
+    publicPath?: string;
+    keywordPath: string;
+  }
+  | {
+    step: Steps.RHINO;
+    publicPath?: string;
+    contextPath: string;
+  };
+
+export async function createStep(
+    accessKey: string,
+    recorder: AINoiseSuppressedRecorder,
+    audio: AudioStream,
+    options: StepOptions
+): Promise<Step> {
+    switch (options.step) {
+        case Steps.ORCA:
+            return await OrcaStep.create(
+                accessKey,
+                audio,
+                options.publicPath);
+        case Steps.PORCUPINE:
+            return await PorcupineStep.create(
+                accessKey,
+                recorder,
+                options.keywordPath,
+                options.publicPath);
+        case Steps.RHINO:
+            return await RhinoStep.create(
+                accessKey,
+                recorder,
+                options.contextPath,
+                options.publicPath);
+    }
+}
 
 export abstract class Step {
     abstract release(): Promise<void>;
     abstract toString(): string;
-
-    static create(
-        accessKey: string,
-        recorder: AINoiseSuppressedRecorder,
-        audio: AudioStream,
-        options: StepOptions
-    ): Step {
-        switch (options.step) {
-            case Steps.ORCA:
-                return new OrcaStep(accessKey, recorder, audio);
-            case Steps.PORCUPINE:
-                return new PorcupineStep(accessKey, recorder, audio, options.keywordPath);
-            case Steps.RHINO:
-                return new RhinoStep(accessKey, recorder, audio, options.contextPath);
-        }
-    }
 }
 
 export class OrcaStep extends Step {
     private audio: AudioStream;
     private orca: OrcaWorker;
 
-    constructor(
-        accessKey: string,
-        _recorder: AINoiseSuppressedRecorder,
-        audio: AudioStream,
-        modelPath?: string,
-    ) {
+    private constructor(audio: AudioStream, orca: OrcaWorker) {
         super();
         this.audio = audio;
+        this.orca = orca;
+    }
 
+    static async create(
+        accessKey: string,
+        audio: AudioStream,
+        modelPath?: string,
+    ): Promise<OrcaStep> {
         callbacks.setStatusText("Loading Orca");
-        this.orca = OrcaWorker.create(accessKey, {
-            publicPath: modelPath,
-            forceWrite: true,
-        });
+        const orca = await OrcaWorker.create(
+            accessKey,
+            {
+                publicPath: modelPath,
+                forceWrite: true,
+            },
+            {}
+        );
+
+        return new OrcaStep(audio, orca);
     }
 
     async run(
@@ -96,26 +126,34 @@ export class PorcupineStep extends Step {
     private interrupter: Interrupter;
     private isDetected: boolean;
 
-    constructor(
+    private constructor (
+        recorder: AINoiseSuppressedRecorder,
+        porcupine: PorcupineWorker,
+    ) {
+        super();
+        this.recorder = recorder;
+        this.porcupine = porcupine;
+        this.interrupter = {};
+        this.isDetected = false;
+    }
+
+    static async create(
         accessKey: string,
         recorder: AINoiseSuppressedRecorder,
-        _audio: AudioStream,
         keywordPath: string,
         modelPath?: string,
         sensitivity: number = 0.5,
     ) {
-        super();
-        this.recorder = recorder;
-
         callbacks.setStatusText("Loading Porcupine");
-        this.porcupine = PorcupineWorker.create(
+        const porcupine = await PorcupineWorker.create(
             accessKey,
             {
+                label: "voice-picking-keyword",
                 sensitivity,
                 publicPath: keywordPath,
-                forceWrite: true
+                forceWrite: true,
             },
-            (detection: PorcupineDetection) => this.keywordCallback(detection),
+            (detection: PorcupineDetection) => step.keywordCallback(detection),
             {
                 publicPath: modelPath,
                 forceWrite: true
@@ -123,8 +161,8 @@ export class PorcupineStep extends Step {
             {}
         );
 
-        this.isDetected = false;
-        this.interrupter = {};
+        const step = new PorcupineStep(recorder, porcupine);
+        return step;
     }
 
     private keywordCallback(detection: PorcupineDetection) {
@@ -183,28 +221,31 @@ export class RhinoStep extends Step {
     private interrupter: Interrupter;
     private inference?: RhinoInference;
 
-    constructor(
+    private constructor(recorder: AINoiseSuppressedRecorder, rhino: RhinoWorker) {
+        super();
+        this.recorder = recorder;
+        this.rhino = rhino;
+        this.interrupter = {};
+    }
+
+    static async create(
         accessKey: string,
         recorder: AINoiseSuppressedRecorder,
-        _audio: AudioStream,
         contextPath: string,
         modelPath?: string,
         sensitivity: number = 0.5,
         endpointDurationSec: number = 0.5,
         requireEndpoint: boolean = false
     ) {
-        super();
-        this.recorder = recorder;
-
         callbacks.setStatusText("Loading Rhino");
-        this.rhino = RhinoWorker.create(
+        const rhino = await RhinoWorker.create(
             accessKey,
-            { 
+            {
                 sensitivity,
                 publicPath: contextPath,
                 forceWrite: true
             },
-            (inference: RhinoInference) => this.inferenceCallback(inference),
+            (inference: RhinoInference) => step.inferenceCallback(inference),
             {
                 publicPath: modelPath,
                 forceWrite: true
@@ -215,7 +256,8 @@ export class RhinoStep extends Step {
             }
         );
 
-        this.interrupter = {};
+        const step = new RhinoStep(recorder, rhino);
+        return step;
     }
 
     private inferenceCallback(inference: RhinoInference) {
@@ -239,7 +281,7 @@ export class RhinoStep extends Step {
 
             while (isRunning) {
                 this.interrupter = {};
-                const frame = await this.recorder.read(this.rhino.frame_length, this.interrupter);
+                const frame = await this.recorder.read(this.rhino.frameLength, this.interrupter);
                 if (this.inference) {
                     break;
                 }

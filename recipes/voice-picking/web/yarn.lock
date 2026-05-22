@@ -1009,10 +1009,10 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@picovoice/eagle-web@^3.0.1":
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/@picovoice/eagle-web/-/eagle-web-3.0.1.tgz#7ba40a5b9c2bb479eefa5774f9c14a41529f5db7"
-  integrity sha512-AAqBjoehHDLyi7+Aip/KfUcMdZtIZ8+sS3YyJoEMM9ugz5+n6QdsBtg/M+ZV1fMOqOUTVL8tKpbYzCicAkbAcA==
+"@picovoice/koala-web@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@picovoice/koala-web/-/koala-web-3.0.0.tgz#95824e583563c5385c51e84bbbc02b8818ae8eb9"
+  integrity sha512-2n7v4UvmppFKys73YnWpY2zKmBkGbHg2SMVaVjDBPVGCOmvL8kLeWMnimMhaUccwv0eJpCtEU0svc/9RRJUiCg==
   dependencies:
     "@picovoice/web-utils" "=1.4.3"
 

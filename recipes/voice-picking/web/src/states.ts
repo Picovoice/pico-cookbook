@@ -1,17 +1,19 @@
+import { RhinoInference } from '@picovoice/rhino-web';
+
 import { AINoiseSuppressedRecorder } from './ai_noise_suppressed_recorder';
 import { AudioStream } from './audio_stream';
-import { Step, StepOptions, OrcaStep, PorcupineStep, RhinoStep } from './steps';
+import { createStep, Step, StepOptions, OrcaStep, PorcupineStep, RhinoStep } from './steps';
 
-import { callbacks, isRunning, sleep } from './index';
+import { callbacks, isRunning, sleep } from './config';
 
 type Transition = {
-    outcome?: string,
+    outcome?: RhinoInference,
     next: StateOptions,
 } | null;
 
 type Outcome = {
     state: RecipeStates,
-    outcome?: string,
+    outcome?: RhinoInference,
 };
 
 export type PickTask = {
@@ -25,7 +27,7 @@ export enum RecipeSteps {
     STANDBY = "Standby",
     PROMPT_USER = "PromptUser",
     RECORD_USER = "RecordUser",
-}
+};
 
 export enum RecipeStates {
     STANDBY = "Standby",
@@ -34,7 +36,7 @@ export enum RecipeStates {
     TASK_PICK_PROMPT = "TaskPickPrompt",
     TASK_PICK_REPORT = "TaskPickReport",
     COMPLETE_PROMPT = "CompletePrompt",
-}
+};
 
 export type StateOptions =
     | {
@@ -94,6 +96,7 @@ export abstract class State {
 type WorkflowOptions = {
     steps: Record<RecipeSteps, StepOptions>,
     all_states: RecipeStates[],
+    // TODO: remove this function
     state_creator: (rs: RecipeStates, step: Step) => State,
     state_steps: Record<RecipeStates, RecipeSteps>,
     start_state: StateOptions,
@@ -111,25 +114,15 @@ export class Workflow {
 
     private outcomes: Outcome[];
 
-    constructor(
-        access_key: string,
+    private constructor(
+        recorder: AINoiseSuppressedRecorder,
+        audio: AudioStream,
+        steps: Record<string, Step>,
         options: WorkflowOptions,
     ) {
-        this.recorder = new AINoiseSuppressedRecorder(access_key);
-        // TODO: why fixed sample rate?
-        // this._speaker = PvSpeaker(sample_rate=22050, bits_per_sample=16)
-        this.audio = new AudioStream(22050); // orca.sampleRate ? 
-
-        this.steps = {};
-        for (const [uid, stepOptions] of Object.entries(options.steps)) {
-            this.steps[uid] = Step.create(
-                access_key,
-                this.recorder,
-                this.audio,
-                stepOptions);
-
-            callbacks.setStatusText(`Loading ${this.steps[uid]}`);
-        }
+        this.recorder = recorder;
+        this.audio = audio;
+        this.steps = steps;
 
         this.states = {};
         this.state_uids = {};
@@ -143,6 +136,26 @@ export class Workflow {
         this.start_state = options.start_state;
 
         this.outcomes = [];
+    }
+
+    static async create(accessKey: string, options: WorkflowOptions) {
+        const recorder = await AINoiseSuppressedRecorder.create(accessKey);
+        // TODO: why fixed sample rate?
+        // this._speaker = PvSpeaker(sample_rate=22050, bits_per_sample=16)
+        const audio = new AudioStream(22050); // orca.sampleRate ? 
+
+        const steps: Record<string, Step> = {};
+        for (const [uid, stepOptions] of Object.entries(options.steps)) {
+            steps[uid] = await createStep(
+                accessKey,
+                recorder,
+                audio,
+                stepOptions);
+
+            callbacks.setStatusText(`Loading ${steps[uid]}`);
+        }
+
+        return new Workflow(recorder, audio, steps, options);
     }
 
     async run() {
@@ -297,12 +310,12 @@ class RecipeTaskLocationReportState extends State {
             inference &&
             inference.isUnderstood &&
             inference.intent == 'confirmLocation' &&
-            inference.slots.checkDigit == task.checkDigit;
+            inference.slots!.checkDigit == task.checkDigit;
 
         if (isValidLocation) {
-            callbacks.setStatusText(`Location ${inference.slots.checkDigit} confirmed.`);
+            callbacks.setStatusText(`Location ${inference.slots!.checkDigit} confirmed.`);
             callbacks.setActiveCard(cardId, false);
-            callbacks.setCardValue(cardId, `${inference.slots.checkDigit}`);
+            callbacks.setCardValue(cardId, `${inference.slots!.checkDigit}`);
 
             await sleep(100);
 
@@ -313,7 +326,7 @@ class RecipeTaskLocationReportState extends State {
         }
 
         if (inference && inference.isUnderstood && inference.intent == 'confirmLocation') {
-            callbacks.setStatusText(`Location check digit ${inference.slots.checkDigit} does not match. Retrying...`);
+            callbacks.setStatusText(`Location check digit ${inference.slots!.checkDigit} does not match. Retrying...`);
         } else {
             callbacks.setStatusText("Failed to capture location confirmation. Retrying...");
         }
@@ -387,7 +400,7 @@ class RecipeTaskPickReportState extends State {
 
         const inference = await this.step.run("Listening for pick result");
 
-        if (inference && inference.isUnderstood && inference.intent in RecipeTaskPickReportState.VALID_INTENTS) {
+        if (inference && inference.isUnderstood && inference.intent! in RecipeTaskPickReportState.VALID_INTENTS) {
             if (inference.intent == 'exitWorkflow') {
                 callbacks.setStatusText("Ending picking workflow.");
                 await sleep(100);
@@ -406,11 +419,11 @@ class RecipeTaskPickReportState extends State {
 
             if (nextTaskIndex >= tasks.length) {
                 if (inference.intent == 'confirmPickedQuantity') {
-                    callbacks.setStatusText(`Recorded picked ${inference.slots.quantity}.`);
-                    callbacks.setCardValue(cardId, `pick ${inference.slots.quantity}`);
+                    callbacks.setStatusText(`Recorded picked ${inference.slots!.quantity}.`);
+                    callbacks.setCardValue(cardId, `pick ${inference.slots!.quantity}`);
                 } else if (inference.intent == 'reportShortPick') {
-                    callbacks.setStatusText(`Recorded short pick ${inference.slots.quantity}.`);
-                    callbacks.setCardValue(cardId, `short pick ${inference.slots.quantity}`);
+                    callbacks.setStatusText(`Recorded short pick ${inference.slots!.quantity}.`);
+                    callbacks.setCardValue(cardId, `short pick ${inference.slots!.quantity}`);
                 } else if (inference.intent == 'reportDamagedItem') {
                     callbacks.setStatusText("Recorded damaged item.");
                     callbacks.setCardValue(cardId, "damaged item");
@@ -431,12 +444,12 @@ class RecipeTaskPickReportState extends State {
 
             let nextPrompt;
             if (inference.intent == 'confirmPickedQuantity') {
-                callbacks.setStatusText(`Recorded picked ${inference.slots.quantity}.`);
-                callbacks.setCardValue(cardId, `pick ${inference.slots.quantity}`);
+                callbacks.setStatusText(`Recorded picked ${inference.slots!.quantity}.`);
+                callbacks.setCardValue(cardId, `pick ${inference.slots!.quantity}`);
                 nextPrompt = RecipeTaskPickReportState.nextLocationPrompt(nextTask);
             } else if (inference.intent == 'reportShortPick') {
-                callbacks.setStatusText(`Recorded short pick ${inference.slots.quantity}.`);
-                callbacks.setCardValue(cardId, `short pick ${inference.slots.quantity}`);
+                callbacks.setStatusText(`Recorded short pick ${inference.slots!.quantity}.`);
+                callbacks.setCardValue(cardId, `short pick ${inference.slots!.quantity}`);
                 nextPrompt = (
                     `Short pick recorded. ` +
                     `Proceed to ${nextTask.locationName}. ` +
