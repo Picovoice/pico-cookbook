@@ -383,6 +383,30 @@ public class MainActivity extends AppCompatActivity {
         return card;
     }
 
+    private void scrollToCard(CardUI activeCard, boolean toBottom) {
+        if (activeCard == null) {
+            return;
+        }
+
+        runOnUiThread(() -> {
+            View parent = (View) findViewById(R.id.reportContainer).getParent();
+            if (parent instanceof android.widget.ScrollView) {
+                android.widget.ScrollView sv = (android.widget.ScrollView) parent;
+                sv.post(() -> {
+                    int scrollY = sv.getScrollY();
+                    int svHeight = sv.getHeight();
+                    int cardLocation = toBottom
+                            ? activeCard.root.getBottom()
+                            : activeCard.root.getTop();
+                    int cardScreenPosition = cardLocation - scrollY;
+                    if (cardScreenPosition > svHeight / 2) {
+                        sv.smoothScrollTo(0, cardLocation - 32);
+                    }
+                });
+            }
+        });
+    }
+
     private void setActiveCard(CardUI activeCard) {
         runOnUiThread(() -> {
             for (CardUI card : cardMap.values()) {
@@ -396,23 +420,9 @@ public class MainActivity extends AppCompatActivity {
                     card.setValue("...", ACTIVE_COLOUR);
                 }
             }
-
-            if (activeCard != null) {
-                View parent = (View) findViewById(R.id.reportContainer).getParent();
-                if (parent instanceof android.widget.ScrollView) {
-                    android.widget.ScrollView sv = (android.widget.ScrollView) parent;
-                    sv.post(() -> {
-                        int scrollY = sv.getScrollY();
-                        int svHeight = sv.getHeight();
-                        int cardTop = activeCard.root.getTop();
-                        int cardScreenPosition = cardTop - scrollY;
-                        if (cardScreenPosition > svHeight / 2) {
-                            sv.smoothScrollTo(0, cardTop - 32);
-                        }
-                    });
-                }
-            }
         });
+
+        scrollToCard(activeCard, false);
     }
 
     class AINoiseSuppressedRecorder {
@@ -1070,7 +1080,10 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
             String finalNotes = step.run(
-                    transcript -> listener.onCardUpdated(cardType, transcript, false),
+                    transcript -> {
+                        listener.onCardUpdated(cardType, transcript, false);
+                        scrollToCard(cardMap.get(cardType), true);
+                    },
                     "Listening for notes...");
             listener.onCardUpdated(cardType, finalNotes, true);
             return new Transition(nextState);
