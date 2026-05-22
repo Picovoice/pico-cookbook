@@ -284,7 +284,7 @@ progress::-webkit-progress-value {
   height: 40px;
   align-items: center;
   justify-content: center;
-  margin: 24px 0;
+  margin-bottom: 24px;
 }
 
 .volume-bar {
@@ -306,14 +306,12 @@ progress::-webkit-progress-value {
   align-items:flex-start;
   padding: 10px;
   margin-bottom: 10px;
-  border: 2px solid black;
+  border: 2px solid #CCC;
   border-radius: 10px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-}
-
-.card > div {
+  color: #888;
   font-size: large;
-  font: bold;
+  font-weight: bold;
 }
 
 .activeCard {

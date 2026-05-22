@@ -5,9 +5,12 @@ window.onload = () => {
   const accessKeyInput = document.getElementById('accessKey');
   const btnInit = document.getElementById('btnInit');
 
-  const appContainer = document.getElementById('appContainer');
   const cardContainer = document.getElementById('cardContainer');
   const btnCancel = document.getElementById('btnCancel');
+  const volumeMeter = document.getElementById('volumeMeter');
+  const bar1 = document.getElementById('bar1');
+  const bar2 = document.getElementById('bar2');
+  const bar3 = document.getElementById('bar3');
 
   function setStatusText(text) {
     statusText.innerText = text;
@@ -38,23 +41,28 @@ window.onload = () => {
   const cards = {};
 
   function createCard(id, title) {
-    const root = document.createElement('div');
-    const titleArea = document.createElement('div');
-    const valueArea = document.createElement('div');
+    if (!cards.hasOwnProperty(id)) {
+      const root = document.createElement('div');
+      const titleArea = document.createElement('div');
+      const valueArea = document.createElement('div');
 
-    titleArea.innerText = title;
-    valueArea.innerText = "-";
+      titleArea.innerText = title;
+      valueArea.innerText = "-";
 
-    root.classList.add("card");
-    root.appendChild(titleArea);
-    root.appendChild(valueArea);
-    cardContainer.appendChild(root);
+      root.classList.add("card");
+      root.appendChild(titleArea);
+      root.appendChild(valueArea);
+      cardContainer.appendChild(root);
 
-    cards[id] = {
-      root: root,
-      title: titleArea,
-      value: valueArea
-    };
+      cards[id] = {
+        root: root,
+        title: titleArea,
+        value: valueArea
+      };
+    } else {
+      cards[id].title.innerText = title;
+      cards[id].value.innerText = "-";
+    }
   }
 
   function setActiveCard(id) {
@@ -81,6 +89,21 @@ window.onload = () => {
     });
   }
 
+  function resetCards(cards) {
+    for (let [id, title] of cards) {
+      createCard(id, title);
+    }
+
+    cardContainer.scrollTo(0, 0);
+  }
+
+  function onVolume(volume) {
+    const baseHeight = 8;
+    bar1.style.height = `${baseHeight + volume * 20}px`;
+    bar2.style.height = `${baseHeight + volume * 32}px`;
+    bar3.style.height = `${baseHeight + volume * 24}px`;
+  }
+
   btnInit.onclick = async () => {
     clearError();
     const accessKey = accessKeyInput.value.trim();
@@ -97,16 +120,37 @@ window.onload = () => {
         clearStatus,
         setErrorText,
         clearError,
-        createCard,
+        resetCards,
         setCardValue,
+        onVolume,
       });
       accessKeyInput.classList.add('hidden');
       btnInit.classList.add('hidden');
-      appContainer.classList.remove('hidden');
+      cardContainer.classList.remove('hidden');
+      btnCancel.classList.remove('hidden');
+      volumeMeter.classList.remove('hidden');
       await Picovoice.start();
     } catch (e) {
-      btnInit.disabled = false;
+      setErrorText(e.toString());
     }
+
+    btnInit.disabled = false;
+  };
+
+  btnCancel.onclick = async () => {
+    btnCancel.disabled = true;
+
+    try {
+      await Picovoice.stop();
+      btnInit.classList.remove('hidden');
+      cardContainer.classList.add('hidden');
+      btnCancel.classList.add('hidden');
+      volumeMeter.classList.add('hidden');
+    } catch (e) {
+      setErrorText(e.toString());
+    }
+
+    btnCancel.disabled = false;
   };
 };
 

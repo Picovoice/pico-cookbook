@@ -11,8 +11,9 @@ export type DemoCallbacks = {
   clearStatus: () => void,
   setErrorText: (text: string) => void,
   clearError: () => void,
-  createCard: (id: string, title: string) => void,
+  resetCards: (cards: [string, string][]) => void,
   setCardValue: (id: string, value: string) => void,
+  onVolume: (volume: number) => void,
 };
 
 enum CardType {
@@ -26,23 +27,34 @@ enum CardType {
 let callbacks: DemoCallbacks | null = null;
 
 const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
-  callbacks = cb;
+  if (callbacks === null) {
+    // TODO
 
-  for (let card in CardType) {
-    callbacks.createCard(card, card);
+    cb.clearStatus();
+    callbacks = cb;
   }
 };
 
 const start = async (): Promise<void> => {
-  // TODO
+  if (callbacks !== null) {
+    callbacks.resetCards(Object.entries(CardType));
+
+    // TODO
+  }
 };
 
 const stop = async (): Promise<void> => {
-  // TODO
+  if (callbacks !== null) {
+    // TODO
+
+    callbacks.setStatusText("Ready to Start");
+  }
 };
 
 const release = async (): Promise<void> => {
-  // TODO
+  if (callbacks !== null) {
+    // TODO
+  }
 };
 
 export default {
