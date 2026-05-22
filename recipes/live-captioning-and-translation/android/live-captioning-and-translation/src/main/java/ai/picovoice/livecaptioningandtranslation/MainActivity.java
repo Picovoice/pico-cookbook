@@ -154,6 +154,8 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView statusText;
 
+    private TextView titleText;
+
     private ScrollView scrollArea;
 
     private LinearLayout chatArea;
@@ -222,11 +224,24 @@ public class MainActivity extends AppCompatActivity {
         statusLayout = findViewById(R.id.statusLayout);
         statusText = findViewById(R.id.statusText);
         statusLayout.setVisibility(View.GONE);
+        titleText = findViewById(R.id.titleText);
     }
 
     private void setStatus(String text) {
         mainHandler.post(() -> {
+            int colorDanger = getResources().getColor(R.color.colorPrimary);
             statusText.setText(text);
+            statusText.setTextColor(colorDanger);
+            statusLayout.setVisibility(View.VISIBLE);
+            rootView.invalidate();
+        });
+    }
+
+    private void setStatusError(String text) {
+        mainHandler.post(() -> {
+            int colorDanger = getResources().getColor(R.color.colorDanger);
+            statusText.setText(text);
+            statusText.setTextColor(colorDanger);
             statusLayout.setVisibility(View.VISIBLE);
             rootView.invalidate();
         });
@@ -236,9 +251,16 @@ public class MainActivity extends AppCompatActivity {
         currentState = State.ERROR;
         mainHandler.post(() -> {
             int colorDanger = getResources().getColor(R.color.colorDanger);
-            statusText.setText(text);
-            statusText.setTextColor(colorDanger);
-            statusLayout.setVisibility(View.VISIBLE);
+            titleText.setText(text);
+            titleText.setTextColor(colorDanger);
+            titleText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+            titleText.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
+            titleLayout.setVisibility(View.VISIBLE);
+            chatArea.setVisibility(View.GONE);
+            statusLayout.setVisibility(View.GONE);
+            volumeMeterLayout.setVisibility(View.GONE);
+            spinnerLayout.setVisibility(View.GONE);
+            buttonLayout.setVisibility(View.GONE);
             rootView.invalidate();
         });
     }
@@ -407,6 +429,8 @@ public class MainActivity extends AppCompatActivity {
                                 short[] pcm = loadPCM(data);
                                 if (pcm != null) {
                                     speakDemo(pcm);
+                                } else {
+                                    setStatusError("Audio file must be 16khz, single channel, and 16 bit");
                                 }
                             }
                         }
@@ -454,10 +478,17 @@ public class MainActivity extends AppCompatActivity {
 
             extractor.selectTrack(trackIndex);
 
-            format.setString(MediaFormat.KEY_MIME, MediaFormat.MIMETYPE_AUDIO_RAW);
-            format.setInteger(MediaFormat.KEY_SAMPLE_RATE, 16000);
-            format.setInteger(MediaFormat.KEY_CHANNEL_COUNT, 1);
-            format.setInteger(MediaFormat.KEY_PCM_ENCODING, AudioFormat.ENCODING_PCM_16BIT);
+            if (format.getInteger(MediaFormat.KEY_SAMPLE_RATE) != 16000) {
+                return null;
+            }
+
+            if (format.getInteger(MediaFormat.KEY_CHANNEL_COUNT) != 1) {
+                return null;
+            }
+
+            if (format.getInteger(MediaFormat.KEY_PCM_ENCODING) != AudioFormat.ENCODING_PCM_16BIT) {
+                return null;
+            }
 
             String mime = format.getString(MediaFormat.KEY_MIME);
             if (mime == null) {
@@ -859,7 +890,8 @@ public class MainActivity extends AppCompatActivity {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (grantResults.length == 0 || grantResults[0] == PackageManager.PERMISSION_DENIED) {
-            setError("Recording permission not granted");
+            stopDemo();
+            setStatusError("Recording permission not granted");
         } else {
             startRecording();
         }

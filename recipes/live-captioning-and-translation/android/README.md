@@ -33,3 +33,5 @@ python setup.py
 2. Copy your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable in [MainActivity.java](live-captioning-and-translation/src/main/java/ai/picovoice/livecaptioningandtranslation/MainActivity.java).
 
 3. Connect a device or launch an Android simulator.
+
+4. Press the `Use Mic` or `Use Audio File` button. The demo only supports 16khz single channal, 16 bit audio files.
