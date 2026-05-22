@@ -52,6 +52,8 @@ window.onload = () => {
   const initButton = document.getElementById("init-button");
   const initButtonTooltip = document.getElementById("init-button-tooltip");
 
+  const skipAudioButton = document.getElementById("skip-audio");
+
   const llmSpinner = document.getElementById("llm-spinner");
 
   const writeError = (errorString) => {
@@ -228,6 +230,14 @@ window.onload = () => {
       volumeMeterUser.style.opacity = "0";
       stopBubbleDot();
 
+    } else if (message === "start speaking") {
+      skipAudioButton.disabled = false;
+      skipAudioButton.setAttribute("coloured", "");
+
+    } else if (message === "stop speaking") {
+      skipAudioButton.disabled = true;
+      skipAudioButton.removeAttribute("coloured");
+
     } else if (message === "ai state") {
       let text = obj;
       aiState.innerHTML = text;
@@ -324,5 +334,9 @@ window.onload = () => {
         writeError(e.message);
       }
     }
+  });
+
+  skipAudioButton.addEventListener("click", async () => {
+    await Picovoice.skipAudio();
   });
 };

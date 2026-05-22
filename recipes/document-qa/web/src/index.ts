@@ -266,7 +266,6 @@ const init = async (
     let pcmBuffered = 0;
     const streamCallback = async (token: string) => {
       const text = token.replace(STOP_PHRASE, '');
-      sendMessage("add to bubble", text);
 
       const streamRelease = await streamMutex.acquire();
       const pcm = await stream.synthesize(text);
@@ -279,6 +278,8 @@ const init = async (
         }
       }
       streamRelease();
+
+      sendMessage("add to bubble", text);
     }
 
     const completion = await object!.llmModel.generate(
@@ -289,9 +290,8 @@ const init = async (
         streamCallback: streamCallback,
       }
     );
+    sendMessage("start speaking", null);
     const inference = completion.completion.trim().replace(STOP_PHRASE, '');
-
-    sendMessage("stop llm spinner", null);
 
     const streamRelease = await streamMutex.acquire();
     const pcm = await stream.flush();
@@ -303,8 +303,10 @@ const init = async (
 
     await object!.audio.waitPlayback();
     await stream.close();
+    sendMessage("stop speaking", null);
 
-    listenForUser();
+    await listenForUser();
+    sendMessage("stop llm spinner", null);
   };
 
   sendMessage("status", "Loading Cheetah");
@@ -383,8 +385,15 @@ const release = async () => {
   cheetahPcmBuffer = new Int16Array();
 };
 
+const skipAudio = async () => {
+  if (object && object!.audio) {
+    object!.audio.clear();
+  }
+}
+
 export default {
   sleep,
   init,
+  skipAudio,
   release
 };
