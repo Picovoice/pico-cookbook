@@ -32,6 +32,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+
+  transition: opacity 0.4s ease;
 }
 
 h1 {
@@ -43,7 +45,6 @@ h1 {
 #statusText {
   font-size: 18px;
   color: #333;
-  margin-bottom: 24px;
   white-space: pre-line;
 }
 
@@ -285,6 +286,8 @@ progress::-webkit-progress-value {
   align-items: center;
   justify-content: center;
   margin-bottom: 24px;
+
+  transition: opacity 0.4s ease;
 }
 
 .volume-bar {
@@ -292,7 +295,7 @@ progress::-webkit-progress-value {
   height: 8px;
   background-color: var(--brand-primary);
   border-radius: 4px;
-  transition: height 0.05s ease;
+  transition: height 0.05s ease, background-color 0.2s ease;
 }
 
 .hidden {
@@ -306,26 +309,38 @@ progress::-webkit-progress-value {
   align-items:flex-start;
   padding: 10px;
   margin-bottom: 10px;
-  border: 2px solid #CCC;
+  border: 1px solid #CCC;
   border-radius: 10px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
   color: #888;
-  font-size: large;
-  font-weight: bold;
+
+  font-size: 16px;
 }
 
 .activeCard {
   border-color: var(--brand-primary);
   color: var(--brand-primary);
+  background-color: #edf3ff;
+}
+.card .title {
+  margin-bottom: 4px;
+
+  font-size: 14px;
+
+  font-weight: bold;
+  letter-spacing: -0.03ch;
 }
 
-/* TODO: are we gonna use the loader? */
+.completedCard .title {
+  color: var(--brand-primary);
+}
 
 #status-container {
   align-items: center;
   justify-content: center;
 
-  margin: 16px;
+  min-height: 3.5em;
+
   color: #444;
 }
 

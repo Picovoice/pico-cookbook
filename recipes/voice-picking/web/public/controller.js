@@ -1,5 +1,5 @@
 window.onload = () => {
-  const titleText = document.getElementById('titleText');
+  const container = document.getElementById('container');
   const errorText = document.getElementById('errorText');
 
   const statusContainer = document.getElementById("status-container");
@@ -45,14 +45,28 @@ window.onload = () => {
   }
 
   const cards = {};
+  let micActive = true;
+  let firstStart = true;
 
-  function createCard(id, title) {
+  function createCard(id, title, rhs) {
     if (!cards.hasOwnProperty(id)) {
       const root = document.createElement('div');
       const titleArea = document.createElement('div');
       const valueArea = document.createElement('div');
 
-      titleArea.innerText = title;
+      const lhsDiv = document.createElement('div');
+      lhsDiv.innerText = title;
+
+      const rhsDiv = document.createElement('div');
+      rhsDiv.innerText = rhs;
+      rhsDiv.style.marginLeft = "auto";
+
+      titleArea.className = "title";
+      titleArea.style.display = "flex";
+      titleArea.style.width = "100%";
+      titleArea.appendChild(lhsDiv);
+      titleArea.appendChild(rhsDiv);
+
       valueArea.innerText = "-";
 
       root.classList.add("card");
@@ -86,6 +100,13 @@ window.onload = () => {
     }
   }
 
+  function setCompletedCard(id) {
+    if (id !== null) {
+      cards[id].root.classList.remove("activeCard");
+      cards[id].root.classList.add("completedCard");
+    }
+  }
+
   function setCardValue(id, value) {
     cards[id].value.innerText = value;
     cards[id].root.focus();
@@ -95,7 +116,31 @@ window.onload = () => {
     });
   }
 
+  async function goToInitScreen() {
+    container.style.opacity = '0';
+    await Picovoice.sleep(400);
+
+    container.style.opacity = '1';
+
+    for (let key in cards) {
+      cards[key].root.classList.remove("activeCard");
+      cards[key].root.classList.remove("completedCard");
+      cards[key].value.innerText = "-";
+    }
+
+    setStatusText("Ready to Start");
+
+    btnInit.classList.remove('hidden');
+    cardContainer.classList.add('hidden');
+    btnCancel.classList.add('hidden');
+    volumeMeter.classList.add('hidden');
+  }
+
   function onVolume(volume) {
+    if (!micActive) {
+      volume = 0;
+    }
+
     const baseHeight = 8;
     bar1.style.height = `${baseHeight + volume * 20}px`;
     bar2.style.height = `${baseHeight + volume * 32}px`;
@@ -115,16 +160,7 @@ window.onload = () => {
         statusSpinner.style.display = "none";
       }
     },
-    // TODO: fix the display of this all
-    setStatusText, /*(statusString) => {
-      statusContainer.style.display = 'flex';
-      status.innerHTML = statusString;
-
-      // TODO: replace instances of this with clearStatus();
-      if (status.length == 0) {
-        statusContainer.style.display = 'none';
-      }
-    }*/
+    setStatusText,
     clearStatus,
     setErrorText,
     clearError,
@@ -132,15 +168,22 @@ window.onload = () => {
     onVolume,
     onListening: (isListening) => {
       if (isListening) {
-        volumeMeter.classList.remove('hidden');
+        bar1.style.backgroundColor = "var(--brand-primary)";
+        bar2.style.backgroundColor = "var(--brand-primary)";
+        bar3.style.backgroundColor = "var(--brand-primary)";
       } else {
-        volumeMeter.classList.add('hidden');
+        bar1.style.backgroundColor = "#888";
+        bar2.style.backgroundColor = "#888";
+        bar3.style.backgroundColor = "#888";
       }
+      micActive = isListening;
     },
 
     createCard,
     setActiveCard,
+    setCompletedCard,
     setCardValue,
+    goToInitScreen,
   };
 
   btnInit.onclick = async () => {
@@ -154,7 +197,10 @@ window.onload = () => {
     btnInit.disabled = true;
 
     try {
-      await Picovoice.init(accessKey, callbacks);
+      if (firstStart) {
+        await Picovoice.init(accessKey, callbacks);
+        firstStart = false;
+      }
 
       accessKeyInput.classList.add('hidden');
       btnInit.classList.add('hidden');
@@ -175,11 +221,7 @@ window.onload = () => {
 
     try {
       await Picovoice.stop();
-
-      btnInit.classList.remove('hidden');
-      cardContainer.classList.add('hidden');
-      btnCancel.classList.add('hidden');
-      volumeMeter.classList.add('hidden');
+      await Picovoice.sleep(400);
     } catch (e) {
       setErrorText(e.toString());
     } finally {

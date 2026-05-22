@@ -44,7 +44,7 @@ export class AINoiseSuppressedRecorder {
         const processCallback = (enhancedPcm: Int16Array) => {
             recorder.processedBuffer = concat(recorder.processedBuffer, enhancedPcm);
 
-            while (recorder.eventQueue.length >= 0) {
+            while (recorder.eventQueue.length > 0) {
                 let request = recorder.eventQueue[0];
                 if (recorder.processedBuffer.length >= request.numSamples) {
                     recorder.eventQueue[0].resolve(recorder.processedBuffer.slice(0, request.numSamples));

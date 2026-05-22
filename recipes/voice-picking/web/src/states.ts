@@ -96,7 +96,6 @@ export abstract class State {
 type WorkflowOptions = {
     steps: Record<RecipeSteps, StepOptions>,
     all_states: RecipeStates[],
-    // TODO: remove this function
     state_creator: (rs: RecipeStates, step: Step) => State,
     state_steps: Record<RecipeStates, RecipeSteps>,
     start_state: StateOptions,
@@ -140,9 +139,7 @@ export class Workflow {
 
     static async create(accessKey: string, options: WorkflowOptions) {
         const recorder = await AINoiseSuppressedRecorder.create(accessKey);
-        // TODO: why fixed sample rate?
-        // this._speaker = PvSpeaker(sample_rate=22050, bits_per_sample=16)
-        const audio = new AudioStream(22050); // orca.sampleRate ? 
+        const audio = new AudioStream(22050);
 
         const steps: Record<string, Step> = {};
         for (const [uid, stepOptions] of Object.entries(options.steps)) {
@@ -151,8 +148,6 @@ export class Workflow {
                 recorder,
                 audio,
                 stepOptions);
-
-            callbacks.setStatusText(`Loading ${steps[uid]}`);
         }
 
         return new Workflow(recorder, audio, steps, options);
@@ -234,9 +229,6 @@ class RecipeStandbyState extends State {
     async run(tasks: PickTask[]): Promise<Transition> {
         await this.step.run("Listening for wake word...");
 
-        callbacks.setStatusText("Detected wake word. Starting picking workflow...");
-        await sleep(100);
-
         if (tasks.length == 0) {
             return {
                 next: { state: RecipeStates.COMPLETE_PROMPT }
@@ -259,7 +251,6 @@ class RecipePromptState extends State {
 
     async runPrompt(prompt: string) {
         callbacks.setStatusText(prompt);
-
         await this.step.run(prompt);
     }
 }
@@ -271,6 +262,9 @@ class RecipeTaskLocationPromptState extends RecipePromptState {
         prompt?: string,
     ): Promise<Transition> {
         const task = tasks[taskIndex];
+        const cardId = `location-${taskIndex}`;
+        callbacks.setActiveCard(cardId);
+
         if (!prompt) {
             prompt = (
                 `Go to ${task.locationName}. ` +
@@ -302,7 +296,6 @@ class RecipeTaskLocationReportState extends State {
         const task = tasks[taskIndex];
         const cardId = `location-${taskIndex}`;
 
-        callbacks.setActiveCard(cardId, true);
         callbacks.setCardValue(cardId, "...");
         const inference = await this.step.run("Listening for location confirmation...");
 
@@ -314,10 +307,10 @@ class RecipeTaskLocationReportState extends State {
 
         if (isValidLocation) {
             callbacks.setStatusText(`Location ${inference.slots!.checkDigit} confirmed.`);
-            callbacks.setActiveCard(cardId, false);
+            callbacks.setCompletedCard(cardId);
             callbacks.setCardValue(cardId, `${inference.slots!.checkDigit}`);
 
-            await sleep(100);
+            await sleep(1000);
 
             return {
                 outcome: inference,
@@ -326,12 +319,10 @@ class RecipeTaskLocationReportState extends State {
         }
 
         if (inference && inference.isUnderstood && inference.intent == 'confirmLocation') {
-            callbacks.setStatusText(`Location check digit ${inference.slots!.checkDigit} does not match. Retrying...`);
+            console.log(`Location check digit ${inference.slots!.checkDigit} does not match. Retrying...`);
         } else {
-            callbacks.setStatusText("Failed to capture location confirmation. Retrying...");
+            console.log("Failed to capture location confirmation. Retrying...");
         }
-
-        await sleep(100);
 
         return {
             outcome: inference,
@@ -352,6 +343,9 @@ class RecipeTaskPickPromptState extends RecipePromptState {
         prompt?: string,
     ): Promise<Transition> {
         const task = tasks[taskIndex];
+        const cardId = `pick-${taskIndex}`;
+        callbacks.setActiveCard(cardId);
+
         if (!prompt) {
             prompt = `Pick ${task.quantity} ${task.itemName}.`;
         }
@@ -395,15 +389,14 @@ class RecipeTaskPickReportState extends State {
         const task = tasks[taskIndex];
         const cardId = `pick-${taskIndex}`;
 
-        callbacks.setActiveCard(cardId, true);
         callbacks.setCardValue(cardId, "...");
 
         const inference = await this.step.run("Listening for pick result");
 
-        if (inference && inference.isUnderstood && inference.intent! in RecipeTaskPickReportState.VALID_INTENTS) {
+        if (inference && inference.isUnderstood && RecipeTaskPickReportState.VALID_INTENTS.includes(inference.intent!)) {
             if (inference.intent == 'exitWorkflow') {
                 callbacks.setStatusText("Ending picking workflow.");
-                await sleep(100);
+                await sleep(500);
 
                 return {
                     outcome: inference,
@@ -415,7 +408,7 @@ class RecipeTaskPickReportState extends State {
             }
 
             const nextTaskIndex = taskIndex + 1;
-            callbacks.setActiveCard(cardId, false);
+            callbacks.setCompletedCard(cardId);
 
             if (nextTaskIndex >= tasks.length) {
                 if (inference.intent == 'confirmPickedQuantity') {
@@ -432,7 +425,7 @@ class RecipeTaskPickReportState extends State {
                     callbacks.setCardValue(cardId, "empty location");
                 }
 
-                await sleep(100);
+                await sleep(500);
 
                 return {
                     outcome: inference,
@@ -476,7 +469,7 @@ class RecipeTaskPickReportState extends State {
                 );
             }
 
-            await sleep(100);
+            await sleep(500);
 
             return {
                 outcome: inference,
@@ -489,8 +482,7 @@ class RecipeTaskPickReportState extends State {
             };
         }
 
-        callbacks.setStatusText("Failed to capture pick result. Retrying...");
-        await sleep(100);
+        console.log("Failed to capture pick result. Retrying...");
 
         return {
             outcome: inference,
@@ -505,10 +497,10 @@ class RecipeTaskPickReportState extends State {
 }
 
 class RecipeCompletePromptState extends RecipePromptState {
-    run(
+    async run(
         prompt: string = "Picking workflow complete.",
-    ): Transition {
-        this.runPrompt(prompt)
+    ): Promise<Transition> {
+        await this.runPrompt(prompt)
         return null;
     }
 }

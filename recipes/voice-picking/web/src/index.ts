@@ -51,17 +51,18 @@ const TASKS: PickTask[] = [
     checkDigit: "one nine",
     itemName: "safety gloves",
     quantity: 1
-  },
+  }
 ];
 
 const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
-  cb.clearStatus();
   updateCallbacks(cb);
+
+  callbacks.clearStatus();
 
   let i = 0;
   for (const task of TASKS) {
-    callbacks.createCard(`location-${i}`, `CONFIRM LOCATION ${task.locationName} (${task.checkDigit})`);
-    callbacks.createCard(`item-${i}`, `PICK ITEM ${task.itemName} (${task.quantity})`);
+    callbacks.createCard(`location-${i}`, "CONFIRM LOCATION", `${task.locationName} (${task.checkDigit})`);
+    callbacks.createCard(`pick-${i}`, "PICK ITEM", `${task.itemName} (${task.quantity})`);
     i += 1;
   }
 
@@ -115,7 +116,6 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
     callbacks.setErrorText(e.toString());
     throw e;
   } finally {
-    callbacks.clearStatus();
     await callbacks.setLoadingState(false);
   }
 };
@@ -123,11 +123,13 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
 const start = async (): Promise<void> => {
   setIsRunning(true);
   await workflow!.run();
+  workflow!.reset();
+
+  await callbacks.goToInitScreen();
 };
 
 const stop = async (): Promise<void> => {
   setIsRunning(false);
-  workflow!.reset();
 };
 
 const release = async (): Promise<void> => {

@@ -10,10 +10,13 @@ export type DemoCallbacks = {
   onVolume: (volume: number) => void;
   onListening: (isListening: boolean) => void;
 
-  createCard: (id: string, title: string) => void,
-  setActiveCard: (id: string, value: boolean) => void,
+  createCard: (id: string, title: string, rhs: string) => void,
+  setActiveCard: (id: string) => void,
+  setCompletedCard: (id: string) => void,
   setCardValue: (id: string, value: string) => void,
-};
+
+  goToInitScreen: () => void,
+}
 
 export let callbacks: DemoCallbacks = {
   setLoadingState: async (_) => undefined,
@@ -26,8 +29,11 @@ export let callbacks: DemoCallbacks = {
   onListening: (_) => undefined,
 
   createCard: (_a, _b) => undefined,
-  setActiveCard: (_a, _b) => undefined,
+  setActiveCard: (_) => undefined,
+  setCompletedCard: (_) => undefined,
   setCardValue: (_a, _b) => undefined,
+
+  goToInitScreen: () => undefined,
 };
 
 export function updateCallbacks(newCallbacks: DemoCallbacks) {
@@ -42,7 +48,10 @@ export function updateCallbacks(newCallbacks: DemoCallbacks) {
 
   callbacks.createCard = newCallbacks.createCard;
   callbacks.setActiveCard = newCallbacks.setActiveCard;
+  callbacks.setCompletedCard = newCallbacks.setCompletedCard;
   callbacks.setCardValue = newCallbacks.setCardValue;
+
+  callbacks.goToInitScreen = newCallbacks.goToInitScreen;
 }
 
 export let isRunning = true;
