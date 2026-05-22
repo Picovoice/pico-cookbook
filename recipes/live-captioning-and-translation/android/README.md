@@ -34,4 +34,4 @@ python setup.py
 
 3. Connect a device or launch an Android simulator.
 
-4. Press the `Use Mic` or `Use Audio File` button. The demo only supports 16khz single channal, 16 bit audio files.
+4. Press the `Use Mic` or `Use Audio File` button. The demo only supports 16khz single channel, 16 bit audio files.
