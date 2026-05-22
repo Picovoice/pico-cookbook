@@ -8,20 +8,32 @@ export const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, 
 
 export type DemoCallbacks = {
   setLoadingState: (enabled: boolean) => Promise<void>,
-  onUpdateStatus: (newStatus: string) => void;
+  setStatusText: (newStatus: string) => void;
+  clearStatus: () => void;
+  setErrorText: (error: string) => void;
+  clearError: () => void;
+
   onVolume: (volume: number) => void;
   onListening: (isListening: boolean) => void;
-  onUpdateCard: (cardId: string, text: string, isFinal: boolean) => void;
-  onError: (error: string) => void;
+
+  createCard: (id: string, title: string) => void,
+  setActiveCard: (id: string, value: boolean) => void,
+  setCardValue: (id: string, value: string) => void,
 };
 
 export let callbacks: DemoCallbacks = {
   setLoadingState: async (_) => undefined,
-  onUpdateStatus: (_) => undefined,
+  setStatusText: (_) => undefined,
+  clearStatus: () => undefined,
+  setErrorText: (_) => undefined,
+  clearError: () => undefined,
+
   onVolume: (_) => undefined,
   onListening: (_) => undefined,
-  onUpdateCard: (_a, _b, _c) => undefined,
-  onError: (_) => undefined
+
+  createCard: (_a, _b) => undefined,
+  setActiveCard: (_a, _b) => undefined,
+  setCardValue: (_a, _b) => undefined,
 };
 
 export let isRunning = true;
@@ -75,49 +87,60 @@ export const TASKS: PickTask[] = [
 ];
 
 const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
-  callbacks = cb;
+  if (callbacks === null) {
+    
+    cb.clearStatus();
+    callbacks = cb;
 
-  try {
-    await callbacks.setLoadingState(true);
-    callbacks.onUpdateStatus("Loading Workflow");
+    let i = 0;
+    for (const task of TASKS) {
+      callbacks.createCard(`location-${i}`, `CONFIRM LOCATION ${task.locationName} (${task.checkDigit})`);
+      callbacks.createCard(`item-${i}`, `PICK ITEM ${task.itemName} (${task.quantity})`);
+      i += 1;
+    }
 
-    workflow = new Workflow(
-      accessKey,
-      {
-        steps: {
-          [RecipeSteps.STANDBY]:     { step: Steps.PORCUPINE, keywordPath: "keywords/voice_picking_web.ppn" },
-          [RecipeSteps.PROMPT_USER]: { step: Steps.ORCA },
-          [RecipeSteps.RECORD_USER]: { step: Steps.RHINO, contextPath: "models/voice_picking_web.rhn" },
-        },
-        all_states: [
-          RecipeStates.STANDBY,
-          RecipeStates.TASK_LOCATION_PROMPT,
-          RecipeStates.TASK_LOCATION_REPORT,
-          RecipeStates.TASK_PICK_PROMPT,
-          RecipeStates.TASK_PICK_REPORT,
-          RecipeStates.COMPLETE_PROMPT,
-        ],
-        state_creator: State.create,
-        state_steps: {
-          [RecipeStates.STANDBY]: RecipeSteps.STANDBY,
-          [RecipeStates.TASK_LOCATION_PROMPT]: RecipeSteps.PROMPT_USER,
-          [RecipeStates.TASK_LOCATION_REPORT]: RecipeSteps.RECORD_USER,
-          [RecipeStates.TASK_PICK_PROMPT]: RecipeSteps.PROMPT_USER,
-          [RecipeStates.TASK_PICK_REPORT]: RecipeSteps.RECORD_USER,
-          [RecipeStates.COMPLETE_PROMPT]: RecipeSteps.PROMPT_USER,
-        },
-        start_state: { state: RecipeStates.STANDBY, tasks: TASKS },
-      }
-    );
+    try {
+      await callbacks.setLoadingState(true);
+      callbacks.setStatusText("Loading Workflow");
 
-    await WebVoiceProcessor.subscribe(callbackAudioEngine);
+      workflow = new Workflow(
+        accessKey,
+        {
+          steps: {
+            [RecipeSteps.STANDBY]:     { step: Steps.PORCUPINE, keywordPath: "keywords/voice_picking_web.ppn" },
+            [RecipeSteps.PROMPT_USER]: { step: Steps.ORCA },
+            [RecipeSteps.RECORD_USER]: { step: Steps.RHINO, contextPath: "models/voice_picking_web.rhn" },
+          },
+          all_states: [
+            RecipeStates.STANDBY,
+            RecipeStates.TASK_LOCATION_PROMPT,
+            RecipeStates.TASK_LOCATION_REPORT,
+            RecipeStates.TASK_PICK_PROMPT,
+            RecipeStates.TASK_PICK_REPORT,
+            RecipeStates.COMPLETE_PROMPT,
+          ],
+          state_creator: State.create,
+          state_steps: {
+            [RecipeStates.STANDBY]: RecipeSteps.STANDBY,
+            [RecipeStates.TASK_LOCATION_PROMPT]: RecipeSteps.PROMPT_USER,
+            [RecipeStates.TASK_LOCATION_REPORT]: RecipeSteps.RECORD_USER,
+            [RecipeStates.TASK_PICK_PROMPT]: RecipeSteps.PROMPT_USER,
+            [RecipeStates.TASK_PICK_REPORT]: RecipeSteps.RECORD_USER,
+            [RecipeStates.COMPLETE_PROMPT]: RecipeSteps.PROMPT_USER,
+          },
+          start_state: { state: RecipeStates.STANDBY, tasks: TASKS },
+        }
+      );
 
-  } catch (e: any) {
-    callbacks.onError(e.toString());
-    throw e;
-  } finally {
-    callbacks.onUpdateStatus("");
-    await callbacks.setLoadingState(false);
+      await WebVoiceProcessor.subscribe(callbackAudioEngine);
+
+    } catch (e: any) {
+      callbacks.setErrorText(e.toString());
+      throw e;
+    } finally {
+      callbacks.clearStatus();
+      await callbacks.setLoadingState(false);
+    }
   }
 };
 

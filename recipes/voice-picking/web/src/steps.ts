@@ -53,7 +53,7 @@ export class OrcaStep extends Step {
         super();
         this.audio = audio;
 
-        callbacks.onUpdateStatus("Loading Orca");
+        callbacks.setStatusText("Loading Orca");
         this.orca = OrcaWorker.create(accessKey, {
             publicPath: modelPath,
             forceWrite: true,
@@ -107,7 +107,7 @@ export class PorcupineStep extends Step {
         super();
         this.recorder = recorder;
 
-        callbacks.onUpdateStatus("Loading Porcupine");
+        callbacks.setStatusText("Loading Porcupine");
         this.porcupine = PorcupineWorker.create(
             accessKey,
             {
@@ -138,7 +138,7 @@ export class PorcupineStep extends Step {
     }
 
     async run(listeningPrompt: string) {
-        callbacks.onUpdateStatus(listeningPrompt);
+        callbacks.setStatusText(listeningPrompt);
         callbacks.onListening(true);
 
         try {
@@ -196,7 +196,7 @@ export class RhinoStep extends Step {
         super();
         this.recorder = recorder;
 
-        callbacks.onUpdateStatus("Loading Rhino");
+        callbacks.setStatusText("Loading Rhino");
         this.rhino = RhinoWorker.create(
             accessKey,
             { 
@@ -229,7 +229,7 @@ export class RhinoStep extends Step {
     }
 
     async run(listeningPrompt: string): Promise<RhinoInference | undefined> {
-        callbacks.onUpdateStatus(listeningPrompt);
+        callbacks.setStatusText(listeningPrompt);
         callbacks.onListening(true);
         
         try {

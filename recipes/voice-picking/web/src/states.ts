@@ -128,7 +128,7 @@ export class Workflow {
                 this.audio,
                 stepOptions);
 
-            callbacks.onUpdateStatus(`Loading ${this.steps[uid]}`);
+            callbacks.setStatusText(`Loading ${this.steps[uid]}`);
         }
 
         this.states = {};
@@ -221,7 +221,7 @@ class RecipeStandbyState extends State {
     async run(tasks: PickTask[]): Promise<Transition> {
         await this.step.run("Listening for wake word...");
 
-        callbacks.onUpdateStatus("Detected wake word. Starting picking workflow...");
+        callbacks.setStatusText("Detected wake word. Starting picking workflow...");
         await sleep(100);
 
         if (tasks.length == 0) {
@@ -245,7 +245,7 @@ class RecipePromptState extends State {
     }
 
     async runPrompt(prompt: string) {
-        callbacks.onUpdateStatus(prompt);
+        callbacks.setStatusText(prompt);
 
         await this.step.run(prompt);
     }
@@ -287,8 +287,10 @@ class RecipeTaskLocationReportState extends State {
         taskIndex: number,
     ): Promise<Transition> {
         const task = tasks[taskIndex];
+        const cardId = `location-${taskIndex}`;
 
-        callbacks.onUpdateCard(`location-${taskIndex}`, "...", false);
+        callbacks.setActiveCard(cardId, true);
+        callbacks.setCardValue(cardId, "...");
         const inference = await this.step.run("Listening for location confirmation...");
 
         const isValidLocation =
@@ -298,8 +300,9 @@ class RecipeTaskLocationReportState extends State {
             inference.slots.checkDigit == task.checkDigit;
 
         if (isValidLocation) {
-            callbacks.onUpdateStatus(`Location ${inference.slots.checkDigit} confirmed.`);
-            callbacks.onUpdateCard(`location-${taskIndex}`, `${inference.slots.checkDigit}`, true);
+            callbacks.setStatusText(`Location ${inference.slots.checkDigit} confirmed.`);
+            callbacks.setActiveCard(cardId, false);
+            callbacks.setCardValue(cardId, `${inference.slots.checkDigit}`);
 
             await sleep(100);
 
@@ -310,9 +313,9 @@ class RecipeTaskLocationReportState extends State {
         }
 
         if (inference && inference.isUnderstood && inference.intent == 'confirmLocation') {
-            callbacks.onUpdateStatus(`Location check digit ${inference.slots.checkDigit} does not match. Retrying...`);
+            callbacks.setStatusText(`Location check digit ${inference.slots.checkDigit} does not match. Retrying...`);
         } else {
-            callbacks.onUpdateStatus("Failed to capture location confirmation. Retrying...");
+            callbacks.setStatusText("Failed to capture location confirmation. Retrying...");
         }
 
         await sleep(100);
@@ -377,14 +380,16 @@ class RecipeTaskPickReportState extends State {
         taskIndex: number,
     ): Promise<Transition> {
         const task = tasks[taskIndex];
+        const cardId = `pick-${taskIndex}`;
 
-        callbacks.onUpdateCard(`pick-${taskIndex}`, "...", false);
+        callbacks.setActiveCard(cardId, true);
+        callbacks.setCardValue(cardId, "...");
 
         const inference = await this.step.run("Listening for pick result");
 
         if (inference && inference.isUnderstood && inference.intent in RecipeTaskPickReportState.VALID_INTENTS) {
             if (inference.intent == 'exitWorkflow') {
-                callbacks.onUpdateStatus("Ending picking workflow.");
+                callbacks.setStatusText("Ending picking workflow.");
                 await sleep(100);
 
                 return {
@@ -397,20 +402,21 @@ class RecipeTaskPickReportState extends State {
             }
 
             const nextTaskIndex = taskIndex + 1;
+            callbacks.setActiveCard(cardId, false);
 
             if (nextTaskIndex >= tasks.length) {
                 if (inference.intent == 'confirmPickedQuantity') {
-                    callbacks.onUpdateStatus(`Recorded picked ${inference.slots.quantity}.`);
-                    callbacks.onUpdateCard(`pick-${taskIndex}`, `pick ${inference.slots.quantity}`, true);
+                    callbacks.setStatusText(`Recorded picked ${inference.slots.quantity}.`);
+                    callbacks.setCardValue(cardId, `pick ${inference.slots.quantity}`);
                 } else if (inference.intent == 'reportShortPick') {
-                    callbacks.onUpdateStatus(`Recorded short pick ${inference.slots.quantity}.`);
-                    callbacks.onUpdateCard(`pick-${taskIndex}`, `short pick ${inference.slots.quantity}`, true);
+                    callbacks.setStatusText(`Recorded short pick ${inference.slots.quantity}.`);
+                    callbacks.setCardValue(cardId, `short pick ${inference.slots.quantity}`);
                 } else if (inference.intent == 'reportDamagedItem') {
-                    callbacks.onUpdateStatus("Recorded damaged item.");
-                    callbacks.onUpdateCard(`pick-${taskIndex}`, "damaged item", true);
-                } else if (inference.intent == 'reportLocationEmpty') {
-                    callbacks.onUpdateStatus("Recorded empty location.");
-                    callbacks.onUpdateCard(`pick-${taskIndex}`, "empty location", true);
+                    callbacks.setStatusText("Recorded damaged item.");
+                    callbacks.setCardValue(cardId, "damaged item");
+                } else {
+                    callbacks.setStatusText("Recorded empty location.");
+                    callbacks.setCardValue(cardId, "empty location");
                 }
 
                 await sleep(100);
@@ -425,12 +431,12 @@ class RecipeTaskPickReportState extends State {
 
             let nextPrompt;
             if (inference.intent == 'confirmPickedQuantity') {
-                callbacks.onUpdateStatus(`Recorded picked ${inference.slots.quantity}.`);
-                callbacks.onUpdateCard(`pick-${taskIndex}`, `pick ${inference.slots.quantity}`, true);
+                callbacks.setStatusText(`Recorded picked ${inference.slots.quantity}.`);
+                callbacks.setCardValue(cardId, `pick ${inference.slots.quantity}`);
                 nextPrompt = RecipeTaskPickReportState.nextLocationPrompt(nextTask);
             } else if (inference.intent == 'reportShortPick') {
-                callbacks.onUpdateStatus(`Recorded short pick ${inference.slots.quantity}.`);
-                callbacks.onUpdateCard(`pick-${taskIndex}`, `short pick ${inference.slots.quantity}`, true);
+                callbacks.setStatusText(`Recorded short pick ${inference.slots.quantity}.`);
+                callbacks.setCardValue(cardId, `short pick ${inference.slots.quantity}`);
                 nextPrompt = (
                     `Short pick recorded. ` +
                     `Proceed to ${nextTask.locationName}. ` +
@@ -438,8 +444,8 @@ class RecipeTaskPickReportState extends State {
                     `Check digits are ${nextTask.checkDigit}.`
                 );
             } else if (inference.intent == 'reportDamagedItem') {
-                callbacks.onUpdateStatus("Recorded damaged item.");
-                callbacks.onUpdateCard(`pick-${taskIndex}`, "damaged item", true);
+                callbacks.setStatusText("Recorded damaged item.");
+                callbacks.setCardValue(cardId, "damaged item");
                 nextPrompt = (
                     `Damaged item recorded. Set it aside. ` +
                     `Then proceed to ${nextTask.locationName}. ` +
@@ -447,8 +453,8 @@ class RecipeTaskPickReportState extends State {
                     `Check digits are ${nextTask.checkDigit}.`
                 );
             } else {
-                callbacks.onUpdateStatus("Recorded empty location.");
-                callbacks.onUpdateCard(`pick-${taskIndex}`, "empty location", true);
+                callbacks.setStatusText("Recorded empty location.");
+                callbacks.setCardValue(cardId, "empty location");
                 nextPrompt = (
                     `Empty location recorded. ` +
                     `Proceed to ${nextTask.locationName}. ` +
@@ -470,7 +476,7 @@ class RecipeTaskPickReportState extends State {
             };
         }
 
-        callbacks.onUpdateStatus("Failed to capture pick result. Retrying...");
+        callbacks.setStatusText("Failed to capture pick result. Retrying...");
         await sleep(100);
 
         return {
