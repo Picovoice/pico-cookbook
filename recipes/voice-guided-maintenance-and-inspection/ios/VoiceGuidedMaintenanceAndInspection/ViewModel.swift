@@ -366,7 +366,7 @@ class Workflow {
             currentState = transition.nextState
             currentArgs = transition.nextStateArgs
         }
-        
+
         return !shouldCancel
     }
 
