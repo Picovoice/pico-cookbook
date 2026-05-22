@@ -6,6 +6,8 @@ import { RhinoInference, RhinoWorker } from '@picovoice/rhino-web';
 import { Interrupter, AINoiseSuppressedRecorder } from './ai_noise_suppressed_recorder';
 import { AudioStream } from './audio_stream';
 
+import { callbacks, isRunning } from './index';
+
 export enum Steps {
     ORCA = "Orca",
     PORCUPINE = "Porcupine",
@@ -51,6 +53,7 @@ export class OrcaStep extends Step {
         super();
         this.audio = audio;
 
+        callbacks.onUpdateStatus("Loading Orca");
         this.orca = OrcaWorker.create(accessKey, {
             publicPath: modelPath,
             forceWrite: true,
@@ -104,6 +107,7 @@ export class PorcupineStep extends Step {
         super();
         this.recorder = recorder;
 
+        callbacks.onUpdateStatus("Loading Porcupine");
         this.porcupine = PorcupineWorker.create(
             accessKey,
             {
@@ -133,13 +137,16 @@ export class PorcupineStep extends Step {
         }
     }
 
-    async run() {
+    async run(listeningPrompt: string) {
+        callbacks.onUpdateStatus(listeningPrompt);
+        callbacks.onListening(true);
+
         try {
             this.isDetected = false;
 
             await this.recorder.start();
 
-            while (true) {
+            while (isRunning) {
                 this.interrupter = {};
                 const frame = await this.recorder.read(this.porcupine.frameLength, this.interrupter);
                 if (this.isDetected) {
@@ -153,6 +160,7 @@ export class PorcupineStep extends Step {
                 }
             }
         } finally {
+            callbacks.onListening(false);
             await this.recorder.stop();
         }
     }
@@ -188,6 +196,7 @@ export class RhinoStep extends Step {
         super();
         this.recorder = recorder;
 
+        callbacks.onUpdateStatus("Loading Rhino");
         this.rhino = RhinoWorker.create(
             accessKey,
             { 
@@ -219,15 +228,18 @@ export class RhinoStep extends Step {
         }
     }
 
-    async run(): Promise<Record<string, any>> {
+    async run(listeningPrompt: string): Promise<RhinoInference | undefined> {
+        callbacks.onUpdateStatus(listeningPrompt);
+        callbacks.onListening(true);
+        
         try {
             this.inference = undefined;
 
             await this.recorder.start();
 
-            while (true) {
+            while (isRunning) {
                 this.interrupter = {};
-                const frame = await this.recorder.read(this.rhino.frame_length);
+                const frame = await this.recorder.read(this.rhino.frame_length, this.interrupter);
                 if (this.inference) {
                     break;
                 }
@@ -239,12 +251,9 @@ export class RhinoStep extends Step {
                 }
             }
     
-            return {
-                isUnderstood: this.inference.isUnderstood,
-                intent: this.inference.intent,
-                slots: this.inference.slots,
-            };
+            return this.inference;
         } finally {
+            callbacks.onListening(false);
             await this.recorder.stop();
         }
     }

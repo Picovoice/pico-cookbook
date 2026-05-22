@@ -78,3 +78,14 @@ yarn start
 - Go to [localhost:5000](http://localhost:5000) in your web browser.
 <!-- markdown-link-check-enable -->
 - Enter your AccessKey, then press the `Start Demo` button.
+
+#### Instructions
+
+- When asked to check digits, respond with the digits of the location you are at (ex: one nine, four two)
+- When asked to pick a number of items, respond with:
+  - `picked ${N}`, where `N` is the number of items you picked
+  - `short pick ${N}` if there are not enough items to complete the full pick
+  - `damaged item`
+  - `location empty`
+  - `I am done` to exit the workflow early
+- See `../res/context.yml` for more details

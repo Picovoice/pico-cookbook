@@ -5,7 +5,6 @@ and support for complex slots and exception handling.
 
 ## Components
 
-- [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/)
 - [Koala Noise Suppression](https://picovoice.ai/docs/koala/)
 - [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/)
 - [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/)

@@ -1,8 +1,8 @@
-import { OrcaAlignment } from '@picovoice/orca-web';
-
 import { AINoiseSuppressedRecorder } from './ai_noise_suppressed_recorder';
 import { AudioStream } from './audio_stream';
-import { Step, Steps, StepOptions, OrcaStep, PorcupineStep, RhinoStep } from './steps';
+import { Step, StepOptions, OrcaStep, PorcupineStep, RhinoStep } from './steps';
+
+import { callbacks, isRunning, sleep } from './index';
 
 type Transition = {
     outcome?: string,
@@ -14,33 +14,12 @@ type Outcome = {
     outcome?: string,
 };
 
-type PickTask = {
-    location_name: string;
-    check_digit: string;
-    item_name: string;
+export type PickTask = {
+    locationName: string;
+    checkDigit: string;
+    itemName: string;
     quantity: number;
 };
-
-export const TASKS: PickTask[] = [
-    {
-        location_name: "bin bravo",
-        check_digit: "four two",
-        item_name: "blue widgets",
-        quantity: 3
-    },
-    {
-        location_name: "bin delta",
-        check_digit: "five seven",
-        item_name: "battery packs",
-        quantity: 5
-    },
-    {
-        location_name: "zone one",
-        check_digit: "one nine",
-        item_name: "safety gloves",
-        quantity: 1
-    },
-];
 
 export enum RecipeSteps {
     STANDBY = "Standby",
@@ -60,39 +39,40 @@ export enum RecipeStates {
 export type StateOptions =
     | {
         state: RecipeStates.STANDBY,
-        tasks: PickTask[] = TASKS,
+        tasks: PickTask[],
     }
     | {
         state: RecipeStates.TASK_LOCATION_PROMPT,
-        tasks: PickTask[] = TASKS,
-        task_index: number = 0,
+        tasks: PickTask[],
+        taskIndex: number,
         prompt?: string,
     }
     | {
         state: RecipeStates.TASK_LOCATION_REPORT,
-        tasks: PickTask[] = TASKS,
-        task_index: number = 0,
+        tasks: PickTask[],
+        taskIndex: number,
     }
     | {
         state: RecipeStates.TASK_PICK_PROMPT,
-        tasks: PickTask[] = TASKS,
-        task_index: number = 0,
+        tasks: PickTask[],
+        taskIndex: number,
         prompt?: string,
     }
     | {
         state: RecipeStates.TASK_PICK_REPORT,
-        tasks: PickTask[] = TASKS,
-        task_index: number = 0,
+        tasks: PickTask[],
+        taskIndex: number,
     }
     | {
         state: RecipeStates.COMPLETE_PROMPT,
-        prompt: string = "Picking workflow complete.",
+        prompt?: string,
     };
 
 export abstract class State {
-    abstract toString(): string;
+    toString(): string {
+        return self.constructor.name;
+    }
 
-    // TODO: maybe this abstract class pattern is sucky, but at least it works for now
     static create(state: RecipeStates, step: Step): State {
         switch (state) {
             case RecipeStates.STANDBY:
@@ -147,8 +127,8 @@ export class Workflow {
                 this.recorder,
                 this.audio,
                 stepOptions);
-            // TODO: trigger status here
-            console.log(`[OK] ${this.steps[uid]}`);
+
+            callbacks.onUpdateStatus(`Loading ${this.steps[uid]}`);
         }
 
         this.states = {};
@@ -165,35 +145,35 @@ export class Workflow {
         this.outcomes = [];
     }
 
-    run() {
+    async run() {
         let current_state = this.start_state;
 
-        while (true) {
+        while (isRunning) {
             let transition;
             switch (current_state.state) {
                 case RecipeStates.STANDBY: {
                     const state = this.states[current_state.state] as RecipeStandbyState;
-                    transition = state.run(current_state.tasks);
+                    transition = await state.run(current_state.tasks);
                     break;
                 } case RecipeStates.TASK_LOCATION_PROMPT: {
                     const state = this.states[current_state.state] as RecipeTaskLocationPromptState;
-                    transition = state.run(current_state.tasks, current_state.task_index, current_state.prompt);
+                    transition = await state.run(current_state.tasks, current_state.taskIndex, current_state.prompt);
                     break;
                 } case RecipeStates.TASK_LOCATION_REPORT: {
                     const state = this.states[current_state.state] as RecipeTaskLocationReportState;
-                    transition = state.run(current_state.tasks, current_state.task_index);
+                    transition = await state.run(current_state.tasks, current_state.taskIndex);
                     break;
                 } case RecipeStates.TASK_PICK_PROMPT: {
                     const state = this.states[current_state.state] as RecipeTaskPickPromptState;
-                    transition = state.run(current_state.tasks, current_state.task_index, current_state.prompt);
+                    transition = await state.run(current_state.tasks, current_state.taskIndex, current_state.prompt);
                     break;
                 } case RecipeStates.TASK_PICK_REPORT: {
                     const state = this.states[current_state.state] as RecipeTaskPickReportState;
-                    transition = state.run(current_state.tasks, current_state.task_index);
+                    transition = await state.run(current_state.tasks, current_state.taskIndex);
                     break;
                 } case RecipeStates.COMPLETE_PROMPT: {
                     const state = this.states[current_state.state] as RecipeCompletePromptState;
-                    transition = state.run(current_state.prompt);
+                    transition = await state.run(current_state.prompt);
                     break;
                 }
             };
@@ -214,8 +194,8 @@ export class Workflow {
         this.outcomes = [];
     }
 
-    release() {
-        for (const step of reversed(this.steps.values()) {
+    async release() {
+        for (const [_, step] of Object.entries(this.steps).toReversed()) {
             await step.release();
         }
 
@@ -230,47 +210,6 @@ export class Workflow {
     }
 }
 
-class RecipePromptState extends State {
-    private step: OrcaStep;
-
-    constructor(step: OrcaStep) {
-        super();
-        this.step = step;
-    }
-
-    run_prompt(prompt: string) {
-        text = ""
-        lock = Lock()
-
-        const get_text = (): string => {
-            with lock:
-                return f"[AI] {text}"
-        }
-
-        print_event, print_thread = print_async(get_text)
-
-        const on_tick = (chunk: string) => {
-            nonlocal text
-            with lock:
-                text += chunk
-        }
-
-        timer_thread = None
-
-        const onSynthesis = (alignments: OrcaAlignment[]) => {
-            nonlocal timer_thread
-            timer_thread = time_async(alignments=alignments, on_tick=on_tick)
-        }
-
-        await this.step.run(prompt, onSynthesis);
-
-        // noinspection PyUnresolvedReferences
-        timer_thread.join()
-        print_event.set()
-        print_thread.join()
-    }
-}
-
 class RecipeStandbyState extends State {
     private step: PorcupineStep;
 
@@ -279,44 +218,25 @@ class RecipeStandbyState extends State {
         this.step = step;
     }
 
-    run(
-        tasks: Optional[Sequence[PickTask]] = None,
-    ): Transition {
-        let text = "Listening for wake word";
+    async run(tasks: PickTask[]): Promise<Transition> {
+        await this.step.run("Listening for wake word...");
 
-        function get_text(): string {
-            return text;
-        }
+        callbacks.onUpdateStatus("Detected wake word. Starting picking workflow...");
+        await sleep(100);
 
-        event, thread = print_async(get_text=get_text)
-        await this.step.run();
-
-        text = "Detected wake word. Starting picking workflow..."
-        sleep(.1)
-        event.set()
-        thread.join()
-
-        if (tasks is None) {
-            tasks = TASKS;
-        }
-
-        if (len(tasks) == 0) {
+        if (tasks.length == 0) {
             return {
-                next: { state: RecipeStates.COMPLETE_PROMPT,
-                // TODO: what did these do? Nothing? They were probably a bug
-                // tasks,
-                // task_index: 0
-                }
+                next: { state: RecipeStates.COMPLETE_PROMPT }
             };
         }
 
         return { 
-            next: { state: RecipeStates.TASK_LOCATION_PROMPT, tasks, task_index: 0 }
+            next: { state: RecipeStates.TASK_LOCATION_PROMPT, tasks, taskIndex: 0 }
         };
     }
 }
 
-class RecipeTaskLocationPromptState extends State {
+class RecipePromptState extends State {
     private step: OrcaStep;
 
     constructor(step: OrcaStep) {
@@ -324,23 +244,32 @@ class RecipeTaskLocationPromptState extends State {
         this.step = step;
     }
 
-    run(
-        tasks: Sequence[PickTask] = TASKS,
-        task_index: int = 0,
-        prompt: Optional[str] = None,
-    ): Transition {
-        task = tasks[task_index]
-        if prompt is None:
-            prompt = (
-                f"Go to {task.location_name}. "
-                f"Confirm location. "
-                f"Check digits are {task.check_digit}."
-            )
+    async runPrompt(prompt: string) {
+        callbacks.onUpdateStatus(prompt);
 
-        this._run_prompt(prompt=prompt)
+        await this.step.run(prompt);
+    }
+}
+
+class RecipeTaskLocationPromptState extends RecipePromptState {
+    async run(
+        tasks: PickTask[],
+        taskIndex: number,
+        prompt?: string,
+    ): Promise<Transition> {
+        const task = tasks[taskIndex];
+        if (!prompt) {
+            prompt = (
+                `Go to ${task.locationName}. ` +
+                `Confirm location. ` +
+                `Check digits are ${task.checkDigit}.`
+            );
+        }
+
+        await this.runPrompt(prompt);
 
         return {
-            next: { state: RecipeStates.TASK_LOCATION_REPORT, tasks, task_index }
+            next: { state: RecipeStates.TASK_LOCATION_REPORT, tasks, taskIndex }
         };
     }
 }
@@ -353,82 +282,68 @@ class RecipeTaskLocationReportState extends State {
         this.step = step;
     }
 
-    run(
-        tasks: Sequence[PickTask] = TASKS,
-        task_index: int = 0,
-    ): Transition {
-        task = tasks[task_index]
-        text = "Listening for location confirmation"
+    async run(
+        tasks: PickTask[],
+        taskIndex: number,
+    ): Promise<Transition> {
+        const task = tasks[taskIndex];
 
-        function get_text(): string {
-            return text;
-        }
+        callbacks.onUpdateCard(`location-${taskIndex}`, "...", false);
+        const inference = await this.step.run("Listening for location confirmation...");
 
-        event, thread = print_async(get_text=get_text)
-        const inference = await this.step.run();
+        const isValidLocation =
+            inference &&
+            inference.isUnderstood &&
+            inference.intent == 'confirmLocation' &&
+            inference.slots.checkDigit == task.checkDigit;
 
-        is_valid_location = \
-            inference is not None and \
-            inference['is_understood'] and \
-            inference['intent'] == 'confirmLocation' and \
-            inference['slots'].get('checkDigit') == task.check_digit
+        if (isValidLocation) {
+            callbacks.onUpdateStatus(`Location ${inference.slots.checkDigit} confirmed.`);
+            callbacks.onUpdateCard(`location-${taskIndex}`, `${inference.slots.checkDigit}`, true);
 
-        if (is_valid_location) {
-            text = f"Location {inference['slots']['checkDigit']} confirmed."
-            sleep(.1)
-            event.set()
-            thread.join()
+            await sleep(100);
 
             return {
                 outcome: inference,
-                next: { state: RecipeStates.TASK_PICK_PROMPT, tasks, task_index, }
+                next: { state: RecipeStates.TASK_PICK_PROMPT, tasks, taskIndex, }
             };
         }
 
-        if (inference is not None and inference['is_understood'] and inference['intent'] == 'confirmLocation') {
-            text = f"Location check digit {inference['slots'].get('checkDigit', '')} does not match. Retrying..."
+        if (inference && inference.isUnderstood && inference.intent == 'confirmLocation') {
+            callbacks.onUpdateStatus(`Location check digit ${inference.slots.checkDigit} does not match. Retrying...`);
         } else {
-            text = "Failed to capture location confirmation. Retrying..."
+            callbacks.onUpdateStatus("Failed to capture location confirmation. Retrying...");
         }
 
-        sleep(.1)
-        event.set()
-        thread.join()
+        await sleep(100);
 
         return {
             outcome: inference,
             next: {
                 state: RecipeStates.TASK_LOCATION_PROMPT,
                 tasks,
-                task_index,
-                prompt: `Please confirm location for ${task.location_name}. Check digits are ${task.check_digit}.`,
+                taskIndex,
+                prompt: `Please confirm location for ${task.locationName}. Check digits are ${task.checkDigit}.`,
             }
         };
     }
 }
 
-class RecipeTaskPickPromptState extends State {
-    private step: OrcaStep;
-
-    constructor(step: OrcaStep) {
-        super();
-        this.step = step;
-    }
-
-    run(
-        tasks: Sequence[PickTask] = TASKS,
-        task_index: int = 0,
-        prompt: Optional[str] = None,
-    ): Transition {
-        task = tasks[task_index]
-        if (prompt is None) {
-            prompt = f"Pick {task.quantity} {task.item_name}."
+class RecipeTaskPickPromptState extends RecipePromptState {
+    async run(
+        tasks: PickTask[],
+        taskIndex: number,
+        prompt?: string,
+    ): Promise<Transition> {
+        const task = tasks[taskIndex];
+        if (!prompt) {
+            prompt = `Pick ${task.quantity} ${task.itemName}.`;
         }
 
-        this._run_prompt(prompt=prompt)
+        await this.runPrompt(prompt);
 
         return {
-            next: { state: RecipeStates.TASK_PICK_REPORT, tasks, task_index }
+            next: { state: RecipeStates.TASK_PICK_REPORT, tasks, taskIndex }
         };
     }
 }
@@ -441,141 +356,130 @@ class RecipeTaskPickReportState extends State {
         this.step = step;
     }
 
-    static _next_location_prompt(task: PickTask): string {
+    private static VALID_INTENTS = [
+        'confirmPickedQuantity',
+        'reportShortPick',
+        'reportDamagedItem',
+        'reportLocationEmpty',
+        'exitWorkflow',
+    ];
+
+    static nextLocationPrompt(task: PickTask): string {
         return (
-            `Go to {task.location_name}. ` +
+            `Go to ${task.locationName}. ` +
             `Confirm location. ` +
-            `Check digits are {task.check_digit}.`
-        )
+            `Check digits are ${task.checkDigit}.`
+        );
     }
 
-    run(
-        tasks: Sequence[PickTask] = TASKS,
-        task_index: int = 0,
-    ): Transition {
-        task = tasks[task_index]
-        text = "Listening for pick result"
+    async run(
+        tasks: PickTask[],
+        taskIndex: number,
+    ): Promise<Transition> {
+        const task = tasks[taskIndex];
 
-        function get_text(): string {
-            return text
-        }
+        callbacks.onUpdateCard(`pick-${taskIndex}`, "...", false);
 
-        event, thread = print_async(get_text=get_text)
-        const inference = await this.step.run();
+        const inference = await this.step.run("Listening for pick result");
 
-        valid_intents = {
-            'confirmPickedQuantity',
-            'reportShortPick',
-            'reportDamagedItem',
-            'reportLocationEmpty',
-            'exitWorkflow',
-        }
-
-        if (inference is not None and inference['is_understood'] and inference['intent'] in valid_intents) {
-            intent = inference['intent']
-            slots = inference['slots']
-
-            if (intent == 'exitWorkflow') {
-                text = "Ending picking workflow."
-                sleep(.1)
-                event.set()
-                thread.join()
+        if (inference && inference.isUnderstood && inference.intent in RecipeTaskPickReportState.VALID_INTENTS) {
+            if (inference.intent == 'exitWorkflow') {
+                callbacks.onUpdateStatus("Ending picking workflow.");
+                await sleep(100);
 
                 return {
                     outcome: inference,
                     next: {
                         state: RecipeStates.COMPLETE_PROMPT,
-                        // TODO: were these a bug?
-                        // tasks,
-                        // task_index,
                         prompt: "Picking workflow ended.",
                     }
                 };
             }
 
-            next_task_index = task_index + 1
+            const nextTaskIndex = taskIndex + 1;
 
-            if (next_task_index >= len(tasks)) {
-                if (intent == 'confirmPickedQuantity') {
-                    text = f"Recorded picked {slots['quantity']}."
-                } else if (intent == 'reportShortPick') {
-                    text = f"Recorded short pick {slots['quantity']}."
-                } else if (intent == 'reportDamagedItem') {
-                    text = "Recorded damaged item."
-                } else {
-                    text = "Recorded empty location."
+            if (nextTaskIndex >= tasks.length) {
+                if (inference.intent == 'confirmPickedQuantity') {
+                    callbacks.onUpdateStatus(`Recorded picked ${inference.slots.quantity}.`);
+                    callbacks.onUpdateCard(`pick-${taskIndex}`, `pick ${inference.slots.quantity}`, true);
+                } else if (inference.intent == 'reportShortPick') {
+                    callbacks.onUpdateStatus(`Recorded short pick ${inference.slots.quantity}.`);
+                    callbacks.onUpdateCard(`pick-${taskIndex}`, `short pick ${inference.slots.quantity}`, true);
+                } else if (inference.intent == 'reportDamagedItem') {
+                    callbacks.onUpdateStatus("Recorded damaged item.");
+                    callbacks.onUpdateCard(`pick-${taskIndex}`, "damaged item", true);
+                } else if (inference.intent == 'reportLocationEmpty') {
+                    callbacks.onUpdateStatus("Recorded empty location.");
+                    callbacks.onUpdateCard(`pick-${taskIndex}`, "empty location", true);
                 }
 
-                sleep(.1)
-                event.set()
-                thread.join()
+                await sleep(100);
 
                 return {
                     outcome: inference,
                     next: { state: RecipeStates.COMPLETE_PROMPT },
-                    // 'tasks': tasks,
-                    // 'task_index': next_task_index,
                 };
             }
 
-            next_task = tasks[next_task_index]
+            const nextTask = tasks[nextTaskIndex];
 
-            if (intent == 'confirmPickedQuantity') {
-                text = `Recorded picked {slots['quantity']}.`
-                next_prompt = this._next_location_prompt(next_task)
-            } else if (intent == 'reportShortPick') {
-                text = `Recorded short pick {slots['quantity']}.`
-                next_prompt = (
-                    `Short pick recorded. `
-                    `Proceed to {next_task.location_name}. `
-                    `Confirm location. `
-                    `Check digits are {next_task.check_digit}.`
-                )
-            } else if (intent == 'reportDamagedItem') {
-                text = "Recorded damaged item."
-                next_prompt = (
-                    `Damaged item recorded. Set it aside. `
-                    `Then proceed to {next_task.location_name}. `
-                    `Confirm location. `
-                    `Check digits are {next_task.check_digit}.`
-                )
+            let nextPrompt;
+            if (inference.intent == 'confirmPickedQuantity') {
+                callbacks.onUpdateStatus(`Recorded picked ${inference.slots.quantity}.`);
+                callbacks.onUpdateCard(`pick-${taskIndex}`, `pick ${inference.slots.quantity}`, true);
+                nextPrompt = RecipeTaskPickReportState.nextLocationPrompt(nextTask);
+            } else if (inference.intent == 'reportShortPick') {
+                callbacks.onUpdateStatus(`Recorded short pick ${inference.slots.quantity}.`);
+                callbacks.onUpdateCard(`pick-${taskIndex}`, `short pick ${inference.slots.quantity}`, true);
+                nextPrompt = (
+                    `Short pick recorded. ` +
+                    `Proceed to ${nextTask.locationName}. ` +
+                    `Confirm location. ` +
+                    `Check digits are ${nextTask.checkDigit}.`
+                );
+            } else if (inference.intent == 'reportDamagedItem') {
+                callbacks.onUpdateStatus("Recorded damaged item.");
+                callbacks.onUpdateCard(`pick-${taskIndex}`, "damaged item", true);
+                nextPrompt = (
+                    `Damaged item recorded. Set it aside. ` +
+                    `Then proceed to ${nextTask.locationName}. ` +
+                    `Confirm location. ` +
+                    `Check digits are ${nextTask.checkDigit}.`
+                );
             } else {
-                text = "Recorded empty location."
-                next_prompt = (
-                    `Empty location recorded. `
-                    `Proceed to {next_task.location_name}. `
-                    `Confirm location. `
-                    `Check digits are {next_task.check_digit}.`
-                )
+                callbacks.onUpdateStatus("Recorded empty location.");
+                callbacks.onUpdateCard(`pick-${taskIndex}`, "empty location", true);
+                nextPrompt = (
+                    `Empty location recorded. ` +
+                    `Proceed to ${nextTask.locationName}. ` +
+                    `Confirm location. ` +
+                    `Check digits are ${nextTask.checkDigit}.`
+                );
             }
 
-            sleep(.1)
-            event.set()
-            thread.join()
+            await sleep(100);
 
             return {
                 outcome: inference,
                 next: {
                     state: RecipeStates.TASK_LOCATION_PROMPT,
                     tasks,
-                    task_index: next_task_index,
-                    prompt: next_prompt,
+                    taskIndex: nextTaskIndex,
+                    prompt: nextPrompt,
                 }
             };
         }
 
-        text = "Failed to capture pick result. Retrying..."
-        sleep(.1)
-        event.set()
-        thread.join()
+        callbacks.onUpdateStatus("Failed to capture pick result. Retrying...");
+        await sleep(100);
 
         return {
             outcome: inference,
             next: {
                 state: RecipeStates.TASK_PICK_PROMPT,
                 tasks,
-                task_index,
-                prompt: `Please report the result for picking ${task.quantity} ${task.item_name}.`,
+                taskIndex,
+                prompt: `Please report the result for picking ${task.quantity} ${task.itemName}.`,
             }
         };
     }
@@ -585,8 +489,7 @@ class RecipeCompletePromptState extends RecipePromptState {
     run(
         prompt: string = "Picking workflow complete.",
     ): Transition {
-        this.run_prompt(prompt=prompt)
-        // TODO: what happens if the transition is empty?
+        this.runPrompt(prompt)
         return null;
     }
 }

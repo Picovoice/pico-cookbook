@@ -1,6 +1,8 @@
 import { KoalaWorker } from '@picovoice/koala-web';
 import { WebVoiceProcessor, PvEngine } from '@picovoice/web-voice-processor';
 
+import { callbacks } from './index';
+
 const concat = (frame1: Int16Array, frame2: Int16Array): Int16Array => {
   const tempPcmBuffer = new Int16Array(frame1.length + frame2.length);
   tempPcmBuffer.set(frame1);
@@ -24,6 +26,7 @@ export class AINoiseSuppressedRecorder {
     private aiNoiseSuppressedEngine: PvEngine;
 
     constructor(accessKey: string) {
+        callbacks.onUpdateStatus("Loading Koala");
         this.koala = KoalaWorker.create(accessKey);
         this.rawBuffer = new Int16Array();
         this.processedBuffer = new Int16Array();
