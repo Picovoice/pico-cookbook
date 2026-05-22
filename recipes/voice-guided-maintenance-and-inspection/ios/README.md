@@ -62,3 +62,4 @@ python setup.py \
 1. Open the `VoiceGuidedMaintenanceAndInspection` project in XCode
 2. Build and run the demo.
 3. Tap the `Start Demo` button in the demo.
+4. Check the [Rhino context YAML](../res/context.yml) for the expected responses.

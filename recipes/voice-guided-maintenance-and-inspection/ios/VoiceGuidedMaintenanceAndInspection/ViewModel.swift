@@ -217,10 +217,11 @@ class ViewModel: ObservableObject {
                     cardValues.removeAll()
                 }
 
-                try await workflow!.run()
+                if try await workflow!.run() {
+                    try await Task.sleep(for: .seconds(1))
+                }
 
-                try await Task.sleep(for: .seconds(1))
-
+                await setStatusText(text: "Ready to Start")
                 await setViewState(state: .loading)
             } catch {
                 await setErrorText(text: error.localizedDescription)
@@ -254,6 +255,7 @@ class ViewModel: ObservableObject {
 
 class Workflow {
     let states: [RecipeStates: State]
+    var shouldCancel: Bool = false
 
     init(
         viewModel: ViewModel,
@@ -353,19 +355,23 @@ class Workflow {
         ]
     }
 
-    func run() async throws {
+    func run() async throws -> Bool {
         var currentState: RecipeStates? = .STANDBY
         var currentArgs: [String: Any] = [:]
 
+        shouldCancel = false
         while currentState != nil {
             let state = states[currentState!]
             let transition = try await state!.run(args: currentArgs)
             currentState = transition.nextState
             currentArgs = transition.nextStateArgs
         }
+        
+        return !shouldCancel
     }
 
     func cancel() {
+        shouldCancel = true
         for state in states.values {
             state.cancel()
         }
