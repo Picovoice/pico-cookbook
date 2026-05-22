@@ -150,8 +150,10 @@ class ViewModel: ObservableObject {
             }
             do {
                 setStatusText("Loading Cheetah \(sourceLanguage)...")
-                let cheetahModelPath = Bundle(for: type(of: self))
-                    .path(forResource: "cheetah_params_\(sourceLanguage)", ofType: "pv")!
+                guard let cheetahModelPath = Bundle(for: type(of: self))
+                    .path(forResource: "cheetah_params_\(sourceLanguage)", ofType: "pv") else {
+                        throw NSError(domain: "Run setup.py before running the demo", code: 0)
+                    }
                 cheetah = try Cheetah(
                     accessKey: ACCESS_KEY,
                     modelPath: cheetahModelPath,
@@ -160,8 +162,10 @@ class ViewModel: ObservableObject {
                     enableTextNormalization: true)
 
                 setStatusText("Loading Zebra \(sourceLanguage)_\(targetLanguage)...")
-                let zebraModelPath = Bundle(for: type(of: self))
-                    .path(forResource: "zebra_params_\(sourceLanguage)_\(targetLanguage)", ofType: "pv")!
+                guard let zebraModelPath = Bundle(for: type(of: self))
+                    .path(forResource: "zebra_params_\(sourceLanguage)_\(targetLanguage)", ofType: "pv") else {
+                        throw NSError(domain: "Run setup.py before running the demo", code: 0)
+                    }
                 zebra = try Zebra(accessKey: ACCESS_KEY, modelPath: zebraModelPath)
 
                 if selectAudioFile != nil {

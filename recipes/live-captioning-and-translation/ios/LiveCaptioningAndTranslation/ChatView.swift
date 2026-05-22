@@ -85,7 +85,7 @@ struct ChatView: View {
                             .padding(.bottom, 8)
                         }
                     }
-                    .padding(12)
+                    .padding(20)
                     .id(0)
                 }.onChange(of: viewModel.chatText) { () in
                     proxy.scrollTo(0, anchor: .bottom)

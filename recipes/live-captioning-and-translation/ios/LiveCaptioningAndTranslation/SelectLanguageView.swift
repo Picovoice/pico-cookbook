@@ -119,7 +119,7 @@ struct SelectLanguageView: View {
                                 loadingFile = true
                             },
                             label: {
-                                Text("Use File")
+                                Text("Use Audio File")
                                     .padding(.vertical, 8)
                                     .padding(8)
                                     .foregroundStyle(.white)
