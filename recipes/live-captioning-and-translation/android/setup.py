@@ -11,7 +11,7 @@ from typing import Tuple
 
 
 ANIMALS = [
-    ("cheetah", "4.0.1"),
+    ("cheetah", "4.0.4"),
     ("zebra", "1.0.0"),
 ]
 
