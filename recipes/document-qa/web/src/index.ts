@@ -29,6 +29,22 @@ const SYSTEM = "You are a document question-answering assistant. "
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+type Message =
+  "SET_STATUS"
+  | "ADD_TO_BUBBLE"
+  | "NEW_USER_BUBBLE"
+  | "NEW_AI_BUBBLE"
+  | "START_LISTENING"
+  | "STOP_LISTENING"
+  | "START_SPEAKING"
+  | "STOP_SPEAKING"
+  | "START_LLM_SPINNER"
+  | "STOP_LLM_SPINNER"
+  | "SET_AI_STATE"
+  | "RESTART_DEMO";
+
+type Request = "BUBBLE_CONTENTS";
+
 type PvObject = {
   audio: AudioStream,
   cheetah: CheetahWorker,
@@ -36,17 +52,17 @@ type PvObject = {
   llmEmbedding: PicoLLMWorker,
   orca: OrcaWorker,
 
+  file: File,
+
   chunks: string[] | null,
   embeddings: number[][] | null,
 
-  sendMessage: (message: string, obj: any) => void,
+  sendMessage: (message: Message, obj: any) => void,
 };
 
 let object: PvObject | null = null;
 
 var triggerAudioCallback = (_: Int16Array) => {};
-
-// ------------------------------------------------------------------------- //
 
 var cheetahPcmBuffer = new Int16Array();
 const BufferedCheetahEngine = {
@@ -71,8 +87,6 @@ const BufferedCheetahEngine = {
   }
 }
 
-// ------------------------------------------------------------------------- //
-
 const normalizeVector = (vector: number[]): number[] => {
   const norm = Math.pow(vector.reduce((partial, x) => partial + x, 0), 0.5);
   return vector.map(x => x / norm);
@@ -85,7 +99,7 @@ const dotProduct = (a: number[], b: number[]): number => {
 const generateEmbeddings = async (chunks: string[]): Promise<number[][]> => {
   let embeddings = []
   for (let i = 0; i < chunks.length; i++) {
-    object!.sendMessage("ai state", `AI: Generating embeddings ${i + 1}/${chunks.length}`);
+    object!.sendMessage("SET_STATUS", `Generating embeddings ${i + 1}/${chunks.length}`);
     const embedding = await object!.llmEmbedding.generateEmbeddings(chunks[i]);
     embeddings.push(normalizeVector(embedding.embeddings));
   }
@@ -150,17 +164,15 @@ const buildPrompt = async (question: string, retrievedChunks: chunkEmbeddingType
   return dialog.prompt();
 };
 
-// ------------------------------------------------------------------------- //
-
 type initReturnType = {
   startFunction: (file: File) => Promise<void>;
   resetDemo: () => Promise<void>;
 };
-
 const init = async (
   accessKey: string,
-  sendMessage: (message: string, obj: any) => void,
-  makeRequest: (message: string) => any,
+  file: File,
+  sendMessage: (message: Message, obj: any) => void,
+  makeRequest: (message: Request) => any,
   onVolumeCallback: (volume: number) => void,
 ): Promise<null | initReturnType> => {
 
@@ -180,23 +192,24 @@ const init = async (
   const resetDemo = async () => {
     object!.audio.clear();
 
-    sendMessage("ai state", "");
+    sendMessage("SET_AI_STATE", "");
 
     await stopListenForUser();
 
-    sendMessage("restart demo", null);
+    sendMessage("RESTART_DEMO", null);
   };
 
   const listenForUser = async () => {
-    sendMessage("new user bubble", "[USER] ");
-    sendMessage("start listening", null);
-    sendMessage("ai state", "AI: Listening");
+    sendMessage("NEW_USER_BUBBLE", "[USER] ");
+    sendMessage("START_LISTENING", null);
+    sendMessage("SET_AI_STATE", "AI is listening to user");
 
     const cheetah = BufferedCheetahEngine;
     await WebVoiceProcessor.subscribe(cheetah);
   };
   const stopListenForUser = async () => {
-    sendMessage("stop listening", null);
+    sendMessage("STOP_LISTENING", null);
+
     const cheetah = BufferedCheetahEngine;
     await WebVoiceProcessor.unsubscribe(cheetah);
   };
@@ -204,55 +217,45 @@ const init = async (
     transcript: CheetahTranscript
   ): Promise<void> => {
     if (transcript.transcript.length > 0) {
-      sendMessage("add to bubble", transcript.transcript);
+      sendMessage("ADD_TO_BUBBLE", transcript.transcript);
     }
 
     if (transcript.isEndpoint) {
-      sendMessage("add to bubble", " ");
+      sendMessage("ADD_TO_BUBBLE", " ");
       const cheetah = object!.cheetah;
       cheetah.flush();
     }
 
-    let userText = makeRequest("bubble contents").replace("[USER]", "").trim();
-    if (transcript.isFlushed && userText.length > 0) {
+    let userText = makeRequest("BUBBLE_CONTENTS").replace("[USER] ", "").trim();
+    if (transcript.isFlushed && (userText.trim().length > 0)) {
       await stopListenForUser();
       await llmProcessCall(userText);
     }
   }
 
-  const llmEmbeddingProcessCall = async (file: File) => {
-    const cachedStr = localStorage.getItem(file.name)
+  const llmEmbeddingProcessCall = async () => {
+    const cachedStr = localStorage.getItem(object!.file.name)
     if (cachedStr !== null && window.confirm("Cached embeddings found, use?")) {
       const cached = JSON.parse(cachedStr);
       object!.chunks = cached.chunks;
       object!.embeddings = cached.embeddings;
-      listenForUser();
     } else {
-      const reader = new FileReader();
-      reader.readAsText(file, 'UTF-8');
-      reader.onload = ({ target }) => {
-        sendMessage("start llm spinner", null);
+      const text = await object!.file.text();
+      const chunks = chunkDocument(text);
+      const embeddings = await generateEmbeddings(chunks);
 
-        const text = target!.result as string;
-        const chunks = chunkDocument(text);
-        generateEmbeddings(chunks).then((embeddings) => {
-          object!.chunks = chunks;
-          object!.embeddings = embeddings;
+      object!.chunks = chunks;
+      object!.embeddings = embeddings;
 
-          localStorage.setItem(file.name, JSON.stringify({
-            chunks,
-            embeddings
-          }));
-
-          sendMessage("stop llm spinner", null);
-          listenForUser();
-        });
-      }
+      localStorage.setItem(object!.file.name, JSON.stringify({
+        chunks,
+        embeddings
+      }));
     }
   }
 
   const llmProcessCall = async (question: string) => {
-    sendMessage("start llm spinner", null);
+    sendMessage("START_LLM_SPINNER", null);
 
     const retrievedChunks = await retrieveChunks(question);
     const prompt = await buildPrompt(question, retrievedChunks);
@@ -260,8 +263,8 @@ const init = async (
     const stream = await object!.orca.streamOpen();
     const streamMutex = new Mutex();
 
-    sendMessage("ai state", "AI: Speaking");
-    sendMessage("new ai bubble", "[AI] ");
+    sendMessage("SET_AI_STATE", "AI is processing");
+    sendMessage("NEW_AI_BUBBLE", "[AI] ");
 
     let pcmBuffered = 0;
     const streamCallback = async (token: string) => {
@@ -279,7 +282,7 @@ const init = async (
       }
       streamRelease();
 
-      sendMessage("add to bubble", text);
+      sendMessage("ADD_TO_BUBBLE", text);
     }
 
     const completion = await object!.llmModel.generate(
@@ -290,7 +293,7 @@ const init = async (
         streamCallback: streamCallback,
       }
     );
-    sendMessage("start speaking", null);
+    sendMessage("START_SPEAKING", null);
     const inference = completion.completion.trim().replace(STOP_PHRASE, '');
 
     const streamRelease = await streamMutex.acquire();
@@ -303,66 +306,78 @@ const init = async (
 
     await object!.audio.waitPlayback();
     await stream.close();
-    sendMessage("stop speaking", null);
+    sendMessage("STOP_SPEAKING", null);
 
     await listenForUser();
-    sendMessage("stop llm spinner", null);
+    sendMessage("STOP_LLM_SPINNER", null);
   };
 
-  sendMessage("status", "Loading Cheetah");
-  const cheetah = await CheetahWorker.create(
-    accessKey,
-    transcriptCallback,
-    { publicPath: "models/cheetah_params.pv", forceWrite: true },
-    {
-      endpointDurationSec: 1.0,
-      enableAutomaticPunctuation: true,
-      enableTextNormalization: true
-    }
-  );
+  if (object == null) {
+    const FORCE_WRITE = true;
 
-  sendMessage("status", "Loading PicoLLM (model)");
-  const llmModel = await PicoLLMWorker.create(
-    accessKey,
-    { modelFile: 'models/llama-3.2-1b-instruct-385.pllm', cacheFileOverwrite: true },
-    {}
-  );
+    sendMessage("SET_STATUS", "Loading Cheetah");
+    const cheetah = await CheetahWorker.create(
+      accessKey,
+      transcriptCallback,
+      { publicPath: "models/cheetah_params.pv", forceWrite: FORCE_WRITE },
+      {
+        endpointDurationSec: 1.0,
+        enableAutomaticPunctuation: true,
+        enableTextNormalization: true
+      }
+    );
 
-  sendMessage("status", "Loading PicoLLM (embedding)");
-  const llmEmbedding = await PicoLLMWorker.create(
-    accessKey,
-    { modelFile: 'models/embeddinggemma-300m-375.pllm', cacheFileOverwrite: true },
-    {}
-  );
+    sendMessage("SET_STATUS", "Loading PicoLLM (model)");
+    const llmModel = await PicoLLMWorker.create(
+      accessKey,
+      { modelFile: 'models/llama-3.2-1b-instruct-385.pllm', cacheFileOverwrite: FORCE_WRITE },
+      {}
+    );
 
-  sendMessage("status", "Loading Orca");
-  const orca = await OrcaWorker.create(
-    accessKey,
-    { publicPath: "models/orca_params_en_female.pv", forceWrite: true },
-    {}
-  );
+    sendMessage("SET_STATUS", "Loading PicoLLM (embedding)");
+    const llmEmbedding = await PicoLLMWorker.create(
+      accessKey,
+      { modelFile: 'models/embeddinggemma-300m-375.pllm', cacheFileOverwrite: FORCE_WRITE },
+      {}
+    );
 
-  sendMessage("ai state", "AI: Waiting for Document");
-  sendMessage("status", "Loading Audio Stream");
-  const audio = new AudioStream(orca.sampleRate);
+    sendMessage("SET_STATUS", "Loading Orca");
+    const orca = await OrcaWorker.create(
+      accessKey,
+      { publicPath: "models/orca_params_en_female.pv", forceWrite: FORCE_WRITE },
+      {}
+    );
 
-  object = {
-    audio: audio,
-    cheetah: cheetah,
-    llmModel: llmModel,
-    llmEmbedding: llmEmbedding,
-    orca: orca,
+    sendMessage("SET_STATUS", "Loading Audio Stream");
+    const audio = new AudioStream(orca.sampleRate);
 
-    chunks: null,
-    embeddings: null,
+    object = {
+      audio: audio,
+      cheetah: cheetah,
+      llmModel: llmModel,
+      llmEmbedding: llmEmbedding,
+      orca: orca,
 
-    sendMessage,
-  };
+      chunks: null,
+      embeddings: null,
 
+      file: file,
+
+      sendMessage: sendMessage,
+    };
+  }
+
+  await llmEmbeddingProcessCall();
   return {
-    startFunction: llmEmbeddingProcessCall,
+    startFunction: listenForUser,
     resetDemo
   };
+};
+
+const updateStartParameters = async (file: File): Promise<void> => {
+  if (object) {
+    object!.file = file;
+  }
 };
 
 const release = async () => {
@@ -395,5 +410,6 @@ export default {
   sleep,
   init,
   skipAudio,
+  updateStartParameters,
   release
 };

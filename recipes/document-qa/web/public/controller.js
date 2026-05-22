@@ -22,20 +22,15 @@ function sanitizeForOrca(str) {
 window.onload = () => {
   const ANIMATION_FRAMES = ["   ", ".  ", ".. ", "...", " ..", "  ."];
 
-  let dotIdx = 0;
-  let dotInterval = null;
-  let bubbleDotInterval = null;
-
-  const statusContainer = document.getElementById("status-container");
-  const status = document.getElementById("status");
-  const errorContainer = document.getElementById("error-container");
-  const error = document.getElementById("error");
-  const dotdotdot = document.getElementById("dotdotdot");
-
   const loadContainerParent = document.getElementById("load-container-parent");
   const loadContainer = document.getElementById("load-container");
-  const loadButton = document.getElementById("load-button");
-  const loadButtonTooltip = document.getElementById("load-button-tooltip");
+  const error = document.getElementById("error");
+  const accessKey = document.getElementById("access-key");
+  const documentFile = document.getElementById("document-file");
+  const startButton = document.getElementById("start-button");
+  const statusContainer = document.getElementById("status-container");
+  const status = document.getElementById("status");
+  const statusSpinner = document.getElementById("status-spinner");
 
   const mainContainerParent = document.getElementById("main-container-parent");
   const mainContainer = document.getElementById("main-container");
@@ -45,49 +40,34 @@ window.onload = () => {
   const bar1 = document.getElementById('bar1');
   const bar2 = document.getElementById('bar2');
   const bar3 = document.getElementById('bar3');
-  const aiState = document.getElementById("ai-state");
-
-  const accessKey = document.getElementById("access-key");
-  const documentFile = document.getElementById("documentFile");
-  const initButton = document.getElementById("init-button");
-  const initButtonTooltip = document.getElementById("init-button-tooltip");
+  const aiState = document.getElementById("ai-state-text");
 
   const skipAudioButton = document.getElementById("skip-audio");
+  const resetDemoButton = document.getElementById("reset-demo");
 
-  const llmSpinner = document.getElementById("llm-spinner");
+  const hudContainer = document.getElementById("hud-container");
+  const hudOptions = document.getElementById("hud-options");
 
-  const writeError = (errorString) => {
-    errorContainer.style.display = 'block';
+  const writeError = async (errorString) => {
+    error.classList.remove('hidden');
     error.innerText = `Error: ${errorString}`;
+    startButton.disabled = false;
+
+    status.innerHTML = "";
+    statusSpinner.style.opacity = "0";
+    await Picovoice.sleep(400);
+
+    statusSpinner.style.display = "none";
   };
   const clearError = () => {
-    errorContainer.style.display = 'none';
+    error.classList.add('hidden');
     error.innerText = "";
   };
 
   const writeStatus = (statusString) => {
-    statusContainer.style.display = 'block';
+    statusContainer.style.display = 'flex';
     status.innerText = statusString;
   };
-
-  // -----------------------------------------
-
-  const startDot = () => {
-    if (dotInterval) {
-      clearInterval(dotInterval);
-    }
-    dotInterval = setInterval(() => {
-      dotIdx = (dotIdx + 1) % ANIMATION_FRAMES.length;
-      dotdotdot.innerText = ANIMATION_FRAMES[dotIdx];
-    }, 200);
-  }
-  const stopDot = () => {
-    if (dotInterval) {
-      clearInterval(dotInterval);
-    }
-    dotIdx = 0;
-    dotdotdot.innerText = '';
-  }
 
   const onVolumeCallback = volume => {
     const baseHeight = 8;
@@ -96,64 +76,37 @@ window.onload = () => {
     bar3.style.height = `${baseHeight + volume * 24}px`;
   };
 
-  // -----------------------------------------
-
-  const enableLoadButton = _ => {
-    if (accessKey.value.length > 0) {
-      loadButton.removeAttribute("disabled");
-      loadButton.setAttribute("coloured", "");
-      loadButtonTooltip.innerHTML = "";
-    } else {
-      loadButton.setAttribute("disabled", "");
-      loadButton.removeAttribute("coloured");
-      loadButtonTooltip.innerHTML = "fill in access key";
-    }
-  }
-  accessKey.addEventListener("input", enableLoadButton);
-
-  const enableStartButton = _ => {
-    if (documentFile.value.length > 0) {
-      initButton.removeAttribute("disabled");
-      initButton.setAttribute("coloured", "");
-      initButtonTooltip.innerHTML = "";
-    } else {
-      initButton.setAttribute("disabled", "");
-      initButton.removeAttribute("coloured");
-      initButtonTooltip.innerHTML = "select document";
-    }
-  }
-  documentFile.addEventListener("input", enableStartButton);
-
-  // -----------------------------------------
-
   let hudFadeoutTimeoutHandle = null;
   let hudFadeoutEndStateFunction = null;
-  let hudTempTimeoutHandle = null;
 
   const restartDemo = async () => {
-    chatBlock.style.opacity = "0";
-    await Picovoice.sleep(400);
-    
+    startButton.removeAttribute("disabled");
+    startButton.setAttribute("coloured", "");
+
+    await Picovoice.sleep(200);
+    startButton.disabled = false;
+
+    loadContainer.style.opacity = "1";
+    mainContainer.style.opacity = "0";
+    loadContainerParent.style.visibility = "visible";
+
+    await Picovoice.sleep(700);
+
+    mainContainerParent.style.visibility = "hidden";
+
     chatBlock.replaceChildren();
-    chatBlock.style.opacity = "1";
 
     if (hudFadeoutTimeoutHandle && hudFadeoutEndStateFunction) {
       clearTimeout(hudFadeoutTimeoutHandle);
       hudFadeoutEndStateFunction();
     }
-
-    if (hudTempTimeoutHandle) {
-      clearTimeout(hudTempTimeoutHandle);
-      hudTemp.innerHTML = "";
-    }
-
-    initButton.innerText = "Start Demo";
-
-    documentFile.disabled = false;
   };
 
   let currentBubbleText = "";
   let currentBubbleDots = "";
+
+  let dotIdx = 0;
+  let bubbleDotInterval = null;
 
   const startBubbleDot = () => {
     if (bubbleDotInterval) {
@@ -172,44 +125,27 @@ window.onload = () => {
     }
     dotIdx = 0;
     currentBubbleDots = '';
-  
+
     chatBlock.lastElementChild.innerHTML = currentBubbleText;
   }
 
-  // -----------------------------------------
-
-  const sendMessage = (message, obj) => {
-    if (message === "status") {
+  const sendMessage = async (message, obj) => {
+    if (message === "SET_STATUS") {
       let text = obj;
       writeStatus(text);
 
-    } else if (message === "add to bubble") {
+    } else if (message === "ADD_TO_BUBBLE") {
       let text = obj;
       if (text.length === 0)
         return;
 
       currentBubbleText += text;
-      if (chatBlock.lastElementChild) {
-        chatBlock.lastElementChild.innerHTML = currentBubbleText + currentBubbleDots;
-        if (chatBlock.lastElementChild.innerHTML.length > 0) {
-          chatBlock.lastElementChild.style.opacity = "1";
-        }
+      chatBlock.lastElementChild.innerHTML = currentBubbleText + currentBubbleDots;
+      if (chatBlock.lastElementChild.innerHTML.length > 0) {
+        chatBlock.lastElementChild.style.opacity = "1";
       }
 
-    } else if (message === "new ai bubble") {
-      let text = obj;
-      let bubble = document.createElement("div");
-      bubble.classList.add("ai-bubble");
-      bubble.style.opacity = "0";
-      bubble.innerHTML += text;
-      if (bubble.innerHTML.length > 0) {
-        bubble.style.opacity = "1";
-      }
-
-      currentBubbleText = text;
-      chatBlock.appendChild(bubble);
-
-    } else if (message === "new user bubble") {
+    } else if (message === "NEW_USER_BUBBLE") {
       let text = obj;
       let bubble = document.createElement("div");
       bubble.classList.add("user-bubble");
@@ -222,73 +158,90 @@ window.onload = () => {
       currentBubbleText = text;
       chatBlock.appendChild(bubble);
 
-    } else if (message === "start listening") {
+    } else if (message === "NEW_AI_BUBBLE") {
+      let text = obj;
+      let bubble = document.createElement("div");
+      bubble.classList.add("ai-bubble");
+      bubble.style.opacity = "0";
+      bubble.innerHTML += text;
+      if (bubble.innerHTML.length > 0) {
+        bubble.style.opacity = "1";
+      }
+
+      currentBubbleText = text;
+      chatBlock.appendChild(bubble);
+
+    } else if (message === "START_LISTENING") {
       volumeMeterUser.style.opacity = "1";
       startBubbleDot();
 
-    } else if (message === "stop listening") {
+    } else if (message === "STOP_LISTENING") {
       volumeMeterUser.style.opacity = "0";
       stopBubbleDot();
 
-    } else if (message === "start speaking") {
+    } else if (message === "START_SPEAKING") {
+      stopBubbleDot();
       skipAudioButton.disabled = false;
       skipAudioButton.setAttribute("coloured", "");
 
-    } else if (message === "stop speaking") {
+    } else if (message === "STOP_SPEAKING") {
       skipAudioButton.disabled = true;
       skipAudioButton.removeAttribute("coloured");
 
-    } else if (message === "ai state") {
+    } else if (message === "START_LLM_SPINNER") {
+      startBubbleDot();
+      resetDemoButton.disabled = true;
+      resetDemoButton.removeAttribute("coloured");
+
+    } else if (message === "STOP_LLM_SPINNER") {
+      stopBubbleDot();
+      resetDemoButton.disabled = false;
+      resetDemoButton.setAttribute("coloured", "");
+
+    } else if (message === "SET_AI_STATE") {
       let text = obj;
       aiState.innerHTML = text;
 
-    } else if (message === "restart demo") {
-      volumeMeterUser.style.opacity = "0";
-      stopBubbleDot();
-
+    } else if (message === "RESTART_DEMO") {
       restartDemo();
-    
-    } else if (message === "start llm spinner") {
-      llmSpinner.style.opacity = "1";
-      initButton.disabled = true;
-      initButton.removeAttribute("coloured");
-
-    } else if (message === "stop llm spinner") {
-      llmSpinner.style.opacity = "0";
-      initButton.disabled = false;
-      initButton.setAttribute("coloured", "");
-    
     }
   };
 
   const makeRequest = (message) => {
-    if (message === "bubble length") {
-      return chatBlock.lastElementChild.innerHTML.length;
-    } else if (message === "bubble contents") {
+    if (message === "BUBBLE_CONTENTS") {
       return chatBlock.lastElementChild.innerHTML;
     }
   };
 
   if (typeof Picovoice === 'undefined') {
     writeError("You must run `yarn build` before running yarn start");
-    loadButtonTooltip.innerHTML = "fix error first";
     return;
   }
 
   let startFunction = null;
   let resetDemo = null;
 
-  loadButton.addEventListener("click", async () => {
-    loadButton.disabled = true;
-    loadButton.setAttribute("disabled", "");
-    loadButton.removeAttribute("coloured");
+  startButton.addEventListener("click", async () => {
+    if (accessKey.value.length <= 0) {
+      writeError("Please input your accessKey");
+      return;
+    } else if (documentFile.value.length <= 0) {
+      writeError("Please select a document");
+      return;
+    }
 
-    writeStatus("Loading");
-    startDot();
+    startButton.disabled = true;
 
     try {
+      await Picovoice.updateStartParameters(documentFile.files[0]);
+
+      writeStatus("Loading");
+      statusSpinner.style.display = "inline";
+      statusSpinner.style.opacity = "1";
+
       const functions = await Picovoice.init(
         accessKey.value,
+        documentFile.files[0],
         sendMessage,
         makeRequest,
         onVolumeCallback,
@@ -298,42 +251,38 @@ window.onload = () => {
     } catch (e) {
       writeError(e.message);
       return;
-    } finally {
-      stopDot();
     }
-
-    clearError();
 
     if (startFunction === null) {
-      writeStatus("Loading failed");
+      writeError("Loading failed");
       return;
-    } else {
-      writeStatus("");
     }
+
+    writeStatus("");
+    statusSpinner.style.opacity = "0";
+    await Picovoice.sleep(400);
+
+    statusSpinner.style.display = "none";
+    clearError();
 
     loadContainer.style.opacity = "0";
     mainContainer.style.opacity = "1";
     mainContainerParent.style.visibility = "visible";
 
-    await Picovoice.sleep(400);
+    await Picovoice.sleep(700);
 
     loadContainerParent.style.visibility = "hidden";
+    accessKey.style.display = "none";
+
+    try {
+      await startFunction();
+    } catch (e) {
+      writeError(e.message);
+    }
   });
 
-  initButton.addEventListener("click", async () => {
-    if (documentFile.disabled) {
-      stopBubbleDot();
-      await resetDemo();
-    } else {
-      initButton.innerText = "Stop Demo"
-      documentFile.disabled = true;
-
-      try {
-        await startFunction(documentFile.files[0]);
-      } catch (e) {
-        writeError(e.message);
-      }
-    }
+  resetDemoButton.addEventListener("click", async () => {
+    await resetDemo();
   });
 
   skipAudioButton.addEventListener("click", async () => {
