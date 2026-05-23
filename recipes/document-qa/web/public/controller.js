@@ -145,6 +145,8 @@ window.onload = () => {
         chatBlock.lastElementChild.style.opacity = "1";
       }
 
+      chatBlock.scrollTop = chatBlock.scrollHeight;
+
     } else if (message === "NEW_USER_BUBBLE") {
       let text = obj;
       let bubble = document.createElement("div");
@@ -157,6 +159,7 @@ window.onload = () => {
 
       currentBubbleText = text;
       chatBlock.appendChild(bubble);
+      chatBlock.scrollTop = chatBlock.scrollHeight;
 
     } else if (message === "NEW_AI_BUBBLE") {
       let text = obj;
@@ -170,6 +173,7 @@ window.onload = () => {
 
       currentBubbleText = text;
       chatBlock.appendChild(bubble);
+      chatBlock.scrollTop = chatBlock.scrollHeight;
 
     } else if (message === "START_LISTENING") {
       volumeMeterUser.style.opacity = "1";
@@ -194,7 +198,6 @@ window.onload = () => {
       resetDemoButton.removeAttribute("coloured");
 
     } else if (message === "STOP_LLM_SPINNER") {
-      stopBubbleDot();
       resetDemoButton.disabled = false;
       resetDemoButton.setAttribute("coloured", "");
 
