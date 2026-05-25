@@ -60,21 +60,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String TTS_MODEL = "orca_params_en_female.pv";
     private static final String NS_MODEL = "koala_params.pv";
 
-    /*private final Map<String, String> HOUR_MAP = new HashMap<String, String>() {{
-        put("one", "1");
-        put("two", "2");
-        put("three", "3");
-        put("four", "4");
-        put("five", "5");
-        put("six", "6");
-        put("seven", "7");
-        put("eight", "8");
-        put("nine", "9");
-        put("ten", "10");
-        put("eleven", "11");
-        put("twelve", "12");
-    }};*/
-
     private static final int INACTIVE_COLOUR = Color.parseColor("#7f8c8d");
     private static final int ACTIVE_COLOUR = Color.parseColor("#377dff");
 
@@ -89,23 +74,13 @@ public class MainActivity extends AppCompatActivity {
     private Workflow workflow;
     private volatile boolean isRunning = false;
 
-    private final Map<CardType, CardUI> cardMap = new HashMap<>();
-
-    enum CardType {
-        UNIT_ID,
-        INCIDENT_TYPE,
-        PATIENT_CONDITION,
-        DESTINATION,
-        HANDOFF_STATUS,
-        HANDOFF_TIME,
-        NOTES
-    }
+    private final Map<String, CardUI> cardMap = new HashMap<>();
 
     interface WorkflowListener {
         void onInitProgress(String status);
         void onStatusChanged(String status);
-        void onCardActive(CardType cardType);
-        void onCardUpdated(CardType cardType, String value, boolean isFinal);
+        void onCardActive(String cardId);
+        void onCardUpdated(String cardId, String value, boolean isFinal);
         void onWorkflowComplete();
         void onVolumeFrame(short[] frame);
     }
@@ -222,17 +197,17 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     @Override
-                    public void onCardActive(CardType cardType) {
-                        if (cardType != null) {
-                            setActiveCard(cardMap.get(cardType));
+                    public void onCardActive(String cardId) {
+                        if (cardId != null) {
+                            setActiveCard(cardMap.get(cardId));
                         } else {
                             setActiveCard(null);
                         }
                     }
 
                     @Override
-                    public void onCardUpdated(CardType cardType, String value, boolean isFinal) {
-                        CardUI card = cardMap.get(cardType);
+                    public void onCardUpdated(String cardId, String value, boolean isFinal) {
+                        CardUI card = cardMap.get(cardId);
                         if (card != null) {
                             int color = isFinal ? INACTIVE_COLOUR : ACTIVE_COLOUR;
                             card.setValue(value, color);
@@ -349,17 +324,17 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void setupReportCards() {
+    private void setupReportCards(List<PickTask> tasks) {
         reportContainer.removeAllViews();
         cardMap.clear();
 
-        cardMap.put(CardType.UNIT_ID, createCard("UNIT ID"));
-        cardMap.put(CardType.INCIDENT_TYPE, createCard("INCIDENT TYPE"));
-        cardMap.put(CardType.PATIENT_CONDITION, createCard("PATIENT CONDITION"));
-        cardMap.put(CardType.DESTINATION, createCard("DESTINATION"));
-        cardMap.put(CardType.HANDOFF_STATUS, createCard("HANDOFF STATUS"));
-        cardMap.put(CardType.HANDOFF_TIME, createCard("HANDOFF TIME"));
-        cardMap.put(CardType.NOTES, createCard("NOTES"));
+        // TODO: ensure the rendering is done correctly
+        // TODO: then, add details to the top right of the card
+        // TODO: then create the PickTask type and the list, so we can use it in our state machine. Woo hoo, done!
+        for (int i = 0; i < tasks.length; i++) {
+            cardMap.put("location-" + String.valueOf(i), createCard("LOCATION"));
+            cardMap.put("pick-" + String.valueOf(i), createCard("PICK"));
+        }
     }
 
     private void resetReportCards() {
@@ -683,20 +658,10 @@ public class MainActivity extends AppCompatActivity {
 
     enum RecipeStates {
         STANDBY,
-        IDENTIFY_UNIT_PROMPT,
-        IDENTIFY_UNIT_REPORT,
-        INCIDENT_TYPE_PROMPT,
-        INCIDENT_TYPE_REPORT,
-        PATIENT_CONDITION_PROMPT,
-        PATIENT_CONDITION_REPORT,
-        DESTINATION_PROMPT,
-        DESTINATION_REPORT,
-        HANDOFF_STATUS_PROMPT,
-        HANDOFF_STATUS_REPORT,
-        HANDOFF_TIME_PROMPT,
-        HANDOFF_TIME_REPORT,
-        FINAL_NOTE_PROMPT,
-        FINAL_NOTE_REPORT,
+        TASK_LOCATION_PROMPT,
+        TASK_LOCATION_REPORT,
+        TASK_PICK_PROMPT,
+        TASK_PICK_REPORT,
         COMPLETE_PROMPT
     }
 
@@ -805,6 +770,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // TODO: where does this get instantiated?
     class StandbyState extends State {
         private final PorcupineStep step;
         private final RecipeStates nextState;
@@ -822,6 +788,57 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    class TaskLocationPromptState extends PromptState {
+        public TaskLocationPromptState(WorkflowListener listener, OrcaStep step) {
+            super(
+                    listener,
+                    step,
+                    // TODO: what is the type of task?
+                    String.format("Go to %s. Confirm location. Check digits are %s.", task.locationName, task.checkDigit)
+                    CardType.UNIT_ID,
+                    RecipeStates.TASK_LOCATION_REPORT);
+        }
+
+        // TODO: we need to pass taskid, or otherwise store this information globally...
+
+        /*
+        @Override
+        public Transition run(Map<String, Object> args) throws Exception {
+            listener.onCardActive(targetCardType);
+
+            String prompt = (args != null && args.containsKey("prompt"))
+                    ? (String) args.get("prompt")
+                    : defaultPrompt;
+            listener.onStatusChanged(prompt);
+            step.run(prompt);
+            return new Transition(nextState);
+        }*/
+    }
+
+    class TaskLocationReportState extends ReportState {
+        public IdentifyUnitReportState(WorkflowListener listener, RhinoStep step) {
+            super(
+                    listener,
+                    step,
+                    "Listening for unit ID...",
+                    CardType.UNIT_ID,
+                    "identifyUnit",
+                    inf -> inf.getSlots().get("unitId"),
+                    RecipeStates.INCIDENT_TYPE_PROMPT,
+                    inf -> "Failed to capture unit ID. Retrying...",
+                    RecipeStates.IDENTIFY_UNIT_PROMPT);
+        }
+    }
+
+    class TaskPickPromptState extends PromptState {
+        
+    }
+
+    class TaskPickReportState extends ReportState {
+        
+    }
+
+    /*
     class IdentifyUnitPromptState extends PromptState {
         public IdentifyUnitPromptState(WorkflowListener listener, OrcaStep step) {
             super(
@@ -1029,14 +1046,13 @@ public class MainActivity extends AppCompatActivity {
             listener.onCardUpdated(cardType, finalNotes, true);
             return new Transition(nextState);
         }
-    }
+    }*/
 
     class Workflow {
         AINoiseSuppressedRecorder recorder;
         PorcupineStep porcupineStep;
         OrcaStep orcaStep;
         RhinoStep rhinoStep;
-        CheetahStep cheetahStep;
 
         Map<RecipeStates, State> states = new HashMap<>();
         private final WorkflowListener listener;
@@ -1055,9 +1071,6 @@ public class MainActivity extends AppCompatActivity {
 
             listener.onInitProgress("Loading Rhino Speech-to-Intent...");
             rhinoStep = new RhinoStep(context, recorder);
-
-            listener.onInitProgress("Loading Cheetah Speech-to-Text...");
-            cheetahStep = new CheetahStep(context, recorder);
 
             buildStates();
         }
@@ -1084,9 +1097,9 @@ public class MainActivity extends AppCompatActivity {
             states.put(RecipeStates.HANDOFF_TIME_REPORT, new HandoffTimeReportState(listener, rhinoStep));
 
             states.put(RecipeStates.FINAL_NOTE_PROMPT, new FinalNotePromptState(listener, orcaStep));
-            states.put(
+            /*states.put(
                     RecipeStates.FINAL_NOTE_REPORT,
-                    new DictationState(listener, cheetahStep, CardType.NOTES, RecipeStates.COMPLETE_PROMPT));
+                    new DictationState(listener, cheetahStep, CardType.NOTES, RecipeStates.COMPLETE_PROMPT));*/
 
             states.put(RecipeStates.COMPLETE_PROMPT, new CompletePromptState(listener, orcaStep));
         }
@@ -1118,9 +1131,6 @@ public class MainActivity extends AppCompatActivity {
             }
             if (rhinoStep != null) {
                 rhinoStep.delete();
-            }
-            if (cheetahStep != null) {
-                cheetahStep.delete();
             }
             if (recorder != null) {
                 recorder.delete();
