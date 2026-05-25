@@ -21,7 +21,8 @@ contents.xcworkspacedata
 xcuserdata
 Pods
 
-porcupine_model.ppn
-picollm_model.pllm
+*.pv
+*.ppn
+*.rhn
 
 orca/
