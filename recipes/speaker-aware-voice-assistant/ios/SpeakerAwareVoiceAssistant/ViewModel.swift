@@ -79,10 +79,12 @@ class ViewModel: ObservableObject {
 
     private var testBuffer: [Int16] = []
     private var testMaxSamples: Int = 0
+    
+    private var inferenceBuffer: [Int16] = []
 
     init() {
-//        VoiceProcessor.instance.addFrameListener(audioCallback)
-//        VoiceProcessor.instance.addErrorListener(errorCallback)
+        VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
+        VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
     }
 
     public func startEnrollment() {
@@ -121,10 +123,10 @@ class ViewModel: ObservableObject {
         do {
             try stopAudio()
 
-            guard let keywordPath = getKeywordPath() else { return }
-
-            porcupine = try Porcupine(accessKey: ACCESS_KEY, keywordPaths: [keywordPath], sensitivities: [0.5])
-            eagleProfiler = try EagleProfiler(accessKey: ACCESS_KEY)
+            eagleProfiler = try EagleProfiler(
+                accessKey: ACCESS_KEY,
+                minEnrollmentChunks: EAGLE_MIN_EMROLLMENT_CHUNKS,
+                voiceThreshold: EAGLE_THRESHOLD)
 
             eagleFrameLength = Int(EagleProfiler.frameLength)
             enrollMaxSamples = eagleFrameLength * 64
@@ -153,11 +155,15 @@ class ViewModel: ObservableObject {
             try stopAudio()
 
             guard let keywordPath = getKeywordPath() else { return }
+            guard let contextPath = getContextPath() else { return }
+            guard let orcaModelPath = getOrcaModelPath() else { return }
 
             porcupine = try Porcupine(accessKey: ACCESS_KEY, keywordPaths: [keywordPath], sensitivities: [0.5])
-            eagle = try Eagle(accessKey: ACCESS_KEY)
+            rhino = try Rhino(accessKey: ACCESS_KEY, contextPath: contextPath)
+            orca = try Orca(accessKey: ACCESS_KEY, modelPath: orcaModelPath)
+            eagle = try Eagle(accessKey: ACCESS_KEY, voiceThreshold: 0.1)
 
-//            testMaxSamples = Int(Eagle.frameLength)
+            testMaxSamples = Int(try eagle!.minProcessSamples())
             testBuffer = [Int16](repeating: 0, count: testMaxSamples)
 
             DispatchQueue.main.async {
@@ -190,8 +196,13 @@ class ViewModel: ObservableObject {
 
     private func finishEnrollment() {
         do {
-//            speakerProfile = try eagleProfiler!.export()
+            let profile = try eagleProfiler!.export()
+
             DispatchQueue.main.async {
+                self.speakerProfiles.append(profile)
+                self.speakerNames.append(self.pendingSpeakerName)
+                self.speakerRoles.append(self.pendingSpeakerAdminRole ? .admin : .user)
+                
                 self.hasEnrolled = true
                 self.cancel()
             }
@@ -206,11 +217,13 @@ class ViewModel: ObservableObject {
             self.testScore = score
             self.showTestResult = true
             self.statusText = ""
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                self.showTestResult = false
-                self.updateUIForState()
-            }
+        }
+    }
+    
+    private func hideResult() {
+        DispatchQueue.main.async {
+            self.showTestResult = false
+            self.updateUIForState()
         }
     }
 
@@ -239,49 +252,98 @@ class ViewModel: ObservableObject {
             enrollValidSamples = min(enrollMaxSamples, enrollValidSamples + frame.count)
 
             do {
-                let keywordIndex = try porcupine!.process(pcm: frame)
-                if keywordIndex == 0 {
-                    let numEagleFrames = enrollValidSamples / eagleFrameLength
-                    let startIndex = enrollMaxSamples - enrollValidSamples
+                let numEagleFrames = enrollValidSamples / eagleFrameLength
+                let startIndex = enrollMaxSamples - enrollValidSamples
 
-                    var progress: Float = 0.0
-                    for i in 0..<numEagleFrames {
-                        let chunkStart = startIndex + (i * eagleFrameLength)
-                        let chunkEnd = chunkStart + eagleFrameLength
-                        let chunk = Array(enrollBuffer[chunkStart..<chunkEnd])
+                var progress: Float = 0.0
+                for i in 0..<numEagleFrames {
+                    let chunkStart = startIndex + (i * eagleFrameLength)
+                    let chunkEnd = chunkStart + eagleFrameLength
+                    let chunk = Array(enrollBuffer[chunkStart..<chunkEnd])
 
-                        let result = try eagleProfiler!.enroll(pcm: chunk)
-                        progress = result
-                    }
-                    enrollValidSamples = 0
+                    let result = try eagleProfiler!.enroll(pcm: chunk)
+                    progress = result
+                }
+                enrollValidSamples = 0
 
-                    DispatchQueue.main.async {
-                        self.enrollPercentage = progress
-                        if progress >= 100.0 {
-                            self.finishEnrollment()
-                        }
-                    }
+                DispatchQueue.main.async {
+                    self.enrollPercentage = progress
+                }
+                
+                if progress >= 100.0 {
+                    self.finishEnrollment()
                 }
             } catch {
                 print("Audio processing error: \(error)")
             }
 
-        } else if appState == .testing {
+        } else if appState == .testing && testingState == .PPN {
             testBuffer.removeFirst(frame.count)
             testBuffer.append(contentsOf: frame)
 
             do {
                 let keywordIndex = try porcupine!.process(pcm: frame)
                 if keywordIndex == 0 {
-//                    guard let activeProfile = speakerProfile else { return }
-//                    let scores = try eagle!.process(pcm: testBuffer, profiles: [activeProfile])
-
-//                    if let score = scores.first {
-//                        let isVerified = score >= EAGLE_THRESHOLD
-//                        showResult(isVerified: isVerified, score: score)
-//                    } else {
-//                        showResult(isVerified: false, score: 0.0)
-//                    }
+                    //                    guard let activeProfile = speakerProfile else { return }
+                    let scores = try eagle!.process(pcm: testBuffer, speakerProfiles: speakerProfiles)
+                    if (scores != nil) {
+                        let bestScore = scores!.max() ?? -1
+                        //                        let bestIndex = scores!.lastIndex(of: bestScore)
+                        
+                        // TODO: Display name and such on greeting
+                        if (bestScore >= EAGLE_THRESHOLD) {
+                            showResult(isVerified: true, score: bestScore)
+                        } else {
+                            showResult(isVerified: false, score: 0.0)
+                        }
+                        
+                        inferenceBuffer = []
+                        DispatchQueue.main.async {
+                            self.testingState = .RHN
+                        }
+                    }
+                }
+            } catch {
+                print("Audio processing error: \(error)")
+            }
+        } else if appState == .testing && testingState == .RHN {
+            inferenceBuffer.append(contentsOf: frame)
+            do {
+                let is_complete = try rhino!.process(pcm: frame)
+                if (is_complete) {
+                    let inference = try rhino!.getInference()
+                    if (inference.isUnderstood) {
+                        let scores = try eagle!.process(pcm: testBuffer, speakerProfiles: speakerProfiles)
+                        
+                        var bestScore: Float = 0.0
+                        var bestIndex: Int = -1
+                        if (scores != nil) {
+                            bestScore = scores!.max() ?? bestScore
+                            bestIndex = scores!.lastIndex(of: bestScore) ?? bestIndex
+                        }
+                        
+                        if (inference.intent == "adminOnly") {
+                            if (bestScore >= EAGLE_THRESHOLD) {
+                                let speakerName = speakerNames[bestIndex]
+                                let speakerRole = speakerRoles[bestIndex]
+                                
+                                if (speakerRole == .admin) {
+                                    synthesizeAndPlayback("Admin command approved.")
+                                } else {
+                                    synthesizeAndPlayback("Permission denied. This command requires an admin.")
+                                }
+                            } else {
+                                synthesizeAndPlayback("Sorry, I could not verify your voice.")
+                            }
+                        } else if (inference.intent == "speakerPersonalized") {
+                            let speakerName = speakerNames[bestIndex]
+                            synthesizeAndPlayback("Hi \(speakerName). I will personalize this command for you.")
+                        } else if (inference.intent == "generic") {
+                            synthesizeAndPlayback("Okay. This command is available to everyone.")
+                        }
+                    } else {
+                        synthesizeAndPlayback("Sorry, I did not understand that command.")
+                    }
                 }
             } catch {
                 print("Audio processing error: \(error)")
@@ -295,6 +357,10 @@ class ViewModel: ObservableObject {
         }
     }
 
+    private func synthesizeAndPlayback(_ text: String) {
+        // TODO
+    }
+    
     private func calculateRMS(frame: [Int16]) -> Float {
         let MIN_DB: Float = -40.0
         let MAX_DB: Float = 0.0
