@@ -12,6 +12,8 @@ import SwiftUI
 struct ContentView: View {
     @StateObject var viewModel = ViewModel()
 
+    @State private var showingAlert = false
+    
     let brandPrimary = Color(red: 55/255, green: 125/255, blue: 255/255) // #377dff
     let grayLight = Color(red: 224/255, green: 224/255, blue: 224/255)   // #E0E0E0
     let textDark = Color(red: 51/255, green: 51/255, blue: 51/255)       // #333333
@@ -20,7 +22,7 @@ struct ContentView: View {
         VStack(spacing: 24) {
 
             if viewModel.appState == .idle {
-                Text("Personalized Wake Word")
+                Text("Speaker Aware Voice Assistant")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(brandPrimary)
                     .padding(.bottom, 8)
@@ -67,11 +69,11 @@ struct ContentView: View {
                     .frame(height: 64)
                     .padding(.top, 24)
             }
-
+            
             if viewModel.appState == .idle && !viewModel.showTestResult {
                 HStack(spacing: 16) {
                     Button(action: {
-                        viewModel.startEnrollment()
+                        showingAlert.toggle()
                     }) {
                         Text(viewModel.hasEnrolled ? "Re-Enroll" : "Start Enrollment")
                             .padding(.horizontal, 16)
@@ -79,6 +81,21 @@ struct ContentView: View {
                             .background(viewModel.hasEnrolled ? grayLight : brandPrimary)
                             .foregroundColor(viewModel.hasEnrolled ? textDark : .white)
                             .cornerRadius(4)
+                    }
+                    .sheet(isPresented: $showingAlert) {
+                        Text("Enroll New Speaker")
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                        TextField("Enter your name", text: $viewModel.pendingSpeakerName)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                        Toggle("Admin permissions:", isOn: $viewModel.pendingSpeakerAdminRole)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                        Button("OK", action: {
+                            showingAlert.toggle()
+                            viewModel.startEnrollment()
+                        }).disabled(viewModel.pendingSpeakerName.isEmpty)
                     }
 
                     if viewModel.hasEnrolled {

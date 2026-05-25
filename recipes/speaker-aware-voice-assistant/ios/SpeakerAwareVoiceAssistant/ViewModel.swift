@@ -9,6 +9,8 @@
 
 import Eagle
 import Porcupine
+import Orca
+import Rhino
 import ios_voice_processor
 
 import Foundation
@@ -20,24 +22,55 @@ enum AppState {
     case testing
 }
 
+enum TestingState {
+    case PPN
+    case RHN
+    case ORCA
+}
+
+enum UserRole {
+    case admin
+    case user
+}
+
 class ViewModel: ObservableObject {
     private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
-    private let EAGLE_THRESHOLD: Float = 0.75
-
+    
+    private let EAGLE_THRESHOLD: Float = 0.50
+    private let EAGLE_MIN_EMROLLMENT_CHUNKS = 6;
+    private let MAX_SPEAKERS = 10;
+    
+    
+    @Published var speakerProfiles: [EagleProfile] = []
+    @Published var speakerNames: [String] = []
+    @Published var speakerRoles: [UserRole] = []
+    
     @Published var appState: AppState = .idle
+    @Published var testingState: TestingState = .PPN
+    
+    @Published var pendingSpeakerName: String = ""
+    @Published var pendingSpeakerAdminRole: Bool = false
+    
+    @Published var soundLevel: Float = 0.0
+    
+    private var porcupine: Porcupine?
+    private var rhino: Rhino?
+    private var orca: Orca?
+    
+    private var eagleProfiler: EagleProfiler?
+    private var eagle: Eagle?
+    
+    
+    
+    
+    
     @Published var statusText: String = "Ready to Enroll"
     @Published var enrollPercentage: Float = 0.0
     @Published var hasEnrolled: Bool = false
-    @Published var soundLevel: Float = 0.0
 
     @Published var showTestResult: Bool = false
     @Published var isTestVerified: Bool = false
     @Published var testScore: Float = 0.0
-
-    private var porcupine: Porcupine?
-    private var eagleProfiler: EagleProfiler?
-    private var eagle: Eagle?
-    private var speakerProfile: EagleProfile?
 
     private var enrollBuffer: [Int16] = []
     private var enrollMaxSamples: Int = 0
@@ -48,8 +81,8 @@ class ViewModel: ObservableObject {
     private var testMaxSamples: Int = 0
 
     init() {
-        VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameCallback(audioCallback))
-        VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorCallback(errorCallback))
+//        VoiceProcessor.instance.addFrameListener(audioCallback)
+//        VoiceProcessor.instance.addErrorListener(errorCallback)
     }
 
     public func startEnrollment() {
@@ -85,8 +118,6 @@ class ViewModel: ObservableObject {
     }
 
     private func performStartEnrollment() {
-        guard checkArgs() else { return }
-
         do {
             try stopAudio()
 
@@ -95,7 +126,7 @@ class ViewModel: ObservableObject {
             porcupine = try Porcupine(accessKey: ACCESS_KEY, keywordPaths: [keywordPath], sensitivities: [0.5])
             eagleProfiler = try EagleProfiler(accessKey: ACCESS_KEY)
 
-            eagleFrameLength = Int(try eagleProfiler!.frameLength)
+            eagleFrameLength = Int(EagleProfiler.frameLength)
             enrollMaxSamples = eagleFrameLength * 64
 
             enrollBuffer = [Int16](repeating: 0, count: enrollMaxSamples)
@@ -107,8 +138,8 @@ class ViewModel: ObservableObject {
             }
 
             try VoiceProcessor.instance.start(
-                frameLength: porcupine!.frameLength,
-                sampleRate: porcupine!.sampleRate
+                frameLength: Porcupine.frameLength,
+                sampleRate: Porcupine.sampleRate
             )
         } catch {
             DispatchQueue.main.async {
@@ -118,8 +149,6 @@ class ViewModel: ObservableObject {
     }
 
     private func performStartTesting() {
-        guard checkArgs() else { return }
-
         do {
             try stopAudio()
 
@@ -128,7 +157,7 @@ class ViewModel: ObservableObject {
             porcupine = try Porcupine(accessKey: ACCESS_KEY, keywordPaths: [keywordPath], sensitivities: [0.5])
             eagle = try Eagle(accessKey: ACCESS_KEY)
 
-            testMaxSamples = Int(try eagle!.frameLength)
+//            testMaxSamples = Int(Eagle.frameLength)
             testBuffer = [Int16](repeating: 0, count: testMaxSamples)
 
             DispatchQueue.main.async {
@@ -137,8 +166,8 @@ class ViewModel: ObservableObject {
             }
 
             try VoiceProcessor.instance.start(
-                frameLength: porcupine!.frameLength,
-                sampleRate: porcupine!.sampleRate
+                frameLength: Porcupine.frameLength,
+                sampleRate: Porcupine.sampleRate
             )
         } catch {
             DispatchQueue.main.async {
@@ -161,7 +190,7 @@ class ViewModel: ObservableObject {
 
     private func finishEnrollment() {
         do {
-            speakerProfile = try eagleProfiler!.export()
+//            speakerProfile = try eagleProfiler!.export()
             DispatchQueue.main.async {
                 self.hasEnrolled = true
                 self.cancel()
@@ -222,7 +251,7 @@ class ViewModel: ObservableObject {
                         let chunk = Array(enrollBuffer[chunkStart..<chunkEnd])
 
                         let result = try eagleProfiler!.enroll(pcm: chunk)
-                        progress = result.percentage
+                        progress = result
                     }
                     enrollValidSamples = 0
 
@@ -244,15 +273,15 @@ class ViewModel: ObservableObject {
             do {
                 let keywordIndex = try porcupine!.process(pcm: frame)
                 if keywordIndex == 0 {
-                    guard let activeProfile = speakerProfile else { return }
-                    let scores = try eagle!.process(pcm: testBuffer, profiles: [activeProfile])
+//                    guard let activeProfile = speakerProfile else { return }
+//                    let scores = try eagle!.process(pcm: testBuffer, profiles: [activeProfile])
 
-                    if let score = scores.first {
-                        let isVerified = score >= EAGLE_THRESHOLD
-                        showResult(isVerified: isVerified, score: score)
-                    } else {
-                        showResult(isVerified: false, score: 0.0)
-                    }
+//                    if let score = scores.first {
+//                        let isVerified = score >= EAGLE_THRESHOLD
+//                        showResult(isVerified: isVerified, score: score)
+//                    } else {
+//                        showResult(isVerified: false, score: 0.0)
+//                    }
                 }
             } catch {
                 print("Audio processing error: \(error)")
@@ -293,23 +322,34 @@ class ViewModel: ObservableObject {
         eagle = nil
     }
 
-    private func checkArgs() -> Bool {
-        if ACCESS_KEY == "${YOUR_ACCESS_KEY_HERE}" {
-            DispatchQueue.main.async {
-                self.statusText = "Please set your Picovoice AccessKey in ViewModel.swift"
-            }
-            return false
-        }
-        return true
-    }
-
     private func getKeywordPath() -> String? {
-        if let path = Bundle.main.path(forResource: "porcupine_model", ofType: "ppn") {
+        if let path = Bundle.main.path(forResource: "keyword", ofType: "ppn") {
             return path
         }
         DispatchQueue.main.async {
-            self.statusText = "Could not find porcupine_model.ppn. Make sure setup.py ran."
+            self.statusText = "Could not find keyword.ppn. Make sure setup.py ran."
         }
         return nil
     }
+
+    private func getContextPath() -> String? {
+        if let path = Bundle.main.path(forResource: "context", ofType: "rhn") {
+            return path
+        }
+        DispatchQueue.main.async {
+            self.statusText = "Could not find context.rhn. Make sure setup.py ran."
+        }
+        return nil
+    }
+    
+    private func getOrcaModelPath() -> String? {
+        if let path = Bundle.main.path(forResource: "orca_params_en_female", ofType: "pv") {
+            return path
+        }
+        DispatchQueue.main.async {
+            self.statusText = "Could not find orca_params_en_female.pv. Make sure setup.py ran."
+        }
+        return nil
+    }
+    
 }

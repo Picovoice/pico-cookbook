@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		071545E42FC12732004D77DE /* Orca in Frameworks */ = {isa = PBXBuildFile; productRef = 071545E32FC12732004D77DE /* Orca */; };
 		071545E72FC1277A004D77DE /* Rhino in Frameworks */ = {isa = PBXBuildFile; productRef = 071545E62FC1277A004D77DE /* Rhino */; };
-		348EF4772FAA8C29009C8F51 /* porcupine_model.ppn in Resources */ = {isa = PBXBuildFile; fileRef = 348EF4762FAA8C29009C8F51 /* porcupine_model.ppn */; };
 		348EF47D2FAA8C94009C8F51 /* Eagle in Frameworks */ = {isa = PBXBuildFile; productRef = 348EF47C2FAA8C94009C8F51 /* Eagle */; };
 		348EF4802FAA8CC5009C8F51 /* Porcupine in Frameworks */ = {isa = PBXBuildFile; productRef = 348EF47F2FAA8CC5009C8F51 /* Porcupine */; };
 		348EF4832FAA8CD4009C8F51 /* ios_voice_processor in Frameworks */ = {isa = PBXBuildFile; productRef = 348EF4822FAA8CD4009C8F51 /* ios_voice_processor */; };
@@ -17,7 +16,6 @@
 
 /* Begin PBXFileReference section */
 		348EF4522FAA8B11009C8F51 /* SpeakerAwareVoiceAssistant.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SpeakerAwareVoiceAssistant.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		348EF4762FAA8C29009C8F51 /* porcupine_model.ppn */ = {isa = PBXFileReference; lastKnownFileType = file; path = porcupine_model.ppn; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -47,7 +45,6 @@
 		348EF4492FAA8B11009C8F51 = {
 			isa = PBXGroup;
 			children = (
-				348EF4762FAA8C29009C8F51 /* porcupine_model.ppn */,
 				348EF4542FAA8B11009C8F51 /* SpeakerAwareVoiceAssistant */,
 				348EF4532FAA8B11009C8F51 /* Products */,
 			);
@@ -137,7 +134,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				348EF4772FAA8C29009C8F51 /* porcupine_model.ppn in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -280,6 +276,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = EU9HUJJU2X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "For voice assistant";
@@ -309,6 +306,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = EU9HUJJU2X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "For voice assistant";
