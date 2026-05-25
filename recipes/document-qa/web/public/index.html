@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" style="overflow-x: hidden;">
+<head>
+  <script src="index.js"></script>
+  <script type="application/javascript" src="controller.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div>
+    <div id="load-container-parent">
+      <div id="load-container">
+        <h1>Document QA</h1>
+        <div id="error" class="hidden"></div>
+        <div id="init-container">
+          <input type="text" id="access-key" name="access-key" placeholder="Enter AccessKey" />
+          <input type="file" id="document-file" name="document-file" />
+          <button id="start-button">Start Demo</button>
+        </div>
+
+        <div id="status-container">
+          <span id="status"></span>
+          <div id="status-spinner" class="loader" style="opacity: 0; display: none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="main-container-parent" style="visibility: hidden;">
+      <div id="main-container" style="opacity: 0;">
+        <h1 style="text-align: center; margin: 15px 0 40px 0;">Document QA</h1>
+
+        <div style="display: flex; flex-direction: row; justify-content: center; height: 100%;">
+
+          <div id="chat-block-container">
+
+            <div id="chat-block">
+            </div>
+
+            <div id="volume-meter-user" style="opacity: 0;">
+              <div class="volume-bar" id="bar1"></div>
+              <div class="volume-bar" id="bar2"></div>
+              <div class="volume-bar" id="bar3"></div>
+            </div>
+
+            <div id="ai-state">
+              <span id="ai-state-text"></span>
+            </div>
+          </div>
+
+          <div>
+            <button id="skip-audio" disabled>Skip Audio</button>
+            <button id="reset-demo">Reset Demo</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="index.js"></script>
+  <script src="controller.js"></script>
+</body>
+</html>
