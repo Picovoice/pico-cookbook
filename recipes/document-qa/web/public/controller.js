@@ -152,8 +152,8 @@ window.onload = () => {
       let bubble = document.createElement("div");
       bubble.classList.add("user-bubble");
       bubble.style.opacity = "0";
-      bubble.innerHTML += text;
-      if (bubble.innerHTML.length > 0) {
+      bubble.innerText += text;
+      if (bubble.innerText.length > 0) {
         bubble.style.opacity = "1";
       }
 
@@ -166,8 +166,8 @@ window.onload = () => {
       let bubble = document.createElement("div");
       bubble.classList.add("ai-bubble");
       bubble.style.opacity = "0";
-      bubble.innerHTML += text;
-      if (bubble.innerHTML.length > 0) {
+      bubble.innerText += text;
+      if (bubble.innerText.length > 0) {
         bubble.style.opacity = "1";
       }
 

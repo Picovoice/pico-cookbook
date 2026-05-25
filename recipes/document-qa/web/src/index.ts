@@ -226,7 +226,7 @@ const init = async (
       cheetah.flush();
     }
 
-    let userText = makeRequest("BUBBLE_CONTENTS").replace("[USER] ", "").trim();
+    let userText = makeRequest("BUBBLE_CONTENTS").replace("[USER] ", "").replace(".", "").trim();
     if (transcript.isFlushed && (userText.trim().length > 0)) {
       await stopListenForUser();
       await llmProcessCall(userText);
