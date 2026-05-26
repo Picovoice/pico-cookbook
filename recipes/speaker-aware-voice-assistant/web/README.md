@@ -32,7 +32,7 @@ These instructions assume your current working directory is `recipes/speaker-awa
 2. Go to Porcupine Wake Word.
 3. Enter your desired wake phrase.
 4. Click Train.
-5. Select your target platform and download the generated wake word model file (`.ppn`).
+5. Select the **Web (WASM)** platform and download the generated wake word model file (`.ppn`).
 
 ### 2. Train the Speech-to-Intent Model
 
@@ -41,7 +41,7 @@ These instructions assume your current working directory is `recipes/speaker-awa
 3. Create an empty Rhino context.
 4. Click Import YAML in the top-right corner.
 5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
-6. Download the generated Rhino context file (`.rhn`) for your target platform.
+6. Download the generated Rhino context file (`.rhn`) for the **Web (WASM)** platform.
 
 ### 3. Download the Required Models
 

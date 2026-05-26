@@ -106,7 +106,7 @@ window.onload = () => {
     onEnrollComplete: profile => {
       speakerProfiles.push(profile);
       speakerNames.push(pendingSpeakerName);
-      speakerRoles.push(pendingSpeakerRole);
+      speakerRoles.push(pendingSpeakerRole.toLowerCase());
       Picovoice.stopEnrollment();
 
       updateUIForState('IDLE');
@@ -150,21 +150,44 @@ window.onload = () => {
       hudOptions.style.opacity = '1';
     },
     beforeInferenceResponse: async () => {
+      noticeText.style.opacity = '0';
+      await Picovoice.sleep(200);
       noticeText.innerHTML = "&nbsp;";
-      hudOptions.style.opacity = '0';
+      noticeText.style.opacity = '1';
 
+      hudOptions.style.opacity = '0';
       await Picovoice.sleep(400);
       hudOptions.style.display = 'none';
+
+      noticeText.style.textAlign = "left";
     },
     onWordSpoken: (word) => {
       if (noticeText.innerHTML === "&nbsp;") {
         noticeText.innerHTML = word;
       } else {
-        noticeText.innerHTML += word;
+        const wordElement = document.createElement("span");
+        wordElement.innerHTML = word;
+        wordElement.style.opacity = "0";
+        wordElement.style.transition = "opacity 0.3s ease-out";
+
+        noticeText.appendChild(wordElement);
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                wordElement.style.opacity = "1";
+            });
+        });
       }
     },
-    afterInferenceResponse: () => {
-      noticeText.innerText = "Say the wakeword";
+    afterInferenceResponse: async () => {
+      noticeText.style.opacity = '0';
+      await Picovoice.sleep(200);
+
+      noticeText.style.textAlign = "";
+      noticeText.innerText = "Say the wake word...";
+
+      noticeText.style.opacity = '1';
+      await Picovoice.sleep(200);
     },
     onError: err => {
       showError(err);
@@ -241,12 +264,12 @@ window.onload = () => {
   }
 
   userButton.onclick = () => {
-    pendingSpeakerRole = "user";
+    pendingSpeakerRole = "User";
     userButton.setAttribute("selected", "");
     adminButton.removeAttribute("selected", "");
   };
   adminButton.onclick = () => {
-    pendingSpeakerRole = "admin";
+    pendingSpeakerRole = "Admin";
     adminButton.setAttribute("selected", "");
     userButton.removeAttribute("selected", "");
   };
@@ -263,7 +286,7 @@ window.onload = () => {
 
     nameModalOverlay.classList.add('hidden');
 
-    Picovoice.startEnrollment(pendingSpeakerRole);
+    Picovoice.startEnrollment(pendingSpeakerRole.toLowerCase());
     updateUIForState('ENROLLING');
   };
   btnModalEnroll.onclick = submitModal;
@@ -305,7 +328,7 @@ window.onload = () => {
       btnCancel.classList.remove('hidden');
       btnClearAll.classList.add('hidden');
     } else if (currentState === 'TESTING') {
-      noticeText.innerText = "Say the wakeword";
+      noticeText.innerText = "Say the wake word...";
       noticeText.style.textAlign = 'center';
       noticeText.classList.remove('hidden');
       extraText.classList.add('hidden');

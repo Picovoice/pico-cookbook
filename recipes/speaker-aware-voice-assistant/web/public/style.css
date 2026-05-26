@@ -49,6 +49,8 @@ h1 {
 
   margin-bottom: 16px;
   white-space: pre-line;
+
+  transition: opacity 0.2s linear;
 }
 #extra-text {
   font-size: 13px;
@@ -327,14 +329,18 @@ progress::-webkit-progress-value {
   justify-content: center;
   align-items: center;
 
-  gap: 8px;
+  gap: 16px;
 }
 #role-select-container h3 {
+  font-size: 1.05em;
+  font-weight: 500;
   margin: 0 auto 0 0;
 }
 
 .role-option {
   padding: 10px 14px;    
+
+  flex-grow: 1;
 
   color: #333;
   border: 1px solid #e7e7e7;
@@ -389,7 +395,7 @@ progress::-webkit-progress-value {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.4s ease-in;
 }
 #hud-options div {
   flex: 0 0 calc(33% - ((2 * 8px) / 3));
@@ -416,7 +422,7 @@ progress::-webkit-progress-value {
   color: #666;
   border: 2px dashed #d7d7d7;
 
-  transition: border 0.4s ease, color 0.4s ease;
+  transition: border 0.1s ease-out, color 0.1s ease-out;
 }
 #hud-options div .subtext {
   color: #333;

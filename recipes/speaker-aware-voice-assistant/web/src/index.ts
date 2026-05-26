@@ -205,10 +205,13 @@ const synthesizeAndPlayback = async (
   orca: OrcaWorker,
   audio: AudioStream,
   text: string,
+  waitCondition: () => Promise<void>,
   addWord: (word: string) => void
 ) => {
   const synthesis = await orca.synthesize(text, {});
   const alignments = synthesis.alignments;
+
+  await waitCondition();
 
   audio.stream(synthesis.pcm);
   audio.play();
@@ -222,9 +225,10 @@ const synthesizeAndPlayback = async (
       word += " ";
     }
 
+    // display the word 200ms early becuase we have a 400ms css transition
     setTimeout(() => {
       addWord(word);
-    }, alignment.startSec * 1000);
+    }, (alignment.startSec * 1000) - 200);
   }
 
   await audio.waitPlayback();
@@ -268,8 +272,9 @@ const rhinoInferenceCallback = async (
     let similarities = await eagle.process(paddedPcmBuffer, enrolledProfiles.map(x => x.profile));
     callbacks.beforeInferenceResponse();
 
+    let spokenText;
     if (similarities == null) {
-      await synthesizeAndPlayback(orca!, audio!, "Sorry, I could not identify who is speaking.", callbacks.onWordSpoken);
+      spokenText = "Sorry, I could not identify who is speaking.";
     } else {
       let highestSimilarityUserIndex = 0;
       for (let i = 1; i < similarities.length; i++) {
@@ -284,21 +289,35 @@ const rhinoInferenceCallback = async (
       if (inference.intent === "adminOnly") {
         if (similarityScore >= ADMIN_SIMILARITY_THRESHOLD) {
           if (user.role === UserRole.ADMIN) {
-            await synthesizeAndPlayback(orca!, audio!, "Admin command approved.", callbacks.onWordSpoken);
+            spokenText = "Admin command approved.";
           } else {
-            await synthesizeAndPlayback(orca!, audio!, "Permission denied. This command requires an admin.", callbacks.onWordSpoken);
+            spokenText = "Permission denied. This command requires an admin.";
           }
         } else {
-          await synthesizeAndPlayback(orca!, audio!, "Sorry, I could not verify your voice.", callbacks.onWordSpoken);
+          spokenText = "Sorry, I could not verify your voice.";
         }
       } else if (inference.intent === "speakerPersonalized") {
-        await synthesizeAndPlayback(orca!, audio!, `Hi ${user.name}. I will personalize this command for you.`, callbacks.onWordSpoken);
+        spokenText = `Hi ${user.name}. I will personalize this command for you.`;
       } else if (inference.intent === "generic") {
-        await synthesizeAndPlayback(orca!, audio!, 'Okay. This command is available to everyone.', callbacks.onWordSpoken);
+        spokenText = "Okay. This command is available to everyone.";
+      } else {
+        rhinoPcmBuffer = new Int16Array();
+        rhinoRunningPcmBuffer = new Int16Array();
+        console.log("unknown intent. Was probably noise");
+        return;
       }
     }
 
-    await sleep(1000);
+    const promise = callbacks.beforeInferenceResponse();
+    await synthesizeAndPlayback(
+        orca!,
+        audio!,
+        spokenText,
+        async () => { await promise; },
+        callbacks.onWordSpoken
+    );
+
+    await sleep(800);
 
   } finally {
     await WebVoiceProcessor.subscribe(callbackAudioEngine);
