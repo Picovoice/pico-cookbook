@@ -30,17 +30,17 @@ struct ContentView: View {
 
             if viewModel.showTestResult {
                 VStack(spacing: 10) {
-                    Image(systemName: viewModel.isTestVerified ? "checkmark.circle.fill" : "xmark.circle.fill")
-                        .resizable()
-                        .frame(width: 120, height: 120)
-                        .foregroundColor(viewModel.isTestVerified ? .green : .red)
-                        .transition(.scale)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: viewModel.showTestResult)
-
-                    Text(String(format: "Wake word detected\nUser score: %.2f", viewModel.testScore))
+                    Text(String(format: "Hello"))
                         .font(.system(size: 20, weight: .bold))
                         .multilineTextAlignment(.center)
-                        .foregroundColor(viewModel.isTestVerified ? .green : .red)
+                    if (viewModel.testUserName != nil) {
+                        Text(String(format: viewModel.testUserName!))
+                            .font(.system(size: 20, weight: .bold))
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.green)
+                    }
+                    Text(String(format: "Say your command"))
+                        .multilineTextAlignment(.center)
                 }
             } else {
                 Text(viewModel.statusText)
@@ -64,7 +64,7 @@ struct ContentView: View {
                 .padding(.top, 24)
             }
 
-            if (viewModel.appState == .enrolling || viewModel.appState == .testing) && !viewModel.showTestResult {
+            if (viewModel.appState == .enrolling || viewModel.appState == .testing) && viewModel.testingState != .ORCA {
                 VolumeMeterView(viewModel: viewModel)
                     .frame(height: 64)
                     .padding(.top, 24)
@@ -73,6 +73,7 @@ struct ContentView: View {
             if viewModel.appState == .idle && !viewModel.showTestResult {
                 HStack(spacing: 16) {
                     Button(action: {
+                        viewModel.showAlert()
                         showingAlert.toggle()
                     }) {
                         Text(viewModel.hasEnrolled ? "Re-Enroll" : "Start Enrollment")

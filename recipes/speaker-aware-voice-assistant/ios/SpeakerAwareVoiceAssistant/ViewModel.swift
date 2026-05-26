@@ -44,33 +44,37 @@ class ViewModel: ObservableObject {
     @Published var speakerProfiles: [EagleProfile] = []
     @Published var speakerNames: [String] = []
     @Published var speakerRoles: [UserRole] = []
-    
+
     @Published var appState: AppState = .idle
     @Published var testingState: TestingState = .PPN
-    
+
     @Published var pendingSpeakerName: String = ""
     @Published var pendingSpeakerAdminRole: Bool = false
-    
+
     @Published var soundLevel: Float = 0.0
-    
+
     private var porcupine: Porcupine?
     private var rhino: Rhino?
     private var orca: Orca?
-    
+
     private var eagleProfiler: EagleProfiler?
     private var eagle: Eagle?
-    
-    
-    
-    
-    
+
+    private var audioStream: AudioPlayerStream?
+
+
+
+
+
     @Published var statusText: String = "Ready to Enroll"
     @Published var enrollPercentage: Float = 0.0
-    @Published var hasEnrolled: Bool = false
+    @Published var hasEnrolled: Bool = false  // TODO
 
     @Published var showTestResult: Bool = false
-    @Published var isTestVerified: Bool = false
-    @Published var testScore: Float = 0.0
+    @Published var testUserName: String? = ""
+
+//    @Published var isTestVerified: Bool = false
+
 
     private var enrollBuffer: [Int16] = []
     private var enrollMaxSamples: Int = 0
@@ -79,14 +83,19 @@ class ViewModel: ObservableObject {
 
     private var testBuffer: [Int16] = []
     private var testMaxSamples: Int = 0
-    
+
     private var inferenceBuffer: [Int16] = []
 
     init() {
         VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
         VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
     }
-
+    
+    public func showAlert() {
+        self.pendingSpeakerName = "Speaker \(self.speakerNames.count)"
+        self.pendingSpeakerAdminRole = false
+    }
+    
     public func startEnrollment() {
         checkPermissionsAndStart(targetState: .enrolling)
     }
@@ -134,7 +143,7 @@ class ViewModel: ObservableObject {
             enrollBuffer = [Int16](repeating: 0, count: enrollMaxSamples)
             enrollValidSamples = 0
 
-            DispatchQueue.main.async {
+            DispatchQueue.main.async {                
                 self.appState = .enrolling
                 self.updateUIForState()
             }
@@ -162,6 +171,7 @@ class ViewModel: ObservableObject {
             rhino = try Rhino(accessKey: ACCESS_KEY, contextPath: contextPath)
             orca = try Orca(accessKey: ACCESS_KEY, modelPath: orcaModelPath)
             eagle = try Eagle(accessKey: ACCESS_KEY, voiceThreshold: 0.1)
+            audioStream = try AudioPlayerStream(sampleRate: Double(self.orca!.sampleRate!))
 
             testMaxSamples = Int(try eagle!.minProcessSamples())
             testBuffer = [Int16](repeating: 0, count: testMaxSamples)
@@ -202,7 +212,7 @@ class ViewModel: ObservableObject {
                 self.speakerProfiles.append(profile)
                 self.speakerNames.append(self.pendingSpeakerName)
                 self.speakerRoles.append(self.pendingSpeakerAdminRole ? .admin : .user)
-                
+
                 self.hasEnrolled = true
                 self.cancel()
             }
@@ -211,17 +221,17 @@ class ViewModel: ObservableObject {
         }
     }
 
-    private func showResult(isVerified: Bool, score: Float) {
+    private func showResult(name: String?) {
         DispatchQueue.main.async {
-            self.isTestVerified = isVerified
-            self.testScore = score
+            self.testUserName = name
             self.showTestResult = true
             self.statusText = ""
         }
     }
-    
+
     private func hideResult() {
         DispatchQueue.main.async {
+            self.testingState = .PPN
             self.showTestResult = false
             self.updateUIForState()
         }
@@ -269,7 +279,7 @@ class ViewModel: ObservableObject {
                 DispatchQueue.main.async {
                     self.enrollPercentage = progress
                 }
-                
+
                 if progress >= 100.0 {
                     self.finishEnrollment()
                 }
@@ -288,15 +298,14 @@ class ViewModel: ObservableObject {
                     let scores = try eagle!.process(pcm: testBuffer, speakerProfiles: speakerProfiles)
                     if (scores != nil) {
                         let bestScore = scores!.max() ?? -1
-                        //                        let bestIndex = scores!.lastIndex(of: bestScore)
-                        
-                        // TODO: Display name and such on greeting
+                        let bestIndex = scores!.lastIndex(of: bestScore)
+
                         if (bestScore >= EAGLE_THRESHOLD) {
-                            showResult(isVerified: true, score: bestScore)
+                            showResult(name: speakerNames[bestIndex!])
                         } else {
-                            showResult(isVerified: false, score: 0.0)
+                            showResult(name: nil)
                         }
-                        
+
                         inferenceBuffer = []
                         DispatchQueue.main.async {
                             self.testingState = .RHN
@@ -314,19 +323,18 @@ class ViewModel: ObservableObject {
                     let inference = try rhino!.getInference()
                     if (inference.isUnderstood) {
                         let scores = try eagle!.process(pcm: testBuffer, speakerProfiles: speakerProfiles)
-                        
+
                         var bestScore: Float = 0.0
                         var bestIndex: Int = -1
                         if (scores != nil) {
                             bestScore = scores!.max() ?? bestScore
                             bestIndex = scores!.lastIndex(of: bestScore) ?? bestIndex
                         }
-                        
+
                         if (inference.intent == "adminOnly") {
                             if (bestScore >= EAGLE_THRESHOLD) {
-                                let speakerName = speakerNames[bestIndex]
                                 let speakerRole = speakerRoles[bestIndex]
-                                
+
                                 if (speakerRole == .admin) {
                                     synthesizeAndPlayback("Admin command approved.")
                                 } else {
@@ -358,9 +366,28 @@ class ViewModel: ObservableObject {
     }
 
     private func synthesizeAndPlayback(_ text: String) {
-        // TODO
+        DispatchQueue.main.async {
+            self.testingState = .ORCA
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            Task {
+                do {
+                    let audio = try orca!.synthesize(text: text)
+
+                    try audioStream!.playStreamPCM(audio.pcm)
+
+                    let duration = Int((audio.pcm.count / Int(orca!.sampleRate!)) * 1000)
+                    try await Task.sleep(for: .milliseconds(duration))
+                } catch {
+                    print("Audio processing error: \(error)")
+                }
+
+                hideResult()
+            }
+        }
     }
-    
+
     private func calculateRMS(frame: [Int16]) -> Float {
         let MIN_DB: Float = -40.0
         let MAX_DB: Float = 0.0
@@ -407,7 +434,7 @@ class ViewModel: ObservableObject {
         }
         return nil
     }
-    
+
     private func getOrcaModelPath() -> String? {
         if let path = Bundle.main.path(forResource: "orca_params_en_female", ofType: "pv") {
             return path
@@ -417,5 +444,5 @@ class ViewModel: ObservableObject {
         }
         return nil
     }
-    
+
 }
