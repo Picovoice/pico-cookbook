@@ -35,7 +35,7 @@ enum UserRole {
 
 class ViewModel: ObservableObject {
     private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
-    
+
     private let EAGLE_THRESHOLD: Float = 0.50
     private let EAGLE_MIN_EMROLLMENT_CHUNKS = 6;
     private let MAX_SPEAKERS = 10;
@@ -47,9 +47,6 @@ class ViewModel: ObservableObject {
 
     @Published var appState: AppState = .idle
     @Published var testingState: TestingState = .PPN
-
-    @Published var pendingSpeakerName: String = ""
-    @Published var pendingSpeakerAdminRole: Bool = false
 
     @Published var soundLevel: Float = 0.0
 
@@ -70,6 +67,9 @@ class ViewModel: ObservableObject {
     @Published var testUserName: String?
     @Published var testUserIndex: Int?
 
+    private var pendingSpeakerName: String = ""
+    private var pendingSpeakerAdminRole: Bool = false
+
     private var enrollBuffer: [Int16] = []
     private var enrollMaxSamples: Int = 0
     private var enrollValidSamples: Int = 0
@@ -85,18 +85,16 @@ class ViewModel: ObservableObject {
         VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
     }
 
-    public func showAlert() {
-        self.pendingSpeakerName = "Speaker \(self.speakerNames.count)"
-        self.pendingSpeakerAdminRole = false
-    }
-
     public func clear() {
         self.speakerProfiles = []
         self.speakerNames = []
         self.speakerRoles = []
     }
 
-    public func startEnrollment() {
+    public func startEnrollment(pendingSpeakerName: String, pendingSpeakerAdminRole: Bool) {
+        self.pendingSpeakerName = pendingSpeakerName
+        self.pendingSpeakerAdminRole = pendingSpeakerAdminRole
+
         checkPermissionsAndStart(targetState: .enrolling)
     }
 

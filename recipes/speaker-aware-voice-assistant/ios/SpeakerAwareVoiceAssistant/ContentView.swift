@@ -145,10 +145,11 @@ struct ContentView: View {
                         }
                     }
 
+                    let defaultSpeakerName = "Speaker \(viewModel.speakerNames.count)"
+
                     Button(action: {
-                        pendingSpeakerName = "Speaker \(viewModel.speakerNames.count)"
+                        pendingSpeakerName = ""
                         pendingSpeakerAdminRole = false
-                        viewModel.showAlert()
                         showingAlert.toggle()
                     }) {
                         Text(hasEnrolled ? "+ Add" : "Start Enrollment")
@@ -160,21 +161,22 @@ struct ContentView: View {
                     }
                     .sheet(isPresented: $showingAlert) {
                         Text("Enroll New Speaker")
+                            .font(.system(size: 20, weight: .bold))
                             .padding(.horizontal, 32)
                             .padding(.vertical, 10)
-                        TextField("Enter your name", text: $pendingSpeakerName)
+                        TextField("Enter your name", text: $pendingSpeakerName, prompt: Text(defaultSpeakerName))
                             .padding(.horizontal, 32)
                             .padding(.vertical, 10)
+                            .textFieldStyle(.roundedBorder)
                         Toggle("Admin permissions:", isOn: $pendingSpeakerAdminRole)
                             .padding(.horizontal, 32)
                             .padding(.vertical, 10)
                         Button("OK", action: {
-                            viewModel.pendingSpeakerName = pendingSpeakerName
-                            viewModel.pendingSpeakerAdminRole = pendingSpeakerAdminRole
-
                             showingAlert.toggle()
-                            viewModel.startEnrollment()
-                        }).disabled(viewModel.pendingSpeakerName.isEmpty)
+                            viewModel.startEnrollment(
+                                pendingSpeakerName: pendingSpeakerName.isEmpty ? defaultSpeakerName : pendingSpeakerName,
+                                pendingSpeakerAdminRole: pendingSpeakerAdminRole)
+                        })
                     }
 
                     if hasEnrolled {
