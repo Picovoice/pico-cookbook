@@ -39,8 +39,8 @@ class ViewModel: ObservableObject {
     private let EAGLE_THRESHOLD: Float = 0.50
     private let EAGLE_MIN_EMROLLMENT_CHUNKS = 6;
     private let MAX_SPEAKERS = 10;
-    
-    
+
+
     @Published var speakerProfiles: [EagleProfile] = []
     @Published var speakerNames: [String] = []
     @Published var speakerRoles: [UserRole] = []
@@ -62,19 +62,13 @@ class ViewModel: ObservableObject {
 
     private var audioStream: AudioPlayerStream?
 
-
-
-
-
     @Published var statusText: String = "Ready to Enroll"
+    @Published var tooltipText: String?
     @Published var enrollPercentage: Float = 0.0
-    @Published var hasEnrolled: Bool = false  // TODO
 
     @Published var showTestResult: Bool = false
-    @Published var testUserName: String? = ""
-
-//    @Published var isTestVerified: Bool = false
-
+    @Published var testUserName: String?
+    @Published var testUserIndex: Int?
 
     private var enrollBuffer: [Int16] = []
     private var enrollMaxSamples: Int = 0
@@ -90,12 +84,18 @@ class ViewModel: ObservableObject {
         VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
         VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
     }
-    
+
     public func showAlert() {
         self.pendingSpeakerName = "Speaker \(self.speakerNames.count)"
         self.pendingSpeakerAdminRole = false
     }
-    
+
+    public func clear() {
+        self.speakerProfiles = []
+        self.speakerNames = []
+        self.speakerRoles = []
+    }
+
     public func startEnrollment() {
         checkPermissionsAndStart(targetState: .enrolling)
     }
@@ -143,7 +143,7 @@ class ViewModel: ObservableObject {
             enrollBuffer = [Int16](repeating: 0, count: enrollMaxSamples)
             enrollValidSamples = 0
 
-            DispatchQueue.main.async {                
+            DispatchQueue.main.async {
                 self.appState = .enrolling
                 self.updateUIForState()
             }
@@ -213,7 +213,6 @@ class ViewModel: ObservableObject {
                 self.speakerNames.append(self.pendingSpeakerName)
                 self.speakerRoles.append(self.pendingSpeakerAdminRole ? .admin : .user)
 
-                self.hasEnrolled = true
                 self.cancel()
             }
         } catch {
@@ -221,9 +220,10 @@ class ViewModel: ObservableObject {
         }
     }
 
-    private func showResult(name: String?) {
+    private func showResult(name: String?, index: Int?) {
         DispatchQueue.main.async {
             self.testUserName = name
+            self.testUserIndex = index
             self.showTestResult = true
             self.statusText = ""
         }
@@ -242,12 +242,20 @@ class ViewModel: ObservableObject {
 
         switch appState {
         case .idle:
-            statusText = hasEnrolled ? "Ready to Test or Re-Enroll" : "Ready to Enroll"
+            statusText = speakerProfiles.count > 0 ? "Enrolled Profiles" : "Ready to Enroll"
+            tooltipText = nil
         case .enrolling:
-            statusText = "Say the wake word until\nthe circle is full"
+            statusText = "Hello \(pendingSpeakerName)\n\nSpeak these phrases until the circle is full:"
+            tooltipText =
+                    "\n\"The quick brown fox jumps over the lazy dog.\"" +
+                    "\n\"I am recording my voice for speaker enrollment.\"" +
+                    "\n\"This is my normal speaking voice in a quiet room.\"" +
+                    "\n\"The assistant should recognize me when I speak.\"" +
+                    "\n\"Voice recognition works best with clean and natural speech.\""
             enrollPercentage = 0.0
         case .testing:
             statusText = "Listening for wake word..."
+            tooltipText = nil
         }
     }
 
@@ -281,6 +289,9 @@ class ViewModel: ObservableObject {
                 }
 
                 if progress >= 100.0 {
+                    DispatchQueue.main.sync {
+                        self.appState = .idle
+                    }
                     self.finishEnrollment()
                 }
             } catch {
@@ -294,21 +305,24 @@ class ViewModel: ObservableObject {
             do {
                 let keywordIndex = try porcupine!.process(pcm: frame)
                 if keywordIndex == 0 {
-                    //                    guard let activeProfile = speakerProfile else { return }
                     let scores = try eagle!.process(pcm: testBuffer, speakerProfiles: speakerProfiles)
                     if (scores != nil) {
                         let bestScore = scores!.max() ?? -1
                         let bestIndex = scores!.lastIndex(of: bestScore)
 
                         if (bestScore >= EAGLE_THRESHOLD) {
-                            showResult(name: speakerNames[bestIndex!])
+                            showResult(name: speakerNames[bestIndex!], index: bestIndex)
                         } else {
-                            showResult(name: nil)
+                            showResult(name: nil, index: nil)
                         }
 
                         inferenceBuffer = []
                         DispatchQueue.main.async {
                             self.testingState = .RHN
+                            self.tooltipText = "Available commands:\n" +
+                                            "\n\"do something that requires admin permission\"" +
+                                            "\n\"do something just for me\"" +
+                                            "\n\"do something anyone can do\""
                         }
                     }
                 }
@@ -322,7 +336,7 @@ class ViewModel: ObservableObject {
                 if (is_complete) {
                     let inference = try rhino!.getInference()
                     if (inference.isUnderstood) {
-                        let scores = try eagle!.process(pcm: testBuffer, speakerProfiles: speakerProfiles)
+                        let scores = try eagle!.process(pcm: inferenceBuffer, speakerProfiles: speakerProfiles)
 
                         var bestScore: Float = 0.0
                         var bestIndex: Int = -1
@@ -335,6 +349,11 @@ class ViewModel: ObservableObject {
                             if (bestScore >= EAGLE_THRESHOLD) {
                                 let speakerRole = speakerRoles[bestIndex]
 
+                                DispatchQueue.main.async {
+                                    self.testUserName = self.speakerNames[bestIndex]
+                                    self.testUserIndex = bestIndex
+                                }
+
                                 if (speakerRole == .admin) {
                                     synthesizeAndPlayback("Admin command approved.")
                                 } else {
@@ -345,6 +364,12 @@ class ViewModel: ObservableObject {
                             }
                         } else if (inference.intent == "speakerPersonalized") {
                             let speakerName = speakerNames[bestIndex]
+
+                            DispatchQueue.main.async {
+                                self.testUserName = self.speakerNames[bestIndex]
+                                self.testUserIndex = bestIndex
+                            }
+
                             synthesizeAndPlayback("Hi \(speakerName). I will personalize this command for you.")
                         } else if (inference.intent == "generic") {
                             synthesizeAndPlayback("Okay. This command is available to everyone.")
@@ -368,6 +393,7 @@ class ViewModel: ObservableObject {
     private func synthesizeAndPlayback(_ text: String) {
         DispatchQueue.main.async {
             self.testingState = .ORCA
+            self.tooltipText = nil
         }
 
         DispatchQueue.global(qos: .userInitiated).async { [self] in
@@ -407,8 +433,14 @@ class ViewModel: ObservableObject {
             try VoiceProcessor.instance.stop()
         }
 
+        audioStream = nil
+
         porcupine?.delete()
         porcupine = nil
+        rhino?.delete()
+        rhino = nil
+        orca?.delete()
+        orca = nil
         eagleProfiler?.delete()
         eagleProfiler = nil
         eagle?.delete()
