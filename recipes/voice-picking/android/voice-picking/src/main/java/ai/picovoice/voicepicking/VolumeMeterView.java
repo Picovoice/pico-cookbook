@@ -10,7 +10,7 @@
     limitations under the License.
 */
 
-package ai.picovoice.voiceguidedfieldreporting;
+package ai.picovoice.voicepicking;
 
 import android.content.Context;
 import android.util.AttributeSet;

@@ -118,9 +118,9 @@ def main() -> None:
         major, minor = version.split('.')[:2]
         folder = clone_repo(animal, major, minor)
         model_folder = os.path.join(folder, "lib", "common")
-        for filename in COPIES[animal]:
-            src_path = os.path.join(model_folder, filename)
-            dst_path = os.path.join(public_folder, filename)
+        for src_filename, dst_filename in COPIES[animal]:
+            src_path = os.path.join(model_folder, src_filename)
+            dst_path = os.path.join(public_folder, dst_filename)
             shutil.copy(src_path, dst_path)
 
     shutil.copy(args.porcupine_keyword_path, os.path.join(public_folder, "voice_picking_android.ppn"))

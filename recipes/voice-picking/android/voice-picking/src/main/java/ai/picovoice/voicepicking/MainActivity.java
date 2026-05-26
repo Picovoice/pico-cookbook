@@ -32,6 +32,9 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -39,8 +42,6 @@ import java.util.concurrent.TimeUnit;
 
 import ai.picovoice.android.voiceprocessor.VoiceProcessor;
 import ai.picovoice.android.voiceprocessor.VoiceProcessorException;
-import ai.picovoice.cheetah.Cheetah;
-import ai.picovoice.cheetah.CheetahTranscript;
 import ai.picovoice.koala.Koala;
 import ai.picovoice.orca.Orca;
 import ai.picovoice.orca.OrcaAudio;
@@ -56,7 +57,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEYWORD_MODEL = "voice_picking_android.ppn";
     private static final String CONTEXT_MODEL = "voice_picking_android.rhn";
 
-    private static final String STT_MODEL = "cheetah_params.pv";
     private static final String TTS_MODEL = "orca_params_en_female.pv";
     private static final String NS_MODEL = "koala_params.pv";
 
@@ -71,6 +71,7 @@ public class MainActivity extends AppCompatActivity {
     private View animationContainer;
     private ImageView successIcon;
 
+    private ArrayList<PickTask> tasks;
     private Workflow workflow;
     private volatile boolean isRunning = false;
 
@@ -181,7 +182,8 @@ public class MainActivity extends AppCompatActivity {
         btnStart.setVisibility(View.INVISIBLE);
         startSpinner.setVisibility(View.VISIBLE);
 
-        setupReportCards();
+        this.tasks = TASKS;
+        setupReportCards(this.tasks);
 
         new Thread(() -> {
             try {
@@ -261,7 +263,7 @@ public class MainActivity extends AppCompatActivity {
                     workflowScreen.setVisibility(View.VISIBLE);
                 });
 
-                workflow.run();
+                workflow.run(this.tasks);
             } catch (Exception e) {
                 Log.e(TAG, "Init error", e);
                 showError(e.getMessage());
@@ -328,10 +330,7 @@ public class MainActivity extends AppCompatActivity {
         reportContainer.removeAllViews();
         cardMap.clear();
 
-        // TODO: ensure the rendering is done correctly
-        // TODO: then, add details to the top right of the card
-        // TODO: then create the PickTask type and the list, so we can use it in our state machine. Woo hoo, done!
-        for (int i = 0; i < tasks.length; i++) {
+        for (int i = 0; i < tasks.size(); i++) {
             cardMap.put("location-" + String.valueOf(i), createCard("LOCATION"));
             cardMap.put("pick-" + String.valueOf(i), createCard("PICK"));
         }
@@ -605,6 +604,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         public void run(String prompt) throws Exception {
+            System.out.println("PROMPT");
+            System.out.println(prompt);
+            System.out.println("PARAMS");
+            System.out.println(synthesizeParams);
             OrcaAudio res = orca.synthesize(prompt, synthesizeParams);
             speaker.play(res.getPcm());
         }
@@ -654,20 +657,24 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    class PickTask {
+    static class PickTask {
         String locationName;
         String checkDigit;
         String itemName;
         int quantity;
+
+        public PickTask(String locationName, String checkDigit, String itemName, int quantity) {
+            this.locationName = locationName;
+            this.checkDigit = checkDigit;
+            this.itemName = itemName;
+            this.quantity = quantity;
+        }
     }
 
-    const ArrayList<PickTask> TASKS = [
-        PickTask("bin bravo", "four two", "blue widgets", 3),
-        PickTask("bin delta", "five seven", "battery packs", 5),
-        PickTask("zone one", "one nine", "safety gloves", 1),
-    ];
-
-    // TODO: update states to the voice picking ones
+    final static ArrayList<PickTask> TASKS = new ArrayList<>(Arrays.asList(
+            new PickTask("bin bravo", "four two", "blue widgets", 3),
+            new PickTask("bin delta", "five seven", "battery packs", 5),
+            new PickTask("zone one", "one nine", "safety gloves", 1)));
 
     enum RecipeStates {
         STANDBY,
@@ -678,7 +685,7 @@ public class MainActivity extends AppCompatActivity {
         COMPLETE_PROMPT
     }
 
-    class Transition {
+    static class Transition {
         RecipeStates nextState;
         Map<String, Object> nextArgs;
         public Transition(RecipeStates nextState) {
@@ -715,7 +722,7 @@ public class MainActivity extends AppCompatActivity {
 
             step.run("Listening for wake word...");
 
-            if (tasks.length == 0) {
+            if (tasks.isEmpty()) {
                 return new Transition(RecipeStates.COMPLETE_PROMPT);
             }
 
@@ -727,30 +734,19 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    class PromptState extends State {
+    class TaskLocationPromptState extends State {
         OrcaStep step;
 
-        public PromptState(
-                WorkflowListener listener,
-                OrcaStep step) {
+        public TaskLocationPromptState(WorkflowListener listener, OrcaStep step) {
             super(listener);
             this.step = step;
-        }
-    }
-
-    class TaskLocationPromptState extends PromptState {
-        public TaskLocationPromptState(WorkflowListener listener, OrcaStep step) {
-            super(
-                    listener,
-                    step,
-                    RecipeStates.TASK_LOCATION_REPORT);
         }
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
             ArrayList<PickTask> tasks = (ArrayList<PickTask>) args.get("tasks");
             Integer taskIndex = (Integer) args.get("taskIndex");
-            PickTask task = tasks[taskIndex];
+            PickTask task = tasks.get(taskIndex);
 
             listener.onCardActive(String.format("location-%d", taskIndex));
 
@@ -758,11 +754,22 @@ public class MainActivity extends AppCompatActivity {
                     "Go to %s. Confirm location. Check digits are %s.",
                     task.locationName,
                     task.checkDigit);
-            String prompt = (args != null && args.containsKey("prompt"))
-                    ? (String) args.get("prompt")
-                    : defaultPrompt;
-            listener.onStatusChanged(prompt);
-            step.run(prompt);
+
+            ArrayList<String> promptList;
+            if (args == null || !args.containsKey("prompt")) {
+                promptList = new ArrayList<>(Collections.singletonList( defaultPrompt ));
+            } else if (args.get("prompt") instanceof String) {
+                promptList = new ArrayList<>(Collections.singletonList( (String) args.get("prompt") ));
+            } else if (args.get("prompt") instanceof ArrayList) {
+                promptList = (ArrayList<String>) args.get("prompt");
+            } else {
+                promptList = new ArrayList<>(Collections.singletonList( defaultPrompt ));
+            }
+
+            for (String prompt : promptList) {
+                listener.onStatusChanged(prompt);
+                step.run(prompt);
+            }
 
             Map<String, Object> nextArgs = new HashMap<>();
             nextArgs.put("tasks", args.get("tasks"));
@@ -786,7 +793,7 @@ public class MainActivity extends AppCompatActivity {
         public Transition run(Map<String, Object> args) throws Exception {
             ArrayList<PickTask> tasks = (ArrayList<PickTask>) args.get("tasks");
             Integer taskIndex = (Integer) args.get("taskIndex");
-            PickTask task = tasks[taskIndex];
+            PickTask task = tasks.get(taskIndex);
 
             String cardId = String.format("location-%d", taskIndex);
             listener.onCardUpdated(cardId, "...", false);
@@ -795,7 +802,7 @@ public class MainActivity extends AppCompatActivity {
             if (inference != null &&
                     inference.getIsUnderstood() &&
                     inference.getIntent().equals("confirmLocation") &&
-                    inference.getSlots().get("checkDigit") == task.checkDigit) {
+                    inference.getSlots().get("checkDigit").equals(task.checkDigit)) {
                 String value = String.valueOf(inference.getSlots().get("checkDigit"));
                 listener.onCardUpdated(cardId, value, true);
             
@@ -805,18 +812,19 @@ public class MainActivity extends AppCompatActivity {
                 return new Transition(RecipeStates.TASK_PICK_PROMPT, nextArgs);
             }
 
-            ArrayList<String> failurePrompt = new ArrayList<String>();
+            ArrayList<String> failurePrompt = new ArrayList<>();
             if (inference != null && inference.getIsUnderstood() && inference.getIntent().equals("confirmLocation")) {
+                String spokenDigits = String.valueOf(inference.getSlots().get("checkDigit"));
                 failurePrompt.add(
-                        String.format("Location check digit %s does not match. Retrying...", tasks.checkDigit));
+                        String.format("Location check digit %s does not match. Retrying...", spokenDigits));
             } else {
                 failurePrompt.add("Failed to capture location confirmation. Retrying...");
             }
 
             failurePrompt.add(
-                    String.format("Please confirm location for %s. Check digits are %d.",
-                        tasks.locationName,
-                        tasks.checkDigit));
+                    String.format("Please confirm location for %s. Check digits are %s.",
+                            task.locationName,
+                            task.checkDigit));
 
             Map<String, Object> nextArgs = new HashMap<>();
             nextArgs.put("tasks", args.get("tasks"));
@@ -826,32 +834,42 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // TODO: remove PromptState as a base class -> also add the set status
-    class TaskPickPromptState extends PromptState {
+    class TaskPickPromptState extends State {
+        OrcaStep step;
+
         public TaskPickPromptState(WorkflowListener listener, OrcaStep step) {
-            super(
-                    listener,
-                    step,
-                    RecipeStates.TASK_LOCATION_REPORT);
+            super(listener);
+            this.step = step;
         }
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
             ArrayList<PickTask> tasks = (ArrayList<PickTask>) args.get("tasks");
             Integer taskIndex = (Integer) args.get("taskIndex");
-            PickTask task = tasks[taskIndex];
+            PickTask task = tasks.get(taskIndex);
 
             listener.onCardActive(String.format("pick-%d", taskIndex));
 
             String defaultPrompt = String.format(
-                    "Pick %d %s.",
+                    "Pick %s %s.",
                     task.quantity,
                     task.itemName);
-            String prompt = (args != null && args.containsKey("prompt"))
-                    ? (String) args.get("prompt")
-                    : defaultPrompt;
-            listener.onStatusChanged(prompt);
-            step.run(prompt);
+
+            ArrayList<String> promptList;
+            if (args == null || !args.containsKey("prompt")) {
+                promptList = new ArrayList<>(Collections.singletonList(defaultPrompt));
+            } else if (args.get("prompt") instanceof String) {
+                promptList = new ArrayList<>(Collections.singletonList( (String) args.get("prompt") ));
+            } else if (args.get("prompt") instanceof ArrayList) {
+                promptList = (ArrayList<String>) args.get("prompt");
+            } else {
+                promptList = new ArrayList<>(Collections.singletonList( defaultPrompt ));
+            }
+
+            for (String prompt : promptList) {
+                listener.onStatusChanged(prompt);
+                step.run(prompt);
+            }
 
             Map<String, Object> nextArgs = new HashMap<>();
             nextArgs.put("tasks", args.get("tasks"));
@@ -871,19 +889,19 @@ public class MainActivity extends AppCompatActivity {
             this.step = step;
         }
 
-        private static final ArrayList<String> VALID_INTENTS = new ArrayList(
-            'confirmPickedQuantity',
-            'reportShortPick',
-            'reportDamagedItem',
-            'reportLocationEmpty',
-            'exitWorkflow',
-        );
+        private final ArrayList<String> VALID_INTENTS = new ArrayList<>(Arrays.asList(
+                "confirmPickedQuantity",
+                "reportShortPick",
+                "reportDamagedItem",
+                "reportLocationEmpty",
+                "exitWorkflow"
+        ));
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
             ArrayList<PickTask> tasks = (ArrayList<PickTask>) args.get("tasks");
             Integer taskIndex = (Integer) args.get("taskIndex");
-            PickTask task = tasks[taskIndex];
+            PickTask task = tasks.get(taskIndex);
             String cardId = String.format("pick-%d", taskIndex);
             
             listener.onCardUpdated(cardId, "...", false);
@@ -892,68 +910,62 @@ public class MainActivity extends AppCompatActivity {
             if (inference != null &&
                     inference.getIsUnderstood() &&
                     VALID_INTENTS.contains(inference.getIntent())) {
-                // inference.getSlots().get("checkDigit") == task.checkDigit
-                if (inference.intent.equals("exitWorkflow")) {
-                    listener.setStatusText("Ending picking workflow.");
-                    // await sleep(500);
-    
+                if (inference.getIntent().equals("exitWorkflow")) {
+                    listener.onStatusChanged("Ending picking workflow.");
+
                     Map<String, Object> nextArgs = new HashMap<>();
                     nextArgs.put("prompt", "Picking workflow ended.");
                     return new Transition(RecipeStates.COMPLETE_PROMPT, nextArgs);
                 }
 
-                const Integer nextTaskIndex = taskIndex + 1;
-                listener.setCompletedCard(cardId);
+                final int nextTaskIndex = taskIndex + 1;
 
-                if (nextTaskIndex >= tasks.length) {
+                if (nextTaskIndex >= tasks.size()) {
                     if (inference.getIntent().equals("confirmPickedQuantity")) {
-                        // listener.setStatusText(`Recorded picked ${inference.slots!.quantity}.`);
-                        listener.onCardUpdated(cardId, String.format("pick %d", inference.getSlots().get("quantity")), true);
+                        String value = String.format("Recorded picked %s", inference.getSlots().get("quantity"));
+                        String shortValue = String.format("pick %s", inference.getSlots().get("quantity"));
+                        listener.onStatusChanged(value);
+                        listener.onCardUpdated(cardId, shortValue, true);
                     } else if (inference.getIntent().equals("reportShortPick")) {
-                        // listener.setStatusText(`Recorded short pick ${inference.slots!.quantity}.`);
-                        listener.onCardUpdated(cardId, String.format("short pick %d", inference.getSlots().get("quantity")), true);
+                        String value = String.format("Recorded short pick %s", inference.getSlots().get("quantity"));
+                        String shortValue = String.format("short pick %s", inference.getSlots().get("quantity"));
+                        listener.onStatusChanged(value);
+                        listener.onCardUpdated(cardId, shortValue, true);
                     } else if (inference.getIntent().equals("reportDamagedItem")) {
-                        //listener.setStatusText("Recorded damaged item.");
-                        //listener.setCardValue(cardId, "damaged item");
+                        listener.onStatusChanged("Recorded damaged item.");
                         listener.onCardUpdated(cardId, "damaged item", true);
                     } else {
-                        //listener.setStatusText("Recorded empty location.");
-                        //listener.setCardValue(cardId, "empty location");
+                        listener.onStatusChanged("Recorded empty location.");
                         listener.onCardUpdated(cardId, "empty location", true);
                     }
-
-                    // TODO: do I ever want to sleep in between these?
-                    // await sleep(500);
 
                     Map<String, Object> nextArgs = new HashMap<>();
                     return new Transition(RecipeStates.COMPLETE_PROMPT, nextArgs);
                 }
 
-                final PickTask nextTask = tasks[nextTaskIndex];
-
-                // TODO: finish implementing logic for this step, then get a build to succeed. Once we have a sucky version,
-                // we can make it look nicer.
+                final PickTask nextTask = tasks.get(nextTaskIndex);
 
                 String nextPrompt;
                 if (inference.getIntent().equals("confirmPickedQuantity")) {
-                    // String value = String.format("Recorded picked %d", inference.getSlots().get("quantity"));
-                    // callbacks.setStatusText(value);
-                    String shortValue = String.format("pick %d", inference.getSlots().get("quantity"));
+                    String value = String.format("Recorded picked %s", inference.getSlots().get("quantity"));
+                    String shortValue = String.format("pick %s", inference.getSlots().get("quantity"));
+                    listener.onStatusChanged(value);
                     listener.onCardUpdated(cardId, shortValue, true);
                     nextPrompt = String.format(
                             "Go to %s. Confirm location. Check digits are %s.",
                             nextTask.locationName,
                             nextTask.checkDigit);
                 } else if (inference.getIntent().equals("reportShortPick")) {
-                    // callbacks.setStatusText(`Recorded short pick ${inference.slots!.quantity}.`);
-                    String shortValue = String.format("short pick %d", inference.getSlots().get("quantity"));
+                    String value = String.format("Recorded short picked %s", inference.getSlots().get("quantity"));
+                    String shortValue = String.format("short pick %s", inference.getSlots().get("quantity"));
+                    listener.onStatusChanged(value);
                     listener.onCardUpdated(cardId, shortValue, true);
                     nextPrompt = String.format(
                             "Short pick recorded. Proceed to %s. Confirm location. Check digits are %s.",
                             nextTask.locationName,
                             nextTask.checkDigit);
                 } else if (inference.getIntent().equals("reportDamagedItem")) {
-                    // callbacks.setStatusText("Recorded damaged item.");
+                    listener.onStatusChanged("Recorded damaged item.");
                     listener.onCardUpdated(cardId, "damaged item", true);
                     nextPrompt = String.format(
                             "Damaged item recorded. Set it aside. Then proceed to %s. " +
@@ -961,17 +973,13 @@ public class MainActivity extends AppCompatActivity {
                             nextTask.locationName,
                             nextTask.checkDigit);
                 } else {
-                    // callbacks.setStatusText("Recorded empty location.");
+                    listener.onStatusChanged("Recorded empty location.");
                     listener.onCardUpdated(cardId, "empty location", true);
                     nextPrompt = String.format(
-                        `Empty location recorded. ` +
-                        `Proceed to ${nextTask.locationName}. ` +
-                        `Confirm location. ` +
-                        `Check digits are ${nextTask.checkDigit}.`
-                    );
+                            "Empty location recorded. Proceed to %s. Confirm location. Check digits are %s.",
+                            nextTask.locationName,
+                            nextTask.checkDigit);
                 }
-
-                // await sleep(500);
 
                 Map<String, Object> nextArgs = new HashMap<>();
                 nextArgs.put("tasks", tasks);
@@ -983,9 +991,9 @@ public class MainActivity extends AppCompatActivity {
             ArrayList<String> failurePrompt = new ArrayList<String>();
             failurePrompt.add("Failed to capture pick result. Retrying...");
             failurePrompt.add(
-                    String.format("Please report the result for picking %d %s.",
-                        tasks.quantity,
-                        tasks.itemName));
+                    String.format("Please report the result for picking %s %s.",
+                        task.quantity,
+                        task.itemName));
 
             Map<String, Object> nextArgs = new HashMap<>();
             nextArgs.put("tasks", args.get("tasks"));
@@ -995,215 +1003,25 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /*
-    class IdentifyUnitPromptState extends PromptState {
-        public IdentifyUnitPromptState(WorkflowListener listener, OrcaStep step) {
-            super(
-                    listener,
-                    step,
-                    "What is the unit ID?",
-                    CardType.UNIT_ID,
-                    RecipeStates.IDENTIFY_UNIT_REPORT);
-        }
-    }
+    class CompletePromptState extends State {
+        OrcaStep step;
 
-    class IncidentTypePromptState extends PromptState {
-        public IncidentTypePromptState(WorkflowListener listener, OrcaStep step) {
-            super(
-                    listener,
-                    step,
-                    "What was the incident type?",
-                    CardType.INCIDENT_TYPE,
-                    RecipeStates.INCIDENT_TYPE_REPORT);
-        }
-    }
-
-    class PatientConditionPromptState extends PromptState {
-        public PatientConditionPromptState(WorkflowListener listener, OrcaStep step) {
-            super(
-                    listener,
-                    step,
-                    "What is the patient condition?",
-                    CardType.PATIENT_CONDITION,
-                    RecipeStates.PATIENT_CONDITION_REPORT);
-        }
-    }
-
-    class DestinationPromptState extends PromptState {
-        public DestinationPromptState(WorkflowListener listener, OrcaStep step) {
-            super(
-                    listener,
-                    step,
-                    "What was the destination?",
-                    CardType.DESTINATION,
-                    RecipeStates.DESTINATION_REPORT);
-        }
-    }
-
-    class HandoffStatusPromptState extends PromptState {
-        public HandoffStatusPromptState(WorkflowListener listener, OrcaStep step) {
-            super(
-                    listener,
-                    step,
-                    "What is the handoff status?",
-                    CardType.HANDOFF_STATUS,
-                    RecipeStates.HANDOFF_STATUS_REPORT);
-        }
-    }
-
-    class HandoffTimePromptState extends PromptState {
-        public HandoffTimePromptState(WorkflowListener listener, OrcaStep step) {
-            super(
-                    listener,
-                    step,
-                    "What was the handoff time?",
-                    CardType.HANDOFF_TIME,
-                    RecipeStates.HANDOFF_TIME_REPORT);
-        }
-    }
-
-    class FinalNotePromptState extends PromptState {
-        public FinalNotePromptState(WorkflowListener listener, OrcaStep step) {
-            super(
-                    listener,
-                    step,
-                    "Please provide additional notes.",
-                    CardType.NOTES,
-                    RecipeStates.FINAL_NOTE_REPORT);
-        }
-    }
-
-    class CompletePromptState extends PromptState {
         public CompletePromptState(WorkflowListener listener, OrcaStep step) {
-            super(
-                    listener,
-                    step,
-                    "Field report recorded.",
-                    null,
-                    null);
-        }
-    }
-
-    class IdentifyUnitReportState extends ReportState {
-        public IdentifyUnitReportState(WorkflowListener listener, RhinoStep step) {
-            super(
-                    listener,
-                    step,
-                    "Listening for unit ID...",
-                    CardType.UNIT_ID,
-                    "identifyUnit",
-                    inf -> inf.getSlots().get("unitId"),
-                    RecipeStates.INCIDENT_TYPE_PROMPT,
-                    inf -> "Failed to capture unit ID. Retrying...",
-                    RecipeStates.IDENTIFY_UNIT_PROMPT);
-        }
-    }
-
-    class IncidentTypeReportState extends ReportState {
-        public IncidentTypeReportState(WorkflowListener listener, RhinoStep step) {
-            super(
-                    listener,
-                    step,
-                    "Listening for incident type...",
-                    CardType.INCIDENT_TYPE,
-                    "reportIncidentType",
-                    inf -> inf.getSlots().get("incidentType"),
-                    RecipeStates.PATIENT_CONDITION_PROMPT,
-                    inf -> "Failed to capture incident type. Retrying...",
-                    RecipeStates.INCIDENT_TYPE_PROMPT);
-        }
-    }
-
-    class PatientConditionReportState extends ReportState {
-        public PatientConditionReportState(WorkflowListener listener, RhinoStep step) {
-            super(
-                    listener,
-                    step,
-                    "Listening for patient condition...",
-                    CardType.PATIENT_CONDITION,
-                    "reportPatientCondition",
-                    inf -> inf.getSlots().get("patientCondition"),
-                    RecipeStates.DESTINATION_PROMPT,
-                    inf -> "Failed to capture patient condition. Retrying...",
-                    RecipeStates.PATIENT_CONDITION_PROMPT);
-        }
-    }
-
-    class DestinationReportState extends ReportState {
-        public DestinationReportState(WorkflowListener listener, RhinoStep step) {
-            super(
-                    listener,
-                    step,
-                    "Listening for destination...",
-                    CardType.DESTINATION,
-                    "reportDestination",
-                    inf -> inf.getSlots().get("destination"),
-                    RecipeStates.HANDOFF_STATUS_PROMPT,
-                    inf -> "Failed to capture destination. Retrying...",
-                    RecipeStates.DESTINATION_PROMPT);
-        }
-    }
-
-    class HandoffStatusReportState extends ReportState {
-        public HandoffStatusReportState(WorkflowListener listener, RhinoStep step) {
-            super(
-                    listener,
-                    step,
-                    "Listening for handoff status...",
-                    CardType.HANDOFF_STATUS,
-                    "reportHandoffStatus",
-                    inf -> inf.getSlots().get("handoffStatus"),
-                    RecipeStates.HANDOFF_TIME_PROMPT,
-                    inf -> "Failed to capture handoff status. Retrying...",
-                    RecipeStates.HANDOFF_STATUS_PROMPT);
-        }
-    }
-
-    class HandoffTimeReportState extends ReportState {
-        public HandoffTimeReportState(WorkflowListener listener, RhinoStep step) {
-            super(
-                    listener,
-                    step,
-                    "Listening for handoff time...",
-                    CardType.HANDOFF_TIME,
-                    "reportHandoffTime",
-                    inf -> {
-                        String hour = HOUR_MAP.get(inf.getSlots().get("hour"));
-                        int minute = Integer.parseInt(inf.getSlots().get("minute"));
-                        String meridiem = inf.getSlots().get("meridiem");
-                        return String.format("%s:%02d %s", hour, minute, meridiem.toUpperCase());
-                    },
-                    RecipeStates.FINAL_NOTE_PROMPT,
-                    inf -> "I'm sorry. What was the handoff time again?",
-                    RecipeStates.HANDOFF_TIME_PROMPT);
-        }
-    }
-
-    class DictationState extends State {
-        private final CheetahStep step;
-        private final RecipeStates nextState;
-        private final CardType cardType;
-
-        public DictationState(
-                WorkflowListener listener,
-                CheetahStep step,
-                CardType cardType,
-                RecipeStates nextState) {
             super(listener);
             this.step = step;
-            this.cardType = cardType;
-            this.nextState = nextState;
         }
-
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
-            String finalNotes = step.run(
-                    transcript -> listener.onCardUpdated(cardType, transcript, false),
-                    "Listening for notes...");
-            listener.onCardUpdated(cardType, finalNotes, true);
-            return new Transition(nextState);
+            String defaultPrompt = "Picking workflow complete.";
+            String prompt = (args != null && args.containsKey("prompt"))
+                    ? (String) args.get("prompt")
+                    : defaultPrompt;
+            listener.onStatusChanged(prompt);
+            step.run(prompt);
+
+            return new Transition(null);
         }
-    }*/
+    }
 
     class Workflow {
         AINoiseSuppressedRecorder recorder;
@@ -1234,11 +1052,11 @@ public class MainActivity extends AppCompatActivity {
 
         private void buildStates() {
             states.put(RecipeStates.STANDBY, new StandbyState(listener, porcupineStep));
-            states.put(RecipeStates.TASK_LOCATION_PROMPT, new IdentifyUnitPromptState(listener, orcaStep));
-            states.put(RecipeStates.TASK_LOCATION_REPORT, new IdentifyUnitPromptState(listener, rhinoStep));
-            states.put(RecipeStates.TASK_PICK_PROMPT, new IdentifyUnitPromptState(listener, orcaStep));
-            states.put(RecipeStates.TASK_PICK_REPORT, new IdentifyUnitPromptState(listener, rhinoStep));
-            states.put(RecipeStates.COMPLETE_PROMPT, new IdentifyUnitPromptState(listener, orcaStep));
+            states.put(RecipeStates.TASK_LOCATION_PROMPT, new TaskLocationPromptState(listener, orcaStep));
+            states.put(RecipeStates.TASK_LOCATION_REPORT, new TaskLocationReportState(listener, rhinoStep));
+            states.put(RecipeStates.TASK_PICK_PROMPT, new TaskPickPromptState(listener, orcaStep));
+            states.put(RecipeStates.TASK_PICK_REPORT, new TaskPickReportState(listener, rhinoStep));
+            states.put(RecipeStates.COMPLETE_PROMPT, new CompletePromptState(listener, orcaStep));
         }
 
         public void run(ArrayList<PickTask> tasks) throws Exception {

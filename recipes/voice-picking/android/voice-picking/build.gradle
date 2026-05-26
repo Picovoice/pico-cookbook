@@ -21,7 +21,7 @@ if (rootProject.file("local.properties").exists()) {
 android {
     compileSdk defaultTargetSdkVersion
     defaultConfig {
-        applicationId "ai.picovoice.voiceguidedfieldreporting"
+        applicationId "ai.picovoice.voicepicking"
         minSdkVersion 23
         targetSdkVersion defaultTargetSdkVersion
         versionCode 1
@@ -54,7 +54,7 @@ android {
     lint {
         abortOnError false
     }
-    namespace 'ai.picovoice.voiceguidedfieldreporting'
+    namespace 'ai.picovoice.voicepicking'
 }
 
 dependencies {
@@ -66,6 +66,5 @@ dependencies {
     implementation 'ai.picovoice:porcupine-android:4.0.0'
     implementation 'ai.picovoice:rhino-android:4.0.1'
     implementation 'ai.picovoice:orca-android:3.0.0'
-    implementation 'ai.picovoice:cheetah-android:4.0.2'
     implementation 'ai.picovoice:koala-android:3.0.0'
 }

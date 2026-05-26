@@ -50,7 +50,7 @@ It will also copy the models provided for [Porcupine Wake Word](https://picovoic
 [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) to the assets folder.
 
 Lastly, it will place your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable
-in [MainActivity.java](voice-guided-field-reporting/src/main/java/ai/picovoice/voiceguidedfieldreporting/MainActivity.java).
+in [MainActivity.java](voice-picking/src/main/java/ai/picovoice/voicepicking/MainActivity.java).
 
 
 This script will also add your wake word (`.ppn`) and rhino context (`.rhn`) files to the project:
@@ -64,7 +64,7 @@ python setup.py \
 
 ### 4. Run the Android Demo
 
-1. Open the `voice-guided-field-reporting` project in Android Studio.
+1. Open the `voice-picking` project in Android Studio.
 2. Connect a device or launch an Android simulator.
 3. Build and run the demo.
 
