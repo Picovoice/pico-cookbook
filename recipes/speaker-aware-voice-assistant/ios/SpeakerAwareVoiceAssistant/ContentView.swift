@@ -42,7 +42,7 @@ struct ContentView: View {
         Color(hex: 0xEF4444), // Red
         Color(hex: 0x84CC16), // Lime
         Color(hex: 0x6366F1), // Indigo
-        Color(hex: 0xF43F5E), // Rose
+        Color(hex: 0xF43F5E)  // Rose
     ]
 
     var body: some View {
@@ -60,7 +60,7 @@ struct ContentView: View {
                     Text(String(format: "Hello"))
                         .font(.system(size: 20, weight: .bold))
                         .multilineTextAlignment(.center)
-                    if (viewModel.testUserName != nil) {
+                    if viewModel.testUserName != nil {
                         Text(String(format: viewModel.testUserName!))
                             .font(.system(size: 20, weight: .bold))
                             .multilineTextAlignment(.center)
@@ -80,7 +80,7 @@ struct ContentView: View {
 
             }
 
-            if (viewModel.tooltipText != nil) {
+            if viewModel.tooltipText != nil {
                 Text(viewModel.tooltipText!)
                     .font(.system(size: 12))
                     .multilineTextAlignment(.center)
@@ -115,7 +115,10 @@ struct ContentView: View {
 
                 if hasEnrolled {
                     Grid {
-                        ForEach(Array(stride(from: 0, to: viewModel.speakerProfiles.count, by: gridWidthMax)), id: \.self) { i in
+                        ForEach(Array(stride(
+                                from: 0,
+                                to: viewModel.speakerProfiles.count,
+                                by: gridWidthMax)), id: \.self) { i in
                             GridRow {
                                 let gridWidth = min(i + gridWidthMax, viewModel.speakerProfiles.count)
                                 ForEach(i..<gridWidth, id: \.self) { j in
@@ -133,32 +136,38 @@ struct ContentView: View {
 
                 HStack(spacing: 16) {
                     if hasEnrolled {
-                        Button(action: {
-                            viewModel.clear()
-                        }) {
-                            Text("Clear")
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                                .background(grayLight)
-                                .foregroundColor(textDark)
-                                .cornerRadius(4)
-                        }
+                        Button(
+                            action: {
+                                viewModel.clear()
+                            },
+                            label: {
+                                Text("Clear")
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                                    .background(grayLight)
+                                    .foregroundColor(textDark)
+                                    .cornerRadius(4)
+                            }
+                        )
                     }
 
                     let defaultSpeakerName = "Speaker \(viewModel.speakerNames.count)"
 
-                    Button(action: {
-                        pendingSpeakerName = ""
-                        pendingSpeakerAdminRole = false
-                        showingAlert.toggle()
-                    }) {
-                        Text(hasEnrolled ? "+ Add" : "Start Enrollment")
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(hasEnrolled ? grayLight : brandPrimary)
-                            .foregroundColor(hasEnrolled ? textDark : .white)
-                            .cornerRadius(4)
-                    }
+                    Button(
+                        action: {
+                            pendingSpeakerName = ""
+                            pendingSpeakerAdminRole = false
+                            showingAlert.toggle()
+                        },
+                        label: {
+                            Text(hasEnrolled ? "+ Add" : "Start Enrollment")
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .background(hasEnrolled ? grayLight : brandPrimary)
+                                .foregroundColor(hasEnrolled ? textDark : .white)
+                                .cornerRadius(4)
+                        }
+                    )
                     .sheet(isPresented: $showingAlert) {
                         Text("Enroll New Speaker")
                             .font(.system(size: 20, weight: .bold))
@@ -174,39 +183,46 @@ struct ContentView: View {
                         Button("OK", action: {
                             showingAlert.toggle()
                             viewModel.startEnrollment(
-                                pendingSpeakerName: pendingSpeakerName.isEmpty ? defaultSpeakerName : pendingSpeakerName,
+                                pendingSpeakerName:
+                                    pendingSpeakerName.isEmpty ? defaultSpeakerName : pendingSpeakerName,
                                 pendingSpeakerAdminRole: pendingSpeakerAdminRole)
                         })
                     }
 
                     if hasEnrolled {
                         Spacer()
-                        Button(action: {
-                            viewModel.startTesting()
-                        }) {
-                            Text("Start Testing")
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                                .background(brandPrimary)
-                                .foregroundColor(.white)
-                                .cornerRadius(4)
-                        }
+                        Button(
+                            action: {
+                                viewModel.startTesting()
+                            },
+                            label: {
+                                Text("Start Testing")
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                                    .background(brandPrimary)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(4)
+                            }
+                        )
                     }
                 }
                 .padding(.top, 48)
             }
 
             if viewModel.appState != .idle && !viewModel.showTestResult {
-                Button(action: {
-                    viewModel.cancel()
-                }) {
-                    Text(viewModel.appState == .testing ? "Stop Testing" : "Cancel")
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(grayLight)
-                        .foregroundColor(textDark)
-                        .cornerRadius(4)
-                }
+                Button(
+                    action: {
+                        viewModel.cancel()
+                    },
+                    label: {
+                        Text(viewModel.appState == .testing ? "Stop Testing" : "Cancel")
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(grayLight)
+                            .foregroundColor(textDark)
+                            .cornerRadius(4)
+                    }
+                )
                 .padding(.top, 16)
             }
         }

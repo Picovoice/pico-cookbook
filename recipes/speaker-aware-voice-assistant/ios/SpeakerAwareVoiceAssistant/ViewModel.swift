@@ -37,9 +37,8 @@ class ViewModel: ObservableObject {
     private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
 
     private let EAGLE_THRESHOLD: Float = 0.50
-    private let EAGLE_MIN_EMROLLMENT_CHUNKS = 6;
-    private let MAX_SPEAKERS = 10;
-
+    private let EAGLE_MIN_EMROLLMENT_CHUNKS = 6
+    private let MAX_SPEAKERS = 10
 
     @Published var speakerProfiles: [EagleProfile] = []
     @Published var speakerNames: [String] = []
@@ -304,11 +303,11 @@ class ViewModel: ObservableObject {
                 let keywordIndex = try porcupine!.process(pcm: frame)
                 if keywordIndex == 0 {
                     let scores = try eagle!.process(pcm: testBuffer, speakerProfiles: speakerProfiles)
-                    if (scores != nil) {
+                    if scores != nil {
                         let bestScore = scores!.max() ?? -1
                         let bestIndex = scores!.lastIndex(of: bestScore)
 
-                        if (bestScore >= EAGLE_THRESHOLD) {
+                        if bestScore >= EAGLE_THRESHOLD {
                             showResult(name: speakerNames[bestIndex!], index: bestIndex)
                         } else {
                             showResult(name: nil, index: nil)
@@ -331,20 +330,20 @@ class ViewModel: ObservableObject {
             inferenceBuffer.append(contentsOf: frame)
             do {
                 let is_complete = try rhino!.process(pcm: frame)
-                if (is_complete) {
+                if is_complete {
                     let inference = try rhino!.getInference()
-                    if (inference.isUnderstood) {
+                    if inference.isUnderstood {
                         let scores = try eagle!.process(pcm: inferenceBuffer, speakerProfiles: speakerProfiles)
 
                         var bestScore: Float = 0.0
                         var bestIndex: Int = -1
-                        if (scores != nil) {
+                        if scores != nil {
                             bestScore = scores!.max() ?? bestScore
                             bestIndex = scores!.lastIndex(of: bestScore) ?? bestIndex
                         }
 
-                        if (inference.intent == "adminOnly") {
-                            if (bestScore >= EAGLE_THRESHOLD) {
+                        if inference.intent == "adminOnly" {
+                            if bestScore >= EAGLE_THRESHOLD {
                                 let speakerRole = speakerRoles[bestIndex]
 
                                 DispatchQueue.main.async {
@@ -352,7 +351,7 @@ class ViewModel: ObservableObject {
                                     self.testUserIndex = bestIndex
                                 }
 
-                                if (speakerRole == .admin) {
+                                if speakerRole == .admin {
                                     synthesizeAndPlayback("Admin command approved.")
                                 } else {
                                     synthesizeAndPlayback("Permission denied. This command requires an admin.")
@@ -360,7 +359,7 @@ class ViewModel: ObservableObject {
                             } else {
                                 synthesizeAndPlayback("Sorry, I could not verify your voice.")
                             }
-                        } else if (inference.intent == "speakerPersonalized") {
+                        } else if inference.intent == "speakerPersonalized" {
                             let speakerName = speakerNames[bestIndex]
 
                             DispatchQueue.main.async {
@@ -369,7 +368,7 @@ class ViewModel: ObservableObject {
                             }
 
                             synthesizeAndPlayback("Hi \(speakerName). I will personalize this command for you.")
-                        } else if (inference.intent == "generic") {
+                        } else if inference.intent == "generic" {
                             synthesizeAndPlayback("Okay. This command is available to everyone.")
                         }
                     } else {
