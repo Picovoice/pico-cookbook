@@ -12,12 +12,14 @@ import Porcupine
 import ios_voice_processor
 
 import Foundation
+import SwiftUI
 import Combine
 
 enum AppState {
     case idle
     case enrolling
     case testing
+    case error
 }
 
 class ViewModel: ObservableObject {
@@ -26,9 +28,10 @@ class ViewModel: ObservableObject {
 
     @Published var appState: AppState = .idle
     @Published var statusText: String = "Ready to Enroll"
+    @Published var errorMessage: String = ""
     @Published var enrollPercentage: Float = 0.0
     @Published var hasEnrolled: Bool = false
-    @Published var soundLevel: Float = 0.0
+    @Published var volumeLevel: Float = 0.0
 
     @Published var showTestResult: Bool = false
     @Published var isTestVerified: Bool = false
@@ -42,15 +45,9 @@ class ViewModel: ObservableObject {
     private var enrollBuffer: [Int16] = []
     private var enrollMaxSamples: Int = 0
     private var enrollValidSamples: Int = 0
-    private var eagleFrameLength: Int = 0
 
     private var testBuffer: [Int16] = []
     private var testMaxSamples: Int = 0
-
-    init() {
-        VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameCallback(audioCallback))
-        VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorCallback(errorCallback))
-    }
 
     public func startEnrollment() {
         checkPermissionsAndStart(targetState: .enrolling)
@@ -76,27 +73,29 @@ class ViewModel: ObservableObject {
                         self.performStartTesting()
                     }
                 } else {
-                    DispatchQueue.main.async {
-                        self.statusText = "Microphone permission is required for this demo"
-                    }
+                    self.handleError("Microphone permission is required for this demo")
                 }
             }
         }
     }
 
     private func performStartEnrollment() {
-        guard checkArgs() else { return }
-
         do {
             try stopAudio()
 
             guard let keywordPath = getKeywordPath() else { return }
 
-            porcupine = try Porcupine(accessKey: ACCESS_KEY, keywordPaths: [keywordPath], sensitivities: [0.5])
-            eagleProfiler = try EagleProfiler(accessKey: ACCESS_KEY)
+            porcupine = try Porcupine(
+                accessKey: ACCESS_KEY,
+                keywordPaths: [keywordPath],
+                sensitivities: [0.5]
+            )
+            eagleProfiler = try EagleProfiler(
+                accessKey: ACCESS_KEY,
+                minEnrollmentChunks: 4,
+                voiceThreshold: 0.1)
 
-            eagleFrameLength = Int(try eagleProfiler!.frameLength)
-            enrollMaxSamples = eagleFrameLength * 64
+            enrollMaxSamples = EagleProfiler.frameLength * 64
 
             enrollBuffer = [Int16](repeating: 0, count: enrollMaxSamples)
             enrollValidSamples = 0
@@ -106,44 +105,46 @@ class ViewModel: ObservableObject {
                 self.updateUIForState()
             }
 
+            VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
+            VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
             try VoiceProcessor.instance.start(
-                frameLength: porcupine!.frameLength,
-                sampleRate: porcupine!.sampleRate
+                frameLength: Porcupine.frameLength,
+                sampleRate: Porcupine.sampleRate
             )
         } catch {
-            DispatchQueue.main.async {
-                self.statusText = "Engine init error: \(error.localizedDescription)"
-            }
+            self.handleError("Engine init error: \(error.localizedDescription)")
         }
     }
 
     private func performStartTesting() {
-        guard checkArgs() else { return }
-
         do {
             try stopAudio()
 
             guard let keywordPath = getKeywordPath() else { return }
 
-            porcupine = try Porcupine(accessKey: ACCESS_KEY, keywordPaths: [keywordPath], sensitivities: [0.5])
-            eagle = try Eagle(accessKey: ACCESS_KEY)
+            porcupine = try Porcupine(
+                accessKey: ACCESS_KEY,
+                keywordPaths: [keywordPath],
+                sensitivities: [0.5])
+            eagle = try Eagle(
+                accessKey: ACCESS_KEY,
+                voiceThreshold: 0.0)
 
-            testMaxSamples = Int(try eagle!.frameLength)
-            testBuffer = [Int16](repeating: 0, count: testMaxSamples)
+            testBuffer = [Int16](repeating: 0, count: try eagle!.minProcessSamples())
 
             DispatchQueue.main.async {
                 self.appState = .testing
                 self.updateUIForState()
             }
 
+            VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
+            VoiceProcessor.instance.addErrorListener(VoiceProcessorErrorListener(errorCallback))
             try VoiceProcessor.instance.start(
-                frameLength: porcupine!.frameLength,
-                sampleRate: porcupine!.sampleRate
+                frameLength: Porcupine.frameLength,
+                sampleRate: Porcupine.sampleRate
             )
         } catch {
-            DispatchQueue.main.async {
-                self.statusText = "Engine init error: \(error.localizedDescription)"
-            }
+            self.handleError("Engine init error: \(error.localizedDescription)")
         }
     }
 
@@ -167,7 +168,7 @@ class ViewModel: ObservableObject {
                 self.cancel()
             }
         } catch {
-            print("Failed to export profile: \(error)")
+            self.handleError("Failed to export profile: \(error.localizedDescription)")
         }
     }
 
@@ -175,12 +176,17 @@ class ViewModel: ObservableObject {
         DispatchQueue.main.async {
             self.isTestVerified = isVerified
             self.testScore = score
-            self.showTestResult = true
+            
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                self.showTestResult = true
+            }
             self.statusText = ""
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                self.showTestResult = false
-                self.updateUIForState()
+                withAnimation {
+                    self.showTestResult = false
+                    self.updateUIForState()
+                }
             }
         }
     }
@@ -196,13 +202,13 @@ class ViewModel: ObservableObject {
             enrollPercentage = 0.0
         case .testing:
             statusText = "Listening for wake word..."
+        case .error:
+            break
         }
     }
 
     private func audioCallback(frame: [Int16]) {
-        DispatchQueue.main.async {
-            self.soundLevel = self.calculateRMS(frame: frame)
-        }
+        self.calculateVolume(frame: frame)
 
         if appState == .enrolling {
             enrollBuffer.removeFirst(frame.count)
@@ -212,17 +218,16 @@ class ViewModel: ObservableObject {
             do {
                 let keywordIndex = try porcupine!.process(pcm: frame)
                 if keywordIndex == 0 {
-                    let numEagleFrames = enrollValidSamples / eagleFrameLength
+                    let numEagleFrames = enrollValidSamples / EagleProfiler.frameLength
                     let startIndex = enrollMaxSamples - enrollValidSamples
 
                     var progress: Float = 0.0
                     for i in 0..<numEagleFrames {
-                        let chunkStart = startIndex + (i * eagleFrameLength)
-                        let chunkEnd = chunkStart + eagleFrameLength
+                        let chunkStart = startIndex + (i * EagleProfiler.frameLength)
+                        let chunkEnd = chunkStart + EagleProfiler.frameLength
                         let chunk = Array(enrollBuffer[chunkStart..<chunkEnd])
 
-                        let result = try eagleProfiler!.enroll(pcm: chunk)
-                        progress = result.percentage
+                        progress = try eagleProfiler!.enroll(pcm: chunk)
                     }
                     enrollValidSamples = 0
 
@@ -234,7 +239,7 @@ class ViewModel: ObservableObject {
                     }
                 }
             } catch {
-                print("Audio processing error: \(error)")
+                self.handleError("Audio processing error: \(error.localizedDescription)")
             }
 
         } else if appState == .testing {
@@ -245,9 +250,11 @@ class ViewModel: ObservableObject {
                 let keywordIndex = try porcupine!.process(pcm: frame)
                 if keywordIndex == 0 {
                     guard let activeProfile = speakerProfile else { return }
-                    let scores = try eagle!.process(pcm: testBuffer, profiles: [activeProfile])
+                    let scores = try eagle!.process(
+                        pcm: testBuffer,
+                        speakerProfiles: [activeProfile])
 
-                    if let score = scores.first {
+                    if let score = scores!.first {
                         let isVerified = score >= EAGLE_THRESHOLD
                         showResult(isVerified: isVerified, score: score)
                     } else {
@@ -255,18 +262,24 @@ class ViewModel: ObservableObject {
                     }
                 }
             } catch {
-                print("Audio processing error: \(error)")
+                self.handleError("Audio processing error: \(error.localizedDescription)")
             }
         }
     }
 
     private func errorCallback(error: VoiceProcessorError) {
+        self.handleError("Audio Error: \(error.localizedDescription)")
+    }
+
+    private func handleError(_ message: String) {
         DispatchQueue.main.async {
-            self.statusText = "Audio Error: \(error.localizedDescription)"
+            try? self.stopAudio()
+            self.errorMessage = message
+            self.appState = .error
         }
     }
 
-    private func calculateRMS(frame: [Int16]) -> Float {
+    private func calculateVolume(frame: [Int16]) {
         let MIN_DB: Float = -40.0
         let MAX_DB: Float = 0.0
 
@@ -277,14 +290,21 @@ class ViewModel: ObservableObject {
         let rms = (sum / Float(frame.count)) / pow(Float(Int16.max), 2)
         let db = 10 * log10(max(rms, 1e-9))
         let normalized = (db - MIN_DB) / (MAX_DB - MIN_DB)
-        return max(0.0, min(1.0, normalized))
+        let volume =  max(0.0, min(1.0, normalized))
+        
+        DispatchQueue.main.async {
+            self.volumeLevel = volume
+        }
     }
 
     private func stopAudio() throws {
         if VoiceProcessor.instance.isRecording {
             try VoiceProcessor.instance.stop()
         }
-
+        
+        VoiceProcessor.instance.clearErrorListeners()
+        VoiceProcessor.instance.clearFrameListeners()
+        
         porcupine?.delete()
         porcupine = nil
         eagleProfiler?.delete()
@@ -293,23 +313,11 @@ class ViewModel: ObservableObject {
         eagle = nil
     }
 
-    private func checkArgs() -> Bool {
-        if ACCESS_KEY == "${YOUR_ACCESS_KEY_HERE}" {
-            DispatchQueue.main.async {
-                self.statusText = "Please set your Picovoice AccessKey in ViewModel.swift"
-            }
-            return false
-        }
-        return true
-    }
-
     private func getKeywordPath() -> String? {
         if let path = Bundle.main.path(forResource: "porcupine_model", ofType: "ppn") {
             return path
         }
-        DispatchQueue.main.async {
-            self.statusText = "Could not find porcupine_model.ppn. Make sure setup.py ran."
-        }
+        self.handleError("Could not find porcupine_model.ppn. Make sure setup.py was run.")
         return nil
     }
 }

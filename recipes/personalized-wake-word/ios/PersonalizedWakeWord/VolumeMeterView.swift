@@ -10,22 +10,28 @@
 import SwiftUI
 
 struct VolumeMeterView: View {
-    @ObservedObject var viewModel: ViewModel
-    var barScale: [Float] = [4.0, 9.0, 6.0]
+    var volume: Float
 
     var body: some View {
-        HStack(spacing: 10) {
-            ForEach(0..<3) { index in
-                let soundLevel = viewModel.soundLevel * barScale[index]
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(.blue)
-                    .frame(
-                        width: 10,
-                        height: 10 + 10 * CGFloat(soundLevel))
-            }
+        HStack(spacing: 12) {
+            Capsule()
+                .fill(Color.blue)
+                .frame(width: 8, height: 8)
+                .scaleEffect(y: CGFloat(1.0 + (volume * 4.0)))
+                .animation(.linear(duration: 0.05), value: volume)
+
+            Capsule()
+                .fill(Color.blue)
+                .frame(width: 8, height: 8)
+                .scaleEffect(y: CGFloat(1.0 + (volume * 9.0)))
+                .animation(.linear(duration: 0.05), value: volume)
+
+            Capsule()
+                .fill(Color.blue)
+                .frame(width: 8, height: 8)
+                .scaleEffect(y: CGFloat(1.0 + (volume * 6.0)))
+                .animation(.linear(duration: 0.05), value: volume)
         }
-        .frame(width: 50, height: 70)
-        .padding(20)
-        .animation(.easeInOut(duration: 0.05), value: viewModel.soundLevel)
+        .frame(height: 64)
     }
 }
