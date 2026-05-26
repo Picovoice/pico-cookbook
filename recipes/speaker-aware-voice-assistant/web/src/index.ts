@@ -225,7 +225,8 @@ const synthesizeAndPlayback = async (
       word += " ";
     }
 
-    // display the word 200ms early becuase we have a 400ms css transition
+    // Display the word 200ms early because we have a 300ms css transition, and
+    // the word should be mostly visible by that time.
     setTimeout(() => {
       addWord(word);
     }, (alignment.startSec * 1000) - 200);
