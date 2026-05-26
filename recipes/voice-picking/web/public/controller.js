@@ -127,8 +127,12 @@ window.onload = () => {
       cards[key].root.classList.remove("completedCard");
       cards[key].value.innerText = "-";
     }
+    if (cards.length > 0) {
+      cards[0].root.focus();
+    }
 
     setStatusText("Ready to Start");
+    statusContainer.style.display = 'block';
 
     btnInit.classList.remove('hidden');
     cardContainer.classList.add('hidden');
@@ -202,11 +206,16 @@ window.onload = () => {
         firstStart = false;
       }
 
+      container.style.opacity = '0';
+      await Picovoice.sleep(400);
+
       accessKeyInput.classList.add('hidden');
       btnInit.classList.add('hidden');
       cardContainer.classList.remove('hidden');
       btnCancel.classList.remove('hidden');
       volumeMeter.classList.remove('hidden');
+
+      container.style.opacity = '1';
 
       await Picovoice.start();
     } catch (e) {

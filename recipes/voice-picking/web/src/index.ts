@@ -61,8 +61,8 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
 
   let i = 0;
   for (const task of TASKS) {
-    callbacks.createCard(`location-${i}`, "CONFIRM LOCATION", `${task.locationName} (${task.checkDigit})`);
-    callbacks.createCard(`pick-${i}`, "PICK ITEM", `${task.itemName} (${task.quantity})`);
+    callbacks.createCard(`location-${i}`, "CONFIRM LOCATION", `Location: ${task.checkDigit}`);
+    callbacks.createCard(`pick-${i}`, "PICK ITEM", `Item: ${task.itemName} (${task.quantity})`);
     i += 1;
   }
 
@@ -135,7 +135,9 @@ const stop = async (): Promise<void> => {
 const release = async (): Promise<void> => {
   await WebVoiceProcessor.reset();
 
-  workflow!.release();
+  if (workflow) {
+    workflow.release();
+  }
 };
 
 export default {

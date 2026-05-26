@@ -47,7 +47,7 @@ export type StateOptions =
         state: RecipeStates.TASK_LOCATION_PROMPT,
         tasks: PickTask[],
         taskIndex: number,
-        prompt?: string,
+        inputPrompt?: string | string[],
     }
     | {
         state: RecipeStates.TASK_LOCATION_REPORT,
@@ -58,7 +58,7 @@ export type StateOptions =
         state: RecipeStates.TASK_PICK_PROMPT,
         tasks: PickTask[],
         taskIndex: number,
-        prompt?: string,
+        inputPrompt?: string | string[],
     }
     | {
         state: RecipeStates.TASK_PICK_REPORT,
@@ -165,7 +165,7 @@ export class Workflow {
                     break;
                 } case RecipeStates.TASK_LOCATION_PROMPT: {
                     const state = this.states[current_state.state] as RecipeTaskLocationPromptState;
-                    transition = await state.run(current_state.tasks, current_state.taskIndex, current_state.prompt);
+                    transition = await state.run(current_state.tasks, current_state.taskIndex, current_state.inputPrompt);
                     break;
                 } case RecipeStates.TASK_LOCATION_REPORT: {
                     const state = this.states[current_state.state] as RecipeTaskLocationReportState;
@@ -173,7 +173,7 @@ export class Workflow {
                     break;
                 } case RecipeStates.TASK_PICK_PROMPT: {
                     const state = this.states[current_state.state] as RecipeTaskPickPromptState;
-                    transition = await state.run(current_state.tasks, current_state.taskIndex, current_state.prompt);
+                    transition = await state.run(current_state.tasks, current_state.taskIndex, current_state.inputPrompt);
                     break;
                 } case RecipeStates.TASK_PICK_REPORT: {
                     const state = this.states[current_state.state] as RecipeTaskPickReportState;
@@ -259,21 +259,28 @@ class RecipeTaskLocationPromptState extends RecipePromptState {
     async run(
         tasks: PickTask[],
         taskIndex: number,
-        prompt?: string,
+        inputPrompt?: string | string[],
     ): Promise<Transition> {
         const task = tasks[taskIndex];
         const cardId = `location-${taskIndex}`;
         callbacks.setActiveCard(cardId);
 
-        if (!prompt) {
-            prompt = (
+        if (!inputPrompt) {
+            inputPrompt = [
                 `Go to ${task.locationName}. ` +
                 `Confirm location. ` +
                 `Check digits are ${task.checkDigit}.`
-            );
+            ];
+        } else if (!Array.isArray(inputPrompt)) {
+            inputPrompt = [inputPrompt];
         }
 
-        await this.runPrompt(prompt);
+        for (const prompt of inputPrompt) {
+            if (!isRunning)
+                break;
+
+            await this.runPrompt(prompt);
+        }
 
         return {
             next: { state: RecipeStates.TASK_LOCATION_REPORT, tasks, taskIndex }
@@ -318,11 +325,14 @@ class RecipeTaskLocationReportState extends State {
             };
         }
 
+        let promptList = [];
         if (inference && inference.isUnderstood && inference.intent == 'confirmLocation') {
-            console.log(`Location check digit ${inference.slots!.checkDigit} does not match. Retrying...`);
+            promptList.push(`Location check digit ${inference.slots!.checkDigit} does not match. Retrying...`);
         } else {
-            console.log("Failed to capture location confirmation. Retrying...");
+            promptList.push("Failed to capture location confirmation. Retrying...");
         }
+
+        promptList.push(`Please confirm location for ${task.locationName}. Check digits are ${task.checkDigit}.`);
 
         return {
             outcome: inference,
@@ -330,7 +340,7 @@ class RecipeTaskLocationReportState extends State {
                 state: RecipeStates.TASK_LOCATION_PROMPT,
                 tasks,
                 taskIndex,
-                prompt: `Please confirm location for ${task.locationName}. Check digits are ${task.checkDigit}.`,
+                inputPrompt: promptList,
             }
         };
     }
@@ -340,17 +350,24 @@ class RecipeTaskPickPromptState extends RecipePromptState {
     async run(
         tasks: PickTask[],
         taskIndex: number,
-        prompt?: string,
+        inputPrompt?: string | string[],
     ): Promise<Transition> {
         const task = tasks[taskIndex];
         const cardId = `pick-${taskIndex}`;
         callbacks.setActiveCard(cardId);
 
-        if (!prompt) {
-            prompt = `Pick ${task.quantity} ${task.itemName}.`;
+        if (!inputPrompt) {
+            inputPrompt = [ `Pick ${task.quantity} ${task.itemName}.` ];
+        } else if (!Array.isArray(inputPrompt)) {
+            inputPrompt = [inputPrompt];
         }
 
-        await this.runPrompt(prompt);
+        for (const prompt of inputPrompt) {
+            if (!isRunning)
+                break;
+
+            await this.runPrompt(prompt);
+        }
 
         return {
             next: { state: RecipeStates.TASK_PICK_REPORT, tasks, taskIndex }
@@ -395,9 +412,6 @@ class RecipeTaskPickReportState extends State {
 
         if (inference && inference.isUnderstood && RecipeTaskPickReportState.VALID_INTENTS.includes(inference.intent!)) {
             if (inference.intent == 'exitWorkflow') {
-                callbacks.setStatusText("Ending picking workflow.");
-                await sleep(500);
-
                 return {
                     outcome: inference,
                     next: {
@@ -477,12 +491,10 @@ class RecipeTaskPickReportState extends State {
                     state: RecipeStates.TASK_LOCATION_PROMPT,
                     tasks,
                     taskIndex: nextTaskIndex,
-                    prompt: nextPrompt,
+                    inputPrompt: nextPrompt,
                 }
             };
         }
-
-        console.log("Failed to capture pick result. Retrying...");
 
         return {
             outcome: inference,
@@ -490,7 +502,10 @@ class RecipeTaskPickReportState extends State {
                 state: RecipeStates.TASK_PICK_PROMPT,
                 tasks,
                 taskIndex,
-                prompt: `Please report the result for picking ${task.quantity} ${task.itemName}.`,
+                inputPrompt: [
+                    "Failed to capture pick result. Retrying...",
+                    `Please report the result for picking ${task.quantity} ${task.itemName}.`
+                ],
             }
         };
     }

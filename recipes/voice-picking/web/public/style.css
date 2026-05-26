@@ -39,7 +39,7 @@ body {
 h1 {
   color: var(--brand-primary);
   font-size: 24px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 #statusText {
@@ -60,6 +60,10 @@ h1 {
   width: 100%;
   box-sizing: border-box;
   word-wrap: break-word;
+}
+
+#cardContainer {
+    margin-top: 8px;
 }
 
 #nameModalOverlay {
@@ -120,6 +124,10 @@ h1 {
   width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+#accessKey {
+    margin-top: 16px;
 }
 
 input[type='text'] {
