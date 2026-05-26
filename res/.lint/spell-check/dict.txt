@@ -8,6 +8,7 @@ attoseconds
 callassist
 callscreen
 colour
+colours
 compat
 dbfs
 declatory

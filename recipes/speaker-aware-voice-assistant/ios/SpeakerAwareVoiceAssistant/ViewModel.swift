@@ -37,7 +37,7 @@ class ViewModel: ObservableObject {
     private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
 
     private let EAGLE_THRESHOLD: Float = 0.50
-    private let EAGLE_MIN_EMROLLMENT_CHUNKS = 6
+    private let EAGLE_MIN_ENROLLMENT_CHUNKS = 6
     private let MAX_SPEAKERS = 10
 
     @Published var speakerProfiles: [EagleProfile] = []
@@ -131,7 +131,7 @@ class ViewModel: ObservableObject {
 
             eagleProfiler = try EagleProfiler(
                 accessKey: ACCESS_KEY,
-                minEnrollmentChunks: EAGLE_MIN_EMROLLMENT_CHUNKS,
+                minEnrollmentChunks: EAGLE_MIN_ENROLLMENT_CHUNKS,
                 voiceThreshold: EAGLE_THRESHOLD)
 
             eagleFrameLength = Int(EagleProfiler.frameLength)
