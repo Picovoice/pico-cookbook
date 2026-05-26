@@ -2,6 +2,7 @@
 class AudioStream {
   private readonly _sampleRate: number;
   private _audioContext: AudioContext;
+  private _currentStreamSource?: AudioBufferSourceNode;
   private readonly _audioGain: GainNode;
 
   private _audioBuffers: AudioBuffer[] = [];
@@ -32,6 +33,7 @@ class AudioStream {
     }
 
     const streamSource = this._audioContext.createBufferSource();
+    this._currentStreamSource = streamSource;
 
     streamSource.buffer = this._audioBuffers.shift() ?? null;
     streamSource.connect(this._audioGain);
@@ -42,15 +44,26 @@ class AudioStream {
     streamSource.onended = (): void => {
       this._isPlaying = false;
       if (this._audioBuffers.length > 0) {
+        this._currentStreamSource = undefined;
         this.play();
       }
     };
   }
 
-  public async waitPlayback(): Promise<void> {
+  public async waitPlayback(stopWaiting?: () => boolean): Promise<void> {
     return new Promise<void>(resolve => {
       const interval = setInterval(() => {
-        if (this._audioBuffers.length === 0 && !this._isPlaying) {
+        let done = this._audioBuffers.length === 0 && !this._isPlaying;
+        
+        if ((stopWaiting !== undefined) && stopWaiting()) {
+          done = true;
+          this._isPlaying = false;
+          if (this._currentStreamSource) {
+            this._currentStreamSource.stop();
+          }
+        }
+
+        if (done) {
           clearInterval(interval);
           resolve();
         }

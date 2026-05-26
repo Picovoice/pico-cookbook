@@ -16,6 +16,7 @@ export type DemoCallbacks = {
   setCardValue: (id: string, value: string) => void,
 
   goToInitScreen: () => void,
+  currentScreen: () => string,
 }
 
 export let callbacks: DemoCallbacks = {
@@ -34,6 +35,7 @@ export let callbacks: DemoCallbacks = {
   setCardValue: (_a, _b) => undefined,
 
   goToInitScreen: () => undefined,
+  currentScreen: () => "init",
 };
 
 export function updateCallbacks(newCallbacks: DemoCallbacks) {
@@ -52,6 +54,7 @@ export function updateCallbacks(newCallbacks: DemoCallbacks) {
   callbacks.setCardValue = newCallbacks.setCardValue;
 
   callbacks.goToInitScreen = newCallbacks.goToInitScreen;
+  callbacks.currentScreen = newCallbacks.currentScreen;
 }
 
 export let isRunning = true;

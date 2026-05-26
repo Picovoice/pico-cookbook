@@ -116,7 +116,11 @@ window.onload = () => {
     });
   }
 
+  var screenString = "init";
+
   async function goToInitScreen() {
+    screenString = "init";
+
     container.style.opacity = '0';
     await Picovoice.sleep(400);
 
@@ -127,9 +131,10 @@ window.onload = () => {
       cards[key].root.classList.remove("completedCard");
       cards[key].value.innerText = "-";
     }
-    if (cards.length > 0) {
-      cards[0].root.focus();
-    }
+    cardContainer.scrollTo({
+      top: 0,
+      behavior: "instant",
+    });
 
     setStatusText("Ready to Start");
     statusContainer.style.display = 'block';
@@ -138,6 +143,10 @@ window.onload = () => {
     cardContainer.classList.add('hidden');
     btnCancel.classList.add('hidden');
     volumeMeter.classList.add('hidden');
+  }
+
+  function currentScreen() {
+    return screenString;
   }
 
   function onVolume(volume) {
@@ -188,6 +197,7 @@ window.onload = () => {
     setCompletedCard,
     setCardValue,
     goToInitScreen,
+    currentScreen,
   };
 
   btnInit.onclick = async () => {
@@ -205,6 +215,8 @@ window.onload = () => {
         await Picovoice.init(accessKey, callbacks);
         firstStart = false;
       }
+
+      screenString = "demo";
 
       container.style.opacity = '0';
       await Picovoice.sleep(400);

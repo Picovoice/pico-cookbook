@@ -125,11 +125,17 @@ const start = async (): Promise<void> => {
   await workflow!.run();
   workflow!.reset();
 
-  await callbacks.goToInitScreen();
+  if (callbacks.currentScreen() != "init") {
+    await callbacks.goToInitScreen();
+  }
 };
 
 const stop = async (): Promise<void> => {
   setIsRunning(false);
+
+  if (callbacks.currentScreen() != "init") {
+    await callbacks.goToInitScreen();
+  }
 };
 
 const release = async (): Promise<void> => {
