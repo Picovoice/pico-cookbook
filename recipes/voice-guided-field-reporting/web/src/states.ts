@@ -330,6 +330,7 @@ type RecipeReportStateParams = {
 
         listeningPrompt: string;
         expectedIntent: string;
+        validator: (x: RhinoInference) => boolean;
         successPrompt: (x: RhinoInference) => string;
         successOutcome: (x: RhinoInference) => string;
         successNextState: RecipeStates;
@@ -352,6 +353,7 @@ class RecipeReportState extends State {
             taskIndex,
             listeningPrompt,
             expectedIntent,
+            validator,
             successPrompt,
             successOutcome,
             successNextState,
@@ -369,7 +371,8 @@ class RecipeReportState extends State {
         const isValidInference =
             inference &&
             inference.isUnderstood &&
-            inference.intent == expectedIntent;
+            inference.intent == expectedIntent &&
+            validator(inference!);
 
         if (isValidInference) {
             callbacks.setStatusText(successPrompt(inference!));
@@ -440,6 +443,7 @@ class RecipeIdentifyUnitReportState extends RecipeReportState {
 
             listeningPrompt: "Listening for unit ID",
             expectedIntent: 'identifyUnit',
+            validator: (x: RhinoInference) => true,
             successPrompt: (x: RhinoInference) => `Unit ID is ${x.slots!.unitId}.`,
             successOutcome: (x: RhinoInference) => `${x.slots!.unitId}`,
             successNextState: RecipeStates.INCIDENT_TYPE_PROMPT,
@@ -497,6 +501,7 @@ class RecipeIncidentTypeReportState extends RecipeReportState {
 
             listeningPrompt: "Listening for incident type",
             expectedIntent: 'reportIncidentType',
+            validator: (x: RhinoInference) => true,
             successPrompt: (x: RhinoInference) => `Incident type is ${x.slots!.incidentType}.`,
             successOutcome: (x: RhinoInference) => `${x.slots!.incidentType}`,
             successNextState: RecipeStates.PATIENT_CONDITION_PROMPT,
@@ -554,6 +559,7 @@ class RecipePatientConditionReportState extends RecipeReportState {
 
             listeningPrompt: "Listening for patient condition",
             expectedIntent: 'reportPatientCondition',
+            validator: (x: RhinoInference) => true,
             successPrompt: (x: RhinoInference) => `Patient condition is ${x.slots!.patientCondition}.`,
             successOutcome: (x: RhinoInference) => `${x.slots!.patientCondition}`,
             successNextState: RecipeStates.DESTINATION_PROMPT,
@@ -611,6 +617,7 @@ class RecipeDestinationReportState extends RecipeReportState {
 
             listeningPrompt: "Listening for destination",
             expectedIntent: 'reportDestination',
+            validator: (x: RhinoInference) => true,
             successPrompt: (x: RhinoInference) => `Destination is ${x.slots!.destination}.`,
             successOutcome: (x: RhinoInference) => `${x.slots!.destination}`,
             successNextState: RecipeStates.HANDOFF_STATUS_PROMPT,
@@ -668,6 +675,7 @@ class RecipeHandoffStatusReportState extends RecipeReportState {
 
             listeningPrompt: "Listening for handoff status",
             expectedIntent: 'reportHandoffStatus',
+            validator: (x: RhinoInference) => true,
             successPrompt: (x: RhinoInference) => `Handoff status is ${x.slots!.handoffStatus}.`,
             successOutcome: (x: RhinoInference) => `${x.slots!.handoffStatus}`,
             successNextState: RecipeStates.HANDOFF_TIME_PROMPT,
@@ -719,7 +727,38 @@ class RecipeHandoffTimeReportState extends RecipeReportState {
         const cardId = task.cardId;
         callbacks.setActiveCard(cardId);
 
-        // TODO: Handle validity
+        const HOUR_MAP: { [id: string] : number } = {
+            "one": 1,
+            "two": 2,
+            "three": 3,
+            "four": 4,
+            "five": 5,
+            "six": 6,
+            "seven": 7,
+            "eight": 8,
+            "nine": 9,
+            "ten": 10,
+            "eleven": 11,
+            "twelve": 12,
+        };
+
+        const validator = (x: RhinoInference): boolean => {
+            const hour = HOUR_MAP[x.slots!.hour]
+            const minute = Number(x.slots!.minute)
+            const meridiem = x.slots!.meridiem
+
+            return (1 <= hour) && (hour <= 12) &&
+                    (0 <= minute) && (minute <= 59) &&
+                    (meridiem === 'am' || meridiem === 'pm');
+        };
+
+        const successOutcome = (x: RhinoInference): string => {
+            const hour = HOUR_MAP[x.slots!.hour]
+            const minute = Number(x.slots!.minute)
+            const meridiem = x.slots!.meridiem
+
+            return `${hour}:${minute} ${meridiem}`;
+        };
 
         const params = {
             tasks,
@@ -727,8 +766,9 @@ class RecipeHandoffTimeReportState extends RecipeReportState {
 
             listeningPrompt: "Listening for handoff time",
             expectedIntent: 'reportHandoffTime',
-            successPrompt: (x: RhinoInference) => `Handoff time is ${x.slots!.hour} ${x.slots!.minute} ${x.slots!.meridiem}`,
-            successOutcome: (x: RhinoInference) => `${x.slots!.hour} ${x.slots!.minute} ${x.slots!.meridiem}`,
+            validator,
+            successPrompt: (x: RhinoInference) => `Handoff time is ${successOutcome(x)}`,
+            successOutcome,
             successNextState: RecipeStates.FINAL_NOTE_PROMPT,
             failurePrompt: (x: RhinoInference | undefined) => `Failed to capture handoff time. Retrying...`,
             failureNextState: RecipeStates.HANDOFF_TIME_PROMPT,
