@@ -575,9 +575,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         public boolean isPlaying() {
-            System.out.println("BEFORE");
-            System.out.println(audioTrack.getPlaybackHeadPosition());
-            System.out.println(this.writtenSamples);
             return audioTrack.getPlaybackHeadPosition() < this.writtenSamples;
         }
 

@@ -44,13 +44,10 @@ Save the downloaded file somewhere accessible on your machine. You will pass its
 Run the setup script to download the models for
 - [Koala Noise Suppression](https://picovoice.ai/docs/koala/)
 - [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/)
-- [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/)
 
-It will also copy the models provided for [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/) and
-[Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) to the assets folder.
+It will also copy the models provided for [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/) and [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) to the assets folder.
 
-Lastly, it will place your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable
-in [MainActivity.java](voice-picking/src/main/java/ai/picovoice/voicepicking/MainActivity.java).
+Lastly, it will place your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable in [MainActivity.java](voice-picking/src/main/java/ai/picovoice/voicepicking/MainActivity.java).
 
 
 This script will also add your wake word (`.ppn`) and rhino context (`.rhn`) files to the project:
