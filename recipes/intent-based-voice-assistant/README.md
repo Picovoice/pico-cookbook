@@ -9,4 +9,5 @@ Hands-free voice control combining wake word and task oriented voice intent. Wak
 
 ## Implementations
 
-- [mcu](mcu)
+- [Arduino](mcu/arduino)
+- [STM32](mcu/stm32f411)

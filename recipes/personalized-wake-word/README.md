@@ -2,6 +2,8 @@
 
 Personalized wake word detection that activates only for the enrolled speaker, powered by on-device voice AI.
 
+[![Personalized Wake Word](https://img.youtube.com/vi/bReWNXNHW-A/0.jpg)](https://www.youtube.com/watch?v=bReWNXNHW-A)
+
 ## Components
 
 - [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/)

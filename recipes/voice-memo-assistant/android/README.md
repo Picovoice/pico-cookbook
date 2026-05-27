@@ -45,7 +45,7 @@ and [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/).
 
 It will also copy the models provided for [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/),
 [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) and [picoLLM Inference](https://picovoice.ai/docs/picollm/)
-to the assets folder.
+to the `assets` folder.
 
 Lastly, it will place your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable
 in [MainActivity.java](voice-memo-assistant/src/main/java/ai/picovoice/voicememoassistant/MainActivity.java).

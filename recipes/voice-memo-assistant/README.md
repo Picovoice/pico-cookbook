@@ -2,6 +2,8 @@
 
 Record, rewrite, summarize, and replay voice memos hands-free, powered by on-device voice AI.
 
+[![Voice Memo Assistant](https://img.youtube.com/vi/su_RxNBpuHg/0.jpg)](https://www.youtube.com/watch?v=su_RxNBpuHg)
+
 ## Components
 
 - [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/)

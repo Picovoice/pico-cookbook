@@ -29,7 +29,8 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 Run the setup script to download and copy the models for [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/)
 and [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/).
 
-It will also copy the models provided for [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) to the assets folder.
+It will also copy the models provided for [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) to the `assets`
+folder.
 
 Lastly, it will place your `AccessKey` from Picovoice Console and name into the `ACCESS_KEY` and `USERNAME` variables
 in [MainActivity.java](call-screen/src/main/java/ai/picovoice/callscreen/MainActivity.java).
