@@ -176,7 +176,7 @@ class ViewModel: ObservableObject {
         DispatchQueue.main.async {
             self.isTestVerified = isVerified
             self.testScore = score
-            
+
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                 self.showTestResult = true
             }
@@ -288,10 +288,10 @@ class ViewModel: ObservableObject {
             sum += pow(Float(sample), 2)
         }
         let rms = (sum / Float(frame.count)) / pow(Float(Int16.max), 2)
-        let db = 10 * log10(max(rms, 1e-9))
-        let normalized = (db - MIN_DB) / (MAX_DB - MIN_DB)
+        let dbfs = 10 * log10(max(rms, 1e-9))
+        let normalized = (dbfs - MIN_DB) / (MAX_DB - MIN_DB)
         let volume =  max(0.0, min(1.0, normalized))
-        
+
         DispatchQueue.main.async {
             self.volumeLevel = volume
         }
@@ -301,10 +301,10 @@ class ViewModel: ObservableObject {
         if VoiceProcessor.instance.isRecording {
             try VoiceProcessor.instance.stop()
         }
-        
+
         VoiceProcessor.instance.clearErrorListeners()
         VoiceProcessor.instance.clearFrameListeners()
-        
+
         porcupine?.delete()
         porcupine = nil
         eagleProfiler?.delete()

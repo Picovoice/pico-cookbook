@@ -19,7 +19,7 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             Color.white.ignoresSafeArea()
-            
+
             VStack(spacing: 24) {
 
                 if viewModel.appState == .idle || viewModel.appState == .error {
@@ -74,7 +74,8 @@ struct ContentView: View {
                         .padding(.top, 24)
                     }
 
-                    if (viewModel.appState == .enrolling || viewModel.appState == .testing) && !viewModel.showTestResult {
+                    if (viewModel.appState == .enrolling || viewModel.appState == .testing)
+                            && !viewModel.showTestResult {
                         VolumeMeterView(volume: viewModel.volumeLevel)
                             .frame(height: 64)
                             .padding(.top, 24)
@@ -82,9 +83,7 @@ struct ContentView: View {
 
                     if viewModel.appState == .idle && !viewModel.showTestResult {
                         HStack(spacing: 16) {
-                            Button(action: {
-                                viewModel.startEnrollment()
-                            }) {
+                            Button(action: viewModel.startEnrollment()) {
                                 Text(viewModel.hasEnrolled ? "Re-Enroll" : "Start Enrollment")
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 10)
@@ -94,9 +93,7 @@ struct ContentView: View {
                             }
 
                             if viewModel.hasEnrolled {
-                                Button(action: {
-                                    viewModel.startTesting()
-                                }) {
+                                Button(action: viewModel.startTesting()) {
                                     Text("Start Testing")
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 10)
@@ -110,9 +107,7 @@ struct ContentView: View {
                     }
 
                     if viewModel.appState != .idle && viewModel.appState != .error && !viewModel.showTestResult {
-                        Button(action: {
-                            viewModel.cancel()
-                        }) {
+                        Button(action: viewModel.cancel()) {
                             Text(viewModel.appState == .testing ? "Stop Testing" : "Cancel")
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
