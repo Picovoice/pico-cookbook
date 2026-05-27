@@ -88,6 +88,7 @@ class ViewModel: ObservableObject {
         self.speakerProfiles = []
         self.speakerNames = []
         self.speakerRoles = []
+        updateUIForState()
     }
 
     public func startEnrollment(pendingSpeakerName: String, pendingSpeakerAdminRole: Bool) {

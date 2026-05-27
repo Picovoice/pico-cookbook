@@ -70,8 +70,10 @@ struct ContentView: View {
                             .foregroundColor(.white)
                             .cornerRadius(8)
                     }
-                    Text(String(format: "Say your command"))
-                        .multilineTextAlignment(.center)
+                    if viewModel.testingState != .ORCA {
+                        Text(String(format: "Say your command"))
+                            .multilineTextAlignment(.center)
+                    }
                 }
             } else {
                 Text(viewModel.statusText)
@@ -103,10 +105,20 @@ struct ContentView: View {
                 .padding(.top, 24)
             }
 
-            if (viewModel.appState == .enrolling || viewModel.appState == .testing) && viewModel.testingState != .ORCA {
-                VolumeMeterView(viewModel: viewModel)
-                    .frame(height: 64)
+            if (viewModel.appState == .enrolling || viewModel.appState == .testing){
+                if viewModel.testingState != .ORCA {
+                    VolumeMeterView(viewModel: viewModel)
+                        .frame(height: 64)
+                        .padding(.top, 24)
+                } else {
+                    HStack {
+                        Text("Assistant is speaking")
+                            .font(.system(size: 16))
+                            .italic()
+                        ProgressView()
+                    }
                     .padding(.top, 24)
+                }
             }
 
             if viewModel.appState == .idle && !viewModel.showTestResult {
