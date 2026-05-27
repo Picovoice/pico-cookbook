@@ -105,7 +105,7 @@ struct ContentView: View {
                 .padding(.top, 24)
             }
 
-            if (viewModel.appState == .enrolling || viewModel.appState == .testing){
+            if viewModel.appState == .enrolling || viewModel.appState == .testing {
                 if viewModel.testingState != .ORCA {
                     VolumeMeterView(viewModel: viewModel)
                         .frame(height: 64)
