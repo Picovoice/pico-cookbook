@@ -47,37 +47,94 @@ export enum RecipeStates {
     COMPLETE_PROMPT = "CompletePrompt",
 };
 
-export type StateOptions = any;
-    // | {
-    //     state: RecipeStates.STANDBY,
-    //     tasks: PickTask[],
-    // }
-    // | {
-    //     state: RecipeStates.TASK_LOCATION_PROMPT,
-    //     tasks: PickTask[],
-    //     taskIndex: number,
-    //     inputPrompt?: string | string[],
-    // }
-    // | {
-    //     state: RecipeStates.TASK_LOCATION_REPORT,
-    //     tasks: PickTask[],
-    //     taskIndex: number,
-    // }
-    // | {
-    //     state: RecipeStates.TASK_PICK_PROMPT,
-    //     tasks: PickTask[],
-    //     taskIndex: number,
-    //     inputPrompt?: string | string[],
-    // }
-    // | {
-    //     state: RecipeStates.TASK_PICK_REPORT,
-    //     tasks: PickTask[],
-    //     taskIndex: number,
-    // }
-    // | {
-    //     state: RecipeStates.COMPLETE_PROMPT,
-    //     prompt?: string,
-    // };
+export type StateOptions =
+    | {
+        state: RecipeStates.STANDBY,
+        tasks: PickTask[],
+    }
+    | {
+        state: RecipeStates.IDENTIFY_UNIT_PROMPT,
+        tasks: PickTask[],
+        taskIndex: number,
+        inputPrompt?: string | string[],
+    }
+    | {
+        state: RecipeStates.IDENTIFY_UNIT_REPORT,
+        tasks: PickTask[],
+        taskIndex: number,
+    }
+    | {
+        state: RecipeStates.INCIDENT_TYPE_PROMPT,
+        tasks: PickTask[],
+        taskIndex: number,
+        inputPrompt?: string | string[],
+    }
+    | {
+        state: RecipeStates.INCIDENT_TYPE_REPORT,
+        tasks: PickTask[],
+        taskIndex: number,
+    }
+    | {
+        state: RecipeStates.PATIENT_CONDITION_PROMPT,
+        tasks: PickTask[],
+        taskIndex: number,
+        inputPrompt?: string | string[],
+    }
+    | {
+        state: RecipeStates.PATIENT_CONDITION_REPORT,
+        tasks: PickTask[],
+        taskIndex: number,
+    }
+    | {
+        state: RecipeStates.DESTINATION_PROMPT,
+        tasks: PickTask[],
+        taskIndex: number,
+        inputPrompt?: string | string[],
+    }
+    | {
+        state: RecipeStates.DESTINATION_REPORT,
+        tasks: PickTask[],
+        taskIndex: number,
+    }
+    | {
+        state: RecipeStates.HANDOFF_STATUS_PROMPT,
+        tasks: PickTask[],
+        taskIndex: number,
+        inputPrompt?: string | string[],
+    }
+    | {
+        state: RecipeStates.HANDOFF_STATUS_REPORT,
+        tasks: PickTask[],
+        taskIndex: number,
+    }
+    | {
+        state: RecipeStates.HANDOFF_TIME_PROMPT,
+        tasks: PickTask[],
+        taskIndex: number,
+        inputPrompt?: string | string[],
+    }
+    | {
+        state: RecipeStates.HANDOFF_TIME_REPORT,
+        tasks: PickTask[],
+        taskIndex: number,
+    }
+    | {
+        state: RecipeStates.FINAL_NOTE_PROMPT,
+        tasks: PickTask[],
+        taskIndex: number,
+        inputPrompt?: string | string[],
+    }
+    | {
+        state: RecipeStates.FINAL_NOTE_REPORT,
+        tasks: PickTask[],
+        taskIndex: number,
+    }
+    | {
+        state: RecipeStates.COMPLETE_PROMPT,
+        tasks: PickTask[],
+        taskIndex: number,
+        prompt?: string,
+    };
 
 export abstract class State {
     toString(): string {
@@ -297,12 +354,6 @@ class RecipeStandbyState extends State {
 
     async run(tasks: PickTask[]): Promise<Transition> {
         await this.step.run("Listening for wake word...");
-
-        if (tasks.length == 0) {
-            return {
-                next: { state: RecipeStates.COMPLETE_PROMPT }
-            };
-        }
 
         return { 
             next: { state: RecipeStates.IDENTIFY_UNIT_PROMPT, tasks, taskIndex: 0 }

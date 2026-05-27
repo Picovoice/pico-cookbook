@@ -10,7 +10,7 @@ export type DemoCallbacks = {
   onVolume: (volume: number) => void;
   onListening: (isListening: boolean) => void;
 
-  createCard: (id: string, title: string, rhs: string) => void,
+  createCard: (id: string, title: string) => void,
   setActiveCard: (id: string) => void,
   setCompletedCard: (id: string) => void,
   setCardValue: (id: string, value: string) => void,

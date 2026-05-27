@@ -15,3 +15,4 @@ voice notes, all powered by on-device voice AI.
 
 - [Android](android)
 - [Python](python)
+- [Web](web)

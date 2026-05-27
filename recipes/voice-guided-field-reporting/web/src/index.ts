@@ -70,7 +70,7 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
   callbacks.clearStatus();
 
   for (const task of TASKS) {
-    callbacks.createCard(task.cardId, task.cardTitle, "");
+    callbacks.createCard(task.cardId, task.cardTitle);
   }
 
   try {

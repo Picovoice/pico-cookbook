@@ -48,7 +48,7 @@ window.onload = () => {
   let micActive = true;
   let firstStart = true;
 
-  function createCard(id, title, rhs) {
+  function createCard(id, title) {
     if (!cards.hasOwnProperty(id)) {
       const root = document.createElement('div');
       const titleArea = document.createElement('div');
@@ -57,17 +57,13 @@ window.onload = () => {
       const lhsDiv = document.createElement('div');
       lhsDiv.innerText = title;
 
-      const rhsDiv = document.createElement('div');
-      rhsDiv.innerText = rhs;
-      rhsDiv.style.marginLeft = "auto";
-
       titleArea.className = "title";
       titleArea.style.display = "flex";
       titleArea.style.width = "100%";
       titleArea.appendChild(lhsDiv);
-      titleArea.appendChild(rhsDiv);
 
       valueArea.innerText = "-";
+      valueArea.style['text-align'] = "start";
 
       root.classList.add("card");
       root.appendChild(titleArea);
