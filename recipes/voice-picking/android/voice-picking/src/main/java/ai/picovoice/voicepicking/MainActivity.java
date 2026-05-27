@@ -27,6 +27,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.ScrollView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -70,6 +71,7 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar startSpinner, processingSpinner;
     private View animationContainer;
     private ImageView successIcon;
+    private ScrollView scrollView;
 
     private ArrayList<PickTask> tasks;
     private Workflow workflow;
@@ -108,6 +110,8 @@ public class MainActivity extends AppCompatActivity {
         animationContainer = findViewById(R.id.animationContainer);
         successIcon = findViewById(R.id.successIcon);
 
+        scrollView = findViewById(R.id.scrollView);
+
         btnStart.setOnClickListener(v -> checkPermissionsAndStart());
         btnCancel.setOnClickListener(v -> stopDemo());
 
@@ -141,6 +145,10 @@ public class MainActivity extends AppCompatActivity {
             btnCancel.setText("Cancel Report");
 
             resetReportCards();
+
+            scrollView.post(() -> {
+                scrollView.scrollTo(0, 0);
+            });
 
             animationContainer.setVisibility(View.INVISIBLE);
         });
@@ -513,8 +521,14 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @FunctionalInterface
+    interface Predicate {
+        boolean call();
+    }
+
     static class PvSpeaker {
         private final AudioTrack audioTrack;
+        private int writtenSamples;
 
         public PvSpeaker(int sampleRate) {
             AudioAttributes audioAttributes = new AudioAttributes.Builder()
@@ -537,15 +551,38 @@ public class MainActivity extends AppCompatActivity {
                             AudioFormat.ENCODING_PCM_16BIT),
                     AudioTrack.MODE_STREAM,
                     0);
+
+            writtenSamples = 0;
         }
 
-        public void play(short[] pcm) {
+        public void play(short[] pcm, Predicate isRunning) {
             audioTrack.play();
-            audioTrack.write(pcm, 0, pcm.length);
+
+            int samplesWritten = 0;
+            while ((samplesWritten < pcm.length) && isRunning.call()) {
+                samplesWritten += audioTrack.write(
+                        pcm,
+                        samplesWritten,
+                        pcm.length - samplesWritten,
+                        AudioTrack.WRITE_NON_BLOCKING);
+                this.writtenSamples = samplesWritten;
+            }
+        }
+
+        public void stop() {
             audioTrack.stop();
+            writtenSamples = 0;
+        }
+
+        public boolean isPlaying() {
+            System.out.println("BEFORE");
+            System.out.println(audioTrack.getPlaybackHeadPosition());
+            System.out.println(this.writtenSamples);
+            return audioTrack.getPlaybackHeadPosition() < this.writtenSamples;
         }
 
         public void delete() {
+            this.stop();
             audioTrack.release();
         }
     }
@@ -604,12 +641,14 @@ public class MainActivity extends AppCompatActivity {
         }
 
         public void run(String prompt) throws Exception {
-            System.out.println("PROMPT");
-            System.out.println(prompt);
-            System.out.println("PARAMS");
-            System.out.println(synthesizeParams);
             OrcaAudio res = orca.synthesize(prompt, synthesizeParams);
-            speaker.play(res.getPcm());
+            speaker.play(res.getPcm(), () -> isRunning);
+
+            while (isRunning && speaker.isPlaying()) {
+                Thread.sleep(5);
+            }
+
+            speaker.stop();
         }
 
         public void delete() {

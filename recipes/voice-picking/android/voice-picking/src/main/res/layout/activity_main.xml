@@ -88,17 +88,18 @@
             android:visibility="gone">
 
             <ScrollView
+                android:id="@+id/scrollView"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="1"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="16dp"
+                android:layout_weight="1">
 
                 <LinearLayout
                     android:id="@+id/reportContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:paddingBottom="16dp"/>
+                    android:paddingBottom="16dp" />
             </ScrollView>
 
             <TextView
