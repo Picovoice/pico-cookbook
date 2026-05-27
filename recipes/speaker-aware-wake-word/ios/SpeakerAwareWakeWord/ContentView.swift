@@ -53,6 +53,8 @@ struct ContentView: View {
                             Text(" \(speaker.name) ")
                                 .font(.system(size: 40, weight: .bold))
                                 .foregroundColor(.white)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
                                 .background(speaker.color)
@@ -88,8 +90,11 @@ struct ContentView: View {
                                         Text(speaker.name)
                                             .font(.system(size: 16, weight: .bold))
                                             .foregroundColor(.white)
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.5)
                                             .padding(.horizontal, 16)
                                             .padding(.vertical, 8)
+                                            .frame(height: 38)
                                             .background(speaker.color)
                                             .clipShape(Capsule())
                                     }
@@ -103,6 +108,7 @@ struct ContentView: View {
                                                 .foregroundColor(brandPrimary)
                                                 .padding(.horizontal, 16)
                                                 .padding(.vertical, 8)
+                                                .frame(height: 38)
                                                 .overlay(
                                                     Capsule().stroke(brandPrimary, lineWidth: 2)
                                                 )
@@ -193,6 +199,7 @@ struct ContentView: View {
         .alert("Speaker Name", isPresented: $showingAddSpeakerAlert) {
             TextField("Speaker \(viewModel.speakers.count + 1)", text: $newSpeakerName)
                 .autocapitalization(.words)
+                .autocorrectionDisabled()
             Button("Enroll") {
                 viewModel.addSpeaker(name: newSpeakerName)
                 newSpeakerName = ""

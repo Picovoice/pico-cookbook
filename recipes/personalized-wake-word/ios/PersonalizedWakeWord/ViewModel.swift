@@ -49,6 +49,8 @@ class ViewModel: ObservableObject {
     private var testBuffer: [Int16] = []
     private var testMaxSamples: Int = 0
 
+    private let audioLock = NSLock()
+
     public func startEnrollment() {
         checkPermissionsAndStart(targetState: .enrolling)
     }
@@ -210,13 +212,18 @@ class ViewModel: ObservableObject {
     private func audioCallback(frame: [Int16]) {
         self.calculateVolume(frame: frame)
 
+        audioLock.lock()
+        defer { audioLock.unlock() }
+
+        guard let porcupine = self.porcupine else { return }
+
         if appState == .enrolling {
             enrollBuffer.removeFirst(frame.count)
             enrollBuffer.append(contentsOf: frame)
             enrollValidSamples = min(enrollMaxSamples, enrollValidSamples + frame.count)
 
             do {
-                let keywordIndex = try porcupine!.process(pcm: frame)
+                let keywordIndex = try porcupine.process(pcm: frame)
                 if keywordIndex == 0 {
                     let numEagleFrames = enrollValidSamples / EagleProfiler.frameLength
                     let startIndex = enrollMaxSamples - enrollValidSamples
@@ -247,7 +254,7 @@ class ViewModel: ObservableObject {
             testBuffer.append(contentsOf: frame)
 
             do {
-                let keywordIndex = try porcupine!.process(pcm: frame)
+                let keywordIndex = try porcupine.process(pcm: frame)
                 if keywordIndex == 0 {
                     guard let activeProfile = speakerProfile else { return }
                     let scores = try eagle!.process(
@@ -304,6 +311,9 @@ class ViewModel: ObservableObject {
 
         VoiceProcessor.instance.clearErrorListeners()
         VoiceProcessor.instance.clearFrameListeners()
+
+        audioLock.lock()
+        defer { audioLock.unlock() }
 
         porcupine?.delete()
         porcupine = nil
