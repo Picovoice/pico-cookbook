@@ -9,6 +9,7 @@ callassist
 callscreen
 checkmark
 colour
+colours
 compat
 dbfs
 declatory
