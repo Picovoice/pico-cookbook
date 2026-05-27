@@ -2,7 +2,7 @@
 
 Screen unknown calls with real-time transcription and natural voice responses, powered by on-device AI.
 
-[![Porcupine in Action](https://img.youtube.com/vi/2UZtCNGHPFM/0.jpg)](https://www.youtube.com/watch?v=2UZtCNGHPFM)
+[![Call Screen](https://img.youtube.com/vi/2UZtCNGHPFM/0.jpg)](https://www.youtube.com/watch?v=2UZtCNGHPFM)
 
 ## Components
 

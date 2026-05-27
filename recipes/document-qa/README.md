@@ -5,7 +5,7 @@ Ask questions about a local document using speech and receive spoken answers, po
 This demo indexes a local text document, retrieves the most relevant chunks using picoLLM embeddings, answers questions
 with a picoLLM chat model, and speaks the answer with Orca Streaming Text-to-Speech.
 
-[![Porcupine in Action](https://img.youtube.com/vi/zauxKghiqKE/0.jpg)](https://www.youtube.com/watch?v=zauxKghiqKE)
+[![Document Question Answering](https://img.youtube.com/vi/zauxKghiqKE/0.jpg)](https://www.youtube.com/watch?v=zauxKghiqKE)
 
 ## Components
 

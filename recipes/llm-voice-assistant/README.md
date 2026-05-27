@@ -2,6 +2,8 @@
 
 Hands-free voice assistant powered by a large language model (LLM), all voice recognition, LLM inference, and speech synthesis are on-device.
 
+[![LLM Voice Assistant](https://img.youtube.com/vi/5JkDVbkedBU/0.jpg)](https://www.youtube.com/watch?v=5JkDVbkedBU)
+
 ## Components
 
 - [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/)
