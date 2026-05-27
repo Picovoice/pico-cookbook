@@ -27,6 +27,7 @@ export enum RecipeSteps {
     STANDBY = "Standby",
     PROMPT_USER = "PromptUser",
     RECORD_USER = "RecordUser",
+    RECORD_USER_NOTES = "RecordUserNotes",
 };
 
 export enum RecipeStates {

@@ -1,7 +1,7 @@
-# Voice Picking on the Web
+# Voice Guided Field Reporting on the Web
 
-Perform fully on-device, hands-free voice picking with spoken prompts, structured intent capture for picking workflows,
-and support for complex slots and exception handling.
+Capture field reports hands-free with wake word activation, spoken prompts, structured intent capture, and free-form
+voice notes, all powered by on-device voice AI.
 
 ## Compatibility
 
@@ -19,7 +19,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ## Usage
 
-These instructions assume your current working directory is `recipes/voice-picking/web`.
+These instructions assume your current working directory is `recipes/voice-guided-field-reporting/web`.
 
 ### 1. Train a Wake Word Model
 
@@ -27,7 +27,7 @@ These instructions assume your current working directory is `recipes/voice-picki
 2. Go to Porcupine Wake Word.
 3. Enter your desired wake phrase.
 4. Click Train.
-5. Select your target platform and download the generated wake word model file (`.ppn`).
+5. Select target platform **Web (WASM)**. and download the generated wake word model file (`.ppn`).
 
 Save the downloaded file somewhere accessible on your machine. You will pass its path to the demo with `--porcupine_keyword_path`.
 
@@ -38,7 +38,7 @@ Save the downloaded file somewhere accessible on your machine. You will pass its
 3. Create an empty Rhino context.
 4. Click Import YAML in the top-right corner.
 5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
-6. Download the generated Rhino context file (`.rhn`) for your target platform.
+6. Download the generated Rhino context file (`.rhn`) for target platfor **Web (WASM)**.
 
 Save the downloaded file somewhere accessible on your machine. You will pass its path to the demo with `--rhino_context_path`.
 
@@ -78,14 +78,3 @@ yarn start
 - Go to [localhost:5000](http://localhost:5000) in your web browser.
 <!-- markdown-link-check-enable -->
 - Enter your AccessKey, then press the `Start Demo` button.
-
-#### Instructions
-
-- When asked to check digits, respond with the digits of the location you are at (ex: one nine, four two)
-- When asked to pick a number of items, respond with:
-  - `picked ${N}`, where `N` is the number of items you picked
-  - `short pick ${N}` if there are not enough items to complete the full pick
-  - `damaged item`
-  - `location empty`
-  - `I am done` to exit the workflow early
-- See `../res/context.yml` for more details

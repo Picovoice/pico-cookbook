@@ -88,6 +88,10 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
               publicPath: "models/rhino_params.pv",
               contextPath: "models/voice_picking_web.rhn",
           },
+          // [RecipeSteps.RECORD_USER_NOTES]: {
+          //     step: Steps.CHEETAH,
+          //     publicPath: "models/cheetah_params.pv",
+          // },
         },
         all_states: [
           RecipeStates.STANDBY,

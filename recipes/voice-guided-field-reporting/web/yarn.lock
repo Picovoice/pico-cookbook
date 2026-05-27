@@ -1009,6 +1009,13 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
+"@picovoice/cheetah-web@^4.0.4":
+  version "4.0.4"
+  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-web/-/cheetah-web-4.0.4.tgz#a15b6532a3c318dd6626ad4c61fedb037179fef3"
+  integrity sha512-uB3aGsl3KPslSQUt9S46fHtDhWoPucg15RcogIuEMhFe0xtRjVUKv+zbWf3xfpi7tRzso3hPiCjc9/fTy6Ea+A==
+  dependencies:
+    "@picovoice/web-utils" "=1.4.3"
+
 "@picovoice/koala-web@^3.0.0":
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/@picovoice/koala-web/-/koala-web-3.0.0.tgz#95824e583563c5385c51e84bbbc02b8818ae8eb9"

@@ -1,4 +1,4 @@
-
+import { CheetahTranscript, CheetahWorker } from '@picovoice/cheetah-web';
 import { OrcaWorker, OrcaAlignment, Orca } from '@picovoice/orca-web';
 import { PorcupineDetection, PorcupineWorker } from '@picovoice/porcupine-web';
 import { RhinoInference, RhinoWorker } from '@picovoice/rhino-web';
@@ -12,6 +12,7 @@ export enum Steps {
     ORCA = "Orca",
     PORCUPINE = "Porcupine",
     RHINO = "Rhino",
+    CHEETAH = "Cheetah",
 }
 
 export type StepOptions =
@@ -28,6 +29,10 @@ export type StepOptions =
     step: Steps.RHINO;
     publicPath?: string;
     contextPath: string;
+  }
+  | {
+    step: Steps.CHEETAH;
+    publicPath?: string;
   };
 
 export async function createStep(
@@ -53,6 +58,11 @@ export async function createStep(
                 accessKey,
                 recorder,
                 options.contextPath,
+                options.publicPath);
+        case Steps.CHEETAH:
+            return await CheetahStep.create(
+                accessKey,
+                recorder,
                 options.publicPath);
     }
 }
@@ -310,6 +320,103 @@ export class RhinoStep extends Step {
     toString(): string {
         return `${this.constructor.name} {
     ${this.rhino.constructor.name}[V${this.rhino.version}]
+}`;
+    }
+}
+
+export class CheetahStep extends Step {
+    private recorder: AINoiseSuppressedRecorder;
+    private cheetah: CheetahWorker;
+
+    private interrupter: Interrupter;
+    private transcript: String;
+    private isFinished: boolean
+
+    private constructor(recorder: AINoiseSuppressedRecorder, cheetah: CheetahWorker) {
+        super();
+        this.recorder = recorder;
+        this.cheetah = cheetah;
+        this.interrupter = {};
+        this.transcript = "";
+        this.isFinished = false;
+    }
+
+    static async create(
+        accessKey: string,
+        recorder: AINoiseSuppressedRecorder,
+        modelPath?: string,
+        endpointDurationSec: number = 1.0,
+        enableAutomaticPunctuation: boolean = true,
+        enableTextNormalization: boolean = true,
+    ) {
+        callbacks.setStatusText("Loading Cheetah");
+        const cheetah = await CheetahWorker.create(
+            accessKey,
+            (cheetahTranscript: CheetahTranscript) => step.transcriptCallback(cheetahTranscript),
+            {
+                publicPath: modelPath,
+                forceWrite: true
+            },
+            {
+                endpointDurationSec: endpointDurationSec,
+                enableAutomaticPunctuation: enableAutomaticPunctuation,
+                enableTextNormalization: enableTextNormalization,
+            }
+        );
+
+        const step = new CheetahStep(recorder, cheetah);
+        return step;
+    }
+
+    private transcriptCallback(cheetahTranscript: CheetahTranscript) {
+        this.transcript += cheetahTranscript.transcript;
+
+        if (cheetahTranscript.isEndpoint) {
+            this.isFinished = true;
+        }
+
+        if (this.interrupter.onInterrupt) {
+            this.interrupter.onInterrupt();
+        }
+    }
+
+    async run(listeningPrompt: string): Promise<String> {
+        callbacks.setStatusText(listeningPrompt);
+        callbacks.onListening(true);
+
+        try {
+            this.transcript = "";
+
+            await this.recorder.start();
+
+            while (isRunning) {
+                this.interrupter = {};
+                const frame = await this.recorder.read(this.cheetah.frameLength, this.interrupter);
+                if (this.isFinished) {
+                    break;
+                }
+
+                this.interrupter = {};
+                await this.cheetah.process(frame);
+                if (this.isFinished) {
+                    break;
+                }
+            }
+
+            return this.transcript;
+        } finally {
+            callbacks.onListening(false);
+            await this.recorder.stop();
+        }
+    }
+
+    async release() {
+        await this.cheetah.release();
+    }
+
+    toString(): string {
+        return `${this.constructor.name} {
+    ${this.cheetah.constructor.name}[V${this.cheetah.version}]
 }`;
     }
 }
