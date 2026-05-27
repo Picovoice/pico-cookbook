@@ -38,7 +38,7 @@ Save the downloaded file somewhere accessible on your machine. You will pass its
 3. Create an empty Rhino context.
 4. Click Import YAML in the top-right corner.
 5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
-6. Download the generated Rhino context file (`.rhn`) for target platfor **Web (WASM)**.
+6. Download the generated Rhino context file (`.rhn`) for target platform **Web (WASM)**.
 
 Save the downloaded file somewhere accessible on your machine. You will pass its path to the demo with `--rhino_context_path`.
 

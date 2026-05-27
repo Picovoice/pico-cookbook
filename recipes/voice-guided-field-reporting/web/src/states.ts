@@ -387,7 +387,7 @@ type RecipeReportStateParams = {
         successNextState: RecipeStates;
         failurePrompt: (x: RhinoInference | undefined) => string;
         failureNextState: RecipeStates;
-        failureNextStateKwargs: any;
+        failureNextStateParams: any;
 };
 
 class RecipeReportState extends State {
@@ -410,7 +410,7 @@ class RecipeReportState extends State {
             successNextState,
             failurePrompt,
             failureNextState,
-            failureNextStateKwargs
+            failureNextStateParams
         } = params;
 
         const task = tasks[taskIndex];
@@ -444,7 +444,7 @@ class RecipeReportState extends State {
                 state: failureNextState,
                 tasks,
                 taskIndex,
-                ...failureNextStateKwargs
+                ...failureNextStateParams
             }
         };
     }
@@ -500,7 +500,7 @@ class RecipeIdentifyUnitReportState extends RecipeReportState {
             successNextState: RecipeStates.INCIDENT_TYPE_PROMPT,
             failurePrompt: (x: RhinoInference | undefined) => `Failed to capture unit ID. Retrying...`,
             failureNextState: RecipeStates.IDENTIFY_UNIT_PROMPT,
-            failureNextStateKwargs: {
+            failureNextStateParams: {
                 inputPrompt: "I'm sorry, I didn't catch that. What is the unit ID again?"
             }
         };
@@ -558,7 +558,7 @@ class RecipeIncidentTypeReportState extends RecipeReportState {
             successNextState: RecipeStates.PATIENT_CONDITION_PROMPT,
             failurePrompt: (x: RhinoInference | undefined) => `Failed to capture incident type. Retrying...`,
             failureNextState: RecipeStates.INCIDENT_TYPE_PROMPT,
-            failureNextStateKwargs: {
+            failureNextStateParams: {
                 inputPrompt: "I'm sorry, I didn't catch that. What was the incident type again?"
             }
         };
@@ -616,7 +616,7 @@ class RecipePatientConditionReportState extends RecipeReportState {
             successNextState: RecipeStates.DESTINATION_PROMPT,
             failurePrompt: (x: RhinoInference | undefined) => `Failed to capture patient condition. Retrying...`,
             failureNextState: RecipeStates.PATIENT_CONDITION_PROMPT,
-            failureNextStateKwargs: {
+            failureNextStateParams: {
                 inputPrompt: "I'm sorry, I didn't catch that. What is the patient condition again?"
             }
         };
@@ -674,7 +674,7 @@ class RecipeDestinationReportState extends RecipeReportState {
             successNextState: RecipeStates.HANDOFF_STATUS_PROMPT,
             failurePrompt: (x: RhinoInference | undefined) => `Failed to capture destination. Retrying...`,
             failureNextState: RecipeStates.DESTINATION_PROMPT,
-            failureNextStateKwargs: {
+            failureNextStateParams: {
                 inputPrompt: "I'm sorry, I didn't catch that. What was the destination again?"
             }
         };
@@ -732,7 +732,7 @@ class RecipeHandoffStatusReportState extends RecipeReportState {
             successNextState: RecipeStates.HANDOFF_TIME_PROMPT,
             failurePrompt: (x: RhinoInference | undefined) => `Failed to capture handoff status. Retrying...`,
             failureNextState: RecipeStates.HANDOFF_STATUS_PROMPT,
-            failureNextStateKwargs: {
+            failureNextStateParams: {
                 inputPrompt: "I'm sorry, I didn't catch that. What is the handoff status again?"
             }
         };
@@ -823,7 +823,7 @@ class RecipeHandoffTimeReportState extends RecipeReportState {
             successNextState: RecipeStates.FINAL_NOTE_PROMPT,
             failurePrompt: (x: RhinoInference | undefined) => `Failed to capture handoff time. Retrying...`,
             failureNextState: RecipeStates.HANDOFF_TIME_PROMPT,
-            failureNextStateKwargs: {
+            failureNextStateParams: {
                 inputPrompt: "I'm sorry, I didn't catch that. What was the handoff time again?"
             }
         };
