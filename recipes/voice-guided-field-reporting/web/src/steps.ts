@@ -327,7 +327,9 @@ export class CheetahStep extends Step {
 
     private interrupter: Interrupter;
     private transcript: string;
-    private isFinished: boolean
+    private isFinished: boolean;
+
+    private onPartial: (partial: string) => void;
 
     private constructor(recorder: AINoiseSuppressedRecorder, cheetah: CheetahWorker) {
         super();
@@ -336,6 +338,7 @@ export class CheetahStep extends Step {
         this.interrupter = {};
         this.transcript = "";
         this.isFinished = false;
+        this.onPartial = (partial: string) => {};
     }
 
     static async create(
@@ -367,22 +370,24 @@ export class CheetahStep extends Step {
 
     private transcriptCallback(cheetahTranscript: CheetahTranscript) {
         this.transcript += cheetahTranscript.transcript;
+        this.onPartial(cheetahTranscript.transcript);
 
         if (cheetahTranscript.isEndpoint) {
             this.isFinished = true;
-        }
 
-        if (this.interrupter.onInterrupt) {
-            this.interrupter.onInterrupt();
+            if (this.interrupter.onInterrupt) {
+                this.interrupter.onInterrupt();
+            }
         }
     }
 
-    async run(listeningPrompt: string): Promise<string> {
+    async run(listeningPrompt: string, onPartial: (partial: string) => void): Promise<string> {
         callbacks.setStatusText(listeningPrompt);
         callbacks.onListening(true);
 
         try {
             this.transcript = "";
+            this.onPartial = onPartial;
 
             await this.recorder.start();
 
@@ -398,8 +403,6 @@ export class CheetahStep extends Step {
                 if (this.isFinished) {
                     break;
                 }
-
-                console.log("cheetah", this.transcript, this.isFinished);
             }
 
             return this.transcript;

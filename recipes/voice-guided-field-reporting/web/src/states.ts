@@ -781,14 +781,23 @@ class RecipeFinalNoteRecordState extends State {
         const task = tasks[taskIndex];
         const cardId = task.cardId;
 
-        const transcript = await this.step.run("Listening for additional notes");
+        let transcript = ""
+
+        const onPartial = (partial: string) => {
+            transcript += partial
+            callbacks.setCardValue(cardId, transcript);
+        }
+
+        const finalTranscript = await this.step.run("Listening for additional notes", onPartial);
 
         callbacks.setCompletedCard(cardId);
-        callbacks.setCardValue(cardId, transcript);
+        callbacks.setCardValue(cardId, finalTranscript);
+
+        await sleep(1000);
 
         return {
             next: { state: RecipeStates.COMPLETE_PROMPT, tasks, taskIndex: taskIndex + 1 },
-            outcome: transcript,
+            outcome: finalTranscript,
         };
     }
 }
@@ -798,6 +807,9 @@ class RecipeCompletePromptState extends RecipePromptState {
         prompt: string = "Field report recorded.",
     ): Promise<Transition> {
         await this.runPrompt(prompt)
+
+        await sleep(1000);
+
         return null;
     }
 }
