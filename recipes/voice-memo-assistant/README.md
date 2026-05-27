@@ -2,7 +2,7 @@
 
 Record, rewrite, summarize, and replay voice memos hands-free, powered by on-device voice AI.
 
-[![Porcupine in Action](https://img.youtube.com/vi/su_RxNBpuHg/0.jpg)](https://www.youtube.com/watch?v=su_RxNBpuHg)
+[![Voice Memo Assistant](https://img.youtube.com/vi/su_RxNBpuHg/0.jpg)](https://www.youtube.com/watch?v=su_RxNBpuHg)
 
 ## Components
 
