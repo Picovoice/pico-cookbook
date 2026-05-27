@@ -2,7 +2,7 @@
 
 Screen unknown calls with real-time transcription, natural voice responses, and on-device LLM reasoning. The assistant
 answers an incoming call on behalf of the user, asks the caller to identify themselves and explain why they are calling,
-transcribes the caller’s response, and uses a local LLM to extract the caller’s identity and reason for calling.
+transcribes the caller's response, and extracts the caller's identity and reason for calling.
 
 If the caller does not provide enough information, the assistant follows up automatically and asks for the missing
 details. Once it has enough context, it summarizes the call for the user and lets them choose what to do next, such as:
