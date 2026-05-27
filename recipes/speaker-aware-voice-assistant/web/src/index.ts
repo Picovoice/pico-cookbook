@@ -44,7 +44,7 @@ export type DemoCallbacks = {
   onEnrollProgress: (progress: number) => void;
   onEnrollComplete: (profile: EagleProfile) => void;
   onWakeWordRecognized: () => void;
-  beforeInferenceResponse: () => Promise<void>;
+  beforeInferenceResponse: (width: number) => Promise<void>;
   onWordSpoken: (word: string) => void;
   afterInferenceResponse: () => void;
   onError: (error: string) => void;
@@ -79,7 +79,7 @@ let callbacks: DemoCallbacks = {
   onEnrollProgress: (_) => undefined,
   onEnrollComplete: (_) => undefined,
   onWakeWordRecognized: () => undefined,
-  beforeInferenceResponse: async () => undefined,
+  beforeInferenceResponse: async (_) => undefined,
   onWordSpoken: (_) => undefined,
   afterInferenceResponse: () => undefined,
   onError: (_) => undefined
@@ -248,6 +248,19 @@ const porcupineKeywordCallback = async (): Promise<void> => {
   }
 };
 
+const widthOfText = (text:string, fontStyle:string, letterSpacingPx:number): number => {
+  const canvas = new OffscreenCanvas(1, 1);
+  const ctx = canvas.getContext("2d");
+
+  if (ctx) {
+    ctx.font = fontStyle;
+    console.log(letterSpacingPx);
+    return ctx.measureText(text).width + (text.length * letterSpacingPx);
+  }
+
+  return 450;
+}
+
 const rhinoInferenceCallback = async (
   inference: RhinoInference
 ): Promise<void> => {
@@ -271,7 +284,6 @@ const rhinoInferenceCallback = async (
     callbacks.onVolume(0);
 
     let similarities = await eagle.process(paddedPcmBuffer, enrolledProfiles.map(x => x.profile));
-    callbacks.beforeInferenceResponse();
 
     let spokenText;
     if (similarities == null) {
@@ -309,7 +321,14 @@ const rhinoInferenceCallback = async (
       }
     }
 
-    const promise = callbacks.beforeInferenceResponse();
+    const promise = callbacks.beforeInferenceResponse(
+      widthOfText(
+        spokenText,
+        "16px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+        0.4
+      )
+    );
+
     await synthesizeAndPlayback(
         orca!,
         audio!,

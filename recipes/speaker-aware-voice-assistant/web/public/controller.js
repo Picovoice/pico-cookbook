@@ -149,7 +149,7 @@ window.onload = () => {
 
       hudOptions.style.opacity = '1';
     },
-    beforeInferenceResponse: async () => {
+    beforeInferenceResponse: async (width) => {
       noticeText.style.opacity = '0';
       await Picovoice.sleep(200);
       noticeText.innerHTML = "&nbsp;";
@@ -159,6 +159,7 @@ window.onload = () => {
       await Picovoice.sleep(400);
       hudOptions.style.display = 'none';
 
+      noticeText.style.width = `${width}px`;
       noticeText.style.textAlign = "left";
     },
     onWordSpoken: (word) => {
@@ -184,6 +185,7 @@ window.onload = () => {
       await Picovoice.sleep(200);
 
       noticeText.style.textAlign = "";
+      noticeText.style.width = "";
       noticeText.innerText = "Say the wake word...";
 
       noticeText.style.opacity = '1';
@@ -230,8 +232,11 @@ window.onload = () => {
   };
 
   btnClearAll.onclick = () => {
+    pendingSpeakerName = '';
+    pendingSpeakerRole = '';
     speakerProfiles = [];
     speakerNames = [];
+    speakerRoles = [];
     updateUIForState('IDLE');
   };
 
@@ -257,7 +262,9 @@ window.onload = () => {
 
     nameModalOverlay.classList.remove('hidden');
     if (pendingSpeakerName.length == 0) {
-      userButton.onclick();
+      pendingSpeakerRole = "User";
+      userButton.setAttribute("selected", "");
+      adminButton.removeAttribute("selected", "");
     }
 
     speakerNameInput.focus();
