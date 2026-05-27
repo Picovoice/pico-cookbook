@@ -28,7 +28,7 @@ Copy your downloaded wake word file into the assets folder, located at `/src/mai
 
 ### 3. Add Wake Word and AccessKey to MainActivity.java
 
-Open the project in Android Studio and open `MainActivity.java`. Change the value of the `ACCESS_KEY` variable to your Picovoice AccessKey and the value of `WAKE_WORD_FILE` to the name of the file you copied into the assets folder.
+Open the project in Android Studio and open `MainActivity.java`. Change the value of the `ACCESS_KEY` variable to your Picovoice AccessKey and the value of `WAKE_WORD_FILE` to the name of the file you copied into the `assets` folder.
 
 ### 4. Run the Demo with Android Studio
 

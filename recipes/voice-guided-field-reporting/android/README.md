@@ -45,7 +45,7 @@ Run the setup script to download and copy the models for [Cheetah Streaming Spee
 and [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/).
 
 It will also copy the models provided for [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/) and
-[Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) to the assets folder.
+[Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) to the `assets` folder.
 
 Lastly, it will place your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable
 in [MainActivity.java](voice-guided-field-reporting/src/main/java/ai/picovoice/voiceguidedfieldreporting/MainActivity.java).
