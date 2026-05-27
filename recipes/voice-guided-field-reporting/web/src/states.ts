@@ -2,25 +2,23 @@ import { RhinoInference } from '@picovoice/rhino-web';
 
 import { AINoiseSuppressedRecorder } from './ai_noise_suppressed_recorder';
 import { AudioStream } from './audio_stream';
-import { createStep, Step, StepOptions, OrcaStep, PorcupineStep, RhinoStep } from './steps';
+import { createStep, Step, StepOptions, CheetahStep, OrcaStep, PorcupineStep, RhinoStep } from './steps';
 
 import { callbacks, isRunning, sleep } from './config';
 
 type Transition = {
-    outcome?: RhinoInference,
+    outcome?: RhinoInference | string,
     next: StateOptions,
 } | null;
 
 type Outcome = {
     state: RecipeStates,
-    outcome?: RhinoInference,
+    outcome?: RhinoInference | string,
 };
 
 export type PickTask = {
-    locationName: string;
-    checkDigit: string;
-    itemName: string;
-    quantity: number;
+    cardId: string;
+    cardTitle: string;
 };
 
 export enum RecipeSteps {
@@ -91,33 +89,33 @@ export abstract class State {
             case RecipeStates.STANDBY:
                 return new RecipeStandbyState(step as PorcupineStep);
             case RecipeStates.IDENTIFY_UNIT_PROMPT:
-                return new IdentifyUnitPromptState(step as OrcaStep);
+                return new RecipeIdentifyUnitPromptState(step as OrcaStep);
             case RecipeStates.IDENTIFY_UNIT_REPORT:
-                return new IdentifyUnitReportState(step as RhinoStep);
+                return new RecipeIdentifyUnitReportState(step as RhinoStep);
             case RecipeStates.INCIDENT_TYPE_PROMPT:
-                return new IncidentTypePromptState(step as OrcaStep);
+                return new RecipeIncidentTypePromptState(step as OrcaStep);
             case RecipeStates.INCIDENT_TYPE_REPORT:
-                return new IncidentTypeReportState(step as RhinoStep);
+                return new RecipeIncidentTypeReportState(step as RhinoStep);
             case RecipeStates.PATIENT_CONDITION_PROMPT:
-                return new PatientConditionPromptState(step as OrcaStep);
+                return new RecipePatientConditionPromptState(step as OrcaStep);
             case RecipeStates.PATIENT_CONDITION_REPORT:
-                return new PatientConditionReportState(step as RhinoStep);
+                return new RecipePatientConditionReportState(step as RhinoStep);
             case RecipeStates.DESTINATION_PROMPT:
-                return new DestinationPromptState(step as OrcaStep);
+                return new RecipeDestinationPromptState(step as OrcaStep);
             case RecipeStates.DESTINATION_REPORT:
-                return new DestinationReportState(step as RhinoStep);
+                return new RecipeDestinationReportState(step as RhinoStep);
             case RecipeStates.HANDOFF_STATUS_PROMPT:
-                return new HandoffStatusPromptState(step as OrcaStep);
+                return new RecipeHandoffStatusPromptState(step as OrcaStep);
             case RecipeStates.HANDOFF_STATUS_REPORT:
-                return new HandoffStatusReportState(step as RhinoStep);
+                return new RecipeHandoffStatusReportState(step as RhinoStep);
             case RecipeStates.HANDOFF_TIME_PROMPT:
-                return new HandoffTimePromptState(step as OrcaStep);
+                return new RecipeHandoffTimePromptState(step as OrcaStep);
             case RecipeStates.HANDOFF_TIME_REPORT:
-                return new HandoffTimeReportState(step as RhinoStep);
+                return new RecipeHandoffTimeReportState(step as RhinoStep);
             case RecipeStates.FINAL_NOTE_PROMPT:
-                return new FinalNotePromptState(step as OrcaStep);
+                return new RecipeFinalNotePromptState(step as OrcaStep);
             case RecipeStates.FINAL_NOTE_REPORT:
-                return new FinalNoteReportState(step as CheetahStep);
+                return new RecipeFinalNoteRecordState(step as CheetahStep);
             case RecipeStates.COMPLETE_PROMPT:
                 return new RecipeCompletePromptState(step as OrcaStep);
         }
@@ -195,59 +193,59 @@ export class Workflow {
                     transition = await state.run(current_state.tasks);
                     break;
                 } case RecipeStates.IDENTIFY_UNIT_PROMPT: {
-                    const state = this.states[current_state.state] as IdentifyUnitPromptState;
+                    const state = this.states[current_state.state] as RecipeIdentifyUnitPromptState;
                     transition = await state.run(current_state.tasks, current_state.taskIndex, current_state.inputPrompt);
                     break;
                 } case RecipeStates.IDENTIFY_UNIT_REPORT: {
-                    const state = this.states[current_state.state] as IdentifyUnitReportState;
+                    const state = this.states[current_state.state] as RecipeIdentifyUnitReportState;
                     transition = await state.run(current_state.tasks, current_state.taskIndex);
                     break;
                 } case RecipeStates.INCIDENT_TYPE_PROMPT: {
-                    const state = this.states[current_state.state] as IncidentTypePrompt;
+                    const state = this.states[current_state.state] as RecipeIncidentTypePromptState;
                     transition = await state.run(current_state.tasks, current_state.taskIndex, current_state.inputPrompt);
                     break;
                 } case RecipeStates.INCIDENT_TYPE_REPORT: {
-                    const state = this.states[current_state.state] as IncidentTypeReport;
+                    const state = this.states[current_state.state] as RecipeIncidentTypeReportState;
                     transition = await state.run(current_state.tasks, current_state.taskIndex);
                     break;
                 } case RecipeStates.PATIENT_CONDITION_PROMPT: {
-                    const state = this.states[current_state.state] as PatientConditionPrompt;
+                    const state = this.states[current_state.state] as RecipePatientConditionPromptState;
                     transition = await state.run(current_state.tasks, current_state.taskIndex, current_state.inputPrompt);
                     break;
                 } case RecipeStates.PATIENT_CONDITION_REPORT: {
-                    const state = this.states[current_state.state] as PatientConditionReport;
+                    const state = this.states[current_state.state] as RecipePatientConditionReportState;
                     transition = await state.run(current_state.tasks, current_state.taskIndex);
                     break;
                 } case RecipeStates.DESTINATION_PROMPT: {
-                    const state = this.states[current_state.state] as DestinationPrompt;
+                    const state = this.states[current_state.state] as RecipeDestinationPromptState;
                     transition = await state.run(current_state.tasks, current_state.taskIndex, current_state.inputPrompt);
                     break;
                 } case RecipeStates.DESTINATION_REPORT: {
-                    const state = this.states[current_state.state] as DestinationReport;
+                    const state = this.states[current_state.state] as RecipeDestinationReportState;
                     transition = await state.run(current_state.tasks, current_state.taskIndex);
                     break;
                 } case RecipeStates.HANDOFF_STATUS_PROMPT: {
-                    const state = this.states[current_state.state] as HandoffStatusPrompt;
+                    const state = this.states[current_state.state] as RecipeHandoffStatusPromptState;
                     transition = await state.run(current_state.tasks, current_state.taskIndex, current_state.inputPrompt);
                     break;
                 } case RecipeStates.HANDOFF_STATUS_REPORT: {
-                    const state = this.states[current_state.state] as HandoffStatusReport;
+                    const state = this.states[current_state.state] as RecipeHandoffStatusReportState;
                     transition = await state.run(current_state.tasks, current_state.taskIndex);
                     break;
                 } case RecipeStates.HANDOFF_TIME_PROMPT: {
-                    const state = this.states[current_state.state] as HandoffTimePrompt;
+                    const state = this.states[current_state.state] as RecipeHandoffTimePromptState;
                     transition = await state.run(current_state.tasks, current_state.taskIndex, current_state.inputPrompt);
                     break;
                 } case RecipeStates.HANDOFF_TIME_REPORT: {
-                    const state = this.states[current_state.state] as HandoffTimeReport;
+                    const state = this.states[current_state.state] as RecipeHandoffTimeReportState;
                     transition = await state.run(current_state.tasks, current_state.taskIndex);
                     break;
                 } case RecipeStates.FINAL_NOTE_PROMPT: {
-                    const state = this.states[current_state.state] as FinalNotePrompt;
+                    const state = this.states[current_state.state] as RecipeFinalNotePromptState;
                     transition = await state.run(current_state.tasks, current_state.taskIndex, current_state.inputPrompt);
                     break;
                 } case RecipeStates.FINAL_NOTE_REPORT: {
-                    const state = this.states[current_state.state] as FinalNoteReport;
+                    const state = this.states[current_state.state] as RecipeFinalNoteRecordState;
                     transition = await state.run(current_state.tasks, current_state.taskIndex);
                     break;
                 } case RecipeStates.COMPLETE_PROMPT: {
@@ -307,7 +305,7 @@ class RecipeStandbyState extends State {
         }
 
         return { 
-            next: { state: RecipeStates.TASK_LOCATION_PROMPT, tasks, taskIndex: 0 }
+            next: { state: RecipeStates.IDENTIFY_UNIT_PROMPT, tasks, taskIndex: 0 }
         };
     }
 }
@@ -326,6 +324,20 @@ class RecipePromptState extends State {
     }
 }
 
+type RecipeReportStateParams = {
+        tasks: PickTask[];
+        taskIndex: number;
+
+        listeningPrompt: string;
+        expectedIntent: string;
+        successPrompt: (x: RhinoInference) => string;
+        successOutcome: (x: RhinoInference) => string;
+        successNextState: RecipeStates;
+        failurePrompt: (x: RhinoInference | undefined) => string;
+        failureNextState: RecipeStates;
+        failureNextStateKwargs: any;
+};
+
 class RecipeReportState extends State {
     private step: RhinoStep;
 
@@ -334,56 +346,53 @@ class RecipeReportState extends State {
         this.step = step;
     }
 
-    async runReport(prompt: string) {
+    async runReport(params: RecipeReportStateParams) {
+        const {
+            tasks,
+            taskIndex,
+            listeningPrompt,
+            expectedIntent,
+            successPrompt,
+            successOutcome,
+            successNextState,
+            failurePrompt,
+            failureNextState,
+            failureNextStateKwargs
+        } = params;
 
-    //     const task = tasks[taskIndex];
-    //     const cardId = `location-${taskIndex}`;
+        const task = tasks[taskIndex];
+        const cardId = task.cardId;
 
-    //     callbacks.setCardValue(cardId, "...");
-    //     const inference = await this.step.run("Listening for location confirmation...");
+        callbacks.setCardValue(cardId, "...");
+        const inference = await this.step.run(listeningPrompt);
 
-    //     const isValidLocation =
-    //         inference &&
-    //         inference.isUnderstood &&
-    //         inference.intent == 'confirmLocation' &&
-    //         inference.slots!.checkDigit == task.checkDigit;
+        const isValidInference =
+            inference &&
+            inference.isUnderstood &&
+            inference.intent == expectedIntent;
 
-    //     if (isValidLocation) {
-    //         callbacks.setStatusText(`Location ${inference.slots!.checkDigit} confirmed.`);
-    //         callbacks.setCompletedCard(cardId);
-    //         callbacks.setCardValue(cardId, `${inference.slots!.checkDigit}`);
+        if (isValidInference) {
+            callbacks.setStatusText(successPrompt(inference!));
+            callbacks.setCompletedCard(cardId);
+            callbacks.setCardValue(cardId, successOutcome(inference!));
 
-    //         await sleep(1000);
+            await sleep(1000);
 
-    //         return {
-    //             outcome: inference,
-    //             next: { state: RecipeStates.TASK_PICK_PROMPT, tasks, taskIndex, }
-    //         };
-    //     }
+            return {
+                outcome: inference,
+                next: { state: successNextState, tasks, taskIndex: taskIndex + 1 }
+            };
+        }
 
-    //     let promptList = [];
-    //     if (inference && inference.isUnderstood && inference.intent == 'confirmLocation') {
-    //         promptList.push(`Location check digit ${inference.slots!.checkDigit} does not match. Retrying...`);
-    //     } else {
-    //         promptList.push("Failed to capture location confirmation. Retrying...");
-    //     }
-
-    //     promptList.push(`Please confirm location for ${task.locationName}. Check digits are ${task.checkDigit}.`);
-
-    //     return {
-    //         outcome: inference,
-    //         next: {
-    //             state: RecipeStates.TASK_LOCATION_PROMPT,
-    //             tasks,
-    //             taskIndex,
-    //             inputPrompt: promptList,
-    //         }
-    //     };
-    // }
-
-
-        callbacks.setStatusText(prompt);
-        await this.step.run(prompt);
+        callbacks.setStatusText(failurePrompt(inference));
+        return {
+            next: {
+                state: failureNextState,
+                tasks,
+                taskIndex,
+                ...failureNextStateKwargs
+            }
+        };
     }
 }
 
@@ -394,7 +403,7 @@ class RecipeIdentifyUnitPromptState extends RecipePromptState {
         inputPrompt?: string | string[],
     ): Promise<Transition> {
         const task = tasks[taskIndex];
-        const cardId = `location-${taskIndex}`;
+        const cardId = task.cardId;
         callbacks.setActiveCard(cardId);
 
         if (!inputPrompt) {
@@ -417,19 +426,12 @@ class RecipeIdentifyUnitPromptState extends RecipePromptState {
 }
 
 class RecipeIdentifyUnitReportState extends RecipeReportState {
-    private step: RhinoStep;
-
-    constructor(step: RhinoStep) {
-        super();
-        this.step = step;
-    }
-
     async run(
         tasks: PickTask[],
         taskIndex: number,
     ): Promise<Transition> {
         const task = tasks[taskIndex];
-        const cardId = `location-${taskIndex}`;
+        const cardId = task.cardId;
         callbacks.setActiveCard(cardId);
 
         const params = {
@@ -438,12 +440,13 @@ class RecipeIdentifyUnitReportState extends RecipeReportState {
 
             listeningPrompt: "Listening for unit ID",
             expectedIntent: 'identifyUnit',
-            successPrompt: (x: RhinoInference) => `Unit ID is ${x['slots']['unitId']}.`,
+            successPrompt: (x: RhinoInference) => `Unit ID is ${x.slots!.unitId}.`,
+            successOutcome: (x: RhinoInference) => `${x.slots!.unitId}`,
             successNextState: RecipeStates.INCIDENT_TYPE_PROMPT,
-            failurePrompt: (x: RhinoInference) => `Failed to capture unit ID. Retrying...`,
+            failurePrompt: (x: RhinoInference | undefined) => `Failed to capture unit ID. Retrying...`,
             failureNextState: RecipeStates.IDENTIFY_UNIT_PROMPT,
             failureNextStateKwargs: {
-                prompt: "I'm sorry, I didn't catch that. What is the unit ID again?"
+                inputPrompt: "I'm sorry, I didn't catch that. What is the unit ID again?"
             }
         };
         return await this.runReport(params);
@@ -457,7 +460,7 @@ class RecipeIncidentTypePromptState extends RecipePromptState {
         inputPrompt?: string | string[],
     ): Promise<Transition> {
         const task = tasks[taskIndex];
-        const cardId = `location-${taskIndex}`;
+        const cardId = task.cardId;
         callbacks.setActiveCard(cardId);
 
         if (!inputPrompt) {
@@ -480,19 +483,12 @@ class RecipeIncidentTypePromptState extends RecipePromptState {
 }
 
 class RecipeIncidentTypeReportState extends RecipeReportState {
-    private step: RhinoStep;
-
-    constructor(step: RhinoStep) {
-        super();
-        this.step = step;
-    }
-
     async run(
         tasks: PickTask[],
         taskIndex: number,
     ): Promise<Transition> {
         const task = tasks[taskIndex];
-        const cardId = `location-${taskIndex}`;
+        const cardId = task.cardId;
         callbacks.setActiveCard(cardId);
 
         const params = {
@@ -501,15 +497,299 @@ class RecipeIncidentTypeReportState extends RecipeReportState {
 
             listeningPrompt: "Listening for incident type",
             expectedIntent: 'reportIncidentType',
-            successPrompt: (x: RhinoInference) => `Incident type is ${x['slots']['incidentType']}.`,
+            successPrompt: (x: RhinoInference) => `Incident type is ${x.slots!.incidentType}.`,
+            successOutcome: (x: RhinoInference) => `${x.slots!.incidentType}`,
             successNextState: RecipeStates.PATIENT_CONDITION_PROMPT,
-            failurePrompt: (x: RhinoInference) => `Failed to capture incident type. Retrying...`,
+            failurePrompt: (x: RhinoInference | undefined) => `Failed to capture incident type. Retrying...`,
             failureNextState: RecipeStates.INCIDENT_TYPE_PROMPT,
             failureNextStateKwargs: {
-                prompt: "I'm sorry, I didn't catch that. What was the incident type again?"
+                inputPrompt: "I'm sorry, I didn't catch that. What was the incident type again?"
             }
         };
         return await this.runReport(params);
+    }
+}
+
+class RecipePatientConditionPromptState extends RecipePromptState {
+    async run(
+        tasks: PickTask[],
+        taskIndex: number,
+        inputPrompt?: string | string[],
+    ): Promise<Transition> {
+        const task = tasks[taskIndex];
+        const cardId = task.cardId;
+        callbacks.setActiveCard(cardId);
+
+        if (!inputPrompt) {
+            inputPrompt = ["What is the patient condition?"];
+        } else if (!Array.isArray(inputPrompt)) {
+            inputPrompt = [inputPrompt];
+        }
+
+        for (const prompt of inputPrompt) {
+            if (!isRunning)
+                break;
+
+            await this.runPrompt(prompt);
+        }
+
+        return {
+            next: { state: RecipeStates.PATIENT_CONDITION_REPORT, tasks, taskIndex }
+        };
+    }
+}
+
+class RecipePatientConditionReportState extends RecipeReportState {
+    async run(
+        tasks: PickTask[],
+        taskIndex: number,
+    ): Promise<Transition> {
+        const task = tasks[taskIndex];
+        const cardId = task.cardId;
+        callbacks.setActiveCard(cardId);
+
+        const params = {
+            tasks,
+            taskIndex,
+
+            listeningPrompt: "Listening for patient condition",
+            expectedIntent: 'reportPatientCondition',
+            successPrompt: (x: RhinoInference) => `Patient condition is ${x.slots!.patientCondition}.`,
+            successOutcome: (x: RhinoInference) => `${x.slots!.patientCondition}`,
+            successNextState: RecipeStates.DESTINATION_PROMPT,
+            failurePrompt: (x: RhinoInference | undefined) => `Failed to capture patient condition. Retrying...`,
+            failureNextState: RecipeStates.PATIENT_CONDITION_PROMPT,
+            failureNextStateKwargs: {
+                inputPrompt: "I'm sorry, I didn't catch that. What is the patient condition again?"
+            }
+        };
+        return await this.runReport(params);
+    }
+}
+
+class RecipeDestinationPromptState extends RecipePromptState {
+    async run(
+        tasks: PickTask[],
+        taskIndex: number,
+        inputPrompt?: string | string[],
+    ): Promise<Transition> {
+        const task = tasks[taskIndex];
+        const cardId = task.cardId;
+        callbacks.setActiveCard(cardId);
+
+        if (!inputPrompt) {
+            inputPrompt = ["What was the destination?"];
+        } else if (!Array.isArray(inputPrompt)) {
+            inputPrompt = [inputPrompt];
+        }
+
+        for (const prompt of inputPrompt) {
+            if (!isRunning)
+                break;
+
+            await this.runPrompt(prompt);
+        }
+
+        return {
+            next: { state: RecipeStates.DESTINATION_REPORT, tasks, taskIndex }
+        };
+    }
+}
+
+class RecipeDestinationReportState extends RecipeReportState {
+    async run(
+        tasks: PickTask[],
+        taskIndex: number,
+    ): Promise<Transition> {
+        const task = tasks[taskIndex];
+        const cardId = task.cardId;
+        callbacks.setActiveCard(cardId);
+
+        const params = {
+            tasks,
+            taskIndex,
+
+            listeningPrompt: "Listening for destination",
+            expectedIntent: 'reportDestination',
+            successPrompt: (x: RhinoInference) => `Destination is ${x.slots!.destination}.`,
+            successOutcome: (x: RhinoInference) => `${x.slots!.destination}`,
+            successNextState: RecipeStates.HANDOFF_STATUS_PROMPT,
+            failurePrompt: (x: RhinoInference | undefined) => `Failed to capture destination. Retrying...`,
+            failureNextState: RecipeStates.DESTINATION_PROMPT,
+            failureNextStateKwargs: {
+                inputPrompt: "I'm sorry, I didn't catch that. What was the destination again?"
+            }
+        };
+        return await this.runReport(params);
+    }
+}
+
+class RecipeHandoffStatusPromptState extends RecipePromptState {
+    async run(
+        tasks: PickTask[],
+        taskIndex: number,
+        inputPrompt?: string | string[],
+    ): Promise<Transition> {
+        const task = tasks[taskIndex];
+        const cardId = task.cardId;
+        callbacks.setActiveCard(cardId);
+
+        if (!inputPrompt) {
+            inputPrompt = ["What is the handoff status?"];
+        } else if (!Array.isArray(inputPrompt)) {
+            inputPrompt = [inputPrompt];
+        }
+
+        for (const prompt of inputPrompt) {
+            if (!isRunning)
+                break;
+
+            await this.runPrompt(prompt);
+        }
+
+        return {
+            next: { state: RecipeStates.HANDOFF_STATUS_REPORT, tasks, taskIndex }
+        };
+    }
+}
+
+class RecipeHandoffStatusReportState extends RecipeReportState {
+    async run(
+        tasks: PickTask[],
+        taskIndex: number,
+    ): Promise<Transition> {
+        const task = tasks[taskIndex];
+        const cardId = task.cardId;
+        callbacks.setActiveCard(cardId);
+
+        const params = {
+            tasks,
+            taskIndex,
+
+            listeningPrompt: "Listening for handoff status",
+            expectedIntent: 'reportHandoffStatus',
+            successPrompt: (x: RhinoInference) => `Handoff status is ${x.slots!.handoffStatus}.`,
+            successOutcome: (x: RhinoInference) => `${x.slots!.handoffStatus}`,
+            successNextState: RecipeStates.HANDOFF_TIME_PROMPT,
+            failurePrompt: (x: RhinoInference | undefined) => `Failed to capture handoff status. Retrying...`,
+            failureNextState: RecipeStates.HANDOFF_STATUS_PROMPT,
+            failureNextStateKwargs: {
+                inputPrompt: "I'm sorry, I didn't catch that. What is the handoff status again?"
+            }
+        };
+        return await this.runReport(params);
+    }
+}
+
+class RecipeHandoffTimePromptState extends RecipePromptState {
+    async run(
+        tasks: PickTask[],
+        taskIndex: number,
+        inputPrompt?: string | string[],
+    ): Promise<Transition> {
+        const task = tasks[taskIndex];
+        const cardId = task.cardId;
+        callbacks.setActiveCard(cardId);
+
+        if (!inputPrompt) {
+            inputPrompt = ["What is the handoff time?"];
+        } else if (!Array.isArray(inputPrompt)) {
+            inputPrompt = [inputPrompt];
+        }
+
+        for (const prompt of inputPrompt) {
+            if (!isRunning)
+                break;
+
+            await this.runPrompt(prompt);
+        }
+
+        return {
+            next: { state: RecipeStates.HANDOFF_TIME_REPORT, tasks, taskIndex }
+        };
+    }
+}
+
+class RecipeHandoffTimeReportState extends RecipeReportState {
+    async run(
+        tasks: PickTask[],
+        taskIndex: number,
+    ): Promise<Transition> {
+        const task = tasks[taskIndex];
+        const cardId = task.cardId;
+        callbacks.setActiveCard(cardId);
+
+        // TODO: Handle validity
+
+        const params = {
+            tasks,
+            taskIndex,
+
+            listeningPrompt: "Listening for handoff time",
+            expectedIntent: 'reportHandoffTime',
+            successPrompt: (x: RhinoInference) => `Handoff time is ${x.slots!.hour} ${x.slots!.minute} ${x.slots!.meridiem}`,
+            successOutcome: (x: RhinoInference) => `${x.slots!.hour} ${x.slots!.minute} ${x.slots!.meridiem}`,
+            successNextState: RecipeStates.FINAL_NOTE_PROMPT,
+            failurePrompt: (x: RhinoInference | undefined) => `Failed to capture handoff time. Retrying...`,
+            failureNextState: RecipeStates.HANDOFF_TIME_PROMPT,
+            failureNextStateKwargs: {
+                inputPrompt: "I'm sorry, I didn't catch that. What was the handoff time again?"
+            }
+        };
+        return await this.runReport(params);
+    }
+}
+
+class RecipeFinalNotePromptState extends RecipePromptState {
+    async run(
+        tasks: PickTask[],
+        taskIndex: number,
+        inputPrompt?: string | string[],
+    ): Promise<Transition> {
+        const task = tasks[taskIndex];
+        const cardId = task.cardId;
+        callbacks.setActiveCard(cardId);
+
+        if (!inputPrompt) {
+            inputPrompt = ["Please provide additional notes."];
+        } else if (!Array.isArray(inputPrompt)) {
+            inputPrompt = [inputPrompt];
+        }
+
+        for (const prompt of inputPrompt) {
+            if (!isRunning)
+                break;
+
+            await this.runPrompt(prompt);
+        }
+
+        return {
+            next: { state: RecipeStates.FINAL_NOTE_REPORT, tasks, taskIndex }
+        };
+    }
+}
+
+class RecipeFinalNoteRecordState extends State {
+    private step: CheetahStep;
+
+    constructor(step: CheetahStep) {
+        super();
+        this.step = step;
+    }
+
+    async run(tasks: PickTask[], taskIndex: number): Promise<Transition> {
+        const task = tasks[taskIndex];
+        const cardId = task.cardId;
+
+        const transcript = await this.step.run("Listening for additional notes");
+
+        callbacks.setCompletedCard(cardId);
+        callbacks.setCardValue(cardId, transcript);
+
+        return {
+            next: { state: RecipeStates.COMPLETE_PROMPT, tasks, taskIndex: taskIndex + 1 },
+            outcome: transcript,
+        };
     }
 }
 

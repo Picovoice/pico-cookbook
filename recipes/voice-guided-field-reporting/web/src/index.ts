@@ -35,23 +35,33 @@ const callbackAudioEngine: PvEngine = {
 
 const TASKS: PickTask[] = [
   {
-    locationName: "bin bravo",
-    checkDigit: "four two",
-    itemName: "blue widgets",
-    quantity: 3
+    cardId: "IdentifyUnit",
+    cardTitle: "Identify Unit"
   },
   {
-    locationName: "bin delta",
-    checkDigit: "five seven",
-    itemName: "battery packs",
-    quantity: 5
+    cardId: "IncidentType",
+    cardTitle: "Incident Type"
   },
   {
-    locationName: "zone one",
-    checkDigit: "one nine",
-    itemName: "safety gloves",
-    quantity: 1
-  }
+    cardId: "PatientCondition",
+    cardTitle: "Patient Condition"
+  },
+  {
+    cardId: "Destination",
+    cardTitle: "Destination"
+  },
+  {
+    cardId: "HandoffStatus",
+    cardTitle: "Handoff Status"
+  },
+  {
+    cardId: "HandoffTime",
+    cardTitle: "Handoff Time"
+  },
+  {
+    cardId: "FinalNote",
+    cardTitle: "Final Note"
+  },
 ];
 
 const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
@@ -59,11 +69,8 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
 
   callbacks.clearStatus();
 
-  let i = 0;
   for (const task of TASKS) {
-    callbacks.createCard(`location-${i}`, "CONFIRM LOCATION", `Location: ${task.checkDigit}`);
-    callbacks.createCard(`pick-${i}`, "PICK ITEM", `Item: ${task.itemName} (${task.quantity})`);
-    i += 1;
+    callbacks.createCard(task.cardId, task.cardTitle, "");
   }
 
   try {
@@ -88,26 +95,46 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
               publicPath: "models/rhino_params.pv",
               contextPath: "models/voice_picking_web.rhn",
           },
-          // [RecipeSteps.RECORD_USER_NOTES]: {
-          //     step: Steps.CHEETAH,
-          //     publicPath: "models/cheetah_params.pv",
-          // },
+          [RecipeSteps.TRANSCRIBE_USER]: {
+              step: Steps.CHEETAH,
+              publicPath: "models/cheetah_params.pv",
+          },
         },
         all_states: [
           RecipeStates.STANDBY,
-          RecipeStates.TASK_LOCATION_PROMPT,
-          RecipeStates.TASK_LOCATION_REPORT,
-          RecipeStates.TASK_PICK_PROMPT,
-          RecipeStates.TASK_PICK_REPORT,
+          RecipeStates.IDENTIFY_UNIT_PROMPT,
+          RecipeStates.IDENTIFY_UNIT_REPORT,
+          RecipeStates.INCIDENT_TYPE_PROMPT,
+          RecipeStates.INCIDENT_TYPE_REPORT,
+          RecipeStates.PATIENT_CONDITION_PROMPT,
+          RecipeStates.PATIENT_CONDITION_REPORT,
+          RecipeStates.DESTINATION_PROMPT,
+          RecipeStates.DESTINATION_REPORT,
+          RecipeStates.HANDOFF_STATUS_PROMPT,
+          RecipeStates.HANDOFF_STATUS_REPORT,
+          RecipeStates.HANDOFF_TIME_PROMPT,
+          RecipeStates.HANDOFF_TIME_REPORT,
+          RecipeStates.FINAL_NOTE_PROMPT,
+          RecipeStates.FINAL_NOTE_REPORT,
           RecipeStates.COMPLETE_PROMPT,
         ],
         state_creator: State.create,
         state_steps: {
           [RecipeStates.STANDBY]: RecipeSteps.STANDBY,
-          [RecipeStates.TASK_LOCATION_PROMPT]: RecipeSteps.PROMPT_USER,
-          [RecipeStates.TASK_LOCATION_REPORT]: RecipeSteps.RECORD_USER,
-          [RecipeStates.TASK_PICK_PROMPT]: RecipeSteps.PROMPT_USER,
-          [RecipeStates.TASK_PICK_REPORT]: RecipeSteps.RECORD_USER,
+          [RecipeStates.IDENTIFY_UNIT_PROMPT]: RecipeSteps.PROMPT_USER,
+          [RecipeStates.IDENTIFY_UNIT_REPORT]: RecipeSteps.RECORD_USER,
+          [RecipeStates.INCIDENT_TYPE_PROMPT]: RecipeSteps.PROMPT_USER,
+          [RecipeStates.INCIDENT_TYPE_REPORT]: RecipeSteps.RECORD_USER,
+          [RecipeStates.PATIENT_CONDITION_PROMPT]: RecipeSteps.PROMPT_USER,
+          [RecipeStates.PATIENT_CONDITION_REPORT]: RecipeSteps.RECORD_USER,
+          [RecipeStates.DESTINATION_PROMPT]: RecipeSteps.PROMPT_USER,
+          [RecipeStates.DESTINATION_REPORT]: RecipeSteps.RECORD_USER,
+          [RecipeStates.HANDOFF_STATUS_PROMPT]: RecipeSteps.PROMPT_USER,
+          [RecipeStates.HANDOFF_STATUS_REPORT]: RecipeSteps.RECORD_USER,
+          [RecipeStates.HANDOFF_TIME_PROMPT]: RecipeSteps.PROMPT_USER,
+          [RecipeStates.HANDOFF_TIME_REPORT]: RecipeSteps.RECORD_USER,
+          [RecipeStates.FINAL_NOTE_PROMPT]: RecipeSteps.PROMPT_USER,
+          [RecipeStates.FINAL_NOTE_REPORT]: RecipeSteps.TRANSCRIBE_USER,
           [RecipeStates.COMPLETE_PROMPT]: RecipeSteps.PROMPT_USER,
         },
         start_state: { state: RecipeStates.STANDBY, tasks: TASKS },
