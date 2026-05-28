@@ -10,9 +10,9 @@ export type DemoCallbacks = {
   onVolume: (volume: number) => void;
   onListening: (isListening: boolean) => void;
 
-  createCard: (id: string, title: string, rhs: string) => void,
+  createCard: (id: string, title: string, alternate?: string) => void,
   setActiveCard: (id: string) => void,
-  setCompletedCard: (id: string) => void,
+  setCompletedCard: (id: string, alternate: boolean) => void,
   setCardValue: (id: string, value: string) => void,
 
   goToInitScreen: () => void,
@@ -31,7 +31,7 @@ export let callbacks: DemoCallbacks = {
 
   createCard: (_a, _b) => undefined,
   setActiveCard: (_) => undefined,
-  setCompletedCard: (_) => undefined,
+  setCompletedCard: (_a, _b) => undefined,
   setCardValue: (_a, _b) => undefined,
 
   goToInitScreen: () => undefined,

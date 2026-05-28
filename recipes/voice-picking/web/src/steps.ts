@@ -95,10 +95,8 @@ export class OrcaStep extends Step {
         onSynthesis?: (alignments: OrcaAlignment[]) => void,
     ) {
         try {
-            console.log("start synthesize");
             const { pcm, alignments } = await this.orca.synthesize(prompt);
             if (onSynthesis) {
-                console.log("on synthesis");
                 onSynthesis(alignments);
             }
 
@@ -106,8 +104,7 @@ export class OrcaStep extends Step {
             this.audio.play();
 
         } finally {
-            await this.audio.waitPlayback(() => { console.log(isRunning); return !isRunning; });
-            console.log("AFTER!!!!!!!!1");
+            await this.audio.waitPlayback(() => { return !isRunning; });
         }
     }
 

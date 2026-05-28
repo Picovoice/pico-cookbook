@@ -59,11 +59,9 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
 
   callbacks.clearStatus();
 
-  let i = 0;
-  for (const task of TASKS) {
-    callbacks.createCard(`location-${i}`, "CONFIRM LOCATION", `Location: ${task.checkDigit}`);
-    callbacks.createCard(`pick-${i}`, "PICK ITEM", `Item: ${task.itemName} (${task.quantity})`);
-    i += 1;
+  for (let i = 0; i < TASKS.length; i += 1) {
+    callbacks.createCard(`location-${i}`, "CONFIRM LOCATION");
+    callbacks.createCard(`pick-${i}`, "PICK ITEM", "EXIT WORKFLOW");
   }
 
   try {

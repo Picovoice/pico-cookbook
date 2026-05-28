@@ -310,8 +310,17 @@ progress::-webkit-progress-value {
   display: none !important;
 }
 
+.cardParent {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  
+  width: 100%;
+}
+
 .card {
   width: 100%;
+
   display: flex;
   flex-direction: column;
   align-items:flex-start;
@@ -323,6 +332,27 @@ progress::-webkit-progress-value {
   color: #888;
 
   font-size: 16px;
+}
+
+.card-alternate {
+  margin-left: 12px;
+
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #CCC;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: -0.03ch;
+
+  color: #888;
+
+  transition: color 0.3s ease-out;
+}
+.cardParent .completedCard {
+  color: var(--brand-primary);
 }
 
 .activeCard {

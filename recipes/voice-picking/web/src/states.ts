@@ -314,7 +314,7 @@ class RecipeTaskLocationReportState extends State {
 
         if (isValidLocation) {
             callbacks.setStatusText(`Location ${inference.slots!.checkDigit} confirmed.`);
-            callbacks.setCompletedCard(cardId);
+            callbacks.setCompletedCard(cardId, false);
             callbacks.setCardValue(cardId, `${inference.slots!.checkDigit}`);
 
             await sleep(1000);
@@ -412,6 +412,9 @@ class RecipeTaskPickReportState extends State {
 
         if (inference && inference.isUnderstood && RecipeTaskPickReportState.VALID_INTENTS.includes(inference.intent!)) {
             if (inference.intent == 'exitWorkflow') {
+                callbacks.setCompletedCard(cardId, true);
+                await sleep(400);
+
                 return {
                     outcome: inference,
                     next: {
@@ -422,7 +425,7 @@ class RecipeTaskPickReportState extends State {
             }
 
             const nextTaskIndex = taskIndex + 1;
-            callbacks.setCompletedCard(cardId);
+            callbacks.setCompletedCard(cardId, false);
 
             if (nextTaskIndex >= tasks.length) {
                 if (inference.intent == 'confirmPickedQuantity') {

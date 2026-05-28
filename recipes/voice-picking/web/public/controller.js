@@ -48,34 +48,44 @@ window.onload = () => {
   let micActive = true;
   let firstStart = true;
 
-  function createCard(id, title, rhs) {
+  function createCard(id, title, alternate) {
     if (!cards.hasOwnProperty(id)) {
       const root = document.createElement('div');
+      const card = document.createElement('div');
       const titleArea = document.createElement('div');
       const valueArea = document.createElement('div');
 
       const lhsDiv = document.createElement('div');
       lhsDiv.innerText = title;
 
-      const rhsDiv = document.createElement('div');
-      rhsDiv.innerText = rhs;
-      rhsDiv.style.marginLeft = "auto";
-
       titleArea.className = "title";
       titleArea.style.display = "flex";
       titleArea.style.width = "100%";
       titleArea.appendChild(lhsDiv);
-      titleArea.appendChild(rhsDiv);
 
       valueArea.innerText = "-";
 
-      root.classList.add("card");
-      root.appendChild(titleArea);
-      root.appendChild(valueArea);
+      card.classList.add("card");
+      card.appendChild(titleArea);
+      card.appendChild(valueArea);
+
+      root.classList.add("cardParent");
+      root.appendChild(card);
+
+      var alternateElement = undefined;
+      if (alternate != null) {
+        alternateElement = document.createElement('span');
+        alternateElement.className = "card-alternate";
+        alternateElement.innerText = `or ${alternate}`;
+
+        root.appendChild(alternateElement);
+      }
+
       cardContainer.appendChild(root);
 
       cards[id] = {
-        root: root,
+        card: card,
+        alternate: alternateElement,
         title: titleArea,
         value: valueArea
       };
@@ -87,30 +97,35 @@ window.onload = () => {
 
   function setActiveCard(id) {
     for (let key in cards) {
-      cards[key].root.classList.remove("activeCard");
+      cards[key].card.classList.remove("activeCard");
     }
 
     if (id !== null) {
-      cards[id].root.classList.add("activeCard");
-      cards[id].root.focus();
-      cards[id].root.scrollIntoView({
+      cards[id].card.classList.add("activeCard");
+      cards[id].card.focus();
+      cards[id].card.scrollIntoView({
         behavior: 'smooth',
         block: 'end'
       });
     }
   }
 
-  function setCompletedCard(id) {
+  function setCompletedCard(id, isAlternate) {
     if (id !== null) {
-      cards[id].root.classList.remove("activeCard");
-      cards[id].root.classList.add("completedCard");
+      if (isAlternate) {
+        cards[id].card.classList.remove("activeCard");
+        cards[id].alternate.classList.add("completedCard");
+      } else {
+        cards[id].card.classList.remove("activeCard");
+        cards[id].card.classList.add("completedCard");
+      }
     }
   }
 
   function setCardValue(id, value) {
     cards[id].value.innerText = value;
-    cards[id].root.focus();
-    cards[id].root.scrollIntoView({
+    cards[id].card.focus();
+    cards[id].card.scrollIntoView({
       behavior: 'smooth',
       block: 'end'
     });
@@ -127,9 +142,13 @@ window.onload = () => {
     container.style.opacity = '1';
 
     for (let key in cards) {
-      cards[key].root.classList.remove("activeCard");
-      cards[key].root.classList.remove("completedCard");
+      cards[key].card.classList.remove("activeCard");
+      cards[key].card.classList.remove("completedCard");
       cards[key].value.innerText = "-";
+
+      if (cards[key].alternate) {
+        cards[key].alternate.classList.remove("completedCard");
+      }
     }
     cardContainer.scrollTo({
       top: 0,
