@@ -804,11 +804,12 @@ class RecipeHandoffTimeReportState extends RecipeReportState {
         };
 
         const successOutcome = (x: RhinoInference): string => {
-            const hour = HOUR_MAP[x.slots!.hour]
-            const minute = Number(x.slots!.minute)
-            const meridiem = x.slots!.meridiem
+            const hour = HOUR_MAP[x.slots!.hour];
+            const minute = Number(x.slots!.minute);
+            const minuteString = (minute <= 9) ? `0${minute}` : `${minute}`;
+            const meridiem = x.slots!.meridiem;
 
-            return `${hour}:${minute} ${meridiem}`;
+            return `${hour}:${minuteString} ${meridiem}`;
         };
 
         const params = {

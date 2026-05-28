@@ -83,7 +83,7 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
         steps: {
           [RecipeSteps.STANDBY]: { 
               step: Steps.PORCUPINE,
-              keywordPath: "keywords/voice_picking_web.ppn",
+              keywordPath: "keywords/voice_guided_field_reporting_web.ppn",
               publicPath: "models/porcupine_params.pv",
           },
           [RecipeSteps.PROMPT_USER]: {
@@ -93,7 +93,7 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
           [RecipeSteps.RECORD_USER]: {
               step: Steps.RHINO,
               publicPath: "models/rhino_params.pv",
-              contextPath: "models/voice_picking_web.rhn",
+              contextPath: "models/voice_guided_field_reporting_web.rhn",
           },
           [RecipeSteps.TRANSCRIBE_USER]: {
               step: Steps.CHEETAH,

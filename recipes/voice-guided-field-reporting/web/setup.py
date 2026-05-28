@@ -119,13 +119,13 @@ def main() -> None:
 
     models_folder = os.path.join(os.path.dirname(__file__), "public", "models")
 
-    context_target_path = os.path.join(models_folder, "voice_picking_web.rhn")
+    context_target_path = os.path.join(models_folder, "voice_guided_field_reporting_web.rhn")
     shutil.copy(args.rhino_context_path, context_target_path)
     print(f"Copied {args.rhino_context_path} to {context_target_path}")
 
     keywords_folder = os.path.join(os.path.dirname(__file__), "public", "keywords")
 
-    wakeword_target_path = os.path.join(keywords_folder, "voice_picking_web.ppn")
+    wakeword_target_path = os.path.join(keywords_folder, "voice_guided_field_reporting_web.ppn")
     shutil.copy(args.porcupine_keyword_path, wakeword_target_path)
     print(f"Copied {args.porcupine_keyword_path} to {wakeword_target_path}")
 

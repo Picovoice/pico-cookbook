@@ -158,7 +158,7 @@ export class PorcupineStep extends Step {
         const porcupine = await PorcupineWorker.create(
             accessKey,
             {
-                label: "voice-picking-keyword",
+                label: "voice-guided-field-reporting-keyword",
                 sensitivity,
                 publicPath: keywordPath,
                 forceWrite: true,
