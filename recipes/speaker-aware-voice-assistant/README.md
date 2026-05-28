@@ -20,3 +20,4 @@ and admin-only operations.
 - [Android](android)
 - [iOS](ios)
 - [Python](python)
+- [Web](web)
