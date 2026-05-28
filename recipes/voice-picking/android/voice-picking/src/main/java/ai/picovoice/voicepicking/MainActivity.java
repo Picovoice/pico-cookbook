@@ -83,7 +83,8 @@ public class MainActivity extends AppCompatActivity {
         void onInitProgress(String status);
         void onStatusChanged(String status);
         void onCardActive(String cardId);
-        void onCardUpdated(String cardId, String value, boolean isFinal);
+        void onClearCard(String cardId);
+        void onCardUpdated(String cardId, String value, boolean isFinal, boolean isAlternate);
         void onWorkflowComplete();
         void onVolumeFrame(short[] frame);
     }
@@ -216,11 +217,22 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     @Override
-                    public void onCardUpdated(String cardId, String value, boolean isFinal) {
+                    public void onClearCard(String cardId) {
+                        if (cardId != null) {
+                            clearCard(cardMap.get(cardId));
+                        }
+                    }
+
+                    @Override
+                    public void onCardUpdated(String cardId, String value, boolean isFinal, boolean isAlternate) {
                         CardUI card = cardMap.get(cardId);
                         if (card != null) {
-                            int color = isFinal ? INACTIVE_COLOUR : ACTIVE_COLOUR;
-                            card.setValue(value, color);
+                            if (isAlternate) {
+                                card.setAlternate(ACTIVE_COLOUR);
+                            } else {
+                                int color = isFinal ? INACTIVE_COLOUR : ACTIVE_COLOUR;
+                                card.setValue(value, color);
+                            }
                         }
                     }
 
@@ -314,6 +326,8 @@ public class MainActivity extends AppCompatActivity {
 
     class CardUI {
         View root;
+        View leftContainer;
+        TextView alternate;
         TextView titleView;
         TextView valueView;
 
@@ -324,12 +338,25 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
+        void setAlternate(int colour) {
+            if (alternate == null) {
+                return;
+            }
+
+            runOnUiThread(() -> {
+                alternate.setTextColor(colour);
+            });
+        }
+
         void reset() {
             runOnUiThread(() -> {
                 valueView.setText("-");
                 valueView.setTextColor(INACTIVE_COLOUR);
                 titleView.setTextColor(INACTIVE_COLOUR);
-                this.root.setBackgroundResource(R.drawable.bg_report_card_inactive);
+                leftContainer.setBackgroundResource(R.drawable.bg_report_card_inactive);
+                if (alternate != null) {
+                    alternate.setTextColor(INACTIVE_COLOUR);
+                }
             });
         }
     }
@@ -339,8 +366,8 @@ public class MainActivity extends AppCompatActivity {
         cardMap.clear();
 
         for (int i = 0; i < tasks.size(); i++) {
-            cardMap.put("location-" + String.valueOf(i), createCard("LOCATION"));
-            cardMap.put("pick-" + String.valueOf(i), createCard("PICK"));
+            cardMap.put("location-" + String.valueOf(i), createCard("LOCATION", false));
+            cardMap.put("pick-" + String.valueOf(i), createCard("PICK", true));
         }
     }
 
@@ -350,11 +377,24 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private CardUI createCard(String title) {
-        View root = getLayoutInflater().inflate(R.layout.item_report_card, reportContainer, false);
+    private CardUI createCard(String title, boolean alternate) {
+        View root;
+        if (alternate) {
+            root = getLayoutInflater().inflate(R.layout.item_report_card_alternate, reportContainer, false);
+        } else {
+            root = getLayoutInflater().inflate(R.layout.item_report_card, reportContainer, false);
+        }
 
         CardUI card = new CardUI();
         card.root = root;
+        if (alternate) {
+            card.alternate = root.findViewById(R.id.alternate);
+            card.alternate.setText("or EXIT WORKFLOW");
+            card.leftContainer = root.findViewById(R.id.left);
+        } else {
+            card.alternate = null;
+            card.leftContainer = root;
+        }
         card.titleView = root.findViewById(R.id.cardTitle);
         card.valueView = root.findViewById(R.id.cardValue);
 
@@ -369,7 +409,7 @@ public class MainActivity extends AppCompatActivity {
         runOnUiThread(() -> {
             for (CardUI card : cardMap.values()) {
                 boolean isActive = (card == activeCard);
-                card.root.setBackgroundResource(isActive
+                card.leftContainer.setBackgroundResource(isActive
                         ? R.drawable.bg_report_card_active
                         : R.drawable.bg_report_card_inactive);
 
@@ -394,6 +434,12 @@ public class MainActivity extends AppCompatActivity {
                     });
                 }
             }
+        });
+    }
+
+    private void clearCard(CardUI activeCard) {
+        runOnUiThread(() -> {
+            activeCard.reset();
         });
     }
 
@@ -832,7 +878,7 @@ public class MainActivity extends AppCompatActivity {
             PickTask task = tasks.get(taskIndex);
 
             String cardId = String.format("location-%d", taskIndex);
-            listener.onCardUpdated(cardId, "...", false);
+            listener.onCardUpdated(cardId, "...", false, false);
 
             RhinoInference inference = step.run("Listening for location confirmation...");
             if (inference != null &&
@@ -840,8 +886,8 @@ public class MainActivity extends AppCompatActivity {
                     inference.getIntent().equals("confirmLocation") &&
                     inference.getSlots().get("checkDigit").equals(task.checkDigit)) {
                 String value = String.valueOf(inference.getSlots().get("checkDigit"));
-                listener.onCardUpdated(cardId, value, true);
-            
+                listener.onCardUpdated(cardId, value, true, false);
+
                 Map<String, Object> nextArgs = new HashMap<>();
                 nextArgs.put("tasks", args.get("tasks"));
                 nextArgs.put("taskIndex", args.get("taskIndex"));
@@ -940,7 +986,7 @@ public class MainActivity extends AppCompatActivity {
             PickTask task = tasks.get(taskIndex);
             String cardId = String.format("pick-%d", taskIndex);
             
-            listener.onCardUpdated(cardId, "...", false);
+            listener.onCardUpdated(cardId, "...", false, false);
 
             RhinoInference inference = step.run("Listening for pick result");
             if (inference != null &&
@@ -948,6 +994,8 @@ public class MainActivity extends AppCompatActivity {
                     VALID_INTENTS.contains(inference.getIntent())) {
                 if (inference.getIntent().equals("exitWorkflow")) {
                     listener.onStatusChanged("Ending picking workflow.");
+                    listener.onClearCard(String.format("pick-%d", taskIndex));
+                    listener.onCardUpdated(cardId, "-", true, true);
 
                     Map<String, Object> nextArgs = new HashMap<>();
                     nextArgs.put("prompt", "Picking workflow ended.");
@@ -961,18 +1009,18 @@ public class MainActivity extends AppCompatActivity {
                         String value = String.format("Recorded picked %s", inference.getSlots().get("quantity"));
                         String shortValue = String.format("pick %s", inference.getSlots().get("quantity"));
                         listener.onStatusChanged(value);
-                        listener.onCardUpdated(cardId, shortValue, true);
+                        listener.onCardUpdated(cardId, shortValue, true, false);
                     } else if (inference.getIntent().equals("reportShortPick")) {
                         String value = String.format("Recorded short pick %s", inference.getSlots().get("quantity"));
                         String shortValue = String.format("short pick %s", inference.getSlots().get("quantity"));
                         listener.onStatusChanged(value);
-                        listener.onCardUpdated(cardId, shortValue, true);
+                        listener.onCardUpdated(cardId, shortValue, true, false);
                     } else if (inference.getIntent().equals("reportDamagedItem")) {
                         listener.onStatusChanged("Recorded damaged item.");
-                        listener.onCardUpdated(cardId, "damaged item", true);
+                        listener.onCardUpdated(cardId, "damaged item", true, false);
                     } else {
                         listener.onStatusChanged("Recorded empty location.");
-                        listener.onCardUpdated(cardId, "empty location", true);
+                        listener.onCardUpdated(cardId, "empty location", true, false);
                     }
 
                     Map<String, Object> nextArgs = new HashMap<>();
@@ -986,7 +1034,7 @@ public class MainActivity extends AppCompatActivity {
                     String value = String.format("Recorded picked %s", inference.getSlots().get("quantity"));
                     String shortValue = String.format("pick %s", inference.getSlots().get("quantity"));
                     listener.onStatusChanged(value);
-                    listener.onCardUpdated(cardId, shortValue, true);
+                    listener.onCardUpdated(cardId, shortValue, true, false);
                     nextPrompt = String.format(
                             "Go to %s. Confirm location. Check digits are %s.",
                             nextTask.locationName,
@@ -995,14 +1043,14 @@ public class MainActivity extends AppCompatActivity {
                     String value = String.format("Recorded short picked %s", inference.getSlots().get("quantity"));
                     String shortValue = String.format("short pick %s", inference.getSlots().get("quantity"));
                     listener.onStatusChanged(value);
-                    listener.onCardUpdated(cardId, shortValue, true);
+                    listener.onCardUpdated(cardId, shortValue, true, false);
                     nextPrompt = String.format(
                             "Short pick recorded. Proceed to %s. Confirm location. Check digits are %s.",
                             nextTask.locationName,
                             nextTask.checkDigit);
                 } else if (inference.getIntent().equals("reportDamagedItem")) {
                     listener.onStatusChanged("Recorded damaged item.");
-                    listener.onCardUpdated(cardId, "damaged item", true);
+                    listener.onCardUpdated(cardId, "damaged item", true, false);
                     nextPrompt = String.format(
                             "Damaged item recorded. Set it aside. Then proceed to %s. " +
                             "Confirm location. Check digits are %s.",
@@ -1010,7 +1058,7 @@ public class MainActivity extends AppCompatActivity {
                             nextTask.checkDigit);
                 } else {
                     listener.onStatusChanged("Recorded empty location.");
-                    listener.onCardUpdated(cardId, "empty location", true);
+                    listener.onCardUpdated(cardId, "empty location", true, false);
                     nextPrompt = String.format(
                             "Empty location recorded. Proceed to %s. Confirm location. Check digits are %s.",
                             nextTask.locationName,

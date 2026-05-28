@@ -6,8 +6,9 @@
     android:layout_marginBottom="12dp">
 
     <LinearLayout
+        android:id="@+id/left"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
         android:layout_weight="1"
         android:background="@drawable/bg_report_card_inactive"
         android:orientation="vertical"
@@ -18,7 +19,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="4dp"
-            android:text="some content"
             android:textAllCaps="true"
             android:textColor="#7F8C8D"
             android:textSize="12sp"
@@ -37,17 +37,18 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginLeft="12dp"
-        android:layout_marginBottom="12dp"
         android:background="@drawable/bg_report_card_inactive"
         android:orientation="vertical"
-        android:gravity="center_vertical"
+        android:layout_gravity="center_vertical"
         android:padding="16dp">
 
         <TextView
             android:id="@+id/alternate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="or THESE ARE MY WORDS"
+            android:text="or"
+            android:gravity="center"
+            android:maxWidth="90dp"
             android:textColor="#7F8C8D"
             android:textSize="12sp"
             android:textStyle="bold" />
