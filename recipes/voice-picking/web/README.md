@@ -27,7 +27,7 @@ These instructions assume your current working directory is `recipes/voice-picki
 2. Go to Porcupine Wake Word.
 3. Enter your desired wake phrase.
 4. Click Train.
-5. Select your target platform and download the generated wake word model file (`.ppn`).
+5. Select the **Web (WASM)** target platform and download the generated wake word model file (`.ppn`).
 
 Save the downloaded file somewhere accessible on your machine. You will pass its path to the demo with `--porcupine_keyword_path`.
 
@@ -38,14 +38,13 @@ Save the downloaded file somewhere accessible on your machine. You will pass its
 3. Create an empty Rhino context.
 4. Click Import YAML in the top-right corner.
 5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
-6. Download the generated Rhino context file (`.rhn`) for your target platform.
+6. Download the generated Rhino context file (`.rhn`) for the **Web (WASM)** target platform.
 
 Save the downloaded file somewhere accessible on your machine. You will pass its path to the demo with `--rhino_context_path`.
 
 ### 3. Download the Required Models
 
 Run the setup script to download the models for
-- [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/)
 - [Koala Noise Suppression](https://picovoice.ai/docs/koala/)
 - [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/)
 - [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/)
@@ -81,8 +80,8 @@ yarn start
 
 #### Instructions
 
-- When asked to check digits, respond with the digits of the location you are at (ex: one nine, four two)
-- When asked to pick a number of items, respond with:
+- When asked to check digits, respond with the digits of the location you are at (ex: `one nine`, `four two`)
+- When asked to pick a number of items, respond with one of the following:
   - `picked ${N}`, where `N` is the number of items you picked
   - `short pick ${N}` if there are not enough items to complete the full pick
   - `damaged item`
