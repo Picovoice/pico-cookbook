@@ -290,11 +290,9 @@ class ViewModel: ObservableObject {
                     if let scores = scores {
                         var bestScore: Float = 0.0
                         var bestIndex = -1
-                        for i in 0..<scores.count {
-                            if scores[i] > bestScore {
-                                bestScore = scores[i]
-                                bestIndex = i
-                            }
+                        for i in 0..<scores.count where scores[i] > bestScore {
+                            bestScore = scores[i]
+                            bestIndex = i
                         }
 
                         if bestScore >= EAGLE_THRESHOLD && bestIndex != -1 {
