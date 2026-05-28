@@ -100,9 +100,7 @@ struct ContentView: View {
                                     }
 
                                     if viewModel.speakers.count < viewModel.MAX_SPEAKERS {
-                                        Button(action: {
-                                            showingAddSpeakerAlert = true
-                                        }) {
+                                        Button(action: {showingAddSpeakerAlert = true}, label: {
                                             Text("+ Add")
                                                 .font(.system(size: 16, weight: .bold))
                                                 .foregroundColor(brandPrimary)
@@ -112,7 +110,7 @@ struct ContentView: View {
                                                 .overlay(
                                                     Capsule().stroke(brandPrimary, lineWidth: 2)
                                                 )
-                                        }
+                                        })
                                     }
                                 }
                                 .padding(.horizontal, 16)
@@ -145,16 +143,14 @@ struct ContentView: View {
                         if viewModel.appState == .idle {
                             HStack(spacing: 16) {
                                 if viewModel.speakers.isEmpty {
-                                    Button(action: {
-                                        showingAddSpeakerAlert = true
-                                    }) {
-                                        Text("Start Enrollment")
-                                            .padding(.horizontal, 16)
-                                            .padding(.vertical, 10)
-                                            .background(brandPrimary)
-                                            .foregroundColor(.white)
-                                            .cornerRadius(4)
-                                    }
+                                    Button(action: {showingAddSpeakerAlert = true}, label: {
+                                            Text("Start Enrollment")
+                                                .padding(.horizontal, 16)
+                                                .padding(.vertical, 10)
+                                                .background(brandPrimary)
+                                                .foregroundColor(.white)
+                                                .cornerRadius(4)
+                                    })
                                 } else {
                                     Button(action: viewModel.clearAll) {
                                         Text("Clear Profiles")

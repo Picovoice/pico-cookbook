@@ -57,7 +57,7 @@ class ViewModel: ObservableObject {
     @Published var pendingSpeakerName: String = ""
 
     @Published var showTestResult: Bool = false
-    @Published var detectedSpeaker: Speaker? = nil
+    @Published var detectedSpeaker: Speaker?
 
     private var porcupine: Porcupine?
     private var eagleProfiler: EagleProfiler?
@@ -67,7 +67,7 @@ class ViewModel: ObservableObject {
     private var enrollMaxSamples: Int = 0
     private var enrollValidSamples: Int = 0
     private var testBuffer: [Int16] = []
-    
+
     private let audioLock = NSLock()
 
     public func addSpeaker(name: String) {
@@ -240,9 +240,9 @@ class ViewModel: ObservableObject {
 
         audioLock.lock()
         defer { audioLock.unlock() }
-        
+
         guard let porcupine = self.porcupine else { return }
-        
+
         if appState == .enrolling {
             enrollBuffer.removeFirst(frame.count)
             enrollBuffer.append(contentsOf: frame)
@@ -348,7 +348,7 @@ class ViewModel: ObservableObject {
 
         audioLock.lock()
         defer { audioLock.unlock() }
-        
+
         porcupine?.delete()
         porcupine = nil
         eagleProfiler?.delete()
