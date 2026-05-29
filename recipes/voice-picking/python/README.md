@@ -17,7 +17,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ## Usage
 
-These instructions assume your current working directory is `recipes/voice-guided-maintenance-and-inspection/python`.
+These instructions assume your current working directory is `recipes/voice-picking/python`.
 
 ### 1. Create a Virtual Environment
 

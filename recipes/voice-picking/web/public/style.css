@@ -1,0 +1,403 @@
+:root {
+  --brand-primary: #377dff;
+  --brand-primary-dark: #285bc4;
+  --gray-light: #e0e0e0;
+  --success-green: #4caf50;
+  --error-red: #f44336;
+}
+
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  margin: 0;
+  background-color: #f9f9f9;
+}
+
+.container {
+  background: white;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  text-align: center;
+  width: 100%;
+  max-width: 450px;
+  min-height: 350px;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  transition: opacity 0.4s ease;
+}
+
+h1 {
+  color: var(--brand-primary);
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+#statusText {
+  font-size: 18px;
+  color: #333;
+  white-space: pre-line;
+}
+
+#errorText {
+  color: var(--error-red);
+  background-color: rgba(244, 67, 54, 0.1);
+  border: 1px solid var(--error-red);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  padding: 12px;
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
+}
+
+#cardContainer {
+    margin-top: 8px;
+}
+
+#nameModalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-box {
+  background: white;
+  padding: 32px;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 360px;
+  text-align: center;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-box h2 {
+  margin-top: 0;
+  color: var(--brand-primary);
+  font-size: 20px;
+  margin-bottom: 20px;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.modal-buttons button {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+#initContainer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+#accessKey {
+    margin-top: 16px;
+}
+
+input[type='text'] {
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 24px;
+}
+
+button {
+  background-color: var(--brand-primary);
+  color: white;
+  border: none;
+  padding: 14px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+button:hover {
+  background-color: var(--brand-primary-dark);
+}
+
+button:disabled {
+  background-color: var(--gray-light);
+  cursor: not-allowed;
+  color: #888;
+}
+
+button.secondary {
+  background-color: var(--gray-light);
+  color: #333;
+}
+
+button.secondary:hover {
+  background-color: #ccc;
+}
+
+button.text-btn {
+  background: none;
+  color: #888;
+  margin-top: 12px;
+  font-weight: normal;
+}
+
+button.text-btn:hover {
+  background: none;
+  color: #333;
+  text-decoration: underline;
+}
+
+#buttonContainer {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+#buttonContainer button {
+  flex: 1;
+}
+
+#layoutDashboard {
+  width: 100%;
+  margin-bottom: 32px;
+}
+.dashboard-title {
+  font-size: 12px;
+  font-weight: bold;
+  color: #888;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+#chipContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.speaker-chip {
+  color: white;
+  padding: 6px 16px;
+  border-radius: 16px;
+  font-weight: bold;
+  font-size: 14px;
+}
+.add-chip {
+  color: var(--brand-primary);
+  border: 2px solid var(--brand-primary);
+  padding: 4px 14px;
+  border-radius: 16px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.add-chip:hover {
+  background-color: rgba(55, 125, 255, 0.1);
+}
+
+#layoutGreeting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: white;
+  border: 1px solid var(--gray-light);
+  border-radius: 16px;
+  padding: 24px 32px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 24px;
+  transform: scale(0.8);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+#layoutGreeting.pop {
+  transform: scale(1);
+  opacity: 1;
+}
+#tvGreetingPrefix {
+  font-size: 34px;
+  font-weight: bold;
+  color: #333;
+}
+#tvSpeakerName {
+  color: white;
+  padding: 8px 24px;
+  border-radius: 16px;
+  font-weight: bold;
+  font-size: 32px;
+}
+
+progress {
+  width: 100%;
+  height: 30px;
+  border-radius: 10px;
+  margin-top: 24px;
+  margin-bottom: 24px;
+}
+
+progress::-webkit-progress-bar {
+  background-color: var(--gray-light);
+  border-radius: 10px;
+}
+
+progress::-webkit-progress-value {
+  background-color: var(--brand-primary);
+  border-radius: 10px;
+  transition: width 0.1s ease;
+}
+
+#volumeMeter {
+  display: flex;
+  gap: 6px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+
+  transition: opacity 0.4s ease;
+}
+
+.volume-bar {
+  width: 8px;
+  height: 8px;
+  background-color: var(--brand-primary);
+  border-radius: 4px;
+  transition: height 0.05s ease, background-color 0.2s ease;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.cardParent {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  
+  width: 100%;
+}
+
+.card {
+  width: 100%;
+
+  display: flex;
+  flex-direction: column;
+  align-items:flex-start;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #CCC;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  color: #888;
+
+  font-size: 16px;
+}
+
+.card-alternate {
+  margin-left: 12px;
+
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #CCC;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: -0.03ch;
+
+  color: #888;
+
+  transition: color 0.3s ease-out;
+}
+.cardParent .completedCard {
+  color: var(--brand-primary);
+}
+
+.activeCard {
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+  background-color: #edf3ff;
+}
+.card .title {
+  margin-bottom: 4px;
+
+  font-size: 14px;
+
+  font-weight: bold;
+  letter-spacing: -0.03ch;
+}
+
+.completedCard .title {
+  color: var(--brand-primary);
+}
+
+#status-container {
+  align-items: center;
+  justify-content: center;
+
+  min-height: 3.5em;
+
+  color: #444;
+}
+
+#status-spinner {
+  transition: opacity 0.4s ease;
+}
+
+.loader {
+  border: 5px solid #e7e7e7;
+  border-top: 5px solid var(--brand-primary);
+  border-radius: 50%;
+  width: 15pt;
+  height: 15pt;
+  animation: spin 1.5s cubic-bezier(.28,.15,.8,.91) infinite;
+  margin-left: 12px;
+  margin-right: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
