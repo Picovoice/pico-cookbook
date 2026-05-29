@@ -6,6 +6,8 @@ alireza
 appendleft
 arrowshape
 attoseconds
+autocapitalization
+autocorrection
 callassist
 callscreen
 checkmark

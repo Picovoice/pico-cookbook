@@ -22,37 +22,63 @@ enum AppState {
     case error
 }
 
+struct Speaker: Identifiable {
+    let id = UUID()
+    let name: String
+    let profile: EagleProfile
+    let color: Color
+}
+
 class ViewModel: ObservableObject {
     private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
     private let EAGLE_THRESHOLD: Float = 0.75
+    private let MAX_BUFFERED_AUDIO_FRAMES = 96
+    let MAX_SPEAKERS = 10
+
+    let speakerPalette: [Color] = [
+        Color(red: 55/255, green: 125/255, blue: 255/255),  // Blue
+        Color(red: 16/255, green: 185/255, blue: 129/255),  // Emerald Green
+        Color(red: 139/255, green: 92/255, blue: 246/255),  // Violet
+        Color(red: 236/255, green: 72/255, blue: 153/255),  // Pink
+        Color(red: 245/255, green: 158/255, blue: 11/255),  // Amber
+        Color(red: 6/255, green: 182/255, blue: 212/255),   // Cyan
+        Color(red: 239/255, green: 68/255, blue: 68/255),   // Red
+        Color(red: 132/255, green: 204/255, blue: 22/255),  // Lime
+        Color(red: 99/255, green: 102/255, blue: 241/255),  // Indigo
+        Color(red: 244/255, green: 63/255, blue: 94/255)    // Rose
+    ]
 
     @Published var appState: AppState = .idle
     @Published var statusText: String = "Ready to Enroll"
     @Published var errorMessage: String = ""
     @Published var enrollPercentage: Float = 0.0
-    @Published var hasEnrolled: Bool = false
     @Published var volumeLevel: Float = 0.0
 
+    @Published var speakers: [Speaker] = []
+    @Published var pendingSpeakerName: String = ""
+
     @Published var showTestResult: Bool = false
-    @Published var isTestVerified: Bool = false
-    @Published var testScore: Float = 0.0
+    @Published var detectedSpeaker: Speaker?
 
     private var porcupine: Porcupine?
     private var eagleProfiler: EagleProfiler?
     private var eagle: Eagle?
-    private var speakerProfile: EagleProfile?
 
     private var enrollBuffer: [Int16] = []
     private var enrollMaxSamples: Int = 0
     private var enrollValidSamples: Int = 0
-
     private var testBuffer: [Int16] = []
-    private var testMaxSamples: Int = 0
 
     private let audioLock = NSLock()
 
-    public func startEnrollment() {
+    public func addSpeaker(name: String) {
+        pendingSpeakerName = name.isEmpty ? "Speaker \(speakers.count + 1)" : name
         checkPermissionsAndStart(targetState: .enrolling)
+    }
+
+    public func clearAll() {
+        speakers.removeAll()
+        updateUIForState()
     }
 
     public func startTesting() {
@@ -95,9 +121,9 @@ class ViewModel: ObservableObject {
             eagleProfiler = try EagleProfiler(
                 accessKey: ACCESS_KEY,
                 minEnrollmentChunks: 4,
-                voiceThreshold: 0.1)
+                voiceThreshold: 0.0)
 
-            enrollMaxSamples = EagleProfiler.frameLength * 64
+            enrollMaxSamples = EagleProfiler.frameLength * MAX_BUFFERED_AUDIO_FRAMES
 
             enrollBuffer = [Int16](repeating: 0, count: enrollMaxSamples)
             enrollValidSamples = 0
@@ -164,9 +190,12 @@ class ViewModel: ObservableObject {
 
     private func finishEnrollment() {
         do {
-            speakerProfile = try eagleProfiler!.export()
+            let newProfile = try eagleProfiler!.export()
+            let newColor = speakerPalette[speakers.count % speakerPalette.count]
+            let newSpeaker = Speaker(name: pendingSpeakerName, profile: newProfile, color: newColor)
+
             DispatchQueue.main.async {
-                self.hasEnrolled = true
+                self.speakers.append(newSpeaker)
                 self.cancel()
             }
         } catch {
@@ -174,15 +203,13 @@ class ViewModel: ObservableObject {
         }
     }
 
-    private func showResult(isVerified: Bool, score: Float) {
+    private func showResult(speaker: Speaker) {
         DispatchQueue.main.async {
-            self.isTestVerified = isVerified
-            self.testScore = score
+            self.detectedSpeaker = speaker
 
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                 self.showTestResult = true
             }
-            self.statusText = ""
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                 withAnimation {
@@ -198,9 +225,9 @@ class ViewModel: ObservableObject {
 
         switch appState {
         case .idle:
-            statusText = hasEnrolled ? "Ready to Test or Re-Enroll" : "Ready to Enroll"
+            statusText = speakers.isEmpty ? "Ready to Enroll" : ""
         case .enrolling:
-            statusText = "Say the wake word until\nthe circle is full"
+            statusText = "Hello \(pendingSpeakerName)\n\nSay the wake word until\nthe circle is full"
             enrollPercentage = 0.0
         case .testing:
             statusText = "Listening for wake word..."
@@ -239,9 +266,16 @@ class ViewModel: ObservableObject {
                     enrollValidSamples = 0
 
                     DispatchQueue.main.async {
-                        self.enrollPercentage = progress
                         if progress >= 100.0 {
-                            self.finishEnrollment()
+                            withAnimation(.easeInOut(duration: 0.5)) {
+                                self.enrollPercentage = progress
+                            } completion: {
+                                self.finishEnrollment()
+                            }
+                        } else {
+                            withAnimation(.easeInOut(duration: 0.5)) {
+                                self.enrollPercentage = progress
+                            }
                         }
                     }
                 }
@@ -256,16 +290,22 @@ class ViewModel: ObservableObject {
             do {
                 let keywordIndex = try porcupine.process(pcm: frame)
                 if keywordIndex == 0 {
-                    guard let activeProfile = speakerProfile else { return }
+                    let profiles = speakers.map { $0.profile }
                     let scores = try eagle!.process(
                         pcm: testBuffer,
-                        speakerProfiles: [activeProfile])
+                        speakerProfiles: profiles)
 
-                    if let score = scores!.first {
-                        let isVerified = score >= EAGLE_THRESHOLD
-                        showResult(isVerified: isVerified, score: score)
-                    } else {
-                        showResult(isVerified: false, score: 0.0)
+                    if let scores = scores {
+                        var bestScore: Float = 0.0
+                        var bestIndex = -1
+                        for i in 0..<scores.count where scores[i] > bestScore {
+                            bestScore = scores[i]
+                            bestIndex = i
+                        }
+
+                        if bestScore >= EAGLE_THRESHOLD && bestIndex != -1 {
+                            showResult(speaker: speakers[bestIndex])
+                        }
                     }
                 }
             } catch {

@@ -10,7 +10,7 @@ from threading import (
 )
 from typing import Tuple
 
-DEMO = "PersonalizedWakeWord"
+DEMO = "SpeakerAwareWakeWord"
 
 
 def main() -> None:
