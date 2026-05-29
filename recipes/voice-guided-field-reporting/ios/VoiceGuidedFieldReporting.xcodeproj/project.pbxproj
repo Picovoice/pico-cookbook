@@ -1,0 +1,444 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		34BE104B2FBD01EB00B437B6 /* Porcupine in Frameworks */ = {isa = PBXBuildFile; productRef = 34BE104A2FBD01EB00B437B6 /* Porcupine */; };
+		34BE104E2FBD023000B437B6 /* Rhino in Frameworks */ = {isa = PBXBuildFile; productRef = 34BE104D2FBD023000B437B6 /* Rhino */; };
+		34BE10512FBD025400B437B6 /* Orca in Frameworks */ = {isa = PBXBuildFile; productRef = 34BE10502FBD025400B437B6 /* Orca */; };
+		34BE10542FBD031A00B437B6 /* Cheetah in Frameworks */ = {isa = PBXBuildFile; productRef = 34BE10532FBD031A00B437B6 /* Cheetah */; };
+		34BE10572FBD036E00B437B6 /* Koala in Frameworks */ = {isa = PBXBuildFile; productRef = 34BE10562FBD036E00B437B6 /* Koala */; };
+		34BE105A2FBD038000B437B6 /* ios_voice_processor in Frameworks */ = {isa = PBXBuildFile; productRef = 34BE10592FBD038000B437B6 /* ios_voice_processor */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		34BE10352FBD007E00B437B6 /* VoiceGuidedFieldReporting.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceGuidedFieldReporting.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		34BE10372FBD007E00B437B6 /* VoiceGuidedFieldReporting */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = VoiceGuidedFieldReporting;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		34BE10322FBD007E00B437B6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				34BE10512FBD025400B437B6 /* Orca in Frameworks */,
+				34BE10542FBD031A00B437B6 /* Cheetah in Frameworks */,
+				34BE105A2FBD038000B437B6 /* ios_voice_processor in Frameworks */,
+				34BE10572FBD036E00B437B6 /* Koala in Frameworks */,
+				34BE104B2FBD01EB00B437B6 /* Porcupine in Frameworks */,
+				34BE104E2FBD023000B437B6 /* Rhino in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		34BE102C2FBD007E00B437B6 = {
+			isa = PBXGroup;
+			children = (
+				34BE10372FBD007E00B437B6 /* VoiceGuidedFieldReporting */,
+				34BE10362FBD007E00B437B6 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		34BE10362FBD007E00B437B6 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				34BE10352FBD007E00B437B6 /* VoiceGuidedFieldReporting.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		34BE10342FBD007E00B437B6 /* VoiceGuidedFieldReporting */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 34BE10402FBD008000B437B6 /* Build configuration list for PBXNativeTarget "VoiceGuidedFieldReporting" */;
+			buildPhases = (
+				34BE10312FBD007E00B437B6 /* Sources */,
+				34BE10322FBD007E00B437B6 /* Frameworks */,
+				34BE10332FBD007E00B437B6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				34BE10372FBD007E00B437B6 /* VoiceGuidedFieldReporting */,
+			);
+			name = VoiceGuidedFieldReporting;
+			packageProductDependencies = (
+				34BE104A2FBD01EB00B437B6 /* Porcupine */,
+				34BE104D2FBD023000B437B6 /* Rhino */,
+				34BE10502FBD025400B437B6 /* Orca */,
+				34BE10532FBD031A00B437B6 /* Cheetah */,
+				34BE10562FBD036E00B437B6 /* Koala */,
+				34BE10592FBD038000B437B6 /* ios_voice_processor */,
+			);
+			productName = VoiceGuidedFieldReporting;
+			productReference = 34BE10352FBD007E00B437B6 /* VoiceGuidedFieldReporting.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		34BE102D2FBD007E00B437B6 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					34BE10342FBD007E00B437B6 = {
+						CreatedOnToolsVersion = 16.4;
+					};
+				};
+			};
+			buildConfigurationList = 34BE10302FBD007E00B437B6 /* Build configuration list for PBXProject "VoiceGuidedFieldReporting" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 34BE102C2FBD007E00B437B6;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				34BE10492FBD01EB00B437B6 /* XCRemoteSwiftPackageReference "porcupine" */,
+				34BE104C2FBD023000B437B6 /* XCRemoteSwiftPackageReference "rhino" */,
+				34BE104F2FBD025400B437B6 /* XCRemoteSwiftPackageReference "orca" */,
+				34BE10522FBD031A00B437B6 /* XCRemoteSwiftPackageReference "cheetah" */,
+				34BE10552FBD036E00B437B6 /* XCRemoteSwiftPackageReference "koala" */,
+				34BE10582FBD038000B437B6 /* XCRemoteSwiftPackageReference "ios-voice-processor" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 34BE10362FBD007E00B437B6 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				34BE10342FBD007E00B437B6 /* VoiceGuidedFieldReporting */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		34BE10332FBD007E00B437B6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		34BE10312FBD007E00B437B6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		34BE103E2FBD008000B437B6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		34BE103F2FBD008000B437B6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		34BE10412FBD008000B437B6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 65723695GD;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "For the Voice Assistant";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.picovoice.VoiceGuidedFieldReporting;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		34BE10422FBD008000B437B6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 65723695GD;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "For the Voice Assistant";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.picovoice.VoiceGuidedFieldReporting;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		34BE10302FBD007E00B437B6 /* Build configuration list for PBXProject "VoiceGuidedFieldReporting" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				34BE103E2FBD008000B437B6 /* Debug */,
+				34BE103F2FBD008000B437B6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		34BE10402FBD008000B437B6 /* Build configuration list for PBXNativeTarget "VoiceGuidedFieldReporting" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				34BE10412FBD008000B437B6 /* Debug */,
+				34BE10422FBD008000B437B6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		34BE10492FBD01EB00B437B6 /* XCRemoteSwiftPackageReference "porcupine" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/picovoice/porcupine";
+			requirement = {
+				kind = exactVersion;
+				version = 4.0.0;
+			};
+		};
+		34BE104C2FBD023000B437B6 /* XCRemoteSwiftPackageReference "rhino" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/picovoice/rhino";
+			requirement = {
+				kind = exactVersion;
+				version = 4.0.0;
+			};
+		};
+		34BE104F2FBD025400B437B6 /* XCRemoteSwiftPackageReference "orca" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/picovoice/orca";
+			requirement = {
+				kind = exactVersion;
+				version = 3.0.0;
+			};
+		};
+		34BE10522FBD031A00B437B6 /* XCRemoteSwiftPackageReference "cheetah" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/picovoice/cheetah";
+			requirement = {
+				kind = exactVersion;
+				version = 4.0.3;
+			};
+		};
+		34BE10552FBD036E00B437B6 /* XCRemoteSwiftPackageReference "koala" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Picovoice/koala";
+			requirement = {
+				kind = exactVersion;
+				version = 3.0.0;
+			};
+		};
+		34BE10582FBD038000B437B6 /* XCRemoteSwiftPackageReference "ios-voice-processor" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/picovoice/ios-voice-processor";
+			requirement = {
+				kind = exactVersion;
+				version = 1.2.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		34BE104A2FBD01EB00B437B6 /* Porcupine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 34BE10492FBD01EB00B437B6 /* XCRemoteSwiftPackageReference "porcupine" */;
+			productName = Porcupine;
+		};
+		34BE104D2FBD023000B437B6 /* Rhino */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 34BE104C2FBD023000B437B6 /* XCRemoteSwiftPackageReference "rhino" */;
+			productName = Rhino;
+		};
+		34BE10502FBD025400B437B6 /* Orca */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 34BE104F2FBD025400B437B6 /* XCRemoteSwiftPackageReference "orca" */;
+			productName = Orca;
+		};
+		34BE10532FBD031A00B437B6 /* Cheetah */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 34BE10522FBD031A00B437B6 /* XCRemoteSwiftPackageReference "cheetah" */;
+			productName = Cheetah;
+		};
+		34BE10562FBD036E00B437B6 /* Koala */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 34BE10552FBD036E00B437B6 /* XCRemoteSwiftPackageReference "koala" */;
+			productName = Koala;
+		};
+		34BE10592FBD038000B437B6 /* ios_voice_processor */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 34BE10582FBD038000B437B6 /* XCRemoteSwiftPackageReference "ios-voice-processor" */;
+			productName = ios_voice_processor;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 34BE102D2FBD007E00B437B6 /* Project object */;
+}

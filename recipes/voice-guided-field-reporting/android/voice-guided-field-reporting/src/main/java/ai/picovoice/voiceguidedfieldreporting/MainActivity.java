@@ -1056,7 +1056,7 @@ public class MainActivity extends AppCompatActivity {
                         return String.format("%s:%02d %s", hour, minute, meridiem.toUpperCase());
                     },
                     RecipeStates.FINAL_NOTE_PROMPT,
-                    inf -> "I'm sorry. What was the handoff time again?",
+                    inf -> "Failed to capture handoff time. Retrying...",
                     RecipeStates.HANDOFF_TIME_PROMPT);
         }
     }
