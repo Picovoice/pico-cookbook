@@ -83,7 +83,7 @@ struct MainView: View {
                         if viewModel.activeCard != nil {
                             proxy.scrollTo(
                                 viewModel.activeCard!,
-                                anchor: .bottom)
+                                anchor: .center)
                         }
                     })
                 }

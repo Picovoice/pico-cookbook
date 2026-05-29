@@ -276,7 +276,7 @@ class Workflow {
         "eleven": "11",
         "twelve": "12"
     ]
-    
+
     let states: [RecipeStates: State]
     var shouldCancel: Bool = false
 
