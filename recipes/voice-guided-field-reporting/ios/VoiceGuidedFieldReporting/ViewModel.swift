@@ -53,8 +53,8 @@ enum RecipeStates {
          DESTINATION_REPORT,
          HANDOFF_STATUS_PROMPT,
          HANDOFF_STATUS_REPORT,
+         HANDOFF_TIME_PROMPT,
          HANDOFF_TIME_REPORT,
-         DESTINATION_REPORT,
          FINAL_NOTE_PROMPT,
          FINAL_NOTE_REPORT,
          REPORT_COMPILATION
@@ -90,21 +90,6 @@ class ViewModel: ObservableObject {
         .HANDOFF_STATUS: "HANDOFF STATUS",
         .HANDOFF_TIME: "HANDOFF TIME",
         .NOTES: "NOTES"
-    ]
-
-    private let hourMap: [String: String] = [
-        "one": "1",
-        "two": "2",
-        "three": "3",
-        "four": "4",
-        "five": "5",
-        "six": "6",
-        "seven": "7",
-        "eight": "8",
-        "nine": "9",
-        "ten": "10",
-        "eleven": "11",
-        "twelve": "12"
     ]
 
     @Published var viewState: ViewState = .loading
@@ -277,6 +262,21 @@ class ViewModel: ObservableObject {
 }
 
 class Workflow {
+    static let hourMap: [String: String] = [
+        "one": "1",
+        "two": "2",
+        "three": "3",
+        "four": "4",
+        "five": "5",
+        "six": "6",
+        "seven": "7",
+        "eight": "8",
+        "nine": "9",
+        "ten": "10",
+        "eleven": "11",
+        "twelve": "12"
+    ]
+    
     let states: [RecipeStates: State]
     var shouldCancel: Bool = false
 
@@ -288,6 +288,10 @@ class Workflow {
         rhinoStep: RhinoStep
     ) {
         states = [
+            .STANDBY: StandbyState(
+                viewModel: viewModel,
+                porcupineStep: porcupineStep,
+                nextState: .IDENTIFY_UNIT_PROMPT),
             .IDENTIFY_UNIT_PROMPT: PromptState(
                 viewModel: viewModel,
                 orcaStep: orcaStep,
@@ -397,7 +401,7 @@ class Workflow {
                 expectedIntent: "reportHandoffTime",
                 cardType: .HANDOFF_TIME,
                 successLogGen: { inf in
-                    let hour = hourMap[inf.slots["hour"]!] ?? inf.slots["hour"]!
+                    let hour = Workflow.hourMap[inf.slots["hour"]!] ?? inf.slots["hour"]!
                     let minute = Int(inf.slots["minute"]!) ?? 0
                     let meridiem = inf.slots["meridiem"]!
                     return String(format: "%@:%02d %@", hour, minute, meridiem.uppercased())
