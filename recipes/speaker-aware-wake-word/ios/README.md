@@ -24,7 +24,7 @@ train a wake word model on [Picovoice Console](https://console.picovoice.ai/) in
 
 Run the setup script to copy the wake word model provided for [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/) to the project folder.
 
-It will also place your `AccessKey` from Picovoice Console and name into the `ACCESS_KEY` variable
+It will also place your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable
 in [ViewModel.swift](SpeakerAwareWakeWord/ViewModel.swift).
 
 ```console

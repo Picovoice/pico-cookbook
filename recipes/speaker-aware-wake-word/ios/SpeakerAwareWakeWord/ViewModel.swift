@@ -32,6 +32,7 @@ struct Speaker: Identifiable {
 class ViewModel: ObservableObject {
     private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
     private let EAGLE_THRESHOLD: Float = 0.75
+    private let MAX_BUFFERED_AUDIO_FRAMES = 96
     let MAX_SPEAKERS = 10
 
     let speakerPalette: [Color] = [
@@ -122,7 +123,7 @@ class ViewModel: ObservableObject {
                 minEnrollmentChunks: 4,
                 voiceThreshold: 0.0)
 
-            enrollMaxSamples = EagleProfiler.frameLength * 96
+            enrollMaxSamples = EagleProfiler.frameLength * MAX_BUFFERED_AUDIO_FRAMES
 
             enrollBuffer = [Int16](repeating: 0, count: enrollMaxSamples)
             enrollValidSamples = 0
@@ -265,9 +266,16 @@ class ViewModel: ObservableObject {
                     enrollValidSamples = 0
 
                     DispatchQueue.main.async {
-                        self.enrollPercentage = progress
                         if progress >= 100.0 {
-                            self.finishEnrollment()
+                            withAnimation(.easeInOut(duration: 0.5)) {
+                                self.enrollPercentage = progress
+                            } completion: {
+                                self.finishEnrollment()
+                            }
+                        } else {
+                            withAnimation(.easeInOut(duration: 0.5)) {
+                                self.enrollPercentage = progress
+                            }
                         }
                     }
                 }

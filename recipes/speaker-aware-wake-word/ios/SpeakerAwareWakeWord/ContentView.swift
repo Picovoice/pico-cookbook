@@ -85,7 +85,7 @@ struct ContentView: View {
                                     .font(.system(size: 14, weight: .bold))
                                     .foregroundColor(Color.gray)
 
-                                LazyVGrid(columns: columns, alignment: .center, spacing: 12) {
+                                LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
                                     ForEach(viewModel.speakers) { speaker in
                                         Text(speaker.name)
                                             .font(.system(size: 16, weight: .bold))
@@ -93,7 +93,7 @@ struct ContentView: View {
                                             .lineLimit(1)
                                             .minimumScaleFactor(0.5)
                                             .padding(.horizontal, 16)
-                                            .padding(.vertical, 8)
+                                            .frame(maxWidth: .infinity)
                                             .frame(height: 38)
                                             .background(speaker.color)
                                             .clipShape(Capsule())
@@ -105,7 +105,6 @@ struct ContentView: View {
                                                 .font(.system(size: 16, weight: .bold))
                                                 .foregroundColor(brandPrimary)
                                                 .padding(.horizontal, 16)
-                                                .padding(.vertical, 8)
                                                 .frame(height: 38)
                                                 .overlay(
                                                     Capsule().stroke(brandPrimary, lineWidth: 2)
