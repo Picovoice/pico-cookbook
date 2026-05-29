@@ -12,5 +12,6 @@ and support for complex slots and exception handling.
 
 ## Implementations
 
+- [Android](android)
 - [Python](python)
 - [Web](web)
