@@ -75,7 +75,7 @@ struct MainView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     // TODO: update CardView to display alternates
-                    ForEach(Array(viewModel.cardData.values), id: \.self) { cardData in
+                    ForEach(Array(viewModel.cardData.values).sorted { (a, b) in a.order < b.order }, id: \.order) { cardData in
                         CardView(
                             title: cardData.title,
                             content: cardData.value,

@@ -59,15 +59,17 @@ let TASKS: [PickTask] = [
 ]
 
 struct CardData: Hashable {
+    let order: Int
+    let cardId: String
     let title: String
     let hasAlternate: Bool
     var isActive: Bool
-    var value: String
+    var value: String?
 }
 
 class ViewModel: ObservableObject {
 
-    private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
+    private let ACCESS_KEY = ""
 
     private let KEYWORD_MODEL = "voice_picking_ios.ppn"
 
@@ -84,10 +86,7 @@ class ViewModel: ObservableObject {
     @Published var enginesLoaded: Bool = false
     @Published var soundLevel: Float = 0.0
     @Published var activeCard: CardData?
-    // @Published var cardIDs: [String] = []
     @Published var cardData: [String: CardData] = [:]
-    // @published var cardTitles: [String] = []
-    // @Published var cardValues: [String] = [:]
 
     private var koala: Koala?
     private var porcupine: Porcupine?
@@ -104,24 +103,11 @@ class ViewModel: ObservableObject {
     private var workflow: Workflow?
 
     init() {
-        for (i, task) in TASKS.enumerated() {
-            cardData["location-\(i)"] = CardData(
-                title: "LOCATION",
-                hasAlternate: false,
-                isActive: false,
-                value: "-")
-            cardData["pick-\(i)"] = CardData(
-                title: "PICK",
-                hasAlternate: true,
-                isActive: false,
-                value: "-")
-        }
-
         Task.detached(priority: .background) { [self] in
             do {
                 try await preloadDemo()
             } catch {
-                await setErrorText(text: error.localizedDescription)
+                await setErrorText(text: "Failed to preload demo with: " + error.localizedDescription)
             }
         }
     }
@@ -162,25 +148,24 @@ class ViewModel: ObservableObject {
     }
 
     func setCardValue(cardId: String, value: String) async {
-        // TODO: impl this
+        // TODO: impl this fully
         await MainActor.run {
             cardData[cardId]!.value = value
         }
     }
 
     private func preloadDemo() async throws {
-        await setStatusText(text: "Loading Koala Noise Suppression...")
-        koala = try Koala(accessKey: ACCESS_KEY)
-
         await setStatusText(text: "Loading Porcupine Wake Word...")
         porcupine = try Porcupine(accessKey: ACCESS_KEY, keywordPath: KEYWORD_MODEL)
 
+        await setStatusText(text: "Loading Koala Noise Suppression...")
+        koala = try Koala(accessKey: ACCESS_KEY, modelPath: NS_MODEL)
+        
         await setStatusText(text: "Loading Orca Text-to-Speech...")
         orca = try Orca(accessKey: ACCESS_KEY, modelPath: TTS_MODEL)
 
         await setStatusText(text: "Loading Rhino Speech-to-Intent...")
         rhino = try Rhino(accessKey: ACCESS_KEY, contextPath: CONTEXT_MODEL)
-
 
         audioPlayerStream = try AudioPlayerStream(
             sampleRate: Double(orca!.sampleRate!))
@@ -201,7 +186,7 @@ class ViewModel: ObservableObject {
         rhinoStep = RhinoStep(
             recorder: noiseSuppressionRecorder!,
             rhino: rhino!)
-        workflow = Workflow(
+        workflow = await Workflow(
             viewModel: self,
             orcaStep: orcaStep!,
             porcupineStep: porcupineStep!,
@@ -213,6 +198,29 @@ class ViewModel: ObservableObject {
         }
     }
 
+    public func initCards() async {
+        await MainActor.run {
+            for (i, _) in TASKS.enumerated() {
+                cardData["location-\(i)"] = CardData(
+                    order: 2 * i + 0,
+                    cardId: "location-\(i)",
+                    title: "LOCATION",
+                    hasAlternate: false,
+                    isActive: false,
+                    value: nil
+                )
+                cardData["pick-\(i)"] = CardData(
+                    order: 2 * i + 1,
+                    cardId: "pick-\(i)",
+                    title: "PICK",
+                    hasAlternate: true,
+                    isActive: false,
+                    value: nil
+                )
+            }
+        }
+    }
+    
     public func startDemo() {
         Task.detached(priority: .background) { [self] in
             do {
@@ -221,8 +229,10 @@ class ViewModel: ObservableObject {
                     listenState = .idle
                     statusText = ""
                     activeCard = nil
-                    // TODO: does this make sense?
-                    cardData.removeAll()
+
+                    for key in cardData.keys {
+                        cardData[key]!.value = nil
+                    }
                 }
 
                 if try await workflow!.run() {
@@ -270,7 +280,9 @@ class Workflow {
         orcaStep: OrcaStep,
         porcupineStep: PorcupineStep,
         rhinoStep: RhinoStep
-    ) {
+    ) async {
+        await viewModel.initCards()
+        
         states = [
             .STANDBY: StandbyState(
                 viewModel: viewModel,
@@ -301,7 +313,7 @@ class Workflow {
 
     func run() async throws -> Bool {
         var currentState: RecipeStates? = .STANDBY
-        var currentArgs: [String: Any] = [:]
+        var currentArgs: [String: Any] = [ "tasks": TASKS ]
 
         shouldCancel = false
         while currentState != nil {
@@ -552,7 +564,10 @@ class StandbyState: State {
 
         if try await porcupineStep.run() {
             await viewModel.setListenState(state: .idle)
-            return Transition(nextState: .TASK_LOCATION_PROMPT, nextStateArgs: [:])
+            return Transition(nextState: .TASK_LOCATION_PROMPT, nextStateArgs: [
+                "tasks": args["tasks"]!,
+                "taskIndex": 0,
+            ])
         } else {
             await viewModel.setListenState(state: .idle)
             return Transition(nextState: nil, nextStateArgs: [:])
@@ -630,7 +645,10 @@ class TaskLocationReportState: State {
         await viewModel.setCardValue(cardId: cardId, value: "...")
         
         await viewModel.setStatusText(text: "Listening for location confirmation...")
+        await viewModel.setListenState(state: .listening)
         if let inference: Inference = try await rhinoStep.run() {
+            await viewModel.setListenState(state: .idle)
+
             if (
                 inference.isUnderstood
                 && (inference.intent == "confirmLocation")
@@ -662,6 +680,7 @@ class TaskLocationReportState: State {
             }
         }
     
+        await viewModel.setListenState(state: .idle)
         return Transition(nextState: nil, nextStateArgs: [:])
     }
     
@@ -740,8 +759,11 @@ class TaskPickReportState: State {
         
         await viewModel.setCardValue(cardId: cardId, value: "...")
         await viewModel.setStatusText(text: "Listening for pick result")
-        
+        await viewModel.setListenState(state: .listening)
+
         if let inference: Inference = try await rhinoStep.run() {
+            await viewModel.setListenState(state: .idle)
+
             if inference.isUnderstood && VALID_INTENTS.contains(inference.intent) {
                 if inference.intent == "exitWorkflow" {
                     await viewModel.setStatusText(text: "Ending picking workflow.")
@@ -823,7 +845,8 @@ class TaskPickReportState: State {
                 "prompt": failurePrompt
             ])
         }
-
+        
+        await viewModel.setListenState(state: .idle)
         return Transition(nextState: nil, nextStateArgs: [:])
     }
     
@@ -862,140 +885,3 @@ class CompletePromptState: State {
         orcaStep.cancel()
     }
 }
-
-/*
-class StandbyState: State {
-    let viewModel: ViewModel
-    let porcupineStep: PorcupineStep
-    let nextState: RecipeStates
-
-    init(
-        viewModel: ViewModel,
-        porcupineStep: PorcupineStep,
-        nextState: RecipeStates
-    ) {
-        self.viewModel = viewModel
-        self.porcupineStep = porcupineStep
-        self.nextState = nextState
-    }
-
-    func run(args: [String: Any]) async throws -> Transition {
-        await viewModel.setStatusText(text: "Listening for wake word...")
-        await viewModel.setListenState(state: .listening)
-        if try await porcupineStep.run() {
-            await viewModel.setListenState(state: .idle)
-            return Transition(nextState: self.nextState, nextStateArgs: [:])
-        } else {
-            await viewModel.setListenState(state: .idle)
-            return Transition(nextState: nil, nextStateArgs: [:])
-        }
-    }
-
-    func cancel() {
-        porcupineStep.cancel()
-    }
-}
-
-class PromptState: State {
-    let viewModel: ViewModel
-    let orcaStep: OrcaStep
-    let defaultPrompt: String
-    let nextState: RecipeStates?
-    let cardType: CardType?
-
-    init(
-        viewModel: ViewModel,
-        orcaStep: OrcaStep,
-        defaultPrompt: String,
-        nextState: RecipeStates?,
-        cardType: CardType?
-    ) {
-        self.viewModel = viewModel
-        self.orcaStep = orcaStep
-        self.defaultPrompt = defaultPrompt
-        self.nextState = nextState
-        self.cardType = cardType
-    }
-
-    func run(args: [String: Any]) async throws -> Transition {
-        let prompt: String = if args["prompt"] != nil {
-            if args["prompt"]! is String {
-                args["prompt"] as! String
-            } else {
-                defaultPrompt
-            }
-        } else {
-            defaultPrompt
-        }
-
-        await viewModel.setActiveCard(card: self.cardType)
-        await viewModel.setStatusText(text: prompt)
-        await viewModel.setListenState(state: .idle)
-        if try await orcaStep.run(prompt: prompt) {
-            return Transition(nextState: self.nextState, nextStateArgs: [:])
-        } else {
-            return Transition(nextState: nil, nextStateArgs: [:])
-        }
-    }
-
-    func cancel() {
-        orcaStep.cancel()
-    }
-}
-
-class ReportState: State {
-    let viewModel: ViewModel
-    let rhinoStep: RhinoStep
-    let listeningPrompt: String
-    let expectedIntent: String
-    let cardType: CardType
-    let successLogGen: (Inference) -> String
-    let successNextState: RecipeStates
-    let failurePromptGen: (Inference) -> String
-    let failureNextState: RecipeStates
-
-    init(
-        viewModel: ViewModel,
-        rhinoStep: RhinoStep,
-        listeningPrompt: String,
-        expectedIntent: String,
-        cardType: CardType,
-        successLogGen: @escaping (Inference) -> String,
-        successNextState: RecipeStates,
-        failurePromptGen: @escaping (Inference) -> String,
-        failureNextState: RecipeStates
-    ) {
-        self.viewModel = viewModel
-        self.rhinoStep = rhinoStep
-        self.listeningPrompt = listeningPrompt
-        self.expectedIntent = expectedIntent
-        self.cardType = cardType
-        self.successLogGen = successLogGen
-        self.successNextState = successNextState
-        self.failurePromptGen = failurePromptGen
-        self.failureNextState = failureNextState
-    }
-
-    func run(args: [String: Any]) async throws -> Transition {
-        await viewModel.setStatusText(text: listeningPrompt)
-        await viewModel.setListenState(state: .listening)
-        let inference = try await rhinoStep.run()
-        await viewModel.setListenState(state: .listening)
-        if inference == nil {
-            return Transition(nextState: nil, nextStateArgs: [:])
-        } else if inference!.isUnderstood && inference!.intent == expectedIntent {
-            await viewModel.setCardValue(card: cardType, value: successLogGen(inference!))
-            await viewModel.setActiveCard(card: nil)
-
-            return Transition(nextState: self.successNextState, nextStateArgs: [:])
-        } else {
-            return Transition(nextState: self.failureNextState, nextStateArgs: [
-                "prompt": failurePromptGen(inference!)
-            ])
-        }
-    }
-
-    func cancel() {
-        rhinoStep.cancel()
-    }
-}*/
