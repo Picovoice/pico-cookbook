@@ -29,6 +29,8 @@ struct CardView: View {
     let content: String?
     let isActive: Bool
     let startDate = Date()
+    let hasAlternate: Bool
+    let isAlternateActive: Bool
 
     var body: some View {
         HStack {
@@ -63,6 +65,26 @@ struct CardView: View {
                             isActive ? .blue : .lightGray,
                             lineWidth: 1)
                 )
+
+            if hasAlternate {
+                VStack {
+                    HStack {
+                        Text("or EXIT WORKFLOW")
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(isAlternateActive ? .blue : .darkGray)
+                            .bold()
+                        Spacer()
+                    }
+                }.padding(8)
+                    .background(Color.offWhite)
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.lightGray, lineWidth: 1)
+                    )
+            }
+
         }.padding(8)
     }
 }
@@ -74,12 +96,13 @@ struct MainView: View {
         VStack {
             ScrollViewReader { proxy in
                 ScrollView {
-                    // TODO: update CardView to display alternates
                     ForEach(Array(viewModel.cardData.values).sorted { (a, b) in a.order < b.order }, id: \.order) { cardData in
                         CardView(
                             title: cardData.title,
                             content: cardData.value,
-                            isActive: cardData.isActive)
+                            isActive: cardData.isActive,
+                            hasAlternate: cardData.hasAlternate,
+                            isAlternateActive: cardData.isAlternateActive)
                     }.onChange(of: viewModel.cardData, {
                         if viewModel.activeCard != nil {
                             proxy.scrollTo(

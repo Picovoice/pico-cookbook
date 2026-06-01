@@ -64,12 +64,13 @@ struct CardData: Hashable {
     let title: String
     let hasAlternate: Bool
     var isActive: Bool
+    var isAlternateActive: Bool
     var value: String?
 }
 
 class ViewModel: ObservableObject {
 
-    private let ACCESS_KEY = ""
+    private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
 
     private let KEYWORD_MODEL = "voice_picking_ios.ppn"
 
@@ -86,6 +87,7 @@ class ViewModel: ObservableObject {
     @Published var enginesLoaded: Bool = false
     @Published var soundLevel: Float = 0.0
     @Published var activeCard: CardData?
+    var activeCardId: String?
     @Published var cardData: [String: CardData] = [:]
 
     private var koala: Koala?
@@ -138,17 +140,28 @@ class ViewModel: ObservableObject {
 
     func setActiveCard(cardId: String?, isAlternate: Bool) async {
         await MainActor.run {
-            // TODO: impl alternate logic too (might not even need to be here)
-            if let cardIdStr = cardId {
-                activeCard = cardData[cardIdStr]
-            } else {
+            if activeCard != nil {
                 activeCard = nil
+                if let activeCardIdStr = activeCardId {
+                    cardData[activeCardIdStr]!.isActive = false
+                    cardData[activeCardIdStr]!.isAlternateActive = false
+                    activeCardId = nil
+                }
+            }
+
+            if let cardIdStr = cardId {
+                activeCardId = cardIdStr
+                activeCard = cardData[cardIdStr]
+                cardData[cardIdStr]!.isActive = true
+                if isAlternate {
+                    cardData[cardIdStr]!.isActive = false
+                    cardData[cardIdStr]!.isAlternateActive = true
+                }
             }
         }
     }
 
-    func setCardValue(cardId: String, value: String) async {
-        // TODO: impl this fully
+    func setCardValue(cardId: String, value: String?) async {
         await MainActor.run {
             cardData[cardId]!.value = value
         }
@@ -160,7 +173,7 @@ class ViewModel: ObservableObject {
 
         await setStatusText(text: "Loading Koala Noise Suppression...")
         koala = try Koala(accessKey: ACCESS_KEY, modelPath: NS_MODEL)
-        
+
         await setStatusText(text: "Loading Orca Text-to-Speech...")
         orca = try Orca(accessKey: ACCESS_KEY, modelPath: TTS_MODEL)
 
@@ -207,6 +220,7 @@ class ViewModel: ObservableObject {
                     title: "LOCATION",
                     hasAlternate: false,
                     isActive: false,
+                    isAlternateActive: false,
                     value: nil
                 )
                 cardData["pick-\(i)"] = CardData(
@@ -215,12 +229,13 @@ class ViewModel: ObservableObject {
                     title: "PICK",
                     hasAlternate: true,
                     isActive: false,
+                    isAlternateActive: false,
                     value: nil
                 )
             }
         }
     }
-    
+
     public func startDemo() {
         Task.detached(priority: .background) { [self] in
             do {
@@ -231,6 +246,8 @@ class ViewModel: ObservableObject {
                     activeCard = nil
 
                     for key in cardData.keys {
+                        cardData[key]!.isActive = false
+                        cardData[key]!.isAlternateActive = false
                         cardData[key]!.value = nil
                     }
                 }
@@ -282,7 +299,7 @@ class Workflow {
         rhinoStep: RhinoStep
     ) async {
         await viewModel.initCards()
-        
+
         states = [
             .STANDBY: StandbyState(
                 viewModel: viewModel,
@@ -641,37 +658,40 @@ class TaskLocationReportState: State {
         let taskIndex = args["taskIndex"]! as! Int
         let task = tasks[taskIndex]
         let cardId = "location-\(taskIndex)"
-        
+
         await viewModel.setCardValue(cardId: cardId, value: "...")
-        
+
         await viewModel.setStatusText(text: "Listening for location confirmation...")
         await viewModel.setListenState(state: .listening)
         if let inference: Inference = try await rhinoStep.run() {
             await viewModel.setListenState(state: .idle)
 
-            if (
+            if 
                 inference.isUnderstood
                 && (inference.intent == "confirmLocation")
                 && (inference.slots["checkDigit"]! == task.checkDigit)
-            ) {
+            {
                 await viewModel.setCardValue(cardId: cardId, value: inference.slots["checkDigit"]!)
                 await viewModel.setActiveCard(cardId: nil, isAlternate: false)
-                
+
                 return Transition(nextState: .TASK_PICK_PROMPT, nextStateArgs: [
                     "tasks": tasks,
                     "taskIndex": taskIndex,
                 ])
             } else {
                 var failurePrompt: [String] = []
-                if (inference.isUnderstood && inference.intent == "confirmLocation") {
+                if inference.isUnderstood && inference.intent == "confirmLocation" {
                     let spokenDigits = inference.slots["checkDigit"]!
                     failurePrompt.append("Location check digit \(spokenDigits) does not match. Retrying...")
                 } else {
                     failurePrompt.append("Failed to capture location confirmation. Retrying...")
                 }
-                
-                failurePrompt.append("Please confirm location for \(task.locationName). Check digits are \(task.checkDigit).")
-                
+
+                failurePrompt.append(
+                    "Please confirm location for \(task.locationName). " +
+                    "Check digits are \(task.checkDigit)."
+                )
+
                 return Transition(nextState: .TASK_LOCATION_PROMPT, nextStateArgs: [
                     "tasks": tasks,
                     "taskIndex": taskIndex,
@@ -679,11 +699,11 @@ class TaskLocationReportState: State {
                 ])
             }
         }
-    
+
         await viewModel.setListenState(state: .idle)
         return Transition(nextState: nil, nextStateArgs: [:])
     }
-    
+
     func cancel() {
         rhinoStep.cancel()
     }
@@ -756,7 +776,7 @@ class TaskPickReportState: State {
         let taskIndex = args["taskIndex"]! as! Int
         let task = tasks[taskIndex]
         let cardId = "pick-\(taskIndex)"
-        
+
         await viewModel.setCardValue(cardId: cardId, value: "...")
         await viewModel.setStatusText(text: "Listening for pick result")
         await viewModel.setListenState(state: .listening)
@@ -767,7 +787,8 @@ class TaskPickReportState: State {
             if inference.isUnderstood && VALID_INTENTS.contains(inference.intent) {
                 if inference.intent == "exitWorkflow" {
                     await viewModel.setStatusText(text: "Ending picking workflow.")
-                    await viewModel.setCardValue(cardId: cardId, value: "...")
+                    await viewModel.setCardValue(cardId: cardId, value: nil)
+                    await viewModel.setActiveCard(cardId: cardId, isAlternate: true)
 
                     return Transition(nextState: .COMPLETE_PROMPT, nextStateArgs: [
                         "prompt": "Picking workflow ended."
@@ -845,11 +866,11 @@ class TaskPickReportState: State {
                 "prompt": failurePrompt
             ])
         }
-        
+
         await viewModel.setListenState(state: .idle)
         return Transition(nextState: nil, nextStateArgs: [:])
     }
-    
+
     func cancel() {
         rhinoStep.cancel()
     }
@@ -876,7 +897,7 @@ class CompletePromptState: State {
         }
 
         await viewModel.setStatusText(text: prompt)
-        let _ = try await orcaStep.run(prompt: prompt)
+        _ = try await orcaStep.run(prompt: prompt)
 
         return Transition(nextState: nil, nextStateArgs: [:])
     }
