@@ -684,10 +684,6 @@ class MenuItem(OrderItem):
         return response
 
 
-# TODO: this
-MENU = """...."""
-
-
 # states ----------------------------------------------------------------------
 
 
