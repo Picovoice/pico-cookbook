@@ -812,12 +812,25 @@ class RecipeTaskPickReportState(RecipeState):
             if next_task_index >= len(tasks):
                 if intent == 'confirmPickedQuantity':
                     text = f"Recorded picked {slots['quantity']}."
+                    next_prompt = "Picking workflow complete."
                 elif intent == 'reportShortPick':
                     text = f"Recorded short pick {slots['quantity']}."
+                    next_prompt = (
+                        "Short pick recorded. "
+                        "Picking workflow complete."
+                    )
                 elif intent == 'reportDamagedItem':
                     text = "Recorded damaged item."
+                    next_prompt = (
+                        "Damaged item recorded. Set it aside. "
+                        "Picking workflow complete."
+                    )
                 else:
                     text = "Recorded empty location."
+                    next_prompt = (
+                        "Empty location recorded. "
+                        "Picking workflow complete."
+                    )
 
                 sleep(.1)
                 event.set()
@@ -827,8 +840,7 @@ class RecipeTaskPickReportState(RecipeState):
                     outcome=inference,
                     next_state=RecipeStates.COMPLETE_PROMPT,
                     next_state_kwargs={
-                        'tasks': tasks,
-                        'task_index': next_task_index,
+                        'prompt': next_prompt
                     })
 
             next_task = tasks[next_task_index]
