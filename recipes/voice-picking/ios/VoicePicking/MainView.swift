@@ -96,7 +96,8 @@ struct MainView: View {
         VStack {
             ScrollViewReader { proxy in
                 ScrollView {
-                    ForEach(Array(viewModel.cardData.values).sorted { (a, b) in a.order < b.order }, id: \.order) { cardData in
+                    ForEach(Array(viewModel.cardData.values).sorted { (a, b) in a.order < b.order },
+                            id: \.order) { cardData in
                         CardView(
                             title: cardData.title,
                             content: cardData.value,

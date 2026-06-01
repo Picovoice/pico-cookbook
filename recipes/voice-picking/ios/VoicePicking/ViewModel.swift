@@ -213,7 +213,7 @@ class ViewModel: ObservableObject {
 
     public func initCards() async {
         await MainActor.run {
-            for (i, _) in TASKS.enumerated() {
+            for i in TASKS.indices {
                 cardData["location-\(i)"] = CardData(
                     order: 2 * i + 0,
                     cardId: "location-\(i)",
@@ -324,7 +324,7 @@ class Workflow {
             .COMPLETE_PROMPT: CompletePromptState(
                 viewModel: viewModel,
                 orcaStep: orcaStep,
-            ),
+            )
         ]
     }
 
@@ -366,9 +366,9 @@ class BasicRecorder: Recorder {
     let frameCallback: (([Int16]) async -> Void)?
 
     init(
-            frameLength: UInt32,
-            sampleRate: UInt32,
-            frameCallback: (([Int16]) async -> Void)? = nil
+        frameLength: UInt32,
+        sampleRate: UInt32,
+        frameCallback: (([Int16]) async -> Void)? = nil
     ) {
         self.frameLength = frameLength
         self.sampleRate = sampleRate
@@ -569,7 +569,7 @@ class StandbyState: State {
 
     init(
         viewModel: ViewModel,
-        porcupineStep: PorcupineStep,
+        porcupineStep: PorcupineStep
     ) {
         self.viewModel = viewModel
         self.porcupineStep = porcupineStep
@@ -583,7 +583,7 @@ class StandbyState: State {
             await viewModel.setListenState(state: .idle)
             return Transition(nextState: .TASK_LOCATION_PROMPT, nextStateArgs: [
                 "tasks": args["tasks"]!,
-                "taskIndex": 0,
+                "taskIndex": 0
             ])
         } else {
             await viewModel.setListenState(state: .idle)
@@ -602,7 +602,7 @@ class TaskLocationPromptState: State {
 
     init(
         viewModel: ViewModel,
-        orcaStep: OrcaStep,
+        orcaStep: OrcaStep
     ) {
         self.viewModel = viewModel
         self.orcaStep = orcaStep
@@ -635,7 +635,7 @@ class TaskLocationPromptState: State {
 
         return Transition(nextState: .TASK_LOCATION_REPORT, nextStateArgs: [
             "tasks": args["tasks"]!,
-            "taskIndex": args["taskIndex"]!,
+            "taskIndex": args["taskIndex"]!
         ])
     }
 
@@ -666,17 +666,15 @@ class TaskLocationReportState: State {
         if let inference: Inference = try await rhinoStep.run() {
             await viewModel.setListenState(state: .idle)
 
-            if 
-                inference.isUnderstood
+            if inference.isUnderstood
                 && (inference.intent == "confirmLocation")
-                && (inference.slots["checkDigit"]! == task.checkDigit)
-            {
+                && (inference.slots["checkDigit"]! == task.checkDigit) {
                 await viewModel.setCardValue(cardId: cardId, value: inference.slots["checkDigit"]!)
                 await viewModel.setActiveCard(cardId: nil, isAlternate: false)
 
                 return Transition(nextState: .TASK_PICK_PROMPT, nextStateArgs: [
                     "tasks": tasks,
-                    "taskIndex": taskIndex,
+                    "taskIndex": taskIndex
                 ])
             } else {
                 var failurePrompt: [String] = []
@@ -695,7 +693,7 @@ class TaskLocationReportState: State {
                 return Transition(nextState: .TASK_LOCATION_PROMPT, nextStateArgs: [
                     "tasks": tasks,
                     "taskIndex": taskIndex,
-                    "prompt": failurePrompt,
+                    "prompt": failurePrompt
                 ])
             }
         }
@@ -745,7 +743,7 @@ class TaskPickPromptState: State {
 
         return Transition(nextState: .TASK_PICK_REPORT, nextStateArgs: [
             "tasks": tasks,
-            "taskIndex": taskIndex,
+            "taskIndex": taskIndex
         ])
     }
 
@@ -768,7 +766,7 @@ class TaskPickReportState: State {
         "reportShortPick",
         "reportDamagedItem",
         "reportLocationEmpty",
-        "exitWorkflow",
+        "exitWorkflow"
     ]
 
     func run(args: [String: Any]) async throws -> Transition {
@@ -858,7 +856,7 @@ class TaskPickReportState: State {
 
             let failurePrompt = [
                 "Failed to capture pick result. Retrying...",
-                "Please report the result for picking \(task.quantity) \(task.itemName).",
+                "Please report the result for picking \(task.quantity) \(task.itemName)."
             ]
             return Transition(nextState: .TASK_PICK_PROMPT, nextStateArgs: [
                 "tasks": tasks,
@@ -882,7 +880,7 @@ class CompletePromptState: State {
 
     init(
         viewModel: ViewModel,
-        orcaStep: OrcaStep,
+        orcaStep: OrcaStep
     ) {
         self.viewModel = viewModel
         self.orcaStep = orcaStep
