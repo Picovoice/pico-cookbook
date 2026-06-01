@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import sys
 import time
+
 from argparse import ArgumentParser
 from threading import (
     Event,
@@ -12,20 +13,28 @@ from typing import Tuple
 
 
 ANIMALS = [
-    ("cheetah", "4.0.2"),
-    ("orca", "3.0.0"),
+    ("cheetah", "4.0.0"),
     ("koala", "3.0.0"),
+    ("orca", "3.0.0"),
+    ("porcupine", "4.0.0"),
+    ("rhino", "4.0.0"),
 ]
 
 COPIES = {
-    "orca": [
-        "orca_params_en_female.pv"
-    ],
     "cheetah": [
-        "cheetah_params.pv"
+        ("cheetah_params.pv", "cheetah_params.pv")
     ],
     "koala": [
-        "koala_params.pv"
+        ("koala_params.pv", "koala_params.pv")
+    ],
+    "orca": [
+        ("orca_params_en_female.pv", "orca_params_en_female.pv")
+    ],
+    "rhino": [
+        ("rhino_params.pv", "rhino_params.pv")
+    ],
+    "porcupine": [
+        ("porcupine_params.pv", "porcupine_params.pv")
     ]
 }
 
@@ -99,30 +108,35 @@ def clone_repo(animal: str, major: str, minor: str) -> str:
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
-        '--keyword_path',
+        '--rhino_context_path',
         required=True,
-        help='Absolute path to the Porcupine model file (`.ppn`).')
+        help='Absolute path to the Rhino context file (`.rhn`).')
     parser.add_argument(
-        '--context_path',
+        '--porcupine_keyword_path',
         required=True,
-        help='Absolute path to the Rhino model file (`.rhn`).')
+        help='Absolute path to the wake word model file (`.ppn`).')
     args = parser.parse_args()
 
-    public_folder = os.path.join(
-        os.path.dirname(__file__),
-        "public",
-        "models")
+    models_folder = os.path.join(os.path.dirname(__file__), "public", "models")
+
+    context_target_path = os.path.join(models_folder, "voice_guided_maintenance_and_inspection_web.rhn")
+    shutil.copy(args.rhino_context_path, context_target_path)
+    print(f"Copied {args.rhino_context_path} to {context_target_path}")
+
+    keywords_folder = os.path.join(os.path.dirname(__file__), "public", "keywords")
+
+    wakeword_target_path = os.path.join(keywords_folder, "voice_guided_maintenance_and_inspection_web.ppn")
+    shutil.copy(args.porcupine_keyword_path, wakeword_target_path)
+    print(f"Copied {args.porcupine_keyword_path} to {wakeword_target_path}")
+
     for animal, version in ANIMALS:
         major, minor = version.split('.')[:2]
         folder = clone_repo(animal, major, minor)
         model_folder = os.path.join(folder, "lib", "common")
-        for filename in COPIES[animal]:
-            src_path = os.path.join(model_folder, filename)
-            dst_path = os.path.join(public_folder, filename)
+        for src_filename, dst_filename in COPIES[animal]:
+            src_path = os.path.join(model_folder, src_filename)
+            dst_path = os.path.join(models_folder, dst_filename)
             shutil.copy(src_path, dst_path)
-
-    shutil.copy(args.keyword_path, os.path.join(public_folder, "keyword.ppn"))
-    shutil.copy(args.context_path, os.path.join(public_folder, "context.rhn"))
 
 
 if __name__ == '__main__':

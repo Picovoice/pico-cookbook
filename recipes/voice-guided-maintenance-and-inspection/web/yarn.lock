@@ -1009,10 +1009,10 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@picovoice/cheetah-web@^4.0.1":
-  version "4.0.1"
-  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-web/-/cheetah-web-4.0.1.tgz#d8598f65dfdf035d644de2bf9f3cbb83e731b629"
-  integrity sha512-I+orgjyQPVdOM3M97EQuiJMNpv8JgiaPktJh82FCcMMb5bFlsa1b0LCZxL59IEbcih7zbK6ix43CwyQS+0OqQg==
+"@picovoice/cheetah-web@^4.0.4":
+  version "4.0.4"
+  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-web/-/cheetah-web-4.0.4.tgz#a15b6532a3c318dd6626ad4c61fedb037179fef3"
+  integrity sha512-uB3aGsl3KPslSQUt9S46fHtDhWoPucg15RcogIuEMhFe0xtRjVUKv+zbWf3xfpi7tRzso3hPiCjc9/fTy6Ea+A==
   dependencies:
     "@picovoice/web-utils" "=1.4.3"
 
@@ -3040,9 +3040,9 @@ punycode@^2.1.0:
   integrity sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==
 
 qs@^6.4.0:
-  version "6.14.2"
-  resolved "https://registry.yarnpkg.com/qs/-/qs-6.14.2.tgz#b5634cf9d9ad9898e31fba3504e866e8efb6798c"
-  integrity sha512-V/yCWTTF7VJ9hIh18Ugr2zhJMP01MY7c5kh4J870L7imm6/DIzBsNLTXzMwUA3yZ5b/KBqLx8Kp3uRvd7xSe3Q==
+  version "6.15.2"
+  resolved "https://registry.yarnpkg.com/qs/-/qs-6.15.2.tgz#fd55426d710403ddccc45e0f9eab16db7727ece9"
+  integrity sha512-Rzq0KEyX/w/tEybncDgdkZrJgVUsUMk3xjh3t5bv3S1HTAtg+uOYt72+ZfwiQwKdysThkTBdL/rTi6HDmX9Ddw==
   dependencies:
     side-channel "^1.1.0"
 

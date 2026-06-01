@@ -1,7 +1,11 @@
 window.onload = () => {
-  const titleText = document.getElementById('titleText');
+  const container = document.getElementById('container');
   const errorText = document.getElementById('errorText');
+
+  const statusContainer = document.getElementById("status-container");
   const statusText = document.getElementById('statusText');
+  const statusSpinner = document.getElementById("status-spinner");
+
   const accessKeyInput = document.getElementById('accessKey');
   const btnInit = document.getElementById('btnInit');
 
@@ -13,11 +17,13 @@ window.onload = () => {
   const bar3 = document.getElementById('bar3');
 
   function setStatusText(text) {
+    statusContainer.style.display = 'flex';
     statusText.innerText = text;
     statusText.classList.remove("hidden");
   }
 
   function clearStatus() {
+    statusContainer.style.display = 'none';
     statusText.innerText = '';
     statusText.classList.add('hidden');
   }
@@ -39,6 +45,8 @@ window.onload = () => {
   }
 
   const cards = {};
+  let micActive = true;
+  let firstStart = true;
 
   function createCard(id, title) {
     if (!cards.hasOwnProperty(id)) {
@@ -46,8 +54,16 @@ window.onload = () => {
       const titleArea = document.createElement('div');
       const valueArea = document.createElement('div');
 
-      titleArea.innerText = title;
+      const lhsDiv = document.createElement('div');
+      lhsDiv.innerText = title;
+
+      titleArea.className = "title";
+      titleArea.style.display = "flex";
+      titleArea.style.width = "100%";
+      titleArea.appendChild(lhsDiv);
+
       valueArea.innerText = "-";
+      valueArea.style['text-align'] = "start";
 
       root.classList.add("card");
       root.appendChild(titleArea);
@@ -80,6 +96,13 @@ window.onload = () => {
     }
   }
 
+  function setCompletedCard(id) {
+    if (id !== null) {
+      cards[id].root.classList.remove("activeCard");
+      cards[id].root.classList.add("completedCard");
+    }
+  }
+
   function setCardValue(id, value) {
     cards[id].value.innerText = value;
     cards[id].root.focus();
@@ -89,20 +112,89 @@ window.onload = () => {
     });
   }
 
-  function resetCards(cards) {
-    for (let [id, title] of cards) {
-      createCard(id, title);
-    }
+  var screenString = "init";
 
-    cardContainer.scrollTo(0, 0);
+  async function goToInitScreen() {
+    screenString = "init";
+
+    container.style.opacity = '0';
+    await Picovoice.sleep(400);
+
+    container.style.opacity = '1';
+
+    for (let key in cards) {
+      cards[key].root.classList.remove("activeCard");
+      cards[key].root.classList.remove("completedCard");
+      cards[key].value.innerText = "-";
+    }
+    cardContainer.scrollTo({
+      top: 0,
+      behavior: "instant",
+    });
+
+    setStatusText("Ready to Start");
+    statusContainer.style.display = 'block';
+
+    btnInit.classList.remove('hidden');
+    cardContainer.classList.add('hidden');
+    btnCancel.classList.add('hidden');
+    volumeMeter.classList.add('hidden');
+  }
+
+  function currentScreen() {
+    return screenString;
   }
 
   function onVolume(volume) {
+    if (!micActive) {
+      volume = 0;
+    }
+
     const baseHeight = 8;
     bar1.style.height = `${baseHeight + volume * 20}px`;
     bar2.style.height = `${baseHeight + volume * 32}px`;
     bar3.style.height = `${baseHeight + volume * 24}px`;
   }
+
+  const callbacks = {
+    setLoadingState: async (enabled) => {
+      if (enabled) {
+        statusSpinner.style.display = "inline";
+        statusSpinner.style.opacity = "1";
+      } else {
+        statusSpinner.style.opacity = "0";
+        
+        await Picovoice.sleep(200);
+        
+        statusSpinner.style.display = "none";
+      }
+    },
+    setStatusText,
+    clearStatus,
+    setErrorText,
+    clearError,
+
+    onVolume,
+    onListening: (isListening) => {
+      if (isListening) {
+        bar1.style.backgroundColor = "var(--brand-primary)";
+        bar2.style.backgroundColor = "var(--brand-primary)";
+        bar3.style.backgroundColor = "var(--brand-primary)";
+      } else {
+        bar1.style.backgroundColor = "#888";
+        bar2.style.backgroundColor = "#888";
+        bar3.style.backgroundColor = "#888";
+      }
+      micActive = isListening;
+    },
+
+    createCard,
+    setActiveCard,
+    setCompletedCard,
+    setCardValue,
+    goToInitScreen,
+    currentScreen,
+  };
 
   btnInit.onclick = async () => {
     clearError();
@@ -115,26 +207,30 @@ window.onload = () => {
     btnInit.disabled = true;
 
     try {
-      await Picovoice.init(accessKey, {
-        setStatusText,
-        clearStatus,
-        setErrorText,
-        clearError,
-        resetCards,
-        setCardValue,
-        onVolume,
-      });
+      if (firstStart) {
+        await Picovoice.init(accessKey, callbacks);
+        firstStart = false;
+      }
+
+      screenString = "demo";
+
+      container.style.opacity = '0';
+      await Picovoice.sleep(400);
+
       accessKeyInput.classList.add('hidden');
       btnInit.classList.add('hidden');
       cardContainer.classList.remove('hidden');
       btnCancel.classList.remove('hidden');
       volumeMeter.classList.remove('hidden');
+
+      container.style.opacity = '1';
+
       await Picovoice.start();
     } catch (e) {
       setErrorText(e.toString());
+    } finally {
+      btnInit.disabled = false;
     }
-
-    btnInit.disabled = false;
   };
 
   btnCancel.onclick = async () => {
@@ -142,15 +238,12 @@ window.onload = () => {
 
     try {
       await Picovoice.stop();
-      btnInit.classList.remove('hidden');
-      cardContainer.classList.add('hidden');
-      btnCancel.classList.add('hidden');
-      volumeMeter.classList.add('hidden');
+      await Picovoice.sleep(400);
     } catch (e) {
       setErrorText(e.toString());
+    } finally {
+      btnCancel.disabled = false;
     }
-
-    btnCancel.disabled = false;
   };
 };
 

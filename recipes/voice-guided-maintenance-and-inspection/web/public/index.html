@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div class="container">
+    <div id="container" class="container">
       <h1 id="titleText">Voice Guided Maintenance and Inspection</h1>
       <div id="errorText" class="hidden"></div>
 
@@ -17,7 +17,7 @@
         id="cardContainer"
         class="hidden"
         style="
-          width: 100%;
+          width: calc(100% - 24px);
           max-height: 45vh;
           padding-left: 20px;
           padding-right: 20px;
@@ -29,8 +29,11 @@
           overflow-y: auto;
         "></div>
 
-      <div id="statusText" class="hidden"></div>
-
+      <div id="status-container" style="display: none;">
+        <div id="statusText" class="hidden"></div>
+        <div id="status-spinner" class="loader" style="opacity: 0; display: none;"></div>
+      </div>
+    
       <input type="text" id="accessKey" placeholder="Enter AccessKey" />
       <button id="btnInit">Start Demo</button>
 

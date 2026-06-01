@@ -16,6 +16,6 @@
     "target": "esnext",
     "types": ["node"]
   },
-  "include": ["src", "module.d.ts", "node_modules/@picovoice/pv-xpu"],
+  "include": ["src", "module.d.ts"],
   "exclude": ["node_modules"]
 }

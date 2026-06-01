@@ -32,18 +32,19 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+
+  transition: opacity 0.4s ease;
 }
 
 h1 {
   color: var(--brand-primary);
   font-size: 24px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 #statusText {
   font-size: 18px;
   color: #333;
-  margin-bottom: 24px;
   white-space: pre-line;
 }
 
@@ -59,6 +60,10 @@ h1 {
   width: 100%;
   box-sizing: border-box;
   word-wrap: break-word;
+}
+
+#cardContainer {
+    margin-top: 8px;
 }
 
 #nameModalOverlay {
@@ -119,6 +124,10 @@ h1 {
   width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+#accessKey {
+    margin-top: 16px;
 }
 
 input[type='text'] {
@@ -285,6 +294,8 @@ progress::-webkit-progress-value {
   align-items: center;
   justify-content: center;
   margin-bottom: 24px;
+
+  transition: opacity 0.4s ease;
 }
 
 .volume-bar {
@@ -292,7 +303,7 @@ progress::-webkit-progress-value {
   height: 8px;
   background-color: var(--brand-primary);
   border-radius: 4px;
-  transition: height 0.05s ease;
+  transition: height 0.05s ease, background-color 0.2s ease;
 }
 
 .hidden {
@@ -306,15 +317,57 @@ progress::-webkit-progress-value {
   align-items:flex-start;
   padding: 10px;
   margin-bottom: 10px;
-  border: 2px solid #CCC;
+  border: 1px solid #CCC;
   border-radius: 10px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
   color: #888;
-  font-size: large;
-  font-weight: bold;
+
+  font-size: 16px;
 }
 
 .activeCard {
   border-color: var(--brand-primary);
   color: var(--brand-primary);
+  background-color: #edf3ff;
+}
+.card .title {
+  margin-bottom: 4px;
+
+  font-size: 14px;
+
+  font-weight: bold;
+  letter-spacing: -0.03ch;
+}
+
+.completedCard .title {
+  color: var(--brand-primary);
+}
+
+#status-container {
+  align-items: center;
+  justify-content: center;
+
+  min-height: 3.5em;
+
+  color: #444;
+}
+
+#status-spinner {
+  transition: opacity 0.4s ease;
+}
+
+.loader {
+  border: 5px solid #e7e7e7;
+  border-top: 5px solid var(--brand-primary);
+  border-radius: 50%;
+  width: 15pt;
+  height: 15pt;
+  animation: spin 1.5s cubic-bezier(.28,.15,.8,.91) infinite;
+  margin-left: 12px;
+  margin-right: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }

@@ -27,9 +27,9 @@ These instructions assume your current working directory is `recipes/voice-guide
 2. Go to Porcupine Wake Word.
 3. Enter your desired wake phrase.
 4. Click Train.
-5. Select your target platform and download the generated wake word model file (`.ppn`).
+5. Select target platform **Web (WASM)**. and download the generated wake word model file (`.ppn`).
 
-Save the downloaded file somewhere accessible on your machine. You will pass its path to the demo with `--keyword_path`.
+Save the downloaded file somewhere accessible on your machine. You will pass its path to the demo with `--porcupine_keyword_path`.
 
 ### 2. Train the Speech-to-Intent Model
 
@@ -38,39 +38,43 @@ Save the downloaded file somewhere accessible on your machine. You will pass its
 3. Create an empty Rhino context.
 4. Click Import YAML in the top-right corner.
 5. Paste the [Rhino context YAML](../res/context.yml) for this demo.
-6. Download the generated Rhino context file (`.rhn`) for your target platform.
+6. Download the generated Rhino context file (`.rhn`) for target platform **Web (WASM)**.
 
-### 3. Run the Setup Script
+Save the downloaded file somewhere accessible on your machine. You will pass its path to the demo with `--rhino_context_path`.
 
-Run the setup script to download and copy the models for [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/)
-and [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/).
+### 3. Download the Required Models
 
-It will also copy the models provided for [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/) and
-[Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) to the assets folder.
+Run the setup script to download the models for
+- [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/)
+- [Koala Noise Suppression](https://picovoice.ai/docs/koala/)
+- [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/)
+- [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/)
+- [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/)
+
+This script will also add your wake word (`.ppn`) and rhino context (`.rhn`) files to the project:
 
 ```console
 python setup.py \
-    --keyword_path ${PATH_TO_PPN} \
-    --context_path ${PATH_TO_RHN}
+    --porcupine_keyword_path ${PATH_TO_PPN_FILE} \
+    --rhino_context_path ${PATH_TO_RHN_FILE}
 ```
 
-### 4. Build and Run the Demo 
+### 4. Build and Run the Demo
 
 ```bash
-# Install Dependencies
+# install dependencies
 yarn
 
-# Build the Demo
+# build the demo
 yarn build
 
-# Run the Demo
+# run the demo
 yarn start
 ```
 
-### 5. Open the Demo Page
+### 5. Open the Demo page
 
 <!-- markdown-link-check-disable -->
 - Go to [localhost:5000](http://localhost:5000) in your web browser.
 <!-- markdown-link-check-enable -->
-- Input your picovoice `AccessKey`
-- Press the Start Demo button
+- Enter your AccessKey, then press the `Start Demo` button.
