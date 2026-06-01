@@ -36,27 +36,19 @@ const callbackAudioEngine: PvEngine = {
 const TASKS: PickTask[] = [
   {
     cardId: "IdentifyUnit",
-    cardTitle: "Identify Unit"
+    cardTitle: "Unit ID"
   },
   {
-    cardId: "IncidentType",
-    cardTitle: "Incident Type"
+    cardId: "OilCondition",
+    cardTitle: "Oil Condition"
   },
   {
-    cardId: "PatientCondition",
+    cardId: "TireCondition",
     cardTitle: "Patient Condition"
   },
   {
-    cardId: "Destination",
-    cardTitle: "Destination"
-  },
-  {
-    cardId: "HandoffStatus",
-    cardTitle: "Handoff Status"
-  },
-  {
-    cardId: "HandoffTime",
-    cardTitle: "Handoff Time"
+    cardId: "ServiceStatus",
+    cardTitle: "Service Status"
   },
   {
     cardId: "FinalNote",
@@ -104,38 +96,30 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
           RecipeStates.STANDBY,
           RecipeStates.IDENTIFY_UNIT_PROMPT,
           RecipeStates.IDENTIFY_UNIT_REPORT,
-          RecipeStates.INCIDENT_TYPE_PROMPT,
-          RecipeStates.INCIDENT_TYPE_REPORT,
-          RecipeStates.PATIENT_CONDITION_PROMPT,
-          RecipeStates.PATIENT_CONDITION_REPORT,
-          RecipeStates.DESTINATION_PROMPT,
-          RecipeStates.DESTINATION_REPORT,
-          RecipeStates.HANDOFF_STATUS_PROMPT,
-          RecipeStates.HANDOFF_STATUS_REPORT,
-          RecipeStates.HANDOFF_TIME_PROMPT,
-          RecipeStates.HANDOFF_TIME_REPORT,
+          RecipeStates.CHECK_OIL_PROMPT,
+          RecipeStates.CHECK_OIL_REPORT,
+          RecipeStates.CHECK_TIRE_PROMPT,
+          RecipeStates.CHECK_TIRE_REPORT,
+          RecipeStates.CHECK_SERVICE_STATUS_PROMPT,
+          RecipeStates.CHECK_SERVICE_STATUS_REPORT,
           RecipeStates.FINAL_NOTE_PROMPT,
           RecipeStates.FINAL_NOTE_REPORT,
-          RecipeStates.COMPLETE_PROMPT,
+          RecipeStates.REPORT_COMPILATION,
         ],
         state_creator: State.create,
         state_steps: {
           [RecipeStates.STANDBY]: RecipeSteps.STANDBY,
           [RecipeStates.IDENTIFY_UNIT_PROMPT]: RecipeSteps.PROMPT_USER,
           [RecipeStates.IDENTIFY_UNIT_REPORT]: RecipeSteps.RECORD_USER,
-          [RecipeStates.INCIDENT_TYPE_PROMPT]: RecipeSteps.PROMPT_USER,
-          [RecipeStates.INCIDENT_TYPE_REPORT]: RecipeSteps.RECORD_USER,
-          [RecipeStates.PATIENT_CONDITION_PROMPT]: RecipeSteps.PROMPT_USER,
-          [RecipeStates.PATIENT_CONDITION_REPORT]: RecipeSteps.RECORD_USER,
-          [RecipeStates.DESTINATION_PROMPT]: RecipeSteps.PROMPT_USER,
-          [RecipeStates.DESTINATION_REPORT]: RecipeSteps.RECORD_USER,
-          [RecipeStates.HANDOFF_STATUS_PROMPT]: RecipeSteps.PROMPT_USER,
-          [RecipeStates.HANDOFF_STATUS_REPORT]: RecipeSteps.RECORD_USER,
-          [RecipeStates.HANDOFF_TIME_PROMPT]: RecipeSteps.PROMPT_USER,
-          [RecipeStates.HANDOFF_TIME_REPORT]: RecipeSteps.RECORD_USER,
+          [RecipeStates.CHECK_OIL_PROMPT]: RecipeSteps.PROMPT_USER,
+          [RecipeStates.CHECK_OIL_REPORT]: RecipeSteps.RECORD_USER,
+          [RecipeStates.CHECK_TIRE_PROMPT]: RecipeSteps.PROMPT_USER,
+          [RecipeStates.CHECK_TIRE_REPORT]: RecipeSteps.RECORD_USER,
+          [RecipeStates.CHECK_SERVICE_STATUS_PROMPT]: RecipeSteps.PROMPT_USER,
+          [RecipeStates.CHECK_SERVICE_STATUS_REPORT]: RecipeSteps.RECORD_USER,
           [RecipeStates.FINAL_NOTE_PROMPT]: RecipeSteps.PROMPT_USER,
           [RecipeStates.FINAL_NOTE_REPORT]: RecipeSteps.TRANSCRIBE_USER,
-          [RecipeStates.COMPLETE_PROMPT]: RecipeSteps.PROMPT_USER,
+          [RecipeStates.REPORT_COMPILATION]: RecipeSteps.PROMPT_USER,
         },
         start_state: { state: RecipeStates.STANDBY, tasks: TASKS },
       }
