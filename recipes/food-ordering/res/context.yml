@@ -1,7 +1,12 @@
 context:
   macros:
     ask:
+      - "add"
+      - "also"
       - "i'll have"
+      - "i'll get"
+      - "i'll also have"
+      - "i'll also get"
       - "i will have"
       - "can i get"
       - "can i have"
@@ -76,7 +81,7 @@ context:
       - "forget everything"
 
     help:
-      - "help needed"
+      - "help (needed)"
       - "assistance needed"
       - "i need [help, assistance, some help]"
       - "(can i, could i, may i, let me) [talk, speak] [to, with] @human"
@@ -85,12 +90,14 @@ context:
       - "is [there, anybody] @human (available, there)"
 
     repeatOrder:
+      - "repeat order"
       - "(can you) [read, repeat] (my, the) order (back)"
       - "(can you) read it back (to me)"
       - "what (did i, do i have on my, is in my, is on my) order"
       - "what's (in, on) my order"
 
     endOrder:
+      - "end order"
       - "that's it"
       - "that is it"
       - "that's all"
