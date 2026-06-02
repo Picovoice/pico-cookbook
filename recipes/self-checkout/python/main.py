@@ -196,18 +196,18 @@ class Workflow(object):
 
 
 @dataclass
-class GroceryItem:
+class Product:
     name: str
     price: float
 
 
-ITEMS: List[GroceryItem] = [
-    GroceryItem("Fresh Cravings Roasted Red Pepper Hummus 10oz", 2.67),
-    GroceryItem("SunChips Whole Grain Snacks, Original, 7 oz", 3.68),
-    GroceryItem("V8 +ENERGY Pomegranate Blueberry Energy Drink, 8 FL OZ Can (Pack of 12)", 9.38),
-    GroceryItem("Alcatel Alcatel OneTouch Idol 3 16GB Unlocked Smartphone, Black", 99.47),
-    GroceryItem("Impossible Plant Based Ground, Brick, 12oz", 5.96),
-    GroceryItem("Great Value Dark Chocolate Bar, 3.52 oz", 1.00),
+ITEMS: List[Product] = [
+    Product("Great Value Dark Chocolate Bar, 3.52 oz", 1.00),
+    Product("SunChips Whole Grain Snacks, Original, 7 oz", 3.68),
+    Product("V8 +ENERGY Pomegranate Blueberry Energy Drink, 8 oz Can (Pack of 12)", 9.38),
+    Product("Alcatel Alcatel One Touch Idol 3, 16GB Unlocked Smartphone, Black", 99.47),
+    Product("Impossible Plant Based Ground, Brick, 12oz", 5.96),
+    Product("Fresh Cravings Roasted Red Pepper Hummus 10oz", 2.67),
 ]
 
 
@@ -317,7 +317,7 @@ class RecipeWelcomePromptState(RecipePromptState):
     def run(
             self,
             next_item_index: int,
-            cart: List[GroceryItem],
+            cart: List[Product],
             **kwargs: Any
     ) -> Transition:
         self._run_prompt("Welcome to Walmart's self-checkout! I will announce when you scan each item.")
@@ -334,7 +334,7 @@ class RecipeScanItemPromptState(RecipePromptState):
     def run(
             self,
             next_item_index: int,
-            cart: List[GroceryItem],
+            cart: List[Product],
             **kwargs: Any
     ) -> Transition:
         item = ITEMS[next_item_index]
@@ -354,7 +354,7 @@ class RecipeNoItemToRescanPromptState(RecipePromptState):
     def run(
             self,
             next_item_index: int,
-            cart: List[GroceryItem],
+            cart: List[Product],
             **kwargs: Any
     ) -> Transition:
         self._run_prompt("No item to rescan. Please start by scanning an item.")
@@ -374,7 +374,7 @@ class RecipeListenCommandState(State):
     def run(
             self,
             next_item_index: int,
-            cart: List[GroceryItem],
+            cart: List[Product],
             **kwargs
     ) -> Transition:
         text = "Waiting for command [scan next item, scan again, list items, done scanning]"
@@ -471,7 +471,7 @@ class RecipeScanCompletePromptState(RecipePromptState):
     def run(
             self,
             next_item_index: int,
-            cart: List[GroceryItem],
+            cart: List[Product],
             **kwargs:Any
     ) -> Transition:
         self._run_prompt("You did not scan an item. Are you ready to pay?")
@@ -488,21 +488,24 @@ class RecipeListItemsPromptState(RecipePromptState):
     def run(
             self,
             next_item_index: int,
-            cart: List[GroceryItem],
+            cart: List[Product],
             **kwargs: Any
     ) -> Transition:
-        if len(cart) == 0:
-            prompt = "Your cart is currently empty."
-        else:
-            items_text = ", ".join(f"{item.name} at ${item.price:.2f}" for item in cart)
-            total = sum(item.price for item in cart)
-            plural = "s" if len(cart) != 1 else ""
-            prompt = (
-                f"You have scanned {len(cart)} item{plural}: "
-                f"{items_text}. Running total: ${total:.2f}."
-            )
+        prompt_list = []
 
-        self._run_prompt(prompt)
+        if len(cart) == 0:
+            prompt_list = [ "Your cart is currently empty." ]
+        else:
+            plural = "s" if len(cart) != 1 else ""
+            prompt_list.append(f"You have scanned {len(cart)} item{plural}: ")
+
+            prompt_list += [f"Item {i+1}. {item.name} at ${item.price:.2f}" for i, item in enumerate(cart)]
+    
+            total = sum(item.price for item in cart)
+            prompt_list.append(f"Running total: ${total:.2f}.")
+
+        for prompt in prompt_list:
+            self._run_prompt(prompt)
 
         return Transition(
             next_state=RecipeStates.LISTEN_COMMAND,
@@ -515,7 +518,7 @@ class RecipeListItemsPromptState(RecipePromptState):
 class RecipeCheckoutCompletePromptState(RecipePromptState):
     def run(
             self,
-            cart: List[GroceryItem],
+            cart: List[Product],
             **kwargs: Any
     ) -> Transition:
         if len(cart) == 0:
