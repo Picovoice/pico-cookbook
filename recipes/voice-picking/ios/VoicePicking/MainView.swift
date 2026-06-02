@@ -98,11 +98,13 @@ struct MainView: View {
                             isActive: cardData.isActive,
                             hasAlternate: cardData.hasAlternate,
                             isAlternateActive: cardData.isAlternateActive)
-                    }.onChange(of: viewModel.cardData, {
+                    }.onChange(of: viewModel.activeCard, {
                         if viewModel.activeCard != nil {
-                            proxy.scrollTo(
-                                viewModel.activeCard!,
-                                anchor: .bottom)
+                            withAnimation {
+                                proxy.scrollTo(
+                                    viewModel.activeCard!.order,
+                                    anchor: .center)
+                            }
                         }
                     })
                 }
