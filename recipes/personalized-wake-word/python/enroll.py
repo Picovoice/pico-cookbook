@@ -56,8 +56,15 @@ def main() -> None:
         type=int,
         default=4,
         help="Minimum number of enrollment speech chunks")
-    parser.add_argument('--audio_device_index', type=int, default=-1, help='Index of input audio device')
-    parser.add_argument('--show_audio_devices', action='store_true', help='Only list available input audio devices and exit')
+    parser.add_argument(
+        '--audio_device_index',
+        type=int,
+        default=-1,
+        help='Index of input audio device')
+    parser.add_argument(
+        '--show_audio_devices',
+        action='store_true',
+        help='Only list available input audio devices and exit')
     args = parser.parse_args()
 
     if args.show_audio_devices:

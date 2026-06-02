@@ -67,8 +67,15 @@ def main() -> None:
         "--enhanced_output_path",
         default="noise_suppressed.wav",
         help="Path to save the Koala noise-suppressed recording. Default is noise_suppressed.wav.")
-    parser.add_argument('--audio_device_index', type=int, default=-1, help='Index of input audio device')
-    parser.add_argument('--show_audio_devices', action='store_true', help='Only list available input audio devices and exit')
+    parser.add_argument(
+        '--audio_device_index',
+        type=int,
+        default=-1,
+        help='Index of input audio device')
+    parser.add_argument(
+        '--show_audio_devices',
+        action='store_true',
+        help='Only list available input audio devices and exit')
     args = parser.parse_args()
 
     if args.show_audio_devices:

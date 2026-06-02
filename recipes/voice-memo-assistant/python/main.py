@@ -197,8 +197,15 @@ def main() -> None:
              "set this argument to `gpu:${GPU_INDEX}`, where `${GPU_INDEX}` is the index of the target GPU. If set to "
              "`cpu`, picoLLM runs on the CPU with the default number of threads. To specify the number of threads, set "
              "this argument to `cpu:${NUM_THREADS}`, where `${NUM_THREADS}` is the desired number of threads.")
-    parser.add_argument('--audio_device_index', type=int, default=-1, help='Index of input audio device')
-    parser.add_argument('--show_audio_devices', action='store_true', help='Only list available input audio devices and exit')
+    parser.add_argument(
+        '--audio_device_index',
+        type=int,
+        default=-1,
+        help='Index of input audio device')
+    parser.add_argument(
+        '--show_audio_devices',
+        action='store_true',
+        help='Only list available input audio devices and exit')
     args = parser.parse_args()
 
     if args.show_audio_devices:

@@ -617,8 +617,15 @@ def main():
         help="Sensitivity for detecting keywords.")
     parser.add_argument('--short_answers', action='store_true')
     parser.add_argument('--profile', action='store_true', help='Show runtime profiling information.')
-    parser.add_argument('--audio_device_index', type=int, default=-1, help='Index of input audio device')
-    parser.add_argument('--show_audio_devices', action='store_true', help='Only list available input audio devices and exit')
+    parser.add_argument(
+        '--audio_device_index',
+        type=int,
+        default=-1,
+        help='Index of input audio device')
+    parser.add_argument(
+        '--show_audio_devices',
+        action='store_true',
+        help='Only list available input audio devices and exit')
     args = parser.parse_args()
 
     if args.show_audio_devices:
