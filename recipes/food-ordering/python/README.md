@@ -1,6 +1,6 @@
 # Food Ordering
 
-A fully on-device food ordering system with spoken prompts, structured command ordering, and support for complex integrations.
+A fully on-device food ordering system with freeform commands.
 
 ## Compatibility
 
