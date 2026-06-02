@@ -152,11 +152,9 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
         "--access_key",
-        required=True,
         help="AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).")
     parser.add_argument(
         '--context_path',
-        required=True,
         help="Path to Rhino Speech-to-Intent context trained on Picovoice Console (https://console.picovoice.ai/).")
     parser.add_argument(
         "--username",
@@ -172,10 +170,22 @@ def main() -> None:
         type=float,
         default=1.0,
         help="Duration of silence, in seconds, required to detect the end of the caller's utterance.")
+    parser.add_argument('--audio_device_index', type=int, default=-1, help='Index of input audio device')
+    parser.add_argument('--show_audio_devices', action='store_true', help='Only list available input audio devices and exit')
     args = parser.parse_args()
+
+    if args.show_audio_devices:
+        for index, name in enumerate(PvRecorder.get_available_devices()):
+            print('Device #%d: %s' % (index, name))
+        return
 
     access_key = args.access_key
     context_path = args.context_path
+
+    if access_key is None or context_path is None:
+        print('--access_key and --context_path are required arguments')
+        return
+
     username = args.username
     username_pronunciation = args.username_pronunciation
     endpoint_duration_sec = args.endpoint_duration_sec
@@ -209,7 +219,9 @@ def main() -> None:
             require_endpoint=False)
         print(f"[OK] Rhino Speech-to-Intent[V{rhino.version}]")
 
-        recorder = PvRecorder(frame_length=cheetah.frame_length)
+        recorder = PvRecorder(
+            device_index=args.audio_device_index,
+            frame_length=cheetah.frame_length)
 
         speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16)
         speaker.start()

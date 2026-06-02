@@ -56,21 +56,30 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
         '--access_key',
-        required=True,
         help='AccessKey obtained from Picovoice Console (https://console.picovoice.ai/)')
     parser.add_argument(
         '--eagle_speaker_profile_path',
-        required=True,
         help="Absolute path to the Eagle's speaker profile file")
     parser.add_argument(
         '--eagle_min_enrollment_chunks',
         type=int,
         default=4,
         help="Minimum number of enrollment speech chunks")
+    parser.add_argument('--audio_device_index', type=int, default=-1, help='Index of input audio device')
+    parser.add_argument('--show_audio_devices', action='store_true', help='Only list available input audio devices and exit')
     args = parser.parse_args()
+
+    if args.show_audio_devices:
+        for index, name in enumerate(PvRecorder.get_available_devices()):
+            print('Device #%d: %s' % (index, name))
+        return
 
     access_key = args.access_key
     eagle_speaker_profile_path = args.eagle_speaker_profile_path
+    if access_key is None or eagle_speaker_profile_path is None:
+        print('--access_key and --eagle_speaker_profile_path are required arguments')
+        return
+
     eagle_min_enrollment_chunks = args.eagle_min_enrollment_chunks
 
     eagle = None
@@ -86,7 +95,9 @@ def main() -> None:
 
         print_enrollment_instructions()
 
-        recorder = PvRecorder(frame_length=eagle.frame_length)
+        recorder = PvRecorder(
+            device_index=args.audio_device_index,
+            frame_length=eagle.frame_length)
         recorder.start()
 
         animation = Animation()

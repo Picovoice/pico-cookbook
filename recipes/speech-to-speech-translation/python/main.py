@@ -169,14 +169,12 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
         '--access_key',
-        required=True,
         help='AccessKey obtained from Picovoice Console (https://console.picovoice.ai/)')
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument(
+    parser.add_argument(
         '--language_pair',
         choices=[x.value for x in LanguagePairs],
         help='Translation language pair. If set, the source language is not detected automatically.')
-    group.add_argument(
+    parser.add_argument(
         '--target_language',
         choices=[x.value for x in Languages],
         help='Target language for translation. If set, the demo automatically identifies the spoken source language.')
@@ -203,11 +201,26 @@ def main() -> None:
         choices=['female', 'male'],
         default='male',
         help='Voice gender to use for translated speech output.')
+    parser.add_argument('--audio_device_index', type=int, default=-1, help='Index of input audio device')
+    parser.add_argument('--show_audio_devices', action='store_true', help='Only list available input audio devices and exit')
     args = parser.parse_args()
 
+    if args.show_audio_devices:
+        for index, name in enumerate(PvRecorder.get_available_devices()):
+            print('Device #%d: %s' % (index, name))
+        return
+
     access_key = args.access_key
+    if access_key is None:
+        print('--access_key is a required argument')
+        return
+
     language_pair = LanguagePairs(args.language_pair) if args.language_pair is not None else None
     target_language = Languages(args.target_language) if args.target_language is not None else None
+    if language_pair is None and target_language is None:
+        print('One of the arguments --language_pair or --target_language is required')
+        return
+
     identification_min_confidence = args.identification_min_confidence
     endpoint_duration_sec = args.endpoint_duration_sec
     disable_automatic_punctuation = args.disable_automatic_punctuation
@@ -234,7 +247,9 @@ def main() -> None:
         orca = pvorca.create(access_key=access_key, model_path=orca_model_path)
         print(f"[OK] Orca Streaming Text-to-Speech[V{orca.version}][{target_language.value.upper()}]")
 
-        recorder = PvRecorder(frame_length=160)
+        recorder = PvRecorder(
+            device_index=args.audio_device_index,
+            frame_length=160)
         recorder.start()
 
         speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16)

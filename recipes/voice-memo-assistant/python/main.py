@@ -173,21 +173,17 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
         "--access_key",
-        required=True,
         help="AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).")
     parser.add_argument(
         '--keyword_path',
-        required=True,
         help="Path to the Porcupine wake word file trained on Picovoice Console "
              "(https://console.picovoice.ai/).")
     parser.add_argument(
         '--context_path',
-        required=True,
         help="Path to the Rhino Speech-to-Intent context file trained on Picovoice Console "
              "(https://console.picovoice.ai/).")
     parser.add_argument(
         '--picollm_model_path',
-        required=True,
         help='Absolute path to the picoLLM model file (`.pllm`).')
     parser.add_argument(
         "--endpoint_duration_sec",
@@ -201,12 +197,24 @@ def main() -> None:
              "set this argument to `gpu:${GPU_INDEX}`, where `${GPU_INDEX}` is the index of the target GPU. If set to "
              "`cpu`, picoLLM runs on the CPU with the default number of threads. To specify the number of threads, set "
              "this argument to `cpu:${NUM_THREADS}`, where `${NUM_THREADS}` is the desired number of threads.")
+    parser.add_argument('--audio_device_index', type=int, default=-1, help='Index of input audio device')
+    parser.add_argument('--show_audio_devices', action='store_true', help='Only list available input audio devices and exit')
     args = parser.parse_args()
+
+    if args.show_audio_devices:
+        for index, name in enumerate(PvRecorder.get_available_devices()):
+            print('Device #%d: %s' % (index, name))
+        return
 
     access_key = args.access_key
     keyword_path = args.keyword_path
     context_path = args.context_path
     picollm_model_path = args.picollm_model_path
+
+    if access_key is None or keyword_path is None or context_path is None or picollm_model_path is None:
+        print('--access_key, --keyword_path, --context_path and --picollm_model_path are required arguments')
+        return
+
     endpoint_duration_sec = args.endpoint_duration_sec
     picollm_device = args.picollm_device
 
@@ -249,7 +257,9 @@ def main() -> None:
         orca = pvorca.create(access_key=access_key)
         print(f"[OK] Orca Streaming Text-to-Speech [V{orca.version}]")
 
-        recorder = PvRecorder(frame_length=cheetah.frame_length)
+        recorder = PvRecorder(
+            device_index=args.audio_device_index,
+            frame_length=cheetah.frame_length)
         recorder.start()
 
         speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16)

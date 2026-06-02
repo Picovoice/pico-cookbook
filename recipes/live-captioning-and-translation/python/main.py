@@ -129,6 +129,7 @@ def main_microphone(
         target_language: str,
         endpoint_duration_sec: float,
         disable_text_normalization: bool,
+        audio_device_index: int
 ) -> None:
     recorder = None
     cheetah = None
@@ -155,7 +156,9 @@ def main_microphone(
             zebra = pvzebra.create(access_key=access_key, model_path=zebra_model_path)
             print(f"[OK] Zebra Translation[V{zebra.version}][{source_language.upper()} → {target_language.upper()}]")
 
-        recorder = PvRecorder(frame_length=cheetah.frame_length)
+        recorder = PvRecorder(
+            device_index=audio_device_index,
+            frame_length=cheetah.frame_length)
         recorder.start()
 
         print()
@@ -345,11 +348,9 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
         '--access_key',
-        required=True,
         help='AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).')
     parser.add_argument(
         '--language_pair',
-        required=True,
         choices=[x.value for x in LanguagePairs],
         help='Source-target language pair. Use the same source and target language to transcribe only, '
              'or different languages to transcribe and translate (for example: `en-en`, `en-fr`, `de-it`).')
@@ -366,9 +367,20 @@ def main() -> None:
         '--disable_text_normalization',
         action='store_true',
         help='Disable text normalization in Streaming Speech-to-Text.')
+    parser.add_argument('--audio_device_index', type=int, default=-1, help='Index of input audio device')
+    parser.add_argument('--show_audio_devices', action='store_true', help='Only list available input audio devices and exit')
     args = parser.parse_args()
 
+    if args.show_audio_devices:
+        for index, name in enumerate(PvRecorder.get_available_devices()):
+            print('Device #%d: %s' % (index, name))
+        return
+
     access_key = args.access_key
+    if access_key is None or args.language_pair is None:
+        print('--access_key and --language_pair are required arguments')
+        return
+
     language_pair = LanguagePairs(args.language_pair)
     wav_path = args.wav_path
     endpoint_duration_sec = args.endpoint_duration_sec
@@ -393,7 +405,8 @@ def main() -> None:
             source_language=source_language,
             target_language=target_language,
             endpoint_duration_sec=endpoint_duration_sec,
-            disable_text_normalization=disable_text_normalization)
+            disable_text_normalization=disable_text_normalization,
+            audio_device_index=args.audio_device_index)
     else:
         main_file(
             access_key=access_key,
