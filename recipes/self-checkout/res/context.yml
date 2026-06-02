@@ -1,0 +1,22 @@
+context:
+  expressions:
+    scanNext:
+      - "scan (next) (item)"
+      - "next (item)"
+    scanAgain:
+      - "[scan, rescan] [that, it, again]"
+      - "scan that again"
+    listItems:
+      - "[list, read, show] [items, cart, my cart]"
+      - "what did I scan"
+    doneScan:
+      - "[checkout, check out]"
+      - "done scanning"
+      - "I am done"
+      - "that is all"
+      - "finish"
+      - "finished"
+
+  slots:
+
+  macros:
