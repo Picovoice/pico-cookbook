@@ -44,7 +44,7 @@ const TASKS: Card[] = [
   },
   {
     cardId: "TireCondition",
-    cardTitle: "Patient Condition"
+    cardTitle: "Tire Condition"
   },
   {
     cardId: "ServiceStatus",

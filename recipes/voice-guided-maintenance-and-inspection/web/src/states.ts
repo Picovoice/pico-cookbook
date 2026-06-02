@@ -619,7 +619,7 @@ class RecipeCheckServiceStatusReportState extends RecipeReportState {
             listeningPrompt: "Listening for vehicle status...",
             expectedIntent: 'reportServiceStatus',
             validator: (x: RhinoInference) => true,
-            successPrompt: (x: RhinoInference) => `Destination is ${x.slots!.serviceStatus}.`,
+            successPrompt: (x: RhinoInference) => `Verhicle status is ${x.slots!.serviceStatus}.`,
             successOutcome: (x: RhinoInference) => `${x.slots!.serviceStatus}`,
             successNextState: RecipeStates.FINAL_NOTE_PROMPT,
             failurePrompt: (x: RhinoInference | undefined) => `Failed to capture vehicle status. Retrying...`,
