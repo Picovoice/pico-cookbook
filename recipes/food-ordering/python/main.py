@@ -315,7 +315,7 @@ class RhinoStep(Step):
             model_path: Optional[str] = None,
             sensitivity: float = 0.5,
             endpoint_duration_sec: float = .5,
-            require_endpoint: bool = False
+            require_endpoint: bool = True
     ) -> None:
         super().__init__(
             access_key=access_key,

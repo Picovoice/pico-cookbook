@@ -47,14 +47,18 @@ context:
       - "a representative"
       - "a manager"
 
+    politeness:
+      - "thanks"
+      - "please"
+
   expressions:
     addItem:
-      - "(@ask) (a, an) ($size:size) $menuItem:item"
-      - "(@ask) (a, an) ($size:size) $menuItem:item $combo:combo"
-      - "(@ask) (a, an) ($size:size) $menuItem:item (with) $modifier:modifier"
-      - "(@ask) $pv.SingleDigitInteger:quantity ($size:size) $menuItem:item"
-      - "(@ask) $pv.SingleDigitInteger:quantity ($size:size) $menuItem:item $combo:combo"
-      - "(@ask) $pv.SingleDigitInteger:quantity ($size:size) $menuItem:item (with) $modifier:modifier"
+      - "(@ask) (a, an) ($size:size) $menuItem:item (@politeness)"
+      - "(@ask) (a, an) ($size:size) $menuItem:item $combo:combo (@politeness)"
+      - "(@ask) (a, an) ($size:size) $menuItem:item (with) $modifier:modifier (@politeness)"
+      - "(@ask) $pv.SingleDigitInteger:quantity ($size:size) $menuItem:item (@politeness)"
+      - "(@ask) $pv.SingleDigitInteger:quantity ($size:size) $menuItem:item $combo:combo (@politeness)"
+      - "(@ask) $pv.SingleDigitInteger:quantity ($size:size) $menuItem:item (with) $modifier:modifier (@politeness)"
 
     removeItem:
       - "@remove (the, my, a, that) ($size:size) $menuItem:item"
@@ -72,8 +76,7 @@ context:
       - "[make it, make that, make them] (a) $combo:combo"
 
     startOver:
-      - "(can we, let's, let us) start over"
-      - "start again"
+      - "(can we, let's, let us) [start over, start again] (@politeness)"
       - "[cancel, clear, scrap] (my, the) (whole, entire) order"
       - "[cancel, clear] everything"
       - "scrap it"
@@ -81,23 +84,23 @@ context:
       - "forget everything"
 
     help:
-      - "help (needed)"
+      - "help (needed) (@politeness)"
       - "assistance needed"
       - "i need [help, assistance, some help]"
-      - "(can i, could i, may i, let me) [talk, speak] [to, with] @human"
+      - "(can i, could i, may i, let me) [talk, speak] [to, with] @human (@politeness)"
       - "i [want, want to, would like to, need to] [talk, speak] [to, with] @human"
       - "get me @human"
       - "is [there, anybody] @human (available, there)"
 
     repeatOrder:
-      - "repeat order"
+      - "repeat order (@politeness)"
       - "(can you) [read, repeat] (my, the) order (back)"
       - "(can you) read it back (to me)"
       - "what (did i, do i have on my, is in my, is on my) order"
       - "what's (in, on) my order"
 
     endOrder:
-      - "end order"
+      - "end order (@politeness)"
       - "that's it"
       - "that is it"
       - "that's all"
@@ -175,6 +178,7 @@ context:
       - "no cheese"
       - "no lettuce"
       - "no tomato"
+      - "no tomatoes"
       - "no ketchup"
       - "no mustard"
       - "no mayo"

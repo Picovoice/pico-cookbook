@@ -78,6 +78,10 @@ Where:
 * `${KEYWORD_PATH}` is the path to the Porcupine wake word model file (`.ppn`).
 * `${CONTEXT_PATH}` is the path to the Rhino Speech-to-Intent context file (`.rhn`).
 
+#### Instructions
+- Try asking for a "big mac with no tomatoes"
+- See `../res/context.yml` for accepted commands
+
 ### 7. View All Options
 
 ```console
