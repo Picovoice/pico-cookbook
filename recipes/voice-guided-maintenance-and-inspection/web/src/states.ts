@@ -16,7 +16,7 @@ type Outcome = {
     outcome?: RhinoInference | string,
 };
 
-export type PickTask = {
+export type Card = {
     cardId: string;
     cardTitle: string;
 };
@@ -46,66 +46,66 @@ export enum RecipeStates {
 export type StateOptions =
     | {
         state: RecipeStates.STANDBY,
-        tasks: PickTask[],
+        tasks: Card[],
     }
     | {
         state: RecipeStates.IDENTIFY_UNIT_PROMPT,
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
         inputPrompt?: string | string[],
     }
     | {
         state: RecipeStates.IDENTIFY_UNIT_REPORT,
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
     }
     | {
         state: RecipeStates.CHECK_OIL_PROMPT,
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
         inputPrompt?: string | string[],
     }
     | {
         state: RecipeStates.CHECK_OIL_REPORT,
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
     }
     | {
         state: RecipeStates.CHECK_TIRE_PROMPT,
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
         inputPrompt?: string | string[],
     }
     | {
         state: RecipeStates.CHECK_TIRE_REPORT,
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
     }
     | {
         state: RecipeStates.CHECK_SERVICE_STATUS_PROMPT,
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
         inputPrompt?: string | string[],
     }
     | {
         state: RecipeStates.CHECK_SERVICE_STATUS_REPORT,
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
     }
     | {
         state: RecipeStates.FINAL_NOTE_PROMPT,
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
         inputPrompt?: string | string[],
     }
     | {
         state: RecipeStates.FINAL_NOTE_REPORT,
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
     }
     | {
         state: RecipeStates.REPORT_COMPILATION,
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
         prompt?: string,
     };
@@ -302,7 +302,7 @@ class RecipeStandbyState extends State {
         this.step = step;
     }
 
-    async run(tasks: PickTask[]): Promise<Transition> {
+    async run(tasks: Card[]): Promise<Transition> {
         await this.step.run("Listening for wake word...");
 
         return { 
@@ -326,7 +326,7 @@ class RecipePromptState extends State {
 }
 
 type RecipeReportStateParams = {
-        tasks: PickTask[];
+        tasks: Card[];
         taskIndex: number;
 
         listeningPrompt: string;
@@ -402,7 +402,7 @@ class RecipeReportState extends State {
 
 class RecipeIdentifyUnitPromptState extends RecipePromptState {
     async run(
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
         inputPrompt?: string | string[],
     ): Promise<Transition> {
@@ -431,7 +431,7 @@ class RecipeIdentifyUnitPromptState extends RecipePromptState {
 
 class RecipeIdentifyUnitReportState extends RecipeReportState {
     async run(
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
     ): Promise<Transition> {
         const task = tasks[taskIndex];
@@ -460,7 +460,7 @@ class RecipeIdentifyUnitReportState extends RecipeReportState {
 
 class RecipeCheckOilPromptState extends RecipePromptState {
     async run(
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
         inputPrompt?: string | string[],
     ): Promise<Transition> {
@@ -489,7 +489,7 @@ class RecipeCheckOilPromptState extends RecipePromptState {
 
 class RecipeCheckOilReportState extends RecipeReportState {
     async run(
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
     ): Promise<Transition> {
         const task = tasks[taskIndex];
@@ -518,7 +518,7 @@ class RecipeCheckOilReportState extends RecipeReportState {
 
 class RecipeCheckTirePromptState extends RecipePromptState {
     async run(
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
         inputPrompt?: string | string[],
     ): Promise<Transition> {
@@ -547,7 +547,7 @@ class RecipeCheckTirePromptState extends RecipePromptState {
 
 class RecipeCheckTireReportState extends RecipeReportState {
     async run(
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
     ): Promise<Transition> {
         const task = tasks[taskIndex];
@@ -576,7 +576,7 @@ class RecipeCheckTireReportState extends RecipeReportState {
 
 class RecipeCheckServiceStatusPromptState extends RecipePromptState {
     async run(
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
         inputPrompt?: string | string[],
     ): Promise<Transition> {
@@ -605,7 +605,7 @@ class RecipeCheckServiceStatusPromptState extends RecipePromptState {
 
 class RecipeCheckServiceStatusReportState extends RecipeReportState {
     async run(
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
     ): Promise<Transition> {
         const task = tasks[taskIndex];
@@ -634,7 +634,7 @@ class RecipeCheckServiceStatusReportState extends RecipeReportState {
 
 class RecipeFinalNotePromptState extends RecipePromptState {
     async run(
-        tasks: PickTask[],
+        tasks: Card[],
         taskIndex: number,
         inputPrompt?: string | string[],
     ): Promise<Transition> {
@@ -669,7 +669,7 @@ class RecipeFinalNoteRecordState extends State {
         this.step = step;
     }
 
-    async run(tasks: PickTask[], taskIndex: number): Promise<Transition> {
+    async run(tasks: Card[], taskIndex: number): Promise<Transition> {
         const task = tasks[taskIndex];
         const cardId = task.cardId;
 

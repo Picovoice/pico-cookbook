@@ -1,7 +1,7 @@
 import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 import { PvEngine } from '@picovoice/web-voice-processor/dist/types/types';
 
-import { PickTask, Workflow, RecipeSteps, RecipeStates, State } from './states';
+import { Card, Workflow, RecipeSteps, RecipeStates, State } from './states';
 import { Steps } from './steps';
 
 import { sleep, DemoCallbacks, callbacks, updateCallbacks, setIsRunning } from './config';
@@ -33,7 +33,7 @@ const callbackAudioEngine: PvEngine = {
   },
 };
 
-const TASKS: PickTask[] = [
+const TASKS: Card[] = [
   {
     cardId: "IdentifyUnit",
     cardTitle: "Unit ID"
