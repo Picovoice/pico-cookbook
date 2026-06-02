@@ -197,8 +197,10 @@ def main() -> None:
     keyword_path = args.keyword_path
     context_path = args.context_path
     user_profile_paths = args.user_profile_paths
-    if access_key is None or keyword_path is None or context_path is None or user_profile_paths is None or args.user_roles is None:
-        print('--access_key, --keyword_path, --context_path, --user_profile_paths and --user_roles are required arguments')
+    if access_key is None or keyword_path is None or context_path is None \
+        or user_profile_paths is None or args.user_roles is None:
+        print('--access_key, --keyword_path, --context_path, '
+            + '--user_profile_paths and --user_roles are required arguments')
         return
     user_roles = [UserRoles(x) for x in args.user_roles]
     admin_similarity_threshold = args.admin_similarity_threshold
