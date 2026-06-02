@@ -175,7 +175,6 @@ class OrcaStep(Step):
 
         return text
 
-
     def run(
             self,
             prompt: str,
