@@ -389,7 +389,7 @@ public class MainActivity extends AppCompatActivity {
         card.root = root;
         if (alternate) {
             card.alternate = root.findViewById(R.id.alternate);
-            card.alternate.setText("or EXIT WORKFLOW");
+            card.alternate.setText("or STOP PICKING");
             card.leftContainer = root.findViewById(R.id.left);
         } else {
             card.alternate = null;

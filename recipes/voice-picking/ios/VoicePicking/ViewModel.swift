@@ -303,27 +303,27 @@ class Workflow {
         states = [
             .STANDBY: StandbyState(
                 viewModel: viewModel,
-                porcupineStep: porcupineStep,
+                porcupineStep: porcupineStep
             ),
             .TASK_LOCATION_PROMPT: TaskLocationPromptState(
                 viewModel: viewModel,
-                orcaStep: orcaStep,
+                orcaStep: orcaStep
             ),
             .TASK_LOCATION_REPORT: TaskLocationReportState(
                 viewModel: viewModel,
-                rhinoStep: rhinoStep,
+                rhinoStep: rhinoStep
             ),
             .TASK_PICK_PROMPT: TaskPickPromptState(
                 viewModel: viewModel,
-                orcaStep: orcaStep,
+                orcaStep: orcaStep
             ),
             .TASK_PICK_REPORT: TaskPickReportState(
                 viewModel: viewModel,
-                rhinoStep: rhinoStep,
+                rhinoStep: rhinoStep
             ),
             .COMPLETE_PROMPT: CompletePromptState(
                 viewModel: viewModel,
-                orcaStep: orcaStep,
+                orcaStep: orcaStep
             )
         ]
     }

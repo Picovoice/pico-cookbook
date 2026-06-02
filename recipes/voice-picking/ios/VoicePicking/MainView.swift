@@ -69,20 +69,14 @@ struct CardView: View {
             if hasAlternate {
                 VStack {
                     HStack {
-                        Text("or EXIT WORKFLOW")
+                        Text("or STOP PICKING")
                             .frame(maxWidth: .infinity, alignment: .center)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(isAlternateActive ? .blue : .darkGray)
                             .bold()
                         Spacer()
                     }
-                }.padding(8)
-                    .background(Color.offWhite)
-                    .cornerRadius(10)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color.lightGray, lineWidth: 1)
-                    )
+                }.padding(6)
             }
 
         }.padding(8)

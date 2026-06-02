@@ -61,7 +61,7 @@ const init = async (accessKey: string, cb: DemoCallbacks): Promise<void> => {
 
   for (let i = 0; i < TASKS.length; i += 1) {
     callbacks.createCard(`location-${i}`, "CONFIRM LOCATION");
-    callbacks.createCard(`pick-${i}`, "PICK ITEM", "EXIT WORKFLOW");
+    callbacks.createCard(`pick-${i}`, "PICK ITEM", "STOP PICKING");
   }
 
   try {
