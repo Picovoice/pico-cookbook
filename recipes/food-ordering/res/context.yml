@@ -94,10 +94,17 @@ context:
 
     repeatOrder:
       - "repeat order (@politeness)"
+      - "list [items, order] (@politeness)"
       - "(can you) [read, repeat] (my, the) order (back)"
       - "(can you) read it back (to me)"
       - "what (did i, do i have on my, is in my, is on my) order"
       - "what's (in, on) my order"
+
+    confirmation:
+      - "yes"
+      - "yeah"
+      - "okay"
+      - "sure"
 
     endOrder:
       - "end order (@politeness)"
@@ -107,7 +114,7 @@ context:
       - "that is all"
       - "that's everything"
       - "that is everything"
-      - "[i'm, i am, we're, we are] done"
+      - "[i'm, i am, we're, we are] [done, finished]"
       - "nothing else"
       - "that'll be all"
       - "that will be all"
