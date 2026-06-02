@@ -185,8 +185,8 @@ class OrcaStep(Step):
             self._speaker.start()
 
             pcm, alignment = self._orca.synthesize(text=OrcaStep.sanitize_for_orca(
-                    prompt,
-                    self._orca.valid_characters))
+                prompt,
+                self._orca.valid_characters))
             if on_synthesis is not None:
                 on_synthesis(alignment)
             self._speaker.flush(pcm)
@@ -275,15 +275,15 @@ class RhinoStep(Step):
     def rms(frame: list[int]) -> float:
         total = 0.0
         for sample in frame:
-            total += (sample / 32768.0) * (sample / 32768.0);
+            total += (sample / 32768.0) * (sample / 32768.0)
         return math.sqrt(total / len(frame))
 
     def run(
             self,
-            check_for_silence:bool,
-            silence_start:list[float],
-            silence_timeout:float,
-            volume_threshold:float) -> Dict[str, Any] | Literal["TIMEOUT"] | None:
+            check_for_silence: bool,
+            silence_start: list[float],
+            silence_timeout: float,
+            volume_threshold: float) -> Dict[str, Any] | Literal["TIMEOUT"] | None:
         try:
             self._recorder.start()
 

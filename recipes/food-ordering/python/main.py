@@ -456,8 +456,8 @@ class RecipeListenForOrderState(RecipeState):
 
         event, thread = print_async(get_text=get_text)
 
-        SILENCE_TIMEOUT_S = 5
-        VOLUME_THRESHOLD = 0.0001
+        silence_timeout_s = 5
+        volume_threshold = 0.0001
         start_time = [time.time()]
 
         while True:
@@ -466,8 +466,8 @@ class RecipeListenForOrderState(RecipeState):
                 inference = self._step.run(
                     check_for_silence=not just_asked,
                     silence_start=start_time,
-                    silence_timeout=SILENCE_TIMEOUT_S,
-                    volume_threshold=VOLUME_THRESHOLD)
+                    silence_timeout=silence_timeout_s,
+                    volume_threshold=volume_threshold)
 
             if inference == "TIMEOUT":
                 sleep(.1)
@@ -478,7 +478,7 @@ class RecipeListenForOrderState(RecipeState):
                     next_state=RecipeStates.SILENT_USER,
                     next_state_kwargs={
                         'order': order
-                    })   
+                    })
 
             elif inference['is_understood'] and inference['intent'] == 'addItem':
                 sleep(.1)
@@ -491,24 +491,24 @@ class RecipeListenForOrderState(RecipeState):
                         'order': order,
                         'item': OrderItem.parse_add_item_inference(inference)
                     })
-    
+
             elif inference['is_understood'] and inference['intent'] == 'removeItem':
                 sleep(.1)
                 event.set()
                 thread.join()
-                
+
                 return Transition(
                     next_state=RecipeStates.REMOVE_ITEM,
                     next_state_kwargs={
                         'order': order,
                         'to_remove': OrderItem.parse_remove_item_inference(inference)
                     })
-    
+
             elif inference['is_understood'] and inference['intent'] == 'changeItem':
                 sleep(.1)
                 event.set()
                 thread.join()
-                
+
                 item_from, change = OrderItem.parse_change_item_inference(inference)
                 return Transition(
                     next_state=RecipeStates.CHANGE_ITEM,
@@ -522,7 +522,7 @@ class RecipeListenForOrderState(RecipeState):
                 sleep(.1)
                 event.set()
                 thread.join()
-                
+
                 return Transition(
                     next_state=RecipeStates.START_OVER,
                     next_state_kwargs={})
@@ -531,7 +531,7 @@ class RecipeListenForOrderState(RecipeState):
                 sleep(.1)
                 event.set()
                 thread.join()
-                
+
                 return Transition(
                     next_state=RecipeStates.HELP,
                     next_state_kwargs={
@@ -574,6 +574,7 @@ class RecipeListenForOrderState(RecipeState):
                         'order_finalized': True,
                         'additional_prompt': "Okay!"
                     })
+
 
 class RecipeAddItemState(RecipePromptState):
     def __init__(self, step: OrcaStep) -> None:
@@ -645,7 +646,7 @@ class RecipeChangeItemState(RecipePromptState):
 
         if match_index is None:
             if item_from == "LAST_ITEM":
-                prompt = f"I couldn't remove anything because your order is empty."
+                prompt = "I couldn't remove anything because your order is empty."
             else:
                 prompt = f"I couldn't remove anything because \"{str(item_from)}\" is not in your order."
             self._run_prompt(prompt=prompt)
@@ -676,9 +677,9 @@ class RecipeChangeItemState(RecipePromptState):
 
                 if change.to_item is not None:
                     order[match_index].item_name = change.to_item
-            
+
             else:
-                raise Error(f"unknown order item {order[match_index]}")
+                raise Exception(f"unknown order item {order[match_index]}")
 
             prompt = f"Changing \"{old_order_str}\" in your order to \"{str(order[match_index])}\""
             self._run_prompt(prompt=prompt)
@@ -699,7 +700,7 @@ class RecipeStartOverState(RecipePromptState):
             self,
             **kwargs: Any
     ) -> Transition:
-        prompt = f"Your order has been reset."
+        prompt = "Your order has been reset."
         self._run_prompt(prompt=prompt)
 
         return Transition(
@@ -719,7 +720,7 @@ class RecipeHelpState(RecipePromptState):
             order: MutableSequence[OrderItem],
             **kwargs: Any
     ) -> Transition:
-        prompt = f"A staff member has been notified. While help is on the way, you can continue ordering."
+        prompt = "A staff member has been notified. While help is on the way, you can continue ordering."
         self._run_prompt(prompt=prompt)
 
         return Transition(
@@ -743,9 +744,13 @@ class RecipeRepeatOrderState(RecipePromptState):
     ) -> Transition:
         prompt_list = []
         if additional_prompt is not None:
-            prompt_list += [ additional_prompt ]
-        
-        prompt_list += [ "While we get everything ready, here's what you ordered:" if order_finalized else "Here's your order:" ]
+            prompt_list += [additional_prompt]
+
+        prompt_list += [
+            "While we get everything ready, here's what you ordered:"
+            if order_finalized
+            else "Here's your order:"
+        ]
         prompt_list += [f"Item {i+1}. {str(order_item)}" for i, order_item in enumerate(order)]
 
         if len(order) == 0:
@@ -783,7 +788,7 @@ class RecipeSpeakPromptState(RecipePromptState):
     def run(
             self,
             order: MutableSequence[OrderItem],
-            prompt: str, 
+            prompt: str,
             **kwargs: Any
     ) -> Transition:
         self._run_prompt(prompt=prompt)
@@ -805,7 +810,7 @@ class RecipeSilentUserState(RecipePromptState):
             order: MutableSequence[OrderItem],
             **kwargs: Any
     ) -> Transition:
-        prompt = f"Is that all? Do you want me to repeat your order?"
+        prompt = "Is that all? Do you want me to repeat your order?"
         self._run_prompt(prompt=prompt)
 
         return Transition(

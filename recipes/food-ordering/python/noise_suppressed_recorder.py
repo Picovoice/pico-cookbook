@@ -8,6 +8,7 @@ import pvkoala
 
 from pvrecorder import PvRecorder
 
+
 class AINoiseSuppressedRecorder(object):
     def __init__(self, access_key: str) -> None:
         self._koala = pvkoala.create(access_key=access_key)
