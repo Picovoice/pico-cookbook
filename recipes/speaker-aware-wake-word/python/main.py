@@ -75,14 +75,12 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
         '--access_key',
-        required=True,
         help='AccessKey obtained from Picovoice Console (https://console.picovoice.ai/)')
     parser.add_argument(
         '--porcupine_model_path',
         help="Absolute path to the Porcupine's model file (.pv)")
     parser.add_argument(
         '--porcupine_keyword_path',
-        required=True,
         help="Absolute path to the Porcupine's keyword file (.ppn)")
     parser.add_argument(
         '--porcupine_sensitivity',
@@ -92,14 +90,27 @@ def main() -> None:
     parser.add_argument(
         '--eagle_speaker_profile_paths',
         nargs='+',
-        required=True,
         help="Absolute path to the Eagle's speaker profile files")
     parser.add_argument(
         '--eagle_threshold',
         type=float,
         default=0.5,
         help="Eagle's recognition threshold [0.0-1.0]")
+    parser.add_argument(
+        '--audio_device_index',
+        type=int,
+        default=-1,
+        help='Index of input audio device')
+    parser.add_argument(
+        '--show_audio_devices',
+        action='store_true',
+        help='Only list available input audio devices and exit')
     args = parser.parse_args()
+
+    if args.show_audio_devices:
+        for index, name in enumerate(PvRecorder.get_available_devices()):
+            print('Device #%d: %s' % (index, name))
+        return
 
     access_key = args.access_key
     porcupine_model_path = args.porcupine_model_path
@@ -107,6 +118,10 @@ def main() -> None:
     porcupine_sensitivity = args.porcupine_sensitivity
     eagle_speaker_profile_paths = args.eagle_speaker_profile_paths
     eagle_threshold = args.eagle_threshold
+
+    if access_key is None or porcupine_keyword_path is None or eagle_speaker_profile_paths is None:
+        print('--access_key, --porcupine_keyword_path and --eagle_speaker_profile_paths are required arguments')
+        return
 
     speaker_profiles = list()
     for path in eagle_speaker_profile_paths:
@@ -131,7 +146,9 @@ def main() -> None:
         eagle = create_recognizer(access_key=access_key, voice_threshold=0.)
         print(f"[OK] Eagle Speaker Recognition[V{eagle.version}]")
 
-        recorder = PvRecorder(frame_length=porcupine.frame_length)
+        recorder = PvRecorder(
+            device_index=args.audio_device_index,
+            frame_length=porcupine.frame_length)
         recorder.start()
 
         pcm = list()

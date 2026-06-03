@@ -944,7 +944,21 @@ def main() -> None:
         '--display_keyword',
         help="Display name for the keyword. If not set, `Jarvis` will be used.")
     parser.add_argument('--short_answers', action='store_true')
+    parser.add_argument(
+        '--audio_device_index',
+        type=int,
+        default=-1,
+        help='Index of input audio device')
+    parser.add_argument(
+        '--show_audio_devices',
+        action='store_true',
+        help='Only list available input audio devices and exit')
     args = parser.parse_args()
+
+    if args.show_audio_devices:
+        for index, name in enumerate(PvRecorder.get_available_devices()):
+            print('Device #%d: %s' % (index, name))
+        return
 
     if args.config is not None:
         config_path = os.path.realpath(args.config)
@@ -1017,7 +1031,9 @@ def main() -> None:
         enable_automatic_punctuation=True)
 
     try:
-        pv_recorder = PvRecorder(frame_length=porcupine.frame_length)
+        pv_recorder = PvRecorder(
+            device_index=args.audio_device_index,
+            frame_length=porcupine.frame_length)
         pv_speaker = PvSpeaker(sample_rate=int(orca_connection.recv()), bits_per_sample=16, buffer_size_secs=1)
     except EOFError:
         for child in active_children():

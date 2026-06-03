@@ -271,15 +271,12 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
         "--access_key",
-        required=True,
         help="AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).")
     parser.add_argument(
         '--picollm_model_path',
-        required=True,
         help='Absolute path to the picoLLM model file (`.pllm`).')
     parser.add_argument(
         '--context_path',
-        required=True,
         help="Path to the Rhino Speech-to-Intent context file trained on Picovoice Console "
              "(https://console.picovoice.ai/).")
     parser.add_argument(
@@ -309,11 +306,30 @@ def main() -> None:
         default=2,
         help="Maximum number of times to ask the caller for missing identity or reason details before declining the "
              "call.")
+    parser.add_argument(
+        '--audio_device_index',
+        type=int,
+        default=-1,
+        help='Index of input audio device')
+    parser.add_argument(
+        '--show_audio_devices',
+        action='store_true',
+        help='Only list available input audio devices and exit')
     args = parser.parse_args()
+
+    if args.show_audio_devices:
+        for index, name in enumerate(PvRecorder.get_available_devices()):
+            print('Device #%d: %s' % (index, name))
+        return
 
     access_key = args.access_key
     picollm_model_path = args.picollm_model_path
     context_path = args.context_path
+
+    if access_key is None or picollm_model_path is None or context_path is None:
+        print('--access_key, --picollm_model_path and --context_path are required arguments')
+        return
+
     username = args.username
     username_pronunciation = args.username_pronunciation
     endpoint_duration_sec = args.endpoint_duration_sec
@@ -356,7 +372,9 @@ def main() -> None:
             require_endpoint=False)
         print(f"[OK] Rhino Speech-to-Intent [V{rhino.version}]")
 
-        recorder = PvRecorder(frame_length=cheetah.frame_length)
+        recorder = PvRecorder(
+            device_index=args.audio_device_index,
+            frame_length=cheetah.frame_length)
 
         speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16)
         speaker.start()

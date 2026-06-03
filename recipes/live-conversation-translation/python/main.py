@@ -139,12 +139,10 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
         '--access_key',
-        required=True,
         help='AccessKey obtained from Picovoice Console (https://console.picovoice.ai/)')
     parser.add_argument(
         '--language_pair',
         choices=[x.value for x in LanguagePairs],
-        required=True,
         help='Languages used in the conversion.')
     parser.add_argument(
         '--endpoint_duration_sec',
@@ -165,9 +163,27 @@ def main() -> None:
         choices=['female', 'male'],
         default=['male', 'male'],
         help="Gender of Speakers for Streaming Text-to-Speech, in `--language_pair` order.")
+    parser.add_argument(
+        '--audio_device_index',
+        type=int,
+        default=-1,
+        help='Index of input audio device')
+    parser.add_argument(
+        '--show_audio_devices',
+        action='store_true',
+        help='Only list available input audio devices and exit')
     args = parser.parse_args()
 
+    if args.show_audio_devices:
+        for index, name in enumerate(PvRecorder.get_available_devices()):
+            print('Device #%d: %s' % (index, name))
+        return
+
     access_key = args.access_key
+    if access_key is None or args.language_pair is None:
+        print('--access_key and --language_pair are required arguments')
+        return
+
     languages = LanguagePairs(args.language_pair).value.split('-')
     endpoint_duration_sec = args.endpoint_duration_sec
     disable_automatic_punctuation = args.disable_automatic_punctuation
@@ -214,7 +230,9 @@ def main() -> None:
             orcas.append(orca)
         print()
 
-        recorder = PvRecorder(frame_length=cheetahs[0].frame_length)
+        recorder = PvRecorder(
+            device_index=args.audio_device_index,
+            frame_length=cheetahs[0].frame_length)
 
         speaker = PvSpeaker(sample_rate=orcas[0].sample_rate, bits_per_sample=16)
         speaker.start()

@@ -155,25 +155,20 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
         "--access_key",
-        required=True,
         help="AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).")
     parser.add_argument(
         '--keyword_path',
-        required=True,
         help="Absolute path to the Porcupine's keyword file (.ppn)")
     parser.add_argument(
         '--context_path',
-        required=True,
         help="Path to the Rhino Speech-to-Intent context file trained on Picovoice Console "
              "(https://console.picovoice.ai/).")
     parser.add_argument(
         '--user_profile_paths',
-        required=True,
         nargs='+',
         help="Paths to Eagle speaker profile files.")
     parser.add_argument(
         '--user_roles',
-        required=True,
         nargs='+',
         choices=[x.value for x in UserRoles],
         help="Roles for the speaker profiles, in the same order as `--user_profile_paths`.")
@@ -182,12 +177,31 @@ def main() -> None:
         type=float,
         default=0.75,
         help="Minimum Eagle similarity score required before allowing an admin-only command.")
+    parser.add_argument(
+        '--audio_device_index',
+        type=int,
+        default=-1,
+        help='Index of input audio device')
+    parser.add_argument(
+        '--show_audio_devices',
+        action='store_true',
+        help='Only list available input audio devices and exit')
     args = parser.parse_args()
+
+    if args.show_audio_devices:
+        for index, name in enumerate(PvRecorder.get_available_devices()):
+            print('Device #%d: %s' % (index, name))
+        return
 
     access_key = args.access_key
     keyword_path = args.keyword_path
     context_path = args.context_path
     user_profile_paths = args.user_profile_paths
+    if access_key is None or keyword_path is None or context_path is None or \
+            user_profile_paths is None or args.user_roles is None:
+        print('--access_key, --keyword_path, --context_path, '
+              '--user_profile_paths and --user_roles are required arguments')
+        return
     user_roles = [UserRoles(x) for x in args.user_roles]
     admin_similarity_threshold = args.admin_similarity_threshold
 
@@ -226,7 +240,9 @@ def main() -> None:
         orca = pvorca.create(access_key=access_key)
         print(f"[OK] Orca Streaming Text-to-Speech [V{orca.version}]")
 
-        recorder = PvRecorder(frame_length=porcupine.frame_length)
+        recorder = PvRecorder(
+            device_index=args.audio_device_index,
+            frame_length=porcupine.frame_length)
         recorder.start()
 
         speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16)

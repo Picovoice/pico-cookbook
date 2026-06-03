@@ -35,9 +35,11 @@ from pvspeaker import PvSpeaker
 
 
 class AINoiseSuppressedRecorder(object):
-    def __init__(self, access_key: str) -> None:
+    def __init__(self, access_key: str, audio_device_index: int) -> None:
         self._koala = pvkoala.create(access_key=access_key)
-        self._recorder = PvRecorder(frame_length=self._koala.frame_length)
+        self._recorder = PvRecorder(
+            device_index=audio_device_index,
+            frame_length=self._koala.frame_length)
         self._buffer = list()
 
     def start(self) -> None:
@@ -351,14 +353,15 @@ class Workflow(object):
     def __init__(
             self,
             access_key: str,
+            audio_device_index: int,
             steps: Dict[Enum, Tuple[Steps, Optional[Dict[str, Any]]]],
             state_enum: Type[Enum],
             state_subclass: Type[State],
             state_steps: Dict[Enum, Enum],
             start_state: Enum,
-            start_state_kwargs: Optional[Dict[str, Any]] = None,
+            start_state_kwargs: Optional[Dict[str, Any]] = None
     ) -> None:
-        self._recorder = AINoiseSuppressedRecorder(access_key=access_key)
+        self._recorder = AINoiseSuppressedRecorder(access_key=access_key, audio_device_index=audio_device_index)
         self._speaker = PvSpeaker(sample_rate=22050, bits_per_sample=16)
 
         self._steps = dict()
@@ -927,21 +930,36 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
         '--access_key',
-        required=True,
         help='AccessKey obtained from Picovoice Console (https://console.picovoice.ai/)')
     parser.add_argument(
         '--keyword_path',
-        required=True,
         help='')
     parser.add_argument(
         '--context_path',
-        required=True,
         help='')
+    parser.add_argument(
+        '--audio_device_index',
+        type=int,
+        default=-1,
+        help='Index of input audio device')
+    parser.add_argument(
+        '--show_audio_devices',
+        action='store_true',
+        help='Only list available input audio devices and exit')
     args = parser.parse_args()
+
+    if args.show_audio_devices:
+        for index, name in enumerate(PvRecorder.get_available_devices()):
+            print('Device #%d: %s' % (index, name))
+        return
 
     access_key = args.access_key
     keyword_path = args.keyword_path
     context_path = args.context_path
+
+    if access_key is None or keyword_path is None or context_path is None:
+        print('--access_key, --keyword_path and --context_path are required arguments')
+        return
 
     workflow = Workflow(
         steps={
@@ -971,7 +989,8 @@ def main() -> None:
             RecipeStates.COMPLETE_PROMPT: RecipeSteps.PROMPT_USER,
         },
         start_state=RecipeStates.STANDBY,
-        access_key=access_key)
+        access_key=access_key,
+        audio_device_index=args.audio_device_index)
 
     try:
         workflow.run()

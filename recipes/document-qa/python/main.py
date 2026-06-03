@@ -468,15 +468,12 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
         "--access_key",
-        required=True,
         help="AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).")
     parser.add_argument(
         '--picollm_embedding_model_path',
-        required=True,
         help='Absolute path to the picoLLM embedding model file (`.pllm`).')
     parser.add_argument(
         '--picollm_chat_model_path',
-        required=True,
         help='Absolute path to the picoLLM chat model file (`.pllm`).')
     parser.add_argument(
         '--document_path',
@@ -524,11 +521,30 @@ def main() -> None:
     parser.add_argument(
         "--load_embeddings_path",
         help="Path to load document embeddings from JSON instead of regenerating them.")
+    parser.add_argument(
+        '--audio_device_index',
+        type=int,
+        default=-1,
+        help='Index of input audio device')
+    parser.add_argument(
+        '--show_audio_devices',
+        action='store_true',
+        help='Only list available input audio devices and exit')
     args = parser.parse_args()
+
+    if args.show_audio_devices:
+        for index, name in enumerate(PvRecorder.get_available_devices()):
+            print('Device #%d: %s' % (index, name))
+        return
 
     access_key = args.access_key
     picollm_embedding_model_path = args.picollm_embedding_model_path
     picollm_chat_model_path = args.picollm_chat_model_path
+
+    if access_key is None or picollm_embedding_model_path is None or picollm_chat_model_path is None:
+        print('--access_key, --picollm_embedding_model_path and --picollm_chat_model_path are required arguments')
+        return
+
     document_path = args.document_path
     cheetah_model_path = args.cheetah_model_path
     endpoint_duration_sec = args.endpoint_duration_sec
@@ -575,7 +591,9 @@ def main() -> None:
         orca = pvorca.create(access_key=access_key)
         print(f"[OK] Orca Streaming Text-to-Speech [V{orca.version}]")
 
-        recorder = PvRecorder(frame_length=cheetah.frame_length)
+        recorder = PvRecorder(
+            device_index=args.audio_device_index,
+            frame_length=cheetah.frame_length)
 
         speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16)
         speaker.start()

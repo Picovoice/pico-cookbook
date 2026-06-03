@@ -10,9 +10,11 @@ from pvrecorder import PvRecorder
 
 
 class AINoiseSuppressedRecorder(object):
-    def __init__(self, access_key: str) -> None:
+    def __init__(self, access_key: str, audio_device_index: int) -> None:
         self._koala = pvkoala.create(access_key=access_key)
-        self._recorder = PvRecorder(frame_length=self._koala.frame_length)
+        self._recorder = PvRecorder(
+            device_index=audio_device_index,
+            frame_length=self._koala.frame_length)
 
     @property
     def sample_rate(self) -> int:
@@ -56,7 +58,6 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
         "--access_key",
-        required=True,
         help="AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).")
     parser.add_argument(
         "--raw_output_path",
@@ -66,14 +67,34 @@ def main() -> None:
         "--enhanced_output_path",
         default="noise_suppressed.wav",
         help="Path to save the Koala noise-suppressed recording. Default is noise_suppressed.wav.")
+    parser.add_argument(
+        '--audio_device_index',
+        type=int,
+        default=-1,
+        help='Index of input audio device')
+    parser.add_argument(
+        '--show_audio_devices',
+        action='store_true',
+        help='Only list available input audio devices and exit')
     args = parser.parse_args()
+
+    if args.show_audio_devices:
+        for index, name in enumerate(PvRecorder.get_available_devices()):
+            print('Device #%d: %s' % (index, name))
+        return
 
     recorder = None
     raw_writer = None
     enhanced_writer = None
 
+    if args.access_key is None:
+        print('--access_key is a required argument')
+        return
+
     try:
-        recorder = AINoiseSuppressedRecorder(access_key=args.access_key)
+        recorder = AINoiseSuppressedRecorder(
+            access_key=args.access_key,
+            audio_device_index=args.audio_device_index)
         raw_writer = WavWriter(path=args.raw_output_path, sample_rate=recorder.sample_rate)
         enhanced_writer = WavWriter(path=args.enhanced_output_path, sample_rate=recorder.sample_rate)
 

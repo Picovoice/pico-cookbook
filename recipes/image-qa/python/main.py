@@ -323,15 +323,12 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
         "--access_key",
-        required=True,
         help="AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).")
     parser.add_argument(
         '--picollm_model_path',
-        required=True,
         help='Absolute path to the picoLLM VLM model file (`.pllm`).')
     parser.add_argument(
         '--image_path',
-        required=True,
         help='Absolute path to the image file.')
     parser.add_argument(
         '--picollm_device',
@@ -346,11 +343,29 @@ def main() -> None:
         type=float,
         default=1.0,
         help="Duration of silence, in seconds, required to detect the end of the caller's utterance.")
+    parser.add_argument(
+        '--audio_device_index',
+        type=int,
+        default=-1,
+        help='Index of input audio device')
+    parser.add_argument(
+        '--show_audio_devices',
+        action='store_true',
+        help='Only list available input audio devices and exit')
     args = parser.parse_args()
+
+    if args.show_audio_devices:
+        for index, name in enumerate(PvRecorder.get_available_devices()):
+            print('Device #%d: %s' % (index, name))
+        return
 
     access_key = args.access_key
     picollm_model_path = args.picollm_model_path
     image_path = args.image_path
+    if access_key is None or picollm_model_path is None or image_path is None:
+        print('--access_key, --picollm_model_path and --image_path are required arguments')
+        return
+
     endpoint_duration_sec = args.endpoint_duration_sec
     picollm_device = args.picollm_device
 
@@ -386,7 +401,9 @@ def main() -> None:
         orca = pvorca.create(access_key=access_key)
         print(f"[OK] Orca Streaming Text-to-Speech [V{orca.version}]")
 
-        recorder = PvRecorder(frame_length=cheetah.frame_length)
+        recorder = PvRecorder(
+            device_index=args.audio_device_index,
+            frame_length=cheetah.frame_length)
         recorder.start()
 
         speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16)
