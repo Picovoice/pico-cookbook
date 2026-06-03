@@ -217,28 +217,6 @@ SHOPPING_CART: List[Product] = [
 ]
 
 
-class RecipeSteps(Enum):
-    STANDBY = "Standby"
-    PROMPT_USER = "PromptUser"
-    RECORD_USER = "RecordUser"
-
-
-class RecipeStates(Enum):
-    STANDBY = "Standby"
-    WELCOME_PROMPT = "WelcomePrompt"
-    LISTEN_COMMAND = "ListenCommand"
-    SCAN_ITEM_PROMPT = "ScanItemPrompt"
-
-    DECIDE_ON_BAGGING = "DecideOnBagging"
-
-    SELECT_PAYMENT_METHOD = "SelectPaymentMethod"
-    LIST_ITEMS_PROMPT = "ListItemsPrompt"
-
-    REPEAT_LAST_PROMPT = "RepeatLastPrompt"
-    SPEAK_PROMPT = "SpeakPrompt"
-    CHECKOUT_COMPLETE_PROMPT = "CheckoutCompletePrompt"
-
-
 MAX_ORCA_SPEED = 1.3
 MIN_ORCA_SPEED = 0.7
 
@@ -390,6 +368,28 @@ def parse_accessibility_intent(
             })
 
     return None
+
+
+class RecipeSteps(Enum):
+    STANDBY = "Standby"
+    PROMPT_USER = "PromptUser"
+    RECORD_USER = "RecordUser"
+
+
+class RecipeStates(Enum):
+    STANDBY = "Standby"
+    WELCOME_PROMPT = "WelcomePrompt"
+    LISTEN_COMMAND = "ListenCommand"
+    SCAN_ITEM_PROMPT = "ScanItemPrompt"
+
+    DECIDE_ON_BAGGING = "DecideOnBagging"
+
+    SELECT_PAYMENT_METHOD = "SelectPaymentMethod"
+    LIST_ITEMS_PROMPT = "ListItemsPrompt"
+
+    REPEAT_LAST_PROMPT = "RepeatLastPrompt"
+    SPEAK_PROMPT = "SpeakPrompt"
+    CHECKOUT_COMPLETE_PROMPT = "CheckoutCompletePrompt"
 
 
 class RecipeState(State):
