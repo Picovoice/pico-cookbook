@@ -1,4 +1,4 @@
-# Food Ordering
+# Food Ordering in Python
 
 A fully on-device food ordering system with freeform commands.
 

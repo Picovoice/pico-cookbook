@@ -464,13 +464,12 @@ class RecipeListenForOrderState(RecipeState):
             inference = None
             while inference is None:
                 inference = self._step.run(
-                    check_for_silence=not just_asked,
+                    check_for_silence=(not just_asked) and (len(order) > 0),
                     silence_start=start_time,
                     silence_timeout=silence_timeout_s,
                     volume_threshold=volume_threshold)
 
             if inference == "TIMEOUT":
-                sleep(.1)
                 event.set()
                 thread.join()
 
@@ -481,7 +480,6 @@ class RecipeListenForOrderState(RecipeState):
                     })
 
             elif inference['is_understood'] and inference['intent'] == 'addItem':
-                sleep(.1)
                 event.set()
                 thread.join()
 
@@ -493,7 +491,6 @@ class RecipeListenForOrderState(RecipeState):
                     })
 
             elif inference['is_understood'] and inference['intent'] == 'removeItem':
-                sleep(.1)
                 event.set()
                 thread.join()
 
@@ -505,7 +502,6 @@ class RecipeListenForOrderState(RecipeState):
                     })
 
             elif inference['is_understood'] and inference['intent'] == 'changeItem':
-                sleep(.1)
                 event.set()
                 thread.join()
 
@@ -519,7 +515,6 @@ class RecipeListenForOrderState(RecipeState):
                     })
 
             elif inference['is_understood'] and inference['intent'] == 'startOver':
-                sleep(.1)
                 event.set()
                 thread.join()
 
@@ -528,7 +523,6 @@ class RecipeListenForOrderState(RecipeState):
                     next_state_kwargs={})
 
             elif inference['is_understood'] and inference['intent'] == 'help':
-                sleep(.1)
                 event.set()
                 thread.join()
 
@@ -539,7 +533,6 @@ class RecipeListenForOrderState(RecipeState):
                     })
 
             elif inference['is_understood'] and inference['intent'] == 'repeatOrder':
-                sleep(.1)
                 event.set()
                 thread.join()
 
@@ -551,7 +544,6 @@ class RecipeListenForOrderState(RecipeState):
                     })
 
             elif inference['is_understood'] and inference['intent'] == 'endOrder':
-                sleep(.1)
                 event.set()
                 thread.join()
 
@@ -563,7 +555,6 @@ class RecipeListenForOrderState(RecipeState):
                     })
 
             elif inference['is_understood'] and inference['intent'] == 'confirmation' and just_asked:
-                sleep(.1)
                 event.set()
                 thread.join()
 
@@ -571,8 +562,7 @@ class RecipeListenForOrderState(RecipeState):
                     next_state=RecipeStates.REPEAT_ORDER,
                     next_state_kwargs={
                         'order': order,
-                        'order_finalized': True,
-                        'additional_prompt': "Okay!"
+                        'order_finalized': True
                     })
 
 
@@ -739,12 +729,11 @@ class RecipeRepeatOrderState(RecipePromptState):
             self,
             order: MutableSequence[OrderItem],
             order_finalized: bool,
-            additional_prompt: Optional[str],
             **kwargs: Any
     ) -> Transition:
         prompt_list = []
-        if additional_prompt is not None:
-            prompt_list += [additional_prompt]
+        if order_finalized:
+            prompt_list += ["Alright!"]
 
         prompt_list += [
             "While we get everything ready, here's what you ordered:"
@@ -829,6 +818,7 @@ class RecipeEndOrderState(RecipePromptState):
             self,
             **kwargs: Any
     ) -> Transition:
+        sleep(.4)
         prompt = "Done! Your order is ready."
         self._run_prompt(prompt=prompt)
 

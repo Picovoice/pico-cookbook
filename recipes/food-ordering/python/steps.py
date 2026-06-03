@@ -279,29 +279,33 @@ class RhinoStep(Step):
 
     def run(
             self,
-            check_for_silence: bool,
-            silence_start: list[float],
-            silence_timeout: float,
-            volume_threshold: float) -> Dict[str, Any] | Literal["TIMEOUT"] | None:
+            check_for_silence: bool = False,
+            silence_start: list[float] = [],
+            silence_timeout: float = 5.0,
+            volume_threshold: float = 0.1
+    ) -> Dict[str, Any] | Literal["TIMEOUT"] | None:
         try:
             self._recorder.start()
 
-            running_silence_start = silence_start[0]
+            if check_for_silence:
+                running_silence_start = silence_start[0]
 
-            while True:
-                frame = self._recorder.read(self._rhino.frame_length)
+                while True:
+                    frame = self._recorder.read(self._rhino.frame_length)
 
-                if check_for_silence:
                     volume = RhinoStep.rms(frame)
                     if volume > volume_threshold:
                         running_silence_start = time.time()
                     elif (time.time() - running_silence_start) > silence_timeout:
                         return "TIMEOUT"
 
-                if self._rhino.process(frame):
-                    break
+                    if self._rhino.process(frame):
+                        break
 
-            silence_start[0] = running_silence_start
+                silence_start[0] = running_silence_start
+            else:
+                while not self._rhino.process(self._recorder.read(self._rhino.frame_length)):
+                    pass
 
             inference = self._rhino.get_inference()
             return {
