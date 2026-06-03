@@ -150,6 +150,10 @@ class OrcaStep(Step):
             access_key=access_key,
             model_path=model_path)
 
+        self.volume = 1.0
+        self.speed = 1.0
+        self.last_prompt = "There is nothing to repeat."
+
     @staticmethod
     def sanitize_for_orca(text: str, valid_characters: Set[str]) -> str:
         valid_character_set = set(valid_characters)
@@ -175,7 +179,6 @@ class OrcaStep(Step):
 
         return text
 
-
     def run(
             self,
             prompt: str,
@@ -184,14 +187,35 @@ class OrcaStep(Step):
         try:
             self._speaker.start()
 
-            pcm, alignment = self._orca.synthesize(text=OrcaStep.sanitize_for_orca(
+            pcm, alignment = self._orca.synthesize(
+                text=OrcaStep.sanitize_for_orca(
                     prompt,
-                    self._orca.valid_characters))
+                    self._orca.valid_characters
+                ),
+                speech_rate=min(max(self.speed, 0.7), 1.3)
+            )
             if on_synthesis is not None:
                 on_synthesis(alignment)
+
+            self.volume = max(min(self.volume, 100.0), 0.0)
+
+            s16_max = (2**15) - 1
+            s16_min = -2**15
+            pcm = [
+                max(min(int(sample * self.volume), s16_max), s16_min)
+                for sample in pcm
+            ]
+
             self._speaker.flush(pcm)
         finally:
             self._speaker.stop()
+            self.last_prompt = prompt
+
+    def repeat_last(
+            self,
+            on_synthesis: Optional[Callable[[Sequence[Orca.WordAlignment]], None]] = None
+    ):
+        self.run(self.last_prompt, on_synthesis)
 
     def delete(self) -> None:
         self._orca.delete()
@@ -289,7 +313,6 @@ class RhinoStep(Step):
             self._recorder.start()
 
             if check_for_silence:
-
                 running_silence_start = silence_start[0]
 
                 while True:

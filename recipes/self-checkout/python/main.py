@@ -111,7 +111,10 @@ class Transition(object):
 
 
 class State(object):
-    def __init__(self, step: Optional[Step] = None) -> None:
+    def __init__(
+            self,
+            step: Optional[Step] = None
+    ) -> None:
         self._step = step
 
     def run(
@@ -160,9 +163,9 @@ class Workflow(object):
         self._state_uids = dict()
         for state in state_enum:
             if state in state_steps:
-                self._states[state] = state_subclass.create(state=state, step=self._steps[state_steps[state]])
+                self._states[state] = state_subclass.create(state=state, workflow=self, step=self._steps[state_steps[state]])
             else:
-                self._states[state] = state_subclass.create(state=state)
+                self._states[state] = state_subclass.create(state=state, workflow=self)
 
             self._state_uids[self._states[state]] = state
 
@@ -201,7 +204,7 @@ class Product:
     price: float
 
 
-ITEMS: List[Product] = [
+SHOPPING_CART: List[Product] = [
     Product("Great Value Dark Chocolate Bar, 3.52 oz", 1.00),
     Product("SunChips Whole Grain Snacks, Original, 7 oz", 3.68),
     Product("V8 +ENERGY Pomegranate Blueberry Energy Drink, 8 oz Can (Pack of 12)", 9.38),
@@ -220,12 +223,170 @@ class RecipeSteps(Enum):
 class RecipeStates(Enum):
     STANDBY = "Standby"
     WELCOME_PROMPT = "WelcomePrompt"
-    SCAN_ITEM_PROMPT = "ScanItemPrompt"
-    NO_ITEM_TO_RESCAN_PROMPT = "NoItemToRescanPrompt"
     LISTEN_COMMAND = "ListenCommand"
+    SCAN_ITEM_PROMPT = "ScanItemPrompt"
+
+    DECIDE_ON_BAGGING = "DecideOnBagging"
+
+    SELECT_PAYMENT_METHOD = "SelectPaymentMethod"
     LIST_ITEMS_PROMPT = "ListItemsPrompt"
-    SCAN_COMPLETE_PROMPT = "ScanCompletePrompt"
+
+    REPEAT_LAST_PROMPT = "RepeatLastPrompt"
+    SPEAK_PROMPT = "SpeakPrompt"
     CHECKOUT_COMPLETE_PROMPT = "CheckoutCompletePrompt"
+
+
+MAX_ORCA_SPEED = 1.3
+MIN_ORCA_SPEED = 0.7
+
+MAX_VOLUME = 4.0
+MIN_VOLUME = 0.25
+
+
+def parse_accessibility_intent(
+        intent: string,
+        workflow: Workflow,
+        next_item_index: int,
+        cart: List[Product],
+        next_state: State,
+        next_args: Dict = {}
+) -> Optional[Transition]:
+    orcaStep = workflow._steps[RecipeSteps.PROMPT_USER]
+    if intent == "speedUp":
+        if orcaStep.speed < MAX_ORCA_SPEED:
+            orcaStep.speed = min(orcaStep.speed + 0.3, MAX_ORCA_SPEED)
+
+            return Transition(
+                next_state=RecipeStates.SPEAK_PROMPT,
+                next_state_kwargs={
+                    "next_item_index": next_item_index,
+                    "cart": cart,
+                    "prompt": "Voice speed increased.",
+                    "next_state": next_state,
+                    "next_args": next_args
+                })
+        else:
+            return Transition(
+                next_state=RecipeStates.SPEAK_PROMPT,
+                next_state_kwargs={
+                    "next_item_index": next_item_index,
+                    "cart": cart,
+                    "prompt": "Voice speed already at maxixmum.",
+                    "next_state": next_state,
+                    "next_args": next_args
+                })
+    elif intent == "slowDown":
+        if orcaStep.speed > MIN_ORCA_SPEED:
+            orcaStep.speed = max(orcaStep.speed - 0.3, MIN_ORCA_SPEED)
+
+            return Transition(
+                next_state=RecipeStates.SPEAK_PROMPT,
+                next_state_kwargs={
+                    "next_item_index": next_item_index,
+                    "cart": cart,
+                    "prompt": "Voice speed decreased.",
+                    "next_state": next_state,
+                    "next_args": next_args
+                })
+        else:
+            return Transition(
+                next_state=RecipeStates.SPEAK_PROMPT,
+                next_state_kwargs={
+                    "next_item_index": next_item_index,
+                    "cart": cart,
+                    "prompt": "Voice speed already at minimum.",
+                    "next_state": next_state,
+                    "next_args": next_args
+                })
+    elif intent == "normalSpeed":
+        orcaStep.speed = 1.0
+        return Transition(
+            next_state=RecipeStates.SPEAK_PROMPT,
+            next_state_kwargs={
+                "next_item_index": next_item_index,
+                "cart": cart,
+                "prompt": "Voice speed reset.",
+                "next_state": next_state,
+                "next_args": next_args
+            })
+    elif intent == "speakLouder":
+        if orcaStep.volume < MAX_VOLUME:
+            orcaStep.volume = min(orcaStep.volume * 2, MAX_VOLUME)
+
+            return Transition(
+                next_state=RecipeStates.SPEAK_PROMPT,
+                next_state_kwargs={
+                    "next_item_index": next_item_index,
+                    "cart": cart,
+                    "prompt": "Voice volume increased.",
+                    "next_state": next_state,
+                    "next_args": next_args
+                })
+        else:
+            return Transition(
+                next_state=RecipeStates.SPEAK_PROMPT,
+                next_state_kwargs={
+                    "next_item_index": next_item_index,
+                    "cart": cart,
+                    "prompt": "Voice volume already at maximum.",
+                    "next_state": next_state,
+                    "next_args": next_args
+                })
+    elif intent == "speakQuieter":
+        if orcaStep.volume > MIN_VOLUME:
+            orcaStep.volume = max(orcaStep.volume * 0.5, MIN_VOLUME)
+
+            return Transition(
+                next_state=RecipeStates.SPEAK_PROMPT,
+                next_state_kwargs={
+                    "next_item_index": next_item_index,
+                    "cart": cart,
+                    "prompt": "Voice volume decreased.",
+                    "next_state": next_state,
+                    "next_args": next_args
+                })
+        else:
+            return Transition(
+                next_state=RecipeStates.SPEAK_PROMPT,
+                next_state_kwargs={
+                    "next_item_index": next_item_index,
+                    "cart": cart,
+                    "prompt": "Voice volume already at minimum.",
+                    "next_state": next_state,
+                    "next_args": next_args
+                })
+    elif intent == "normalVolume":
+        orcaStep.volume = 1.0
+        return Transition(
+            next_state=RecipeStates.SPEAK_PROMPT,
+            next_state_kwargs={
+                "next_item_index": next_item_index,
+                "cart": cart,
+                "prompt": "Voice volume reset.",
+                "next_state": next_state,
+                "next_args": next_args
+            })
+    elif intent == "repeat":
+        return Transition(
+            next_state=RecipeStates.REPEAT_LAST_PROMPT,
+            next_state_kwargs={
+                "next_item_index": next_item_index,
+                "cart": cart,
+                "next_state": next_state,
+                "next_args": next_args
+            })
+    elif intent == "help":
+        return Transition(
+            next_state=RecipeStates.SPEAK_PROMPT,
+            next_state_kwargs={
+                "next_item_index": next_item_index,
+                "cart": cart,
+                "prompt": "A staff member has been notified and is on their way.",
+                "next_state": RecipeStates.CHECKOUT_COMPLETE_PROMPT,
+                "next_args": { "checkout_successful": False, **next_args }
+            })
+
+    return None
 
 
 class RecipeState(State):
@@ -233,23 +394,31 @@ class RecipeState(State):
     def create(
             cls,
             state: RecipeStates,
+            workflow: Workflow,
             **kwargs: Any
     ) -> "RecipeState":
         children = {
             RecipeStates.STANDBY: RecipeStandbyState,
             RecipeStates.WELCOME_PROMPT: RecipeWelcomePromptState,
-            RecipeStates.SCAN_ITEM_PROMPT: RecipeScanItemPromptState,
-            RecipeStates.NO_ITEM_TO_RESCAN_PROMPT: RecipeNoItemToRescanPromptState,
+
             RecipeStates.LISTEN_COMMAND: RecipeListenCommandState,
+            RecipeStates.SCAN_ITEM_PROMPT: RecipeScanItemPromptState,
             RecipeStates.LIST_ITEMS_PROMPT: RecipeListItemsPromptState,
-            RecipeStates.SCAN_COMPLETE_PROMPT: RecipeScanCompletePromptState,
+
+            RecipeStates.DECIDE_ON_BAGGING: RecipeDecideOnBaggingState,
+            RecipeStates.SELECT_PAYMENT_METHOD: RecipeSelectPaymentMethodState,
+
+            RecipeStates.REPEAT_LAST_PROMPT: RecipeRepeatLastPromptState,
+            RecipeStates.SPEAK_PROMPT: RecipeSpeakPromptState,
             RecipeStates.CHECKOUT_COMPLETE_PROMPT: RecipeCheckoutCompletePromptState,
         }
 
         if state not in children:
             raise ValueError(f"Cannot create a {cls.__name__} of type `{state.value}`.")
 
-        return children[state](**kwargs)
+        obj = children[state](**kwargs)
+        obj._workflow = workflow
+        return obj
 
 
 class RecipePromptState(RecipeState):
@@ -283,6 +452,33 @@ class RecipePromptState(RecipeState):
         print_event.set()
         print_thread.join()
 
+    def _repeat_last_prompt(self) -> None:
+        text = ""
+        lock = Lock()
+
+        def get_text() -> str:
+            with lock:
+                return f"[AI] {text}"
+
+        print_event, print_thread = print_async(get_text)
+
+        def on_tick(chunk: str) -> None:
+            nonlocal text
+            with lock:
+                text += chunk
+
+        timer_thread = None
+
+        def on_synthesis(alignments: Sequence[Orca.WordAlignment]) -> None:
+            nonlocal timer_thread
+            timer_thread = time_async(alignments=alignments, on_tick=on_tick)
+
+        self._step.repeat_last(on_synthesis=on_synthesis)
+        if timer_thread is not None:
+            timer_thread.join()
+        print_event.set()
+        print_thread.join()
+
 
 class RecipeStandbyState(RecipeState):
     def __init__(self, step: PorcupineStep) -> None:
@@ -300,11 +496,11 @@ class RecipeStandbyState(RecipeState):
         event, thread = print_async(get_text=get_text)
         self._step.run()
         text = "Detected wake word. Starting self-checkout..."
-        
+
         sleep(.1)
         event.set()
         thread.join()
-        
+
         return Transition(
             next_state=RecipeStates.WELCOME_PROMPT,
             next_state_kwargs={
@@ -321,43 +517,7 @@ class RecipeWelcomePromptState(RecipePromptState):
             **kwargs: Any
     ) -> Transition:
         self._run_prompt("Welcome to Walmart's self-checkout! I will announce when you scan each item.")
-
-        return Transition(
-            next_state=RecipeStates.LISTEN_COMMAND,
-            next_state_kwargs={
-                "next_item_index": next_item_index,
-                "cart": cart
-            })
-
-
-class RecipeScanItemPromptState(RecipePromptState):
-    def run(
-            self,
-            next_item_index: int,
-            cart: List[Product],
-            **kwargs: Any
-    ) -> Transition:
-        item = ITEMS[next_item_index]
-        new_cart = list(cart) + [item]
-
-        self._run_prompt(f"Scanned: {item.name}. Price: ${item.price:.2f}.")
-
-        return Transition(
-            next_state=RecipeStates.LISTEN_COMMAND,
-            next_state_kwargs={
-                "next_item_index": next_item_index + 1,
-                "cart": new_cart
-            })
-
-
-class RecipeNoItemToRescanPromptState(RecipePromptState):
-    def run(
-            self,
-            next_item_index: int,
-            cart: List[Product],
-            **kwargs: Any
-    ) -> Transition:
-        self._run_prompt("No item to rescan. Please start by scanning an item.")
+        self._run_prompt("If you need me to change my speed, volume, or to repeat myself, let me know whenever I'm listening.")
 
         return Transition(
             next_state=RecipeStates.LISTEN_COMMAND,
@@ -377,7 +537,15 @@ class RecipeListenCommandState(State):
             cart: List[Product],
             **kwargs
     ) -> Transition:
-        text = "Waiting for command [scan next item, scan again, list items, done scanning]"
+        print(
+            "- Scan (item)\n"
+            + "- Remove (last item)\n"
+            + "- (What is my) total\n"
+            + "- Start over\n" # TODO: this
+            + "- Pay (now)"
+        )
+
+        text = ""
 
         def get_text() -> str:
             return text
@@ -388,64 +556,8 @@ class RecipeListenCommandState(State):
             inference = self._step.run()
             intent = inference["intent"] if inference and inference["is_understood"] else None
 
-            if intent == "scanAgain":
-                if next_item_index == 0:
-                    event.set()
-                    thread.join()
-
-                    return Transition(
-                        next_state=RecipeStates.NO_ITEM_TO_RESCAN_PROMPT,
-                        next_state_kwargs={
-                            "next_item_index": next_item_index,
-                            "cart": cart
-                        })
-
-                new_cart = list(cart[:-1]) if cart else []
-                text = f"Re-scanning {ITEMS[next_item_index - 1].name}"
-
-                sleep(0.1)
-                event.set()
-                thread.join()
-
-                return Transition(
-                    next_state=RecipeStates.SCAN_ITEM_PROMPT,
-                    next_state_kwargs={
-                        "next_item_index": next_item_index - 1,
-                        "cart": new_cart
-                    })
-
-            elif intent == "listItems":
-                text = "Listing scanned items"
-
-                sleep(0.1)
-                event.set()
-                thread.join()
-
-                return Transition(
-                    next_state=RecipeStates.LIST_ITEMS_PROMPT,
-                    next_state_kwargs={
-                        "next_item_index": next_item_index,
-                        "cart": cart
-                    })
-
-            elif intent == "doneScan":
-                text = "Finishing scan"
-
-                sleep(0.1)
-                event.set()
-                thread.join()
-
-                return Transition(
-                    next_state=RecipeStates.CHECKOUT_COMPLETE_PROMPT,
-                    next_state_kwargs={
-                        "cart": cart
-                    })
-
-            elif intent == "scanNext":
-                if next_item_index < len(ITEMS):
-                    text = "Scanning next item"
-
-                    sleep(0.1)
+            if intent == "scanNext":
+                if next_item_index < len(SHOPPING_CART):
                     event.set()
                     thread.join()
 
@@ -460,28 +572,182 @@ class RecipeListenCommandState(State):
                     thread.join()
 
                     return Transition(
-                        next_state=RecipeStates.SCAN_COMPLETE_PROMPT,
+                        next_state=RecipeStates.SPEAK_PROMPT,
                         next_state_kwargs={
                             "next_item_index": next_item_index,
-                            "cart": cart
+                            "cart": cart,
+                            "prompt": "You did not scan an item. Are you ready to pay?",
+                            "next_state": RecipeStates.LISTEN_COMMAND,
                         })
 
+            elif intent == "removeItem":
+                if len(cart) == 0:
+                    event.set()
+                    thread.join()
 
-class RecipeScanCompletePromptState(RecipePromptState):
+                    return Transition(
+                        next_state=RecipeStates.SPEAK_PROMPT,
+                        next_state_kwargs={
+                            "next_item_index": next_item_index,
+                            "cart": cart,
+                            "prompt": "No item to remove. Please start by scanning an item.",
+                            "next_state": RecipeStates.LISTEN_COMMAND,
+                        })
+
+                event.set()
+                thread.join()
+
+                new_cart = list(cart[:-1]) if cart else []
+
+                return Transition(
+                    next_state=RecipeStates.SPEAK_PROMPT,
+                    next_state_kwargs={
+                        "next_item_index": next_item_index - 1,
+                        "cart": new_cart,
+                        "prompt": f"Removed {cart[-1].name} from scanned items.",
+                        "next_state": RecipeStates.LISTEN_COMMAND,
+                    })
+
+            elif intent == "getTotal":
+                event.set()
+                thread.join()
+
+                total = sum(item.price for item in cart)
+
+                return Transition(
+                    next_state=RecipeStates.SPEAK_PROMPT,
+                    next_state_kwargs={
+                        "next_item_index": next_item_index,
+                        "cart": cart,
+                        "prompt": f"Your current total is: ${total:.2f}.",
+                        "next_state": RecipeStates.LISTEN_COMMAND,
+                    })
+
+            elif intent == "startOver":
+                event.set()
+                thread.join()
+
+                return Transition(
+                    next_state=RecipeStates.SPEAK_PROMPT,
+                    next_state_kwargs={
+                        "next_item_index": next_item_index,
+                        "cart": cart,
+                        "prompt": "Restarting your session.",
+                        "next_state": RecipeStates.STANDBY,
+                    })
+
+            elif intent == "payNow":
+                if len(cart) == 0:
+                    event.set()
+                    thread.join()
+
+                    return Transition(
+                        next_state=RecipeStates.SPEAK_PROMPT,
+                        next_state_kwargs={
+                            "next_item_index": next_item_index,
+                            "cart": cart,
+                            "prompt": "Your cart is empty. Please start by scanning an item.",
+                            "next_state": RecipeStates.LISTEN_COMMAND,
+                        })
+
+                event.set()
+                thread.join()
+
+                return Transition(
+                    next_state=RecipeStates.DECIDE_ON_BAGGING,
+                    next_state_kwargs={
+                        "next_item_index": next_item_index,
+                        "cart": cart
+                    })
+
+            maybe_transition = parse_accessibility_intent(
+                intent=intent,
+                workflow=self._workflow,
+                next_item_index=next_item_index,
+                cart=cart,
+                next_state=RecipeStates.LISTEN_COMMAND
+            )
+            if maybe_transition is not None:
+                event.set()
+                thread.join()
+
+                return maybe_transition
+
+
+class RecipeScanItemPromptState(RecipePromptState):
     def run(
             self,
             next_item_index: int,
             cart: List[Product],
-            **kwargs:Any
+            **kwargs: Any
     ) -> Transition:
-        self._run_prompt("You did not scan an item. Are you ready to pay?")
+        item = SHOPPING_CART[next_item_index]
+        new_cart = list(cart) + [item]
+
+        self._run_prompt(f"Scanned: {item.name}. Price: ${item.price:.2f}.")
 
         return Transition(
             next_state=RecipeStates.LISTEN_COMMAND,
             next_state_kwargs={
-                "next_item_index": next_item_index,
-                "cart": cart
+                "next_item_index": next_item_index + 1,
+                "cart": new_cart
             })
+
+
+class RecipeDecideOnBaggingState(State):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(step=step)
+
+    def run(
+            self,
+            next_item_index: int,
+            cart: List[Product],
+            already_spoke: bool = False,
+            **kwargs: Any
+    ) -> Transition:
+        if not already_spoke:
+            return Transition(
+                next_state=RecipeStates.SPEAK_PROMPT,
+                next_state_kwargs={
+                    "next_item_index": next_item_index,
+                    "cart": cart,
+                    "prompt": "Do you need a bag for 50¢?",
+                    "next_state": RecipeStates.DECIDE_ON_BAGGING,
+                    "next_args": { "already_spoke": True }
+                })
+
+        while True:
+            inference = self._step.run()
+            intent = inference["intent"] if inference and inference["is_understood"] else None
+
+            if intent == "confirmation":
+                new_cart = cart + [Product("Plastic bag", 0.5)]
+
+                return Transition(
+                    next_state=RecipeStates.SPEAK_PROMPT,
+                    next_state_kwargs={
+                        "next_item_index": next_item_index,
+                        "cart": new_cart,
+                        "prompt": "A bag has been added to your total.",
+                        "next_state": RecipeStates.LIST_ITEMS_PROMPT,
+                    })
+            elif intent == "skipBagging":
+                return Transition(
+                    next_state=RecipeStates.LIST_ITEMS_PROMPT,
+                    next_state_kwargs={
+                        "next_item_index": next_item_index,
+                        "cart": cart,
+                    })
+
+            maybe_transition = parse_accessibility_intent(
+                intent=intent,
+                workflow=self._workflow,
+                next_item_index=next_item_index,
+                cart=cart,
+                next_state=RecipeStates.DECIDE_ON_BAGGING
+            )
+            if maybe_transition is not None:
+                return maybe_transition
 
 
 class RecipeListItemsPromptState(RecipePromptState):
@@ -497,10 +763,10 @@ class RecipeListItemsPromptState(RecipePromptState):
             prompt_list = [ "Your cart is currently empty." ]
         else:
             plural = "s" if len(cart) != 1 else ""
-            prompt_list.append(f"You have scanned {len(cart)} item{plural}: ")
+            prompt_list.append(f"Your cart has {len(cart)} item{plural}: ")
 
             prompt_list += [f"Item {i+1}. {item.name} at ${item.price:.2f}" for i, item in enumerate(cart)]
-    
+
             total = sum(item.price for item in cart)
             prompt_list.append(f"Running total: ${total:.2f}.")
 
@@ -508,10 +774,122 @@ class RecipeListItemsPromptState(RecipePromptState):
             self._run_prompt(prompt)
 
         return Transition(
-            next_state=RecipeStates.LISTEN_COMMAND,
+            next_state=RecipeStates.SELECT_PAYMENT_METHOD,
             next_state_kwargs={
                 "next_item_index": next_item_index,
                 "cart": cart
+            })
+
+
+PAYMENT_METHODS = [
+    "credit",
+    "debit",
+    "cash",
+    "target circle",
+    "apple pay",
+]
+
+
+class RecipeSelectPaymentMethodState(State):
+    def __init__(self, step: RhinoStep) -> None:
+        super().__init__(step=step)
+
+    def run(
+            self,
+            next_item_index: int,
+            cart: List[Product],
+            already_spoke: bool = False,
+            **kwargs: Any
+    ) -> Transition:
+        if not already_spoke:
+            return Transition(
+                next_state=RecipeStates.SPEAK_PROMPT,
+                next_state_kwargs={
+                    "next_item_index": next_item_index,
+                    "cart": cart,
+                    "prompt": "Please choose a payment method",
+                    "next_state": RecipeStates.SELECT_PAYMENT_METHOD,
+                    "next_args": { "already_spoke": True }
+                })
+
+        print("Accepted Payment Methods: " + ", ".join(PAYMENT_METHODS))
+
+        while True:
+            inference = self._step.run()
+            intent = inference["intent"] if inference and inference["is_understood"] else None
+
+            if intent == "choosePayment":
+                payment_method = inference["slots"].get("payment")
+                payment_method_capitalized = payment_method[0].upper() + payment_method[1:]
+
+                return Transition(
+                    next_state=RecipeStates.SPEAK_PROMPT,
+                    next_state_kwargs={
+                        "next_item_index": next_item_index,
+                        "cart": cart,
+                        "prompt": f"{payment_method_capitalized} selected.",
+                        "next_state": RecipeStates.CHECKOUT_COMPLETE_PROMPT,
+                        "next_args": { "checkout_successful": True }
+                    })
+
+            elif intent == "goBack":
+                return Transition(
+                    next_state=RecipeStates.DECIDE_ON_BAGGING,
+                    next_state_kwargs={
+                        "next_item_index": next_item_index,
+                        "cart": cart
+                    })
+
+            maybe_transition = parse_accessibility_intent(
+                intent=intent,
+                workflow=self._workflow,
+                next_item_index=next_item_index,
+                cart=cart,
+                next_state=RecipeStates.SELECT_PAYMENT_METHOD,
+                next_args={ "already_spoke": True }
+            )
+            if maybe_transition is not None:
+                return maybe_transition
+
+
+class RecipeRepeatLastPromptState(RecipePromptState):
+    def run(
+            self,
+            next_item_index: int,
+            cart: List[Product],
+            next_state: RecipeStates,
+            next_args: Dict = {},
+            **kwargs: Any
+    ) -> Transition:
+        self._repeat_last_prompt()
+
+        return Transition(
+            next_state=next_state,
+            next_state_kwargs={
+                "next_item_index": next_item_index,
+                "cart": cart,
+                **next_args
+            })
+
+
+class RecipeSpeakPromptState(RecipePromptState):
+    def run(
+            self,
+            next_item_index: int,
+            cart: List[Product],
+            prompt: str,
+            next_state: RecipeStates,
+            next_args: Dict = {},
+            **kwargs: Any
+    ) -> Transition:
+        self._run_prompt(prompt)
+
+        return Transition(
+            next_state=next_state,
+            next_state_kwargs={
+                "next_item_index": next_item_index,
+                "cart": cart,
+                **next_args
             })
 
 
@@ -519,19 +897,18 @@ class RecipeCheckoutCompletePromptState(RecipePromptState):
     def run(
             self,
             cart: List[Product],
+            checkout_successful: bool,
             **kwargs: Any
     ) -> Transition:
-        if len(cart) == 0:
-            prompt = "No items were scanned. Thank you for using self-checkout. Goodbye!"
-        else:
+        if checkout_successful:
             total = sum(item.price for item in cart)
             plural = "s" if len(cart) != 1 else ""
-            prompt = (
-                f"Scan complete. You purchased {len(cart)} item{plural}. "
-                f"Your total is ${total:.2f}. Thank you for shopping with us. Goodbye!"
-            )
+            self._run_prompt(f"Transaction complete. You purchased {len(cart)} item{plural}.")
+            self._run_prompt(f"Your total was ${total:.2f}.")
+            self._run_prompt(f"Thank you for shopping with us. Goodbye!")
+        else:
+            self._run_prompt("Checkout ended.")
 
-        self._run_prompt(prompt)
         return Transition(next_state=None)
 
 
@@ -566,11 +943,16 @@ def main() -> None:
         state_steps={
             RecipeStates.STANDBY: RecipeSteps.STANDBY,
             RecipeStates.WELCOME_PROMPT: RecipeSteps.PROMPT_USER,
-            RecipeStates.SCAN_ITEM_PROMPT: RecipeSteps.PROMPT_USER,
-            RecipeStates.NO_ITEM_TO_RESCAN_PROMPT: RecipeSteps.PROMPT_USER,
             RecipeStates.LISTEN_COMMAND: RecipeSteps.RECORD_USER,
+            RecipeStates.SCAN_ITEM_PROMPT: RecipeSteps.PROMPT_USER,
+
+            RecipeStates.DECIDE_ON_BAGGING: RecipeSteps.RECORD_USER,
+
+            RecipeStates.SELECT_PAYMENT_METHOD: RecipeSteps.RECORD_USER,
             RecipeStates.LIST_ITEMS_PROMPT: RecipeSteps.PROMPT_USER,
-            RecipeStates.SCAN_COMPLETE_PROMPT: RecipeSteps.PROMPT_USER,
+
+            RecipeStates.REPEAT_LAST_PROMPT: RecipeSteps.PROMPT_USER,
+            RecipeStates.SPEAK_PROMPT: RecipeSteps.PROMPT_USER,
             RecipeStates.CHECKOUT_COMPLETE_PROMPT: RecipeSteps.PROMPT_USER,
         },
         start_state=RecipeStates.STANDBY,

@@ -1,22 +1,83 @@
 context:
   expressions:
+    speedUp:
+      - "(speak, talk, go) [faster, fast]"
+      - "speed up"
+
+    slowDown:
+      - "(speak, talk, go) [slower, slow]"
+      - "slow down"
+
+    normalSpeed:
+      - "[normal, original, reset] speed"
+
+    speakLouder:
+      - "(speak, talk, go) [louder, loud]"
+      - "speak up"
+
+    speakQuieter:
+      - "(speak, talk, go) [quieter, quiet]"
+      - "quiet down"
+
+    normalVolume:
+      - "[normal, original, reset] volume"
+
+    repeat:
+      - "[repeat, say] (that) (again)"
+      - "what was that"
+      - "what did you say"
+      - "(what was the) last item"
+
+    help:
+      - "(can i get, i need) help (please)"
+      - "(please) help me (with this)"
+
+    confirmation:
+      - "yes"
+      - "(yes) please"
+      - "sure"
+      - "yeah"
+
     scanNext:
       - "scan (next) (item)"
       - "next (item)"
-    scanAgain:
-      - "[scan, rescan] [that, it, again]"
-      - "scan that again"
-    listItems:
-      - "[list, read, show] [items, cart, my cart]"
-      - "what did I scan"
-    doneScan:
+      - "add item"
+
+    removeItem:
+      - "remove (that) (last) (item)"
+
+    getTotal:
+      - "(what's, what is, get) (my) total"
+      - "how much (so far)"
+
+    startOver:
+      - "(let's, i want to) start over"
+      - "cancel"
+
+    payNow:
+      - "pay (now)"
+      - "(i'm, i am, we are, all) done (scanning)"
       - "[checkout, check out]"
-      - "done scanning"
-      - "I am done"
       - "that is all"
-      - "finish"
       - "finished"
 
+    skipBagging:
+      - "(no) [I have my own, I have a] bag"
+      - "(no) skip bagging"
+      - "no (bag)"
+
+    choosePayment:
+      - "(i can, i'll, i) (pay with, pay using, choose) $payment:payment"
+
+    goBack:
+      - "(go) back"
+
   slots:
+    payment:
+      - "credit"
+      - "debit"
+      - "cash"
+      - "target circle"
+      - "apple pay"
 
   macros:
