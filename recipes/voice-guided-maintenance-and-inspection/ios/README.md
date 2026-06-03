@@ -57,7 +57,7 @@ python setup.py \
     --context_path ${PATH_TO_RHN}
 ```
 
-### 3. Run the XCode project
+### 4. Run the XCode project
 
 1. Open the `VoiceGuidedMaintenanceAndInspection` project in XCode
 2. Build and run the demo.
