@@ -1,7 +1,6 @@
-Segoe
-TOPK
 addch
 addstr
+Alcatel
 alireza
 appendleft
 arrowshape
@@ -66,6 +65,7 @@ pvzebra
 qwen
 samplerate
 sdcard
+Segoe
 sigwinch
 socialtext
 spannable
@@ -77,14 +77,15 @@ subwin
 tobytes
 tock
 tock
+TOPK
 topks
 uids
 uppercased
 venv
 voiceguidedfieldreporting
 voiceguidedmaintenanceandinspection
-voicepicking
 voicememoassistant
+voicepicking
 wakeword
 xcodeproj
 xcworkspace

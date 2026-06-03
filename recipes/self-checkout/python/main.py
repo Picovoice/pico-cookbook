@@ -163,7 +163,10 @@ class Workflow(object):
         self._state_uids = dict()
         for state in state_enum:
             if state in state_steps:
-                self._states[state] = state_subclass.create(state=state, workflow=self, step=self._steps[state_steps[state]])
+                self._states[state] = state_subclass.create(
+                    state=state,
+                    workflow=self,
+                    step=self._steps[state_steps[state]])
             else:
                 self._states[state] = state_subclass.create(state=state, workflow=self)
 
@@ -251,10 +254,10 @@ def parse_accessibility_intent(
         next_state: State,
         next_args: Dict = {}
 ) -> Optional[Transition]:
-    orcaStep = workflow._steps[RecipeSteps.PROMPT_USER]
+    orca_step = workflow._steps[RecipeSteps.PROMPT_USER]
     if intent == "speedUp":
-        if orcaStep.speed < MAX_ORCA_SPEED:
-            orcaStep.speed = min(orcaStep.speed + 0.3, MAX_ORCA_SPEED)
+        if orca_step.speed < MAX_ORCA_SPEED:
+            orca_step.speed = min(orca_step.speed + 0.3, MAX_ORCA_SPEED)
 
             return Transition(
                 next_state=RecipeStates.SPEAK_PROMPT,
@@ -271,13 +274,13 @@ def parse_accessibility_intent(
                 next_state_kwargs={
                     "next_item_index": next_item_index,
                     "cart": cart,
-                    "prompt": "Voice speed already at maxixmum.",
+                    "prompt": "Voice speed already at maximum.",
                     "next_state": next_state,
                     "next_args": next_args
                 })
     elif intent == "slowDown":
-        if orcaStep.speed > MIN_ORCA_SPEED:
-            orcaStep.speed = max(orcaStep.speed - 0.3, MIN_ORCA_SPEED)
+        if orca_step.speed > MIN_ORCA_SPEED:
+            orca_step.speed = max(orca_step.speed - 0.3, MIN_ORCA_SPEED)
 
             return Transition(
                 next_state=RecipeStates.SPEAK_PROMPT,
@@ -299,7 +302,7 @@ def parse_accessibility_intent(
                     "next_args": next_args
                 })
     elif intent == "normalSpeed":
-        orcaStep.speed = 1.0
+        orca_step.speed = 1.0
         return Transition(
             next_state=RecipeStates.SPEAK_PROMPT,
             next_state_kwargs={
@@ -310,8 +313,8 @@ def parse_accessibility_intent(
                 "next_args": next_args
             })
     elif intent == "speakLouder":
-        if orcaStep.volume < MAX_VOLUME:
-            orcaStep.volume = min(orcaStep.volume * 2, MAX_VOLUME)
+        if orca_step.volume < MAX_VOLUME:
+            orca_step.volume = min(orca_step.volume * 2, MAX_VOLUME)
 
             return Transition(
                 next_state=RecipeStates.SPEAK_PROMPT,
@@ -333,8 +336,8 @@ def parse_accessibility_intent(
                     "next_args": next_args
                 })
     elif intent == "speakQuieter":
-        if orcaStep.volume > MIN_VOLUME:
-            orcaStep.volume = max(orcaStep.volume * 0.5, MIN_VOLUME)
+        if orca_step.volume > MIN_VOLUME:
+            orca_step.volume = max(orca_step.volume * 0.5, MIN_VOLUME)
 
             return Transition(
                 next_state=RecipeStates.SPEAK_PROMPT,
@@ -356,7 +359,7 @@ def parse_accessibility_intent(
                     "next_args": next_args
                 })
     elif intent == "normalVolume":
-        orcaStep.volume = 1.0
+        orca_step.volume = 1.0
         return Transition(
             next_state=RecipeStates.SPEAK_PROMPT,
             next_state_kwargs={
@@ -383,7 +386,7 @@ def parse_accessibility_intent(
                 "cart": cart,
                 "prompt": "A staff member has been notified and is on their way.",
                 "next_state": RecipeStates.CHECKOUT_COMPLETE_PROMPT,
-                "next_args": { "checkout_successful": False, **next_args }
+                "next_args": {"checkout_successful": False, **next_args}
             })
 
     return None
@@ -400,13 +403,13 @@ class RecipeState(State):
         children = {
             RecipeStates.STANDBY: RecipeStandbyState,
             RecipeStates.WELCOME_PROMPT: RecipeWelcomePromptState,
-
             RecipeStates.LISTEN_COMMAND: RecipeListenCommandState,
             RecipeStates.SCAN_ITEM_PROMPT: RecipeScanItemPromptState,
-            RecipeStates.LIST_ITEMS_PROMPT: RecipeListItemsPromptState,
 
             RecipeStates.DECIDE_ON_BAGGING: RecipeDecideOnBaggingState,
+
             RecipeStates.SELECT_PAYMENT_METHOD: RecipeSelectPaymentMethodState,
+            RecipeStates.LIST_ITEMS_PROMPT: RecipeListItemsPromptState,
 
             RecipeStates.REPEAT_LAST_PROMPT: RecipeRepeatLastPromptState,
             RecipeStates.SPEAK_PROMPT: RecipeSpeakPromptState,
@@ -517,7 +520,9 @@ class RecipeWelcomePromptState(RecipePromptState):
             **kwargs: Any
     ) -> Transition:
         self._run_prompt("Welcome to Walmart's self-checkout! I will announce when you scan each item.")
-        self._run_prompt("If you need me to change my speed, volume, or to repeat myself, let me know whenever I'm listening.")
+        self._run_prompt(
+            "If you need me to change my speed, volume, or to repeat myself, "
+            "let me know whenever I'm listening.")
 
         return Transition(
             next_state=RecipeStates.LISTEN_COMMAND,
@@ -539,11 +544,10 @@ class RecipeListenCommandState(State):
     ) -> Transition:
         print(
             "- Scan (item)\n"
-            + "- Remove (last item)\n"
-            + "- (What is my) total\n"
-            + "- Start over\n"
-            + "- Pay (now)"
-        )
+            "- Remove (last item)\n"
+            "- (What is my) total\n"
+            "- Start over\n"
+            "- Pay (now)")
 
         text = ""
 
@@ -713,7 +717,7 @@ class RecipeDecideOnBaggingState(State):
                     "cart": cart,
                     "prompt": "Do you need a bag for 50¢?",
                     "next_state": RecipeStates.DECIDE_ON_BAGGING,
-                    "next_args": { "already_spoke": True }
+                    "next_args": {"already_spoke": True}
                 })
 
         text = ""
@@ -788,7 +792,7 @@ class RecipeListItemsPromptState(RecipePromptState):
         prompt_list = []
 
         if len(cart) == 0:
-            prompt_list = [ "Your cart is currently empty." ]
+            prompt_list = ["Your cart is currently empty."]
         else:
             plural = "s" if len(cart) != 1 else ""
             prompt_list.append(f"Your cart has {len(cart)} item{plural}: ")
@@ -837,7 +841,7 @@ class RecipeSelectPaymentMethodState(State):
                     "cart": cart,
                     "prompt": "Please choose a payment method",
                     "next_state": RecipeStates.SELECT_PAYMENT_METHOD,
-                    "next_args": { "already_spoke": True }
+                    "next_args": {"already_spoke": True}
                 })
 
         text = "Accepted Payment Methods: " + ", ".join(PAYMENT_METHODS)
@@ -865,7 +869,7 @@ class RecipeSelectPaymentMethodState(State):
                         "cart": cart,
                         "prompt": f"{payment_method_capitalized} selected.",
                         "next_state": RecipeStates.CHECKOUT_COMPLETE_PROMPT,
-                        "next_args": { "checkout_successful": True }
+                        "next_args": {"checkout_successful": True}
                     })
 
             elif intent == "goBack":
@@ -887,7 +891,7 @@ class RecipeSelectPaymentMethodState(State):
                 next_item_index=next_item_index,
                 cart=cart,
                 next_state=RecipeStates.SELECT_PAYMENT_METHOD,
-                next_args={ "already_spoke": True }
+                next_args={"already_spoke": True}
             )
             if maybe_transition is not None:
                 event.set()
@@ -949,7 +953,7 @@ class RecipeCheckoutCompletePromptState(RecipePromptState):
             plural = "s" if len(cart) != 1 else ""
             self._run_prompt(f"Transaction complete. You purchased {len(cart)} item{plural}.")
             self._run_prompt(f"Your total was ${total:.2f}.")
-            self._run_prompt(f"Thank you for shopping with us. Goodbye!")
+            self._run_prompt("Thank you for shopping with us. Goodbye!")
         else:
             self._run_prompt("Checkout ended.")
 

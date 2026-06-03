@@ -299,15 +299,15 @@ class RhinoStep(Step):
     def rms(frame: list[int]) -> float:
         total = 0.0
         for sample in frame:
-            total += (sample / 32768.0) * (sample / 32768.0);
+            total += (sample / 32768.0) * (sample / 32768.0)
         return math.sqrt(total / len(frame))
 
     def run(
             self,
-            check_for_silence:bool = False,
-            silence_start:list[float] = [],
-            silence_timeout:float = 5.0,
-            volume_threshold:float = 0.1
+            check_for_silence: bool = False,
+            silence_start: list[float] = [],
+            silence_timeout: float = 5.0,
+            volume_threshold: float = 0.1
     ) -> Dict[str, Any] | Literal["TIMEOUT"] | None:
         try:
             self._recorder.start()
