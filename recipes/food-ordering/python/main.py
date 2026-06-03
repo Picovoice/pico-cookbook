@@ -446,7 +446,7 @@ class RecipeListenForOrderState(RecipeState):
     def run(
             self,
             order: MutableSequence[OrderItem],
-            just_asked: bool,
+            just_asked: bool = False,
             **kwargs: Any
     ) -> Transition:
         text = "Listening for order"
@@ -554,7 +554,7 @@ class RecipeListenForOrderState(RecipeState):
                         'order_finalized': True
                     })
 
-            elif inference['is_understood'] and inference['intent'] == 'confirmation' and just_asked:
+            elif inference['is_understood'] and (inference['intent'] == 'confirmation') and just_asked:
                 event.set()
                 thread.join()
 
@@ -584,8 +584,7 @@ class RecipeAddItemState(RecipePromptState):
         return Transition(
             next_state=RecipeStates.LISTEN_FOR_ORDER,
             next_state_kwargs={
-                'order': order,
-                'just_asked': False
+                'order': order
             })
 
 
@@ -612,8 +611,7 @@ class RecipeRemoveItemState(RecipePromptState):
         return Transition(
             next_state=RecipeStates.LISTEN_FOR_ORDER,
             next_state_kwargs={
-                'order': order,
-                'just_asked': False
+                'order': order
             })
 
 
@@ -636,9 +634,9 @@ class RecipeChangeItemState(RecipePromptState):
 
         if match_index is None:
             if item_from == "LAST_ITEM":
-                prompt = "I couldn't remove anything because your order is empty."
+                prompt = "I couldn't change anything because your order is empty."
             else:
-                prompt = f"I couldn't remove anything because \"{str(item_from)}\" is not in your order."
+                prompt = f"I couldn't change anything because \"{str(item_from)}\" is not in your order."
             self._run_prompt(prompt=prompt)
         else:
             old_order_str = str(order[match_index])
@@ -677,8 +675,7 @@ class RecipeChangeItemState(RecipePromptState):
         return Transition(
             next_state=RecipeStates.LISTEN_FOR_ORDER,
             next_state_kwargs={
-                'order': order,
-                'just_asked': False
+                'order': order
             })
 
 
@@ -694,10 +691,9 @@ class RecipeStartOverState(RecipePromptState):
         self._run_prompt(prompt=prompt)
 
         return Transition(
-            next_state=RecipeStates.LISTEN_FOR_ORDER,
+            next_state=RecipeStates.STANDBY,
             next_state_kwargs={
-                'order': [],
-                'just_asked': False
+                'order': []
             })
 
 
@@ -716,8 +712,7 @@ class RecipeHelpState(RecipePromptState):
         return Transition(
             next_state=RecipeStates.LISTEN_FOR_ORDER,
             next_state_kwargs={
-                'order': order,
-                'just_asked': False
+                'order': order
             })
 
 
@@ -747,8 +742,7 @@ class RecipeRepeatOrderState(RecipePromptState):
             return Transition(
                 next_state=RecipeStates.LISTEN_FOR_ORDER,
                 next_state_kwargs={
-                    'order': order,
-                    'just_asked': True
+                    'order': order
                 })
 
         for prompt in prompt_list:
@@ -765,8 +759,7 @@ class RecipeRepeatOrderState(RecipePromptState):
             return Transition(
                 next_state=RecipeStates.LISTEN_FOR_ORDER,
                 next_state_kwargs={
-                    'order': order,
-                    'just_asked': False
+                    'order': order
                 })
 
 
@@ -785,8 +778,7 @@ class RecipeSpeakPromptState(RecipePromptState):
         return Transition(
             next_state=RecipeStates.LISTEN_FOR_ORDER,
             next_state_kwargs={
-                'order': order,
-                'just_asked': False,
+                'order': order
             })
 
 
