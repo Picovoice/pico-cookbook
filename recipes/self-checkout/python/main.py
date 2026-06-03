@@ -541,7 +541,7 @@ class RecipeListenCommandState(State):
             "- Scan (item)\n"
             + "- Remove (last item)\n"
             + "- (What is my) total\n"
-            + "- Start over\n" # TODO: this
+            + "- Start over\n"
             + "- Pay (now)"
         )
 
@@ -716,11 +716,21 @@ class RecipeDecideOnBaggingState(State):
                     "next_args": { "already_spoke": True }
                 })
 
+        text = ""
+
+        def get_text() -> str:
+            return text
+
+        event, thread = print_async(get_text=get_text)
+
         while True:
             inference = self._step.run()
             intent = inference["intent"] if inference and inference["is_understood"] else None
 
             if intent == "confirmation":
+                event.set()
+                thread.join()
+
                 new_cart = cart + [Product("Plastic bag", 0.5)]
 
                 return Transition(
@@ -732,11 +742,26 @@ class RecipeDecideOnBaggingState(State):
                         "next_state": RecipeStates.LIST_ITEMS_PROMPT,
                     })
             elif intent == "skipBagging":
+                event.set()
+                thread.join()
+
                 return Transition(
                     next_state=RecipeStates.LIST_ITEMS_PROMPT,
                     next_state_kwargs={
                         "next_item_index": next_item_index,
                         "cart": cart,
+                    })
+            elif intent == "goBack":
+                event.set()
+                thread.join()
+
+                return Transition(
+                    next_state=RecipeStates.SPEAK_PROMPT,
+                    next_state_kwargs={
+                        "next_item_index": next_item_index,
+                        "cart": cart,
+                        "prompt": "Going back.",
+                        "next_state": RecipeStates.LISTEN_COMMAND,
                     })
 
             maybe_transition = parse_accessibility_intent(
@@ -747,6 +772,9 @@ class RecipeDecideOnBaggingState(State):
                 next_state=RecipeStates.DECIDE_ON_BAGGING
             )
             if maybe_transition is not None:
+                event.set()
+                thread.join()
+
                 return maybe_transition
 
 
@@ -812,13 +840,21 @@ class RecipeSelectPaymentMethodState(State):
                     "next_args": { "already_spoke": True }
                 })
 
-        print("Accepted Payment Methods: " + ", ".join(PAYMENT_METHODS))
+        text = "Accepted Payment Methods: " + ", ".join(PAYMENT_METHODS)
+
+        def get_text() -> str:
+            return text
+
+        event, thread = print_async(get_text=get_text)
 
         while True:
             inference = self._step.run()
             intent = inference["intent"] if inference and inference["is_understood"] else None
 
             if intent == "choosePayment":
+                event.set()
+                thread.join()
+
                 payment_method = inference["slots"].get("payment")
                 payment_method_capitalized = payment_method[0].upper() + payment_method[1:]
 
@@ -833,11 +869,16 @@ class RecipeSelectPaymentMethodState(State):
                     })
 
             elif intent == "goBack":
+                event.set()
+                thread.join()
+
                 return Transition(
-                    next_state=RecipeStates.DECIDE_ON_BAGGING,
+                    next_state=RecipeStates.SPEAK_PROMPT,
                     next_state_kwargs={
                         "next_item_index": next_item_index,
-                        "cart": cart
+                        "cart": cart,
+                        "prompt": "Going back.",
+                        "next_state": RecipeStates.DECIDE_ON_BAGGING,
                     })
 
             maybe_transition = parse_accessibility_intent(
@@ -849,6 +890,9 @@ class RecipeSelectPaymentMethodState(State):
                 next_args={ "already_spoke": True }
             )
             if maybe_transition is not None:
+                event.set()
+                thread.join()
+
                 return maybe_transition
 
 
