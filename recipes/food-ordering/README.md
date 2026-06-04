@@ -11,4 +11,5 @@ A fully on-device food ordering system with freeform commands.
 
 ## Implementations
 
+- [Android](android)
 - [Python](python)
