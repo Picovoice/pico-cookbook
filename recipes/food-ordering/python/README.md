@@ -16,7 +16,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ## Usage
 
-These instructions assume your current working directory is `recipes/voice-picking/python`.
+These instructions assume your current working directory is `recipes/food-ordering/python`.
 
 ### 1. Create a Virtual Environment
 
@@ -79,8 +79,9 @@ Where:
 * `${CONTEXT_PATH}` is the path to the Rhino Speech-to-Intent context file (`.rhn`).
 
 #### Instructions
+
 - Try asking for a "big mac with no tomatoes"
-- See `../res/context.yml` for accepted commands
+- See `../res/context.yml` for more accepted commands
 
 ### 7. View All Options
 
