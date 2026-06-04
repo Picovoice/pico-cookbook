@@ -12,10 +12,12 @@ context:
       - "[normal, original, reset] speed"
 
     speakLouder:
+      - increase volume
       - "(speak, talk, go) [louder, loud]"
       - "speak up"
 
     speakQuieter:
+      - decrease volume
       - "(speak, talk, go) [quieter, quiet]"
       - "quiet down"
 
@@ -30,11 +32,11 @@ context:
 
     help:
       - "(can i get, i need) help (please)"
-      - "(please) help me (with this)"
+      - "help me (with this)"
 
     confirmation:
       - "yes"
-      - "(yes) please"
+      - "yes please"
       - "sure"
       - "yeah"
 

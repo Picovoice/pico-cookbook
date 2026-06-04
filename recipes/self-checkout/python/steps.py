@@ -278,7 +278,7 @@ class RhinoStep(Step):
             speaker: PvSpeaker,
             context_path: str,
             model_path: Optional[str] = None,
-            sensitivity: float = 0.5,
+            sensitivity: float = 0.7,
             endpoint_duration_sec: float = .5,
             require_endpoint: bool = True
     ) -> None:

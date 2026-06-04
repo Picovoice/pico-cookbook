@@ -543,11 +543,11 @@ class RecipeListenCommandState(State):
             **kwargs
     ) -> Transition:
         print(
-            "- Scan (item)\n"
+            "- Scan item\n"
             "- Remove (last item)\n"
             "- (What is my) total\n"
             "- Start over\n"
-            "- Pay (now)")
+            "- Pay now")
 
         text = ""
 
