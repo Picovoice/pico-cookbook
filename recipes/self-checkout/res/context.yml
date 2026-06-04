@@ -26,7 +26,6 @@ context:
 
     repeat:
       - "[repeat, say] (that) (again)"
-      - "what was that"
       - "what did you say"
       - "(what was the) last item"
 
@@ -35,41 +34,32 @@ context:
       - "help me (with this)"
 
     confirmation:
-      - "yes"
-      - "yes please"
+      - "yes (please)"
       - "sure"
-      - "yeah"
 
     scanNext:
-      - "scan (next) (item)"
-      - "next (item)"
-      - "add item"
+      - "scan (next) (item, idem)"
+      - "next (item, idem)"
 
     removeItem:
-      - "remove (that) (last) (item)"
+      - "remove (that) (last) (item, idem)"
 
     getTotal:
-      - "(what's, what is, get) (my) total"
-      - "how much (so far)"
+      - "(what's, what is) my total"
 
     startOver:
       - "(let's, i want to) start over"
-      - "cancel"
 
     payNow:
       - "pay (now)"
-      - "(i'm, i am, we are, all) done (scanning)"
-      - "[checkout, check out]"
-      - "that is all"
-      - "finished"
 
     skipBagging:
-      - "(no) [I have my own, I have a] bag"
-      - "(no) skip bagging"
       - "no (bag)"
+      - "(no) [i have my own, i have a] bag"
+      - "skip bagging"
 
     choosePayment:
-      - "(i can, i'll, i) (pay with, pay using, choose) $payment:payment"
+      - "(i'll, i) (use, choose) $payment:payment"
 
     goBack:
       - "(go) back"

@@ -545,7 +545,7 @@ class RecipeListenCommandState(State):
         print(
             "- Scan item\n"
             "- Remove (last item)\n"
-            "- (What is my) total\n"
+            "- (What's) my total\n"
             "- Start over\n"
             "- Pay now")
 

@@ -235,7 +235,7 @@ class PorcupineStep(Step):
             speaker: PvSpeaker,
             keyword_path: str,
             model_path: Optional[str] = None,
-            sensitivity: float = 0.5
+            sensitivity: float = 0.6
     ) -> None:
         super().__init__(
             access_key=access_key,
@@ -278,9 +278,9 @@ class RhinoStep(Step):
             speaker: PvSpeaker,
             context_path: str,
             model_path: Optional[str] = None,
-            sensitivity: float = 0.7,
+            sensitivity: float = 0.75,
             endpoint_duration_sec: float = .5,
-            require_endpoint: bool = True
+            require_endpoint: bool = False
     ) -> None:
         super().__init__(
             access_key=access_key,
@@ -299,7 +299,7 @@ class RhinoStep(Step):
     def rms(frame: list[int]) -> float:
         total = 0.0
         for sample in frame:
-            total += (sample / 32768.0) * (sample / 32768.0)
+            total += (sample / 32768.0) ** 2
         return math.sqrt(total / len(frame))
 
     def run(
