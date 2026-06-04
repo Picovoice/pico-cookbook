@@ -78,6 +78,15 @@ Where:
 * `${KEYWORD_PATH}` is the path to the Porcupine wake word model file (`.ppn`).
 * `${CONTEXT_PATH}` is the path to the Rhino Speech-to-Intent context file (`.rhn`).
 
+#### Instructions
+- try the following commands
+  - start shift
+  - where is John?
+  - price check on Pink Butter mints
+  - ask Mary to bring some Minced Garlic to aisle 12
+  - code three at register 5
+  - end shift
+
 ### 7. View All Options
 
 ```console
