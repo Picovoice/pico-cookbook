@@ -547,7 +547,7 @@ class RecipeListenCommandState(State):
             "- Remove (last item)\n"
             "- (What's) my total\n"
             "- Start over\n"
-            "- Pay now")
+            "- Checkout (now)")
 
         text = ""
 

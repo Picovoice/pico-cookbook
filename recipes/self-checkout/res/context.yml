@@ -51,7 +51,10 @@ context:
       - "(let's, i want to) start over"
 
     payNow:
-      - "pay (now)"
+      - "(complete, finish) checkout (now)"
+      - "i am done"
+      - "that's [all, everything]"
+      - "pay now"
 
     skipBagging:
       - "no (bag)"
