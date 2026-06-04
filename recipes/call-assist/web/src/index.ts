@@ -11,49 +11,23 @@ const MAX_DB = 0.0;
 
 const ASK_FOR_DETAILS_RETRY_LIMIT = 2;
 
-const SYSTEM_PROMPT = `Extract call information.
-
-Return exactly two lines:
-caller: <one short value>
-reason: <one short value>
+const SYSTEM_PROMPT = `Extract call information. Return exactly two lines:
+caller: <one short value or unknown>
+reason: <one short value or unknown>
 
 Rules:
-- Use exactly one value for caller.
-- Use exactly one value for the call's reason.
-- Do not list alternatives.
-- Do not use commas.
-- Do not explain.
-- If the caller says a company or organization, use that as caller.
-- If the caller says only a generic role like customer service, use that as caller.
-- If the caller does not say who they are, use unknown.
-- If the caller does not say why they are calling, use unknown.
-- Avoid responding unknown.
+- caller is the company, organization, name, or a generic role.
+- If who they are is not stated, caller is unknown.
+- reason is why they are calling, in a few words; if not stated, unknown.
+- No commas. No extra text. Lowercase unless a proper name.
 
 Examples:
-
-Caller said: "Hello, can you hear me?"
-caller: unknown
-reason: unknown
-
-Caller said: "I'm calling from the bank."
-caller: bank
-reason: unknown
-
 Caller said: "This is UPS with a package delivery."
 caller: UPS
 reason: package delivery
-
-Caller said: "This is customer service."
-caller: customer service
+Caller said: "Hello, can you hear me?"
+caller: unknown
 reason: unknown
-
-Caller said: "I'm calling about your sawmill."
-caller: unknown
-reason: my sawmill
-
-Caller said: "About credit cards"
-caller: unknown
-reason: credit cards
 `;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

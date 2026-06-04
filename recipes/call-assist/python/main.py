@@ -149,41 +149,20 @@ def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str]
     return thread
 
 
-SYSTEM = """Extract call information.
-
-Return exactly two lines:
-caller: <one short value>
-reason: <one short value>
+SYSTEM = """Extract call information. Return exactly two lines:
+caller: <one short value or unknown>
+reason: <one short value or unknown>
 
 Rules:
-- Use exactly one value for caller.
-- Use exactly one value for reason.
-- Do not list alternatives.
-- Do not use commas.
-- Do not explain.
-- If the caller says a company or organization, use that as caller.
-- If the caller says only a generic role like customer service, use that as caller.
-- If the caller does not say who they are, use unknown.
-- If the caller does not say why they are calling, use unknown.
-- Use lowercase unless the caller gives a proper name.
+- caller is the company, organization, name, or a generic role.
+- If who they are is not stated, caller is unknown.
+- reason is why they are calling, in a few words; if not stated, unknown.
+- No commas. No extra text. Lowercase unless a proper name.
 
 Examples:
-Caller said: "I'm calling from the bank."
-caller: bank
-reason: unknown
-
 Caller said: "This is UPS with a package delivery."
 caller: UPS
 reason: package delivery
-
-Caller said: "This is customer service."
-caller: customer service
-reason: unknown
-
-Caller said: "I'm calling about your credit card."
-caller: unknown
-reason: credit card
-
 Caller said: "Hello, can you hear me?"
 caller: unknown
 reason: unknown
@@ -198,13 +177,13 @@ def extract_caller_and_reason_from_llm_inference(inference: str) -> Tuple[str, s
     caller_line = inference_lines[0]
     reason_line = inference_lines[1]
 
-    if not caller_line.startswith("caller: "):
+    if not caller_line.lower().startswith("caller: "):
         return "unknown", "unknown"
     caller = caller_line[len("caller: "):]
     if len(caller) == 0:
         return "unknown", "unknown"
 
-    if not reason_line.startswith("reason: "):
+    if not reason_line.lower().startswith("reason: "):
         return "unknown", "unknown"
     reason = reason_line[len("reason: "):]
     if len(reason) == 0:
@@ -295,6 +274,7 @@ def main() -> None:
         help="Duration of silence, in seconds, required to detect the end of the caller's utterance.")
     parser.add_argument(
         '--picollm_device',
+        default="best",
         help="String representation of the device to use for picoLLM inference. If set to `best`, picoLLM picks the "
              "most suitable device. If set to `gpu`, picoLLM uses the first available GPU. To select a specific GPU, "
              "set this argument to `gpu:${GPU_INDEX}`, where `${GPU_INDEX}` is the index of the target GPU. If set to "

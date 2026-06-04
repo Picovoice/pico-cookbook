@@ -78,37 +78,21 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private static final String systemPrompt =
-        "Extract call information.\n\n" +
-        "Return exactly two lines:\n" +
-        "caller: <one short value>\n" +
-        "reason: <one short value>\n\n" +
+        "Extract call information. Return exactly two lines:\n" +
+        "caller: <one short value or unknown>\n" +
+        "reason: <one short value or unknown>\n\n" +
         "Rules:\n" +
-        "- Use exactly one value for caller.\n" +
-        "- Use exactly one value for reason.\n" +
-        "- Do not list alternatives.\n" +
-        "- Do not use commas.\n" +
-        "- Do not explain.\n" +
-        "- If the caller says a company or organization, use that as caller.\n" +
-        "- If the caller says only a generic role like customer service, use that as caller.\n" +
-        "- If the caller does not say who they are, use unknown.\n" +
-        "- If the caller does not say why they are calling, use unknown.\n" +
-        "- Use lowercase unless the caller gives a proper name.\n\n" +
+        "- caller is the company, organization, name, or a generic role.\n" +
+        "- If who they are is not stated, caller is unknown.\n" +
+        "- reason is why they are calling, in a few words; if not stated, unknown.\n" +
+        "- No commas. No extra text. Lowercase unless a proper name.\n\n" +
         "Examples:\n" +
-        "Caller said: \"I'm calling from the bank.\"\n" +
-        "caller: bank\n" +
-        "reason: unknown\n\n" +
         "Caller said: \"This is UPS with a package delivery.\"\n" +
         "caller: UPS\n" +
-        "reason: package delivery\n\n" +
-        "Caller said: \"This is customer service.\"\n" +
-        "caller: customer service\n" +
-        "reason: unknown\n\n" +
-        "Caller said: \"I'm calling about your credit card.\"\n" +
-        "caller: unknown\n" +
-        "reason: credit card\n\n" +
+        "reason: package delivery\n" +
         "Caller said: \"Hello, can you hear me?\"\n" +
         "caller: unknown\n" +
-        "reason: unknown\n";
+        "reason: unknown";
 
     private static final String[] stopPhrases = {
             "<|eot_id|>"
@@ -390,7 +374,7 @@ public class MainActivity extends AppCompatActivity {
             picollm = new PicoLLM.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(llmModelFile.getAbsolutePath())
-                    .setDevice("cpu:2")
+                    .setDevice("cpu:4")
                     .build();
         } catch (PicoLLMException e) {
             setError(e.getMessage());
