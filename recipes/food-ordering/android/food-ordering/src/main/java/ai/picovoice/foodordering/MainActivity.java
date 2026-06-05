@@ -83,7 +83,6 @@ public class MainActivity extends AppCompatActivity {
     private ImageView successIcon;
     private ScrollView scrollView;
 
-    private ArrayList<PickTask> tasks;
     private Workflow workflow;
     private volatile boolean isRunning = false;
 
@@ -200,8 +199,7 @@ public class MainActivity extends AppCompatActivity {
         btnStart.setVisibility(View.INVISIBLE);
         startSpinner.setVisibility(View.VISIBLE);
 
-        this.tasks = TASKS;
-        setupReportCards(this.tasks);
+        setupReportCards();
 
         new Thread(() -> {
             try {
@@ -274,7 +272,7 @@ public class MainActivity extends AppCompatActivity {
                     workflowScreen.setVisibility(View.VISIBLE);
                 });
 
-                workflow.run(this.tasks);
+                workflow.run();
             } catch (Exception e) {
                 Log.e(TAG, "Init error", e);
                 showError(e.getMessage());
@@ -338,7 +336,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void setupReportCards(ArrayList<PickTask> tasks) {
+    private void setupReportCards() {
         reportContainer.removeAllViews();
         cardMap.clear();
 
@@ -693,51 +691,49 @@ public class MainActivity extends AppCompatActivity {
         }
 
         public static OrderItem parseAddItemInference(RhinoInference inference) {
-            String size = inference['slots'].get('size');
-            String itemName = inference['slots'].get('item');
-            String comboName = inference['slots'].get('combo');
-            String modifier = inference['slots'].get('modifier');
+            String size = inference.getSlots().get("size");
+            String itemName = inference.getSlots().get("item");
+            String comboName = inference.getSlots().get("combo");
+            String modifier = inference.getSlots().get("modifier");
 
             Integer quantity;
-            if (inference['slots'].get('quantity') == null) {
-                quantity = 1;
-            } else if (Integer.parseInt(inference['slots'].get('quantity')) == null) {
+            if (inference.getSlots().get("quantity") == null) {
                 quantity = 1;
             } else {
-                quantity = Integer.parseInt(inference['slots'].get('quantity'));
+                quantity = Integer.parseInt(inference.getSlots().get("quantity"));
             }
 
             if (comboName != null) {
-                return new ComboItem(quantity, size, itemName, comboName);
+                return new ComboItem(size, itemName, quantity, comboName);
             } else {
-                return new MenuItem(quantity, size, itemName, modifier);
+                return new MenuItem(size, itemName, quantity, modifier);
             }
         }
 
         public static OrderItem parseRemoveItemInference(RhinoInference inference) {
-            String size = inference.getSlots().get('size');
-            String itemName = inference.getSlots().get('item');
+            String size = inference.getSlots().get("size");
+            String itemName = inference.getSlots().get("item");
 
-            return new OrderItem(size, itemName)
+            return new OrderItem(size, itemName, -1);
         }
 
         /// @brief returns null if last item
         public static Pair<OrderItem, OrderChange> parseChangeItemInference(RhinoInference inference) {
-            String fromItem = inference.getSlots().get('fromItem');
-            String toSize = inference.getSlots().get('toSize');
-            String toItem = inference.getSlots().get('toItem');
-            String toCombo = inference.getSlots().get('combo');
+            String fromItem = inference.getSlots().get("fromItem");
+            String toSize = inference.getSlots().get("toSize");
+            String toItem = inference.getSlots().get("toItem");
+            String toCombo = inference.getSlots().get("combo");
 
             return new Pair(
-                (from_item == null) ? null : new OrderItem(null, fromItem),
+                (fromItem == null) ? null : new OrderItem(null, fromItem, -1),
                 new OrderChange(toItem, toSize, toCombo)
             );
         }
 
         public Integer findFromEndIn(ArrayList<OrderItem> order) {
             for (int i = order.size(); i >= 0; i--) { // i, order_item in reversed(list(enumerate(order))) {
-                Boolean sameSize = (this.size == null) || (this.size == order[i].size);
-                Boolean sameItem = this.itemName == order[i].itemName;
+                Boolean sameSize = (this.size == null) || (this.size == order.get(i).size);
+                Boolean sameItem = this.itemName == order.get(i).itemName;
                 if (sameSize && sameItem) {
                     return i;
                 }
@@ -755,7 +751,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    class ComboItem extends OrderItem {
+    static class ComboItem extends OrderItem {
         String comboName;
 
         public ComboItem(
@@ -770,7 +766,7 @@ public class MainActivity extends AppCompatActivity {
         public String toString() {
             String response = String.format("%s %s", super.toString(), this.comboName);
 
-            if (this.quantity != 1 && response.charAt(response.length() - 1) != "s") {
+            if (this.quantity != 1 && response.charAt(response.length() - 1) != 's') {
                 response += "s";
             }
 
@@ -778,7 +774,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    class MenuItem extends OrderItem {
+    static class MenuItem extends OrderItem {
         int quantity;
         String modifier;
 
@@ -794,7 +790,7 @@ public class MainActivity extends AppCompatActivity {
         public String toString() {
             String response = super.toString();
 
-            if (this.quantity != 1 && response.charAt(response.length() - 1) != "s") {
+            if (this.quantity != 1 && response.charAt(response.length() - 1) != 's') {
                 response += "s";
             }
 
@@ -856,10 +852,6 @@ public class MainActivity extends AppCompatActivity {
         public Transition run(Map<String, Object> args) throws Exception {
             step.run("Listening for wake word...");
 
-            if (tasks.isEmpty()) {
-                return new Transition(RecipeStates.COMPLETE_PROMPT);
-            }
-
             Map<String, Object> nextArgs = new HashMap<>();
             nextArgs.put("order", new ArrayList<OrderItem>());
             nextArgs.put("justAsked", false);
@@ -880,9 +872,6 @@ public class MainActivity extends AppCompatActivity {
         public Transition run(Map<String, Object> args) throws Exception {
             ArrayList<OrderItem> order = (ArrayList<OrderItem>) args.get("order");
             boolean justAsked = (boolean) args.get("justAsked");
-
-            // String cardId = String.format("location-%d", taskIndex);
-            // listener.onCardUpdated(cardId, "...", false, false);
 
             final int silenceTimeoutSeconds = 5;
             final double volumeThreshold = 0.0001;
@@ -947,6 +936,8 @@ public class MainActivity extends AppCompatActivity {
                     return new Transition(RecipeStates.REPEAT_ORDER, nextArgs);
                 }
             }
+
+            return new Transition(null);
         }
     }
 
@@ -964,7 +955,7 @@ public class MainActivity extends AppCompatActivity {
             OrderItem item = (OrderItem) args.get("item");
 
             listener.createCard(item.toString());
-            String prompt = String.format("Added %s to your order", item.toString()));
+            String prompt = String.format("Added %s to your order", item.toString());
             step.run(prompt);
 
             Map<String, Object> nextArgs = new HashMap<>();
@@ -983,16 +974,16 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
-            ArrayList<OrderItem> order = new ArrayList<OrderItem>(args.get("order"));
+            ArrayList<OrderItem> order = new ArrayList<OrderItem>((ArrayList<OrderItem>) args.get("order"));
             OrderItem toRemove = (OrderItem) args.get("toRemove");
 
             Integer matchIndex = toRemove.findFromEndIn(order);
 
             if (matchIndex == null) {
-                String prompt = String.format("\"%s\" is not in your order.", toRemove.toString()));
+                String prompt = String.format("\"%s\" is not in your order.", toRemove.toString());
                 step.run(prompt);
             } else {
-                String prompt = String.format("Removed \"%s\" from your order.", order.get(matchIndex).toString()));
+                String prompt = String.format("Removed \"%s\" from your order.", order.get(matchIndex).toString());
 
                 listener.removeCard(matchIndex);
                 order.remove(matchIndex);
@@ -1016,7 +1007,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
-            ArrayList<OrderItem> order = new ArrayList<OrderItem>(args.get("order"));
+            ArrayList<OrderItem> order = new ArrayList<OrderItem>((ArrayList<OrderItem>) args.get("order"));
             OrderItem itemFrom = (OrderItem) args.get("itemFrom");
             OrderChange change = (OrderChange) args.get("change");
 
@@ -1028,11 +1019,12 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (matchIndex == null) {
+                String prompt;
                 if (itemFrom == null) {
-                    prompt = "I couldn't change anything because your order is empty."
+                    prompt = "I couldn't change anything because your order is empty.";
                 } else {
                     prompt = String.format(
-                            "I couldn't change anything because  \"%s\" is not in your order.",
+                            "I couldn't change anything because \"%s\" is not in your order.",
                             itemFrom.toString());
                 }
                 step.run(prompt);
@@ -1041,7 +1033,7 @@ public class MainActivity extends AppCompatActivity {
 
                 if (order.get(matchIndex) instanceof ComboItem) {
                     if (change.toCombo != null) {
-                        order.get(matchIndex).comboName = change.toCombo;
+                        ((ComboItem) order.get(matchIndex)).comboName = change.toCombo;
                     }
                     if (change.toSize != null) {
                         order.get(matchIndex).size = change.toSize;
@@ -1052,11 +1044,11 @@ public class MainActivity extends AppCompatActivity {
                 } else if (order.get(matchIndex) instanceof MenuItem) {
                     if (change.toCombo != null) {
                         OrderItem prev = order.get(matchIndex);
-                        order.get(matchIndex) = ComboItem(
+                        order.set(matchIndex, new ComboItem(
                                 prev.size,
                                 prev.itemName,
                                 prev.quantity,
-                                change.toCombo);
+                                change.toCombo));
                     }
 
                     if (change.toSize != null) {
@@ -1070,7 +1062,7 @@ public class MainActivity extends AppCompatActivity {
                     throw new Error(String.format("unknown order item \"%s\"", order.get(matchIndex).toString()));
                 }
 
-                prompt = String.format(
+                String prompt = String.format(
                         "Changing \"%s\" in your order to \"%s\"",
                         oldOrderStr,
                         order.get(matchIndex).toString());
@@ -1111,7 +1103,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
-            ArrayList<OrderItem> order = new ArrayList<OrderItem>(args.get("order"));
+            ArrayList<OrderItem> order = (ArrayList<OrderItem>) args.get("order");
             step.run("A staff member has been notified. While help is on the way, you can continue ordering.");
 
             Map<String, Object> nextArgs = new HashMap<>();
@@ -1130,12 +1122,12 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
-            ArrayList<OrderItem> order = new ArrayList<OrderItem>(args.get("order"));
-            boolean orderFinalized = (boolean) args.get("orderFinalized");
+            ArrayList<OrderItem> order = new ArrayList<OrderItem>((ArrayList<OrderItem>) args.get("order"));
+            Boolean orderFinalized = (Boolean) args.get("orderFinalized");
 
             ArrayList<String> promptList = new ArrayList<String>();
 
-            if (orderFinalized) {
+            if (orderFinalized != null && orderFinalized) {
                 promptList.add("Alright!");
                 promptList.add("While we get everything ready, here's what you ordered.");
             } else {
@@ -1143,11 +1135,11 @@ public class MainActivity extends AppCompatActivity {
             }
 
             for (int i = 0; i < order.size(); i++) {
-                String prompt = String.format("Item %d. %s", (i + 1), order.get(matchIndex).toString());
+                String prompt = String.format("Item %d. %s", (i + 1), order.get(i).toString());
                 promptList.add(prompt);
             }
 
-            if (order.size() == 0) {
+            if (order.isEmpty()) {
                 step.run("Your order is empty. Please add an item.");
 
                 Map<String, Object> nextArgs = new HashMap<>();
@@ -1159,7 +1151,7 @@ public class MainActivity extends AppCompatActivity {
                 step.run(promptList.get(i));
             }
 
-            if (orderFinalized) {
+            if (orderFinalized != null && orderFinalized) {
                 try { Thread.sleep(800); } catch (InterruptedException ignored) {}
 
                 Map<String, Object> nextArgs = new HashMap<>();
@@ -1183,7 +1175,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
-            ArrayList<OrderItem> order = new ArrayList<OrderItem>(args.get("order"));
+            ArrayList<OrderItem> order = new ArrayList<OrderItem>((ArrayList<OrderItem>) args.get("order"));
             String prompt = (String) args.get("prompt");
 
             step.run(prompt);
@@ -1204,7 +1196,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
-            ArrayList<OrderItem> order = new ArrayList<OrderItem>(args.get("order"));
+            ArrayList<OrderItem> order = new ArrayList<OrderItem>((ArrayList<OrderItem>) args.get("order"));
 
             step.run("Is that all? Do you want me to repeat your order?");
 
@@ -1270,7 +1262,7 @@ public class MainActivity extends AppCompatActivity {
             states.put(RecipeStates.HELP, new HelpState(listener, orcaStep));
             states.put(RecipeStates.REPEAT_ORDER, new RepeatOrderState(listener, orcaStep));
             states.put(RecipeStates.SPEAK_PROMPT, new SpeakPromptState(listener, orcaStep));
-            states.put(RecipeStates.SILENT_USER, new SilentUserState(listener, rhinoStep));
+            states.put(RecipeStates.SILENT_USER, new SilentUserState(listener, orcaStep));
             states.put(RecipeStates.END_ORDER, new EndOrderState(listener, orcaStep));
         }
 
