@@ -39,6 +39,7 @@ endoftext
 endwin
 fanta
 Fleischmann's
+foodordering
 frombytes
 Gardein
 getmaxyx
