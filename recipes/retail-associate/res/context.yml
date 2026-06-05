@@ -2,22 +2,11 @@ context:
   macros:
     where:
       - "where is"
+      - "where are"
       - "where's"
       - "find"
-      - "locate"
-      - "show me"
-      - "look up"
-      - "tell me where"
-      - "can you find"
-      - "do we have"
-      - "where do we keep"
-      - "where can i find"
 
     how_many:
-      - "how many"
-      - "what's the stock on"
-      - "what is the stock on"
-      - "what's the count on"
       - "stock check on"
       - "do we have any"
       - "are we out of"
@@ -26,19 +15,13 @@ context:
       - "how much is"
       - "how much are"
       - "how much does"
-      - "what's the price of"
-      - "what is the price of"
-      - "what does"
       - "price check on"
       - "price check for"
       - "check price for"
-      - "ring up"
 
     request_at:
-      - "tell"
       - "ask"
       - "message"
-      - "page"
 
   expressions:
     findProduct:
@@ -56,7 +39,6 @@ context:
 
     findAssociate:
       - "@where $coworker:coworker"
-      - "is $coworker:coworker (at, in) $location:location"
 
     messageAssociate:
       - "@request_at $coworker:coworker to come to $location:location"
@@ -85,7 +67,7 @@ context:
 
     startShift:
       - "[start, starting] shift"
-      - "(i'm, i am, mark me) [clocking in, starting my shift, on the floor, back from break, back from lunch]"
+      - "(i'm, i am, mark me) [starting my shift, on the floor]"
 
     onBreak:
       - "(i'm, i am, mark me) (going) [on break, taking a break, to lunch, taking lunch]"
@@ -93,7 +75,7 @@ context:
     endShift:
       - "end shift"
       - "completed shift"
-      - "(i'm, i am, mark me) [clocking out, ending my shift, off duty]"
+      - "(i'm, i am, mark me) [ending my shift, off duty]"
 
   slots:
     coworker:

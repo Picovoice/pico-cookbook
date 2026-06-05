@@ -236,11 +236,20 @@ PRODUCT_DB = [
     {
         "department": "Deli",
         "product_name": "Swiss Cheese",
-        "size": "1 package",
+        "size": "50g",
         "brand": "Kerrygold",
         "price": 5.28,
         "aisle": 5,
         "stock": 9,
+    },
+    {
+        "department": "Deli",
+        "product_name": "Swiss Cheese",
+        "size": "173g",
+        "brand": "Great Value",
+        "price": 11.28,
+        "aisle": 5,
+        "stock": 3,
     },
     {
         "department": "Deli",
@@ -1441,7 +1450,7 @@ TASK_LIST = [
     for item in PRODUCT_DB[: len(COWORKER_LIST)]
 ] + [
     f"Check if {name} needs help in {data['location']}."
-    for name, data in COWORKER_DATA.items()
+    for name, data in COWORKER_DATA.items() if data["shift_status"] == "on duty"
 ]
 random.shuffle(TASK_LIST)
 
@@ -1608,6 +1617,17 @@ class RecipeWelcomePromptState(RecipePromptState):
     def run(self, next_task_index: int, **kwargs: Any) -> Transition:
         self._run_prompt("Walmart retail associate activated.")
 
+        print(
+            "- Where is (product)\n"
+            "- Are we out of (product)\n"
+            "- Price check on (product)\n"
+            "- Where is (coworker)\n"
+            "- Ask (coworker) to come to (location)\n"
+            "- Call for help at (location)\n"
+            "- Get next task\n"
+            "- [start shift, on break, end shift]"
+        )
+
         return Transition(
             next_state=RecipeStates.LISTEN_COMMAND,
             next_state_kwargs={"next_task_index": next_task_index},
@@ -1619,19 +1639,7 @@ class RecipeListenCommandState(State):
         super().__init__(step=step)
 
     def run(self, next_task_index: int, **kwargs) -> Transition:
-
-        print(
-            "- Where is (product)\n"
-            "- How many (product) are in stock\n"
-            "- Price check on (product)\n"
-            "- Where is (coworker)\n"
-            "- Ask (coworker) to come to (location)\n"
-            "- Call for help at (location)\n"
-            "- Get next task\n"
-            "- [start shift, on break, end shift]"
-        )
-
-        text = ""
+        text = "Listening for command"
 
         def get_text() -> str:
             return text
@@ -1659,18 +1667,19 @@ class RecipeListenCommandState(State):
 
                 prompt_list = []
                 for ident, bucket in brand_product_buckets.items():
-                    prompt = f"{ident} is in: "
+                    prompt = f"{ident} is in "
 
                     def plural(r):
                         return "" if r["stock"] == 1 else "s"
 
                     prompt += list_to_spoken(
                         [
-                            f"{row['department']}, aisle {row['aisle']}: "
-                            f"{row['stock']} item{plural(row)} ({row['size']})"
+                            f"{row['department']}, aisle {row['aisle']}. "
+                            f"{row['stock']} item{plural(row)} left (at {row['size']})."
                             for row in bucket
                         ]
                     )
+                    prompt += "."
                     prompt_list.append(prompt)
 
                 if len(brand_product_buckets) == 0:
@@ -1707,8 +1716,9 @@ class RecipeListenCommandState(State):
                         f"{products[0]['product_name']}. "
                     )
                     prompt += list_to_spoken(
-                        [f"{row['stock']} items ({row['size']})" for row in products]
+                        [f"{row['stock']} items (at {row['size']})" for row in products]
                     )
+                    prompt += "."
 
                 return Transition(
                     next_state=RecipeStates.SPEAK_PROMPT,
