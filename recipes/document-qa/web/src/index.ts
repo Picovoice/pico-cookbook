@@ -9,23 +9,20 @@ import { AudioStream } from './audio_stream';
 const MIN_DB = -40.0;
 const MAX_DB = 0.0;
 
-const TOPK = 4
-const COMPLETION_TOKEN_LIMIT = 256
-const CHUNK_SIZE = 300
-const CHUNK_OVERLAP = 100
+const TOPK = 2
+const COMPLETION_TOKEN_LIMIT = 128
+const CHUNK_SIZE = 600
+const CHUNK_OVERLAP = 120
 
 const ASK_FOR_DETAILS_RETRY_LIMIT = 2;
 
 const STOP_PHRASE = "<|eot_id|>";
 
 const SYSTEM = "You are a document question-answering assistant. "
-+ "Answer only using the provided document excerpts. "
-+ "If the answer is not in the excerpts, say that you do not know from the provided document. "
++ "Answer only using the provided excerpts; if the answer is not in them, "
++ "say you do not know from the provided document. "
 + "Do not give legal advice. "
-+ "Keep the answer concise. "
-+ "Do not use Markdown formatting. "
-+ "Do not use bullet points. "
-+ "Use plain text only.";
++ "Be concise and use plain text only - no Markdown, no bullet points.";
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 

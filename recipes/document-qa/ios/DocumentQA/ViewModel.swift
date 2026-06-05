@@ -68,9 +68,9 @@ class ViewModel: ObservableObject {
     private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
 
     private let COMPLETION_TOKEN_LIMIT: Int32 = 128
-    private let CHUNK_SIZE = 300
-    private let CHUNK_OVERLAP = 200
-    private let TOPK = 4
+    private let CHUNK_SIZE = 600
+    private let CHUNK_OVERLAP = 120
+    private let TOPK = 2
     private let STOP_PHRASES = [
         "</s>",             // Llama-2, Mistral, and Mixtral
         "<end_of_turn>",    // Gemma
@@ -611,13 +611,10 @@ class ViewModel: ObservableObject {
 
         let dialog = try picollm!.getDialog(
             system: "You are a document question-answering assistant. " +
-                    "Answer only using the provided document excerpts. " +
-                    "If the answer is not in the excerpts, say that you do not know from the provided document. " +
+                    "Answer only using the provided excerpts; if the answer is not in them, " +
+                    "say you do not know from the provided document. " +
                     "Do not give legal advice. " +
-                    "Keep the answer concise. " +
-                    "Do not use Markdown formatting. " +
-                    "Do not use bullet points. " +
-                    "Use plain text only."
+                    "Be concise and use plain text only - no Markdown, no bullet points."
         )
 
         try dialog.addHumanRequest(

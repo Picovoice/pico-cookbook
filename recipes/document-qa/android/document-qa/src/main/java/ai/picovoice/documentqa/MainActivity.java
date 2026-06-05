@@ -100,9 +100,9 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int TTS_WARMUP_SECONDS = 1;
 
-    private static final int CHUNK_SIZE = 300;
-    private static final int CHUNK_OVERLAP = 200;
-    private static final int TOPK = 4;
+    private static final int CHUNK_SIZE = 600;
+    private static final int CHUNK_OVERLAP = 120;
+    private static final int TOPK = 2;
 
     private static final String[] STOP_PHRASES = new String[]{
             "</s>",             // Llama-2, Mistral, and Mixtral
@@ -595,13 +595,10 @@ public class MainActivity extends AppCompatActivity {
 
         String systemPrompt =
                 "You are a document question-answering assistant. " +
-                "Answer only using the provided document excerpts. " +
-                "If the answer is not in the excerpts, say that you do not know from the provided document. " +
+                "Answer only using the provided excerpts; if the answer is not in them, " +
+                "say you do not know from the provided document. " +
                 "Do not give legal advice. " +
-                "Keep the answer concise. " +
-                "Do not use Markdown formatting. " +
-                "Do not use bullet points. " +
-                "Use plain text only.";
+                "Be concise and use plain text only - no Markdown, no bullet points.";
         PicoLLMDialog dialog = picollmChat.getDialogBuilder().setSystem(systemPrompt).build();
 
         String prompt = String.format("Document excerpts:\n\n%s\n\nQuestion:\n%s", context.toString(), question);
