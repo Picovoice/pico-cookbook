@@ -54,7 +54,7 @@ import ai.picovoice.rhino.RhinoInference;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "PICOVOICE";
 
-    private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
+    private static final String ACCESS_KEY = "";
     private static final String KEYWORD_MODEL = "food_ordering_android.ppn";
     private static final String CONTEXT_MODEL = "food_ordering_android.rhn";
 
@@ -86,13 +86,14 @@ public class MainActivity extends AppCompatActivity {
     private Workflow workflow;
     private volatile boolean isRunning = false;
 
-    private final Map<String, CardUI> cardMap = new HashMap<>();
+    private final ArrayList<CardUI> cards = new ArrayList<>();
 
     interface WorkflowListener {
         void onInitProgress(String status);
         void onStatusChanged(String status);
-        void createCard(String title);
+        void addCard(String title);
         void removeCard(int index);
+        void updateCard(int index, String title);
         void onWorkflowComplete();
         void onVolumeFrame(short[] frame);
     }
@@ -151,7 +152,7 @@ public class MainActivity extends AppCompatActivity {
             workflowStatusText.setText("");
             startStatusText.setText("Ready to Start");
             btnCancel.setVisibility(View.VISIBLE);
-            btnCancel.setText("Cancel Report");
+            btnCancel.setText("Cancel Order");
 
             resetReportCards();
 
@@ -199,7 +200,7 @@ public class MainActivity extends AppCompatActivity {
         btnStart.setVisibility(View.INVISIBLE);
         startSpinner.setVisibility(View.VISIBLE);
 
-        setupReportCards();
+        resetReportCards();
 
         new Thread(() -> {
             try {
@@ -215,14 +216,24 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     @Override
-                    public void createCard(String title) {
-                        // TODO: implement this
-                        // add to `cardMap`
+                    public void addCard(String title) {
+                        runOnUiThread(() -> {
+                            cards.add(createCard(title));
+                        });
                     }
 
                     @Override
                     public void removeCard(int index) {
-                        // TODO: implement this
+                        runOnUiThread(() -> {
+                            cards.remove(index);
+                        });
+                    }
+
+                    @Override
+                    public void updateCard(int index, String title) {
+                        runOnUiThread(() -> {
+                            cards.set(index, createCard(title));
+                        });
                     }
 
                     @Override
@@ -316,41 +327,12 @@ public class MainActivity extends AppCompatActivity {
     class CardUI {
         View root;
         View leftContainer;
-        TextView titleView;
         TextView valueView;
-
-        void setValue(String text, int colour) {
-            runOnUiThread(() -> {
-                valueView.setText(text);
-                valueView.setTextColor(colour);
-            });
-        }
-
-        void reset() {
-            runOnUiThread(() -> {
-                valueView.setText("-");
-                valueView.setTextColor(INACTIVE_COLOUR);
-                titleView.setTextColor(INACTIVE_COLOUR);
-                leftContainer.setBackgroundResource(R.drawable.bg_report_card_inactive);
-            });
-        }
-    }
-
-    private void setupReportCards() {
-        reportContainer.removeAllViews();
-        cardMap.clear();
-
-        // TODO: remove this?
-        /*for (int i = 0; i < tasks.size(); i++) {
-            cardMap.put("location-" + String.valueOf(i), createCard("LOCATION", false));
-            cardMap.put("pick-" + String.valueOf(i), createCard("PICK", true));
-        }*/
     }
 
     private void resetReportCards() {
-        for (CardUI card : cardMap.values()) {
-            card.reset();
-        }
+        reportContainer.removeAllViews();
+        cards.clear();
     }
 
     private CardUI createCard(String title) {
@@ -360,11 +342,8 @@ public class MainActivity extends AppCompatActivity {
         CardUI card = new CardUI();
         card.root = root;
         card.leftContainer = root;
-        card.titleView = root.findViewById(R.id.cardTitle);
         card.valueView = root.findViewById(R.id.cardValue);
-
-        card.titleView.setText(title);
-        card.valueView.setText("-");
+        card.valueView.setText(title);
 
         reportContainer.addView(root);
         return card;
@@ -731,9 +710,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         public Integer findFromEndIn(ArrayList<OrderItem> order) {
-            for (int i = order.size(); i >= 0; i--) { // i, order_item in reversed(list(enumerate(order))) {
-                Boolean sameSize = (this.size == null) || (this.size == order.get(i).size);
-                Boolean sameItem = this.itemName == order.get(i).itemName;
+            for (int i = order.size() - 1; i >= 0; i--) {
+                Boolean sameSize = (this.size == null) || (this.size.equals(order.get(i).size));
+                Boolean sameItem = this.itemName.equals(order.get(i).itemName);
+
                 if (sameSize && sameItem) {
                     return i;
                 }
@@ -743,8 +723,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         public String toString() {
-            if (this.size == null) {
+            if (this.size == null && this.quantity == -1) {
                 return this.itemName;
+            } else if (this.size == null) {
+                return String.format("%d %s", this.quantity, this.itemName);
             } else {
                 return String.format("%d %s %s", this.quantity, this.size, this.itemName);
             }
@@ -763,6 +745,7 @@ public class MainActivity extends AppCompatActivity {
             this.comboName = comboName;
         }
 
+        @Override
         public String toString() {
             String response = String.format("%s %s", super.toString(), this.comboName);
 
@@ -787,6 +770,7 @@ public class MainActivity extends AppCompatActivity {
             this.modifier = modifier;
         }
 
+        @Override
         public String toString() {
             String response = super.toString();
 
@@ -871,7 +855,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
             ArrayList<OrderItem> order = (ArrayList<OrderItem>) args.get("order");
-            boolean justAsked = (boolean) args.get("justAsked");
+            boolean justAsked = ((Boolean) args.get("justAsked")) == null ? false : ((boolean) args.get("justAsked"));
 
             final int silenceTimeoutSeconds = 5;
             final double volumeThreshold = 0.0001;
@@ -882,20 +866,20 @@ public class MainActivity extends AppCompatActivity {
                 // TODO: add timeout support
                 if (false) {
                     Map<String, Object> nextArgs = new HashMap<>();
-                    nextArgs.put("order", args.get("order"));
+                    nextArgs.put("order", order);
                     return new Transition(RecipeStates.SILENT_USER, nextArgs);
                 }
 
                 boolean understood = inference != null && inference.getIsUnderstood();
                 if (understood && inference.getIntent().equals("addItem")) {
                     Map<String, Object> nextArgs = new HashMap<>();
-                    nextArgs.put("order", args.get("order"));
+                    nextArgs.put("order", order);
                     nextArgs.put("item", OrderItem.parseAddItemInference(inference));
                     return new Transition(RecipeStates.ADD_ITEM, nextArgs);
 
                 } else if (understood && inference.getIntent().equals("removeItem")) {
                     Map<String, Object> nextArgs = new HashMap<>();
-                    nextArgs.put("order", args.get("order"));
+                    nextArgs.put("order", order);
                     nextArgs.put("toRemove", OrderItem.parseRemoveItemInference(inference));
                     return new Transition(RecipeStates.REMOVE_ITEM, nextArgs);
 
@@ -903,7 +887,7 @@ public class MainActivity extends AppCompatActivity {
                     Pair result = OrderItem.parseChangeItemInference(inference);
 
                     Map<String, Object> nextArgs = new HashMap<>();
-                    nextArgs.put("order", args.get("order"));
+                    nextArgs.put("order", order);
                     nextArgs.put("itemFrom", result.first);
                     nextArgs.put("change", result.second);
                     return new Transition(RecipeStates.CHANGE_ITEM, nextArgs);
@@ -914,24 +898,24 @@ public class MainActivity extends AppCompatActivity {
 
                 } else if (understood && inference.getIntent().equals("help")) {
                     Map<String, Object> nextArgs = new HashMap<>();
-                    nextArgs.put("order", args.get("order"));
+                    nextArgs.put("order", order);
                     return new Transition(RecipeStates.HELP, nextArgs);
 
                 } else if (understood && inference.getIntent().equals("repeatOrder")) {
                     Map<String, Object> nextArgs = new HashMap<>();
-                    nextArgs.put("order", args.get("order"));
+                    nextArgs.put("order", order);
                     nextArgs.put("orderFinalized", false);
                     return new Transition(RecipeStates.REPEAT_ORDER, nextArgs);
 
                 } else if (understood && inference.getIntent().equals("endOrder")) {
                     Map<String, Object> nextArgs = new HashMap<>();
-                    nextArgs.put("order", args.get("order"));
+                    nextArgs.put("order", order);
                     nextArgs.put("orderFinalized", true);
                     return new Transition(RecipeStates.REPEAT_ORDER, nextArgs);
 
                 } else if (understood && inference.getIntent().equals("confirmation") && justAsked) {
                     Map<String, Object> nextArgs = new HashMap<>();
-                    nextArgs.put("order", args.get("order"));
+                    nextArgs.put("order", order);
                     nextArgs.put("orderFinalized", true);
                     return new Transition(RecipeStates.REPEAT_ORDER, nextArgs);
                 }
@@ -951,15 +935,18 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
-            ArrayList<OrderItem> order = (ArrayList<OrderItem>) args.get("order");
+            ArrayList<OrderItem> newOrder = new ArrayList<OrderItem>((ArrayList<OrderItem>) args.get("order"));
             OrderItem item = (OrderItem) args.get("item");
 
-            listener.createCard(item.toString());
+            listener.addCard(item.toString());
+            newOrder.add(item);
+
             String prompt = String.format("Added %s to your order", item.toString());
+            listener.onStatusChanged(prompt);
             step.run(prompt);
 
             Map<String, Object> nextArgs = new HashMap<>();
-            nextArgs.put("order", args.get("order"));
+            nextArgs.put("order", newOrder);
             return new Transition(RecipeStates.LISTEN_FOR_ORDER, nextArgs);
         }
     }
@@ -981,6 +968,7 @@ public class MainActivity extends AppCompatActivity {
 
             if (matchIndex == null) {
                 String prompt = String.format("\"%s\" is not in your order.", toRemove.toString());
+                listener.onStatusChanged(prompt);
                 step.run(prompt);
             } else {
                 String prompt = String.format("Removed \"%s\" from your order.", order.get(matchIndex).toString());
@@ -988,6 +976,7 @@ public class MainActivity extends AppCompatActivity {
                 listener.removeCard(matchIndex);
                 order.remove(matchIndex);
 
+                listener.onStatusChanged(prompt);
                 step.run(prompt);
             }
 
@@ -1027,6 +1016,7 @@ public class MainActivity extends AppCompatActivity {
                             "I couldn't change anything because \"%s\" is not in your order.",
                             itemFrom.toString());
                 }
+                listener.onStatusChanged(prompt);
                 step.run(prompt);
             } else {
                 String oldOrderStr = order.get(matchIndex).toString();
@@ -1062,10 +1052,13 @@ public class MainActivity extends AppCompatActivity {
                     throw new Error(String.format("unknown order item \"%s\"", order.get(matchIndex).toString()));
                 }
 
+                listener.updateCard(matchIndex, order.get(matchIndex).toString());
+
                 String prompt = String.format(
                         "Changing \"%s\" in your order to \"%s\"",
                         oldOrderStr,
                         order.get(matchIndex).toString());
+                listener.onStatusChanged(prompt);
                 step.run(prompt);
             }
 
@@ -1085,7 +1078,9 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
-            step.run("Your order has been reset.");
+            String prompt = "Your order has been reset.";
+            listener.onStatusChanged(prompt);
+            step.run(prompt);
 
             Map<String, Object> nextArgs = new HashMap<>();
             nextArgs.put("order", new ArrayList<OrderItem>());
@@ -1104,7 +1099,10 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
             ArrayList<OrderItem> order = (ArrayList<OrderItem>) args.get("order");
-            step.run("A staff member has been notified. While help is on the way, you can continue ordering.");
+
+            String prompt = "A staff member has been notified. While help is on the way, you can continue ordering.";
+            listener.onStatusChanged(prompt);
+            step.run(prompt);
 
             Map<String, Object> nextArgs = new HashMap<>();
             nextArgs.put("order", order);
@@ -1140,7 +1138,9 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (order.isEmpty()) {
-                step.run("Your order is empty. Please add an item.");
+                String prompt = "Your order is empty. Please add an item.";
+                listener.onStatusChanged(prompt);
+                step.run(prompt);
 
                 Map<String, Object> nextArgs = new HashMap<>();
                 nextArgs.put("order", order);
@@ -1148,7 +1148,9 @@ public class MainActivity extends AppCompatActivity {
             }
 
             for (int i = 0; i < promptList.size(); i++) {
-                step.run(promptList.get(i));
+                String prompt = promptList.get(i);
+                listener.onStatusChanged(prompt);
+                step.run(prompt);
             }
 
             if (orderFinalized != null && orderFinalized) {
@@ -1178,6 +1180,7 @@ public class MainActivity extends AppCompatActivity {
             ArrayList<OrderItem> order = new ArrayList<OrderItem>((ArrayList<OrderItem>) args.get("order"));
             String prompt = (String) args.get("prompt");
 
+            listener.onStatusChanged(prompt);
             step.run(prompt);
 
             Map<String, Object> nextArgs = new HashMap<>();
@@ -1198,7 +1201,9 @@ public class MainActivity extends AppCompatActivity {
         public Transition run(Map<String, Object> args) throws Exception {
             ArrayList<OrderItem> order = new ArrayList<OrderItem>((ArrayList<OrderItem>) args.get("order"));
 
-            step.run("Is that all? Do you want me to repeat your order?");
+            String prompt = "Is that all? Do you want me to repeat your order?";
+            listener.onStatusChanged(prompt);
+            step.run(prompt);
 
             Map<String, Object> nextArgs = new HashMap<>();
             nextArgs.put("order", order);
@@ -1219,7 +1224,9 @@ public class MainActivity extends AppCompatActivity {
         public Transition run(Map<String, Object> args) throws Exception {
             try { Thread.sleep(400); } catch (InterruptedException ignored) {}
 
-            step.run("Done! Your order is ready.");
+            String prompt = "Done! Your order is ready.";
+            listener.onStatusChanged(prompt);
+            step.run(prompt);
 
             return new Transition(null);
         }

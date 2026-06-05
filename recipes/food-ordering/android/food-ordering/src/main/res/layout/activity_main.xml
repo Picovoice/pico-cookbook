@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -14,29 +15,30 @@
             android:id="@+id/startScreen"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:gravity="center"
             android:orientation="vertical"
-            android:gravity="center">
+            tools:visibility="gone">
 
             <TextView
                 android:id="@+id/titleText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
                 android:text="Food Ordering"
-                android:textSize="26sp"
-                android:textStyle="bold"
                 android:textColor="#377dff"
-                android:layout_marginBottom="16dp"/>
+                android:textSize="26sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/startStatusText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
                 android:text="Ready to Start"
-                android:textSize="16sp"
-                android:textStyle="italic"
-                android:textColor="#7F8C8D"
                 android:textAlignment="center"
-                android:layout_marginBottom="24dp"/>
+                android:textColor="#7F8C8D"
+                android:textSize="16sp"
+                android:textStyle="italic" />
 
             <FrameLayout
                 android:layout_width="wrap_content"
@@ -46,10 +48,10 @@
                     android:id="@+id/btnStart"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Start Demo"
                     android:backgroundTint="#377dff"
-                    android:textColor="@android:color/white"
-                    android:paddingHorizontal="16dp"/>
+                    android:paddingHorizontal="16dp"
+                    android:text="Start Demo"
+                    android:textColor="@android:color/white" />
 
                 <ProgressBar
                     android:id="@+id/startSpinner"
@@ -59,15 +61,16 @@
                     android:indeterminateTint="#377dff"
                     android:visibility="gone" />
             </FrameLayout>
+
             <LinearLayout
                 android:id="@+id/errorView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:orientation="vertical"
                 android:background="@drawable/bg_error_view"
-                android:padding="16dp"
                 android:gravity="center"
+                android:orientation="vertical"
+                android:padding="16dp"
                 android:visibility="gone">
 
                 <TextView
@@ -85,7 +88,21 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:visibility="gone">
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:id="@+id/startStatusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                android:foregroundGravity="center"
+                android:gravity="center"
+                android:text="Your Order"
+                android:textAlignment="center"
+                android:textColor="#7F8C8D"
+                android:textSize="32sp"
+                android:textStyle="italic" />
 
             <ScrollView
                 android:id="@+id/scrollView"
@@ -106,11 +123,11 @@
                 android:id="@+id/workflowStatusText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="16sp"
-                android:textStyle="italic"
-                android:textColor="#7F8C8D"
+                android:layout_marginBottom="8dp"
                 android:textAlignment="center"
-                android:layout_marginBottom="8dp"/>
+                android:textColor="#7F8C8D"
+                android:textSize="16sp"
+                android:textStyle="italic" />
 
             <FrameLayout
                 android:id="@+id/animationContainer"
@@ -148,10 +165,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
-                android:text="Cancel Report"
+                android:layout_marginBottom="16dp"
                 android:backgroundTint="#BDC3C7"
-                android:textColor="#2C3E50"
-                android:layout_marginBottom="16dp"/>
+                android:text=""
+                android:textColor="#2C3E50" />
         </LinearLayout>
     </FrameLayout>
 </LinearLayout>
