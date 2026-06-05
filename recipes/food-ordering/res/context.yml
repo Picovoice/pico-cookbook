@@ -100,9 +100,8 @@ context:
       - "what's (in, on) my order"
 
     confirmation:
-      - "yes"
+      - "yes (please)"
       - "yeah"
-      - "okay"
       - "sure"
 
     endOrder:
@@ -114,7 +113,6 @@ context:
       - "that's everything"
       - "that is everything"
       - "[i'm, i am, we're, we are] [done, finished]"
-      - "nothing else"
       - "that'll be all"
       - "that will be all"
       - "that's about it"

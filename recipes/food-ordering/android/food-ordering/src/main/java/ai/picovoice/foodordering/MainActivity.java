@@ -34,8 +34,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -54,7 +52,7 @@ import ai.picovoice.rhino.RhinoInference;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "PICOVOICE";
 
-    private static final String ACCESS_KEY = "";
+    private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
     private static final String KEYWORD_MODEL = "food_ordering_android.ppn";
     private static final String CONTEXT_MODEL = "food_ordering_android.rhn";
 
@@ -219,20 +217,40 @@ public class MainActivity extends AppCompatActivity {
                     public void addCard(String title) {
                         runOnUiThread(() -> {
                             cards.add(createCard(title));
+
+                            CardUI activeCard = cards.get(cards.size() - 1);
+                            View parent = (View) findViewById(R.id.reportContainer).getParent();
+                            if (parent instanceof android.widget.ScrollView) {
+                                android.widget.ScrollView sv = (android.widget.ScrollView) parent;
+                                sv.post(() -> {
+                                    sv.smoothScrollTo(0, activeCard.root.getTop() - 32);
+                                });
+                            }
                         });
                     }
 
                     @Override
                     public void removeCard(int index) {
                         runOnUiThread(() -> {
-                            cards.remove(index);
+                            CardUI activeCard = cards.get(index);
+                            scrollView.smoothScrollTo(0, activeCard.root.getTop());
+
+                            runOnUiThread(() -> {
+                                cards.remove(index);
+                                reportContainer.removeViewAt(index);
+                            });
                         });
                     }
 
                     @Override
                     public void updateCard(int index, String title) {
                         runOnUiThread(() -> {
-                            cards.set(index, createCard(title));
+                            CardUI activeCard = cards.get(index);
+                            scrollView.smoothScrollTo(0, activeCard.root.getTop());
+
+                            runOnUiThread(() -> {
+                                activeCard.valueView.setText(title);
+                            });
                         });
                     }
 
@@ -331,8 +349,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void resetReportCards() {
-        reportContainer.removeAllViews();
-        cards.clear();
+        runOnUiThread(() -> {
+            reportContainer.removeAllViews();
+            cards.clear();
+        });
     }
 
     private CardUI createCard(String title) {
@@ -610,7 +630,15 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // TODO: add support for waiting 5 seconds
+    private static float rms(short[] frame) {
+        float total = 0.0f;
+        for (short sample : frame) {
+            total += (sample / 32768.0f) * (sample / 32768.0f);
+        }
+
+        return (float) Math.sqrt(total / frame.length);
+    }
+
     class RhinoStep extends Step {
         private final Rhino rhino;
 
@@ -620,20 +648,52 @@ public class MainActivity extends AppCompatActivity {
                     .setAccessKey(ACCESS_KEY)
                     .setContextPath(CONTEXT_MODEL)
                     .setEndpointDurationSec(0.5f)
-                    .setRequireEndpoint(false)
+                    .setRequireEndpoint(true)
                     .build(context);
         }
 
-        public RhinoInference run(String listeningPrompt) throws Exception {
+        /// Returns null on timeout
+        public RhinoInference run(
+                String listeningPrompt,
+                boolean checkForSilence,
+                long[] silenceStart,
+                long silenceTimeout,
+                float volumeThreshold) throws Exception {
             recorder.start();
             setListeningUI(true, listeningPrompt);
+
             boolean isFinalized = false;
-            while (!isFinalized && isRunning) {
-                short[] frame = recorder.read(rhino.getFrameLength());
-                if (frame != null && frame.length == rhino.getFrameLength()) {
-                    isFinalized = rhino.process(frame);
+
+            if (checkForSilence) {
+                long runningSilenceStart = silenceStart[0];
+
+                while (!isFinalized && isRunning) {
+                    short[] frame = recorder.read(rhino.getFrameLength());
+
+                    if (frame != null && frame.length == rhino.getFrameLength()) {
+                        float volume = rms(frame);
+                        if (volume > volumeThreshold) {
+                            runningSilenceStart = System.currentTimeMillis();
+                        } else if ((System.currentTimeMillis() - runningSilenceStart) > silenceTimeout) {
+                            setListeningUI(false, listeningPrompt);
+                            recorder.stop();
+                            return null;
+                        }
+
+                        isFinalized = rhino.process(frame);
+                    }
+                }
+
+                silenceStart[0] = runningSilenceStart;
+            } else {
+                while (!isFinalized && isRunning) {
+                    short[] frame = recorder.read(rhino.getFrameLength());
+                    if (frame != null && frame.length == rhino.getFrameLength()) {
+                        isFinalized = rhino.process(frame);
+                    }
                 }
             }
+
             setListeningUI(false, listeningPrompt);
             recorder.stop();
             return isRunning ? rhino.getInference() : null;
@@ -758,7 +818,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     static class MenuItem extends OrderItem {
-        int quantity;
         String modifier;
 
         public MenuItem(
@@ -857,14 +916,21 @@ public class MainActivity extends AppCompatActivity {
             ArrayList<OrderItem> order = (ArrayList<OrderItem>) args.get("order");
             boolean justAsked = ((Boolean) args.get("justAsked")) == null ? false : ((boolean) args.get("justAsked"));
 
-            final int silenceTimeoutSeconds = 5;
-            final double volumeThreshold = 0.0001;
+            long[] startTime = { System.currentTimeMillis() };
+            final long silenceTimeoutMs = 5000;
+            final float volumeThreshold = 0.0001f;
 
             while (isRunning) {
-                RhinoInference inference = step.run("Listening for order...");
+                RhinoInference inference = step.run(
+                        "Listening for order...",
+                        (!justAsked) && (order.size() > 0),
+                        startTime,
+                        silenceTimeoutMs,
+                        volumeThreshold);
 
-                // TODO: add timeout support
-                if (false) {
+                if (inference == null && !isRunning) {
+                    return new Transition(null);
+                } else if (inference == null) {
                     Map<String, Object> nextArgs = new HashMap<>();
                     nextArgs.put("order", order);
                     return new Transition(RecipeStates.SILENT_USER, nextArgs);
@@ -961,27 +1027,27 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
-            ArrayList<OrderItem> order = new ArrayList<OrderItem>((ArrayList<OrderItem>) args.get("order"));
+            ArrayList<OrderItem> newOrder = new ArrayList<OrderItem>((ArrayList<OrderItem>) args.get("order"));
             OrderItem toRemove = (OrderItem) args.get("toRemove");
 
-            Integer matchIndex = toRemove.findFromEndIn(order);
+            Integer matchIndex = toRemove.findFromEndIn(newOrder);
 
             if (matchIndex == null) {
                 String prompt = String.format("\"%s\" is not in your order.", toRemove.toString());
                 listener.onStatusChanged(prompt);
                 step.run(prompt);
             } else {
-                String prompt = String.format("Removed \"%s\" from your order.", order.get(matchIndex).toString());
+                String prompt = String.format("Removed \"%s\" from your order.", newOrder.get(matchIndex).toString());
 
                 listener.removeCard(matchIndex);
-                order.remove(matchIndex);
+                newOrder.remove((int)matchIndex);
 
                 listener.onStatusChanged(prompt);
                 step.run(prompt);
             }
 
             Map<String, Object> nextArgs = new HashMap<>();
-            nextArgs.put("order", order);
+            nextArgs.put("order", newOrder);
             return new Transition(RecipeStates.LISTEN_FOR_ORDER, nextArgs);
         }
     }
@@ -996,15 +1062,15 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
-            ArrayList<OrderItem> order = new ArrayList<OrderItem>((ArrayList<OrderItem>) args.get("order"));
+            ArrayList<OrderItem> newOrder = new ArrayList<OrderItem>((ArrayList<OrderItem>) args.get("order"));
             OrderItem itemFrom = (OrderItem) args.get("itemFrom");
             OrderChange change = (OrderChange) args.get("change");
 
             Integer matchIndex = null;
             if (itemFrom == null) {
-                matchIndex = (order.size() > 0) ? (order.size() - 1) : null;
+                matchIndex = (newOrder.size() > 0) ? (newOrder.size() - 1) : null;
             } else {
-                matchIndex = itemFrom.findFromEndIn(order);
+                matchIndex = itemFrom.findFromEndIn(newOrder);
             }
 
             if (matchIndex == null) {
@@ -1019,22 +1085,22 @@ public class MainActivity extends AppCompatActivity {
                 listener.onStatusChanged(prompt);
                 step.run(prompt);
             } else {
-                String oldOrderStr = order.get(matchIndex).toString();
+                String oldOrderStr = newOrder.get(matchIndex).toString();
 
-                if (order.get(matchIndex) instanceof ComboItem) {
+                if (newOrder.get(matchIndex) instanceof ComboItem) {
                     if (change.toCombo != null) {
-                        ((ComboItem) order.get(matchIndex)).comboName = change.toCombo;
+                        ((ComboItem) newOrder.get(matchIndex)).comboName = change.toCombo;
                     }
                     if (change.toSize != null) {
-                        order.get(matchIndex).size = change.toSize;
+                        newOrder.get(matchIndex).size = change.toSize;
                     }
                     if (change.toItem != null) {
-                        order.get(matchIndex).itemName = change.toItem;
+                        newOrder.get(matchIndex).itemName = change.toItem;
                     }
-                } else if (order.get(matchIndex) instanceof MenuItem) {
+                } else if (newOrder.get(matchIndex) instanceof MenuItem) {
                     if (change.toCombo != null) {
-                        OrderItem prev = order.get(matchIndex);
-                        order.set(matchIndex, new ComboItem(
+                        OrderItem prev = newOrder.get(matchIndex);
+                        newOrder.set(matchIndex, new ComboItem(
                                 prev.size,
                                 prev.itemName,
                                 prev.quantity,
@@ -1042,28 +1108,28 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     if (change.toSize != null) {
-                        order.get(matchIndex).size = change.toSize;
+                        newOrder.get(matchIndex).size = change.toSize;
                     }
 
                     if (change.toItem != null) {
-                        order.get(matchIndex).itemName = change.toItem;
+                        newOrder.get(matchIndex).itemName = change.toItem;
                     }
                 } else {
-                    throw new Error(String.format("unknown order item \"%s\"", order.get(matchIndex).toString()));
+                    throw new Error(String.format("unknown order item \"%s\"", newOrder.get(matchIndex).toString()));
                 }
 
-                listener.updateCard(matchIndex, order.get(matchIndex).toString());
+                listener.updateCard(matchIndex, newOrder.get(matchIndex).toString());
 
                 String prompt = String.format(
                         "Changing \"%s\" in your order to \"%s\"",
                         oldOrderStr,
-                        order.get(matchIndex).toString());
+                        newOrder.get(matchIndex).toString());
                 listener.onStatusChanged(prompt);
                 step.run(prompt);
             }
 
             Map<String, Object> nextArgs = new HashMap<>();
-            nextArgs.put("order", order);
+            nextArgs.put("order", newOrder);
             return new Transition(RecipeStates.LISTEN_FOR_ORDER, nextArgs);
         }
     }
@@ -1078,6 +1144,8 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
+            resetReportCards();
+
             String prompt = "Your order has been reset.";
             listener.onStatusChanged(prompt);
             step.run(prompt);
@@ -1177,7 +1245,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
-            ArrayList<OrderItem> order = new ArrayList<OrderItem>((ArrayList<OrderItem>) args.get("order"));
+            ArrayList<OrderItem> order = (ArrayList<OrderItem>) args.get("order");
             String prompt = (String) args.get("prompt");
 
             listener.onStatusChanged(prompt);
@@ -1199,7 +1267,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public Transition run(Map<String, Object> args) throws Exception {
-            ArrayList<OrderItem> order = new ArrayList<OrderItem>((ArrayList<OrderItem>) args.get("order"));
+            ArrayList<OrderItem> order = (ArrayList<OrderItem>) args.get("order");
 
             String prompt = "Is that all? Do you want me to repeat your order?";
             listener.onStatusChanged(prompt);
