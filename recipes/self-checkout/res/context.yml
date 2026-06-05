@@ -1,0 +1,78 @@
+context:
+  expressions:
+    speedUp:
+      - "(speak, talk, go) [faster, fast]"
+      - "speed up"
+
+    slowDown:
+      - "(speak, talk, go) [slower, slow]"
+      - "slow down"
+
+    normalSpeed:
+      - "[normal, original, reset] speed"
+
+    speakLouder:
+      - increase volume
+      - "(speak, talk, go) [louder, loud]"
+      - "speak up"
+
+    speakQuieter:
+      - decrease volume
+      - "(speak, talk, go) [quieter, quiet]"
+      - "quiet down"
+
+    normalVolume:
+      - "[normal, original, reset] volume"
+
+    repeat:
+      - "[repeat, say] (that) (again)"
+      - "what did you say"
+      - "(what was the) last item"
+
+    help:
+      - "(can i get, i need) help (please)"
+      - "help me (with this)"
+
+    confirmation:
+      - "yes (please)"
+      - "sure"
+
+    scanNext:
+      - "scan (next) (item, idem)"
+      - "next (item, idem)"
+
+    removeItem:
+      - "remove (that) (last) (item, idem)"
+
+    getTotal:
+      - "(what's, what is) my total"
+
+    startOver:
+      - "(let's, i want to) start over"
+
+    payNow:
+      - "(complete, finish) checkout (now)"
+      - "i am done"
+      - "that's [all, everything]"
+      - "pay now"
+
+    skipBagging:
+      - "no (bag)"
+      - "(no) [i have my own, i have a] bag"
+      - "skip bagging"
+
+    choosePayment:
+      - "(i'll, i) (use, choose) $payment:payment"
+
+    goBack:
+      - "(go) back"
+
+  slots:
+    payment:
+      - "credit"
+      - "debit"
+      - "cash"
+      - "target circle"
+      - "apple pay"
+
+  macros:
