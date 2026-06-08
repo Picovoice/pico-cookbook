@@ -80,6 +80,7 @@ public class MainActivity extends AppCompatActivity {
     private View animationContainer;
     private ImageView successIcon;
     private ScrollView scrollView;
+    private TextView emptyOrderSuggestion;
 
     private Workflow workflow;
     private volatile boolean isRunning = false;
@@ -119,6 +120,7 @@ public class MainActivity extends AppCompatActivity {
         successIcon = findViewById(R.id.successIcon);
 
         scrollView = findViewById(R.id.scrollView);
+        emptyOrderSuggestion = findViewById(R.id.emptyOrderSuggestion);
 
         btnStart.setOnClickListener(v -> checkPermissionsAndStart());
         btnCancel.setOnClickListener(v -> stopDemo());
@@ -193,6 +195,14 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void toggleEmptyOrderSuggestion() {
+        if (emptyOrderSuggestion.getVisibility() == View.VISIBLE) {
+            emptyOrderSuggestion.setVisibility(View.GONE);
+        } else {
+            emptyOrderSuggestion.setVisibility(View.VISIBLE);
+        }
+    }
+
     private void preloadDemo() {
         errorView.setVisibility(View.GONE);
         btnStart.setVisibility(View.INVISIBLE);
@@ -216,6 +226,10 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void addCard(String title) {
                         runOnUiThread(() -> {
+                            if (cards.size() == 0) {
+                                toggleEmptyOrderSuggestion();
+                            }
+
                             cards.add(createCard(title));
 
                             CardUI activeCard = cards.get(cards.size() - 1);
@@ -238,6 +252,10 @@ public class MainActivity extends AppCompatActivity {
                             runOnUiThread(() -> {
                                 cards.remove(index);
                                 reportContainer.removeViewAt(index);
+
+                                if (cards.size() == 0) {
+                                    toggleEmptyOrderSuggestion();
+                                }
                             });
                         });
                     }
@@ -352,6 +370,8 @@ public class MainActivity extends AppCompatActivity {
         runOnUiThread(() -> {
             reportContainer.removeAllViews();
             cards.clear();
+
+            emptyOrderSuggestion.setVisibility(View.VISIBLE);
         });
     }
 

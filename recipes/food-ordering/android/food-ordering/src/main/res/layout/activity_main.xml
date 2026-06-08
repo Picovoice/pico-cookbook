@@ -104,6 +104,16 @@
                 android:textSize="32sp"
                 android:textStyle="italic" />
 
+            <TextView
+                android:id="@+id/emptyOrderSuggestion"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:text="Place your order by speaking"
+                android:textAlignment="center"
+                android:textColor="#7F8C8D"
+                android:textSize="16sp" />
+
             <ScrollView
                 android:id="@+id/scrollView"
                 android:layout_width="match_parent"
