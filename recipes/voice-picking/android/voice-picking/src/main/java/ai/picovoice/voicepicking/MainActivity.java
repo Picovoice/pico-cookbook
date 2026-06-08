@@ -1002,6 +1002,7 @@ public class MainActivity extends AppCompatActivity {
                     return new Transition(RecipeStates.COMPLETE_PROMPT, nextArgs);
                 }
 
+                String nextPrompt;
                 final int nextTaskIndex = taskIndex + 1;
 
                 if (nextTaskIndex >= tasks.size()) {
@@ -1010,26 +1011,33 @@ public class MainActivity extends AppCompatActivity {
                         String shortValue = String.format("pick %s", inference.getSlots().get("quantity"));
                         listener.onStatusChanged(value);
                         listener.onCardUpdated(cardId, shortValue, true, false);
+                        nextPrompt = "Picking workflow complete.";
                     } else if (inference.getIntent().equals("reportShortPick")) {
                         String value = String.format("Recorded short pick %s", inference.getSlots().get("quantity"));
                         String shortValue = String.format("short pick %s", inference.getSlots().get("quantity"));
                         listener.onStatusChanged(value);
                         listener.onCardUpdated(cardId, shortValue, true, false);
+                        nextPrompt = "Short pick recorded. " +
+                                     "Picking workflow complete.";
                     } else if (inference.getIntent().equals("reportDamagedItem")) {
                         listener.onStatusChanged("Recorded damaged item.");
                         listener.onCardUpdated(cardId, "damaged item", true, false);
+                        nextPrompt = "Damaged item recorded. Set it aside. " +
+                                     "Picking workflow complete.";
                     } else {
                         listener.onStatusChanged("Recorded empty location.");
                         listener.onCardUpdated(cardId, "empty location", true, false);
+                        nextPrompt = "Empty location recorded. " +
+                                     "Picking workflow complete.";
                     }
 
                     Map<String, Object> nextArgs = new HashMap<>();
+                    nextArgs.put("prompt", nextPrompt);
                     return new Transition(RecipeStates.COMPLETE_PROMPT, nextArgs);
                 }
 
                 final PickTask nextTask = tasks.get(nextTaskIndex);
 
-                String nextPrompt;
                 if (inference.getIntent().equals("confirmPickedQuantity")) {
                     String value = String.format("Recorded picked %s", inference.getSlots().get("quantity"));
                     String shortValue = String.format("pick %s", inference.getSlots().get("quantity"));

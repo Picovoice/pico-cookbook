@@ -67,7 +67,7 @@ export type StateOptions =
     }
     | {
         state: RecipeStates.COMPLETE_PROMPT,
-        prompt?: string,
+        prompt: string,
     };
 
 export abstract class State {
@@ -189,7 +189,7 @@ export class Workflow {
             if (transition == null) {
                 break;
             }
-            
+
             this.outcomes.push({
                 state: this.state_uids[current_state.toString()],
                 outcome: transition.outcome
@@ -229,13 +229,7 @@ class RecipeStandbyState extends State {
     async run(tasks: PickTask[]): Promise<Transition> {
         await this.step.run("Listening for wake word...");
 
-        if (tasks.length == 0) {
-            return {
-                next: { state: RecipeStates.COMPLETE_PROMPT }
-            };
-        }
-
-        return { 
+        return {
             next: { state: RecipeStates.TASK_LOCATION_PROMPT, tasks, taskIndex: 0 }
         };
     }
@@ -427,32 +421,42 @@ class RecipeTaskPickReportState extends State {
             const nextTaskIndex = taskIndex + 1;
             callbacks.setCompletedCard(cardId, false);
 
+            let nextPrompt;
             if (nextTaskIndex >= tasks.length) {
                 if (inference.intent == 'confirmPickedQuantity') {
                     callbacks.setStatusText(`Recorded picked ${inference.slots!.quantity}.`);
                     callbacks.setCardValue(cardId, `pick ${inference.slots!.quantity}`);
+                    nextPrompt = "Picking workflow complete.";
                 } else if (inference.intent == 'reportShortPick') {
                     callbacks.setStatusText(`Recorded short pick ${inference.slots!.quantity}.`);
                     callbacks.setCardValue(cardId, `short pick ${inference.slots!.quantity}`);
+                    nextPrompt = "Short pick recorded. " +
+                                 "Picking workflow complete.";
                 } else if (inference.intent == 'reportDamagedItem') {
                     callbacks.setStatusText("Recorded damaged item.");
                     callbacks.setCardValue(cardId, "damaged item");
+                    nextPrompt = "Damaged item recorded. Set it aside. " +
+                                 "Picking workflow complete.";
                 } else {
                     callbacks.setStatusText("Recorded empty location.");
                     callbacks.setCardValue(cardId, "empty location");
+                    nextPrompt = "Empty location recorded. " +
+                                 "Picking workflow complete.";
                 }
 
                 await sleep(500);
 
                 return {
                     outcome: inference,
-                    next: { state: RecipeStates.COMPLETE_PROMPT },
+                    next: {
+                        state: RecipeStates.COMPLETE_PROMPT,
+                        "prompt": nextPrompt
+                    },
                 };
             }
 
             const nextTask = tasks[nextTaskIndex];
 
-            let nextPrompt;
             if (inference.intent == 'confirmPickedQuantity') {
                 callbacks.setStatusText(`Recorded picked ${inference.slots!.quantity}.`);
                 callbacks.setCardValue(cardId, `pick ${inference.slots!.quantity}`);
@@ -516,7 +520,7 @@ class RecipeTaskPickReportState extends State {
 
 class RecipeCompletePromptState extends RecipePromptState {
     async run(
-        prompt: string = "Picking workflow complete.",
+        prompt: string
     ): Promise<Transition> {
         await this.runPrompt(prompt)
         return null;

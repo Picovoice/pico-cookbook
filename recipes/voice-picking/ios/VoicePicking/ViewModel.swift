@@ -793,6 +793,7 @@ class TaskPickReportState: State {
                     ])
                 }
 
+                var nextPrompt: String
                 let nextTaskIndex = taskIndex + 1
 
                 if nextTaskIndex >= tasks.count {
@@ -800,24 +801,32 @@ class TaskPickReportState: State {
                         let quantity = inference.slots["quantity"]!
                         await viewModel.setStatusText(text: "Recorded picked \(quantity)")
                         await viewModel.setCardValue(cardId: cardId, value: "pick \(quantity)")
+                        nextPrompt = "Picking workflow complete."
                     } else if inference.intent == "reportShortPick" {
                         let quantity = inference.slots["quantity"]!
                         await viewModel.setStatusText(text: "Recorded short pick \(quantity)")
                         await viewModel.setCardValue(cardId: cardId, value: "short pick \(quantity)")
+                        nextPrompt = "Short pick recorded. " +
+                                     "Picking workflow complete."
                     } else if inference.intent == "reportDamagedItem" {
                         await viewModel.setStatusText(text: "Recorded damaged item.")
                         await viewModel.setCardValue(cardId: cardId, value: "damaged item")
+                        nextPrompt = "Damaged item recorded. Set it aside. " +
+                                     "Picking workflow complete."
                     } else {
                         await viewModel.setStatusText(text: "Recorded empty location.")
                         await viewModel.setCardValue(cardId: cardId, value: "empty location")
+                        nextPrompt = "Empty location recorded. " +
+                                     "Picking workflow complete."
                     }
 
-                    return Transition(nextState: .COMPLETE_PROMPT, nextStateArgs: [:])
+                    return Transition(nextState: .COMPLETE_PROMPT, nextStateArgs: [
+                        "prompt": nextPrompt
+                    ])
                 }
 
                 let nextTask = tasks[nextTaskIndex]
 
-                var nextPrompt: String
                 if inference.intent == "confirmPickedQuantity" {
                     let quantity = inference.slots["quantity"]!
                     await viewModel.setStatusText(text: "Recorded picked \(quantity)")
