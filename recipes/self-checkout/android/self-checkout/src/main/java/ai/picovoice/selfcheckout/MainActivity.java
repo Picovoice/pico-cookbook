@@ -15,9 +15,6 @@ package ai.picovoice.selfcheckout;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.media.AudioAttributes;
-import android.media.AudioFormat;
-import android.media.AudioTrack;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -36,18 +33,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 import ai.picovoice.android.voiceprocessor.VoiceProcessor;
-import ai.picovoice.android.voiceprocessor.VoiceProcessorException;
-import ai.picovoice.koala.Koala;
-import ai.picovoice.orca.Orca;
-import ai.picovoice.orca.OrcaAudio;
-import ai.picovoice.orca.OrcaSynthesizeParams;
-import ai.picovoice.porcupine.Porcupine;
-import ai.picovoice.rhino.Rhino;
 import ai.picovoice.rhino.RhinoInference;
+
+import ai.picovoice.selfcheckout.Steps.OrcaStep;
+import ai.picovoice.selfcheckout.Steps.PorcupineStep;
+import ai.picovoice.selfcheckout.Steps.RhinoStep;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "PICOVOICE";
@@ -73,19 +65,6 @@ public class MainActivity extends AppCompatActivity {
     private volatile boolean isRunning = false;
 
     private final ArrayList<CardUI> cards = new ArrayList<>();
-
-    interface WorkflowListener {
-        void onInitProgress(String status);
-        void onStatusChanged(String status);
-        void addCard(String title, String contents);
-        void addOptionCard(String title, ArrayList<String> options);
-        void removeCard(int index);
-        void updateCard(int index, String title);
-        void onWorkflowComplete();
-        void onVolumeFrame(short[] frame);
-
-        OrcaStep getOrcaStep();
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -164,23 +143,6 @@ public class MainActivity extends AppCompatActivity {
                 startStatusText.setVisibility(View.GONE);
                 startSpinner.setVisibility(View.GONE);
                 startStatusText.setText("Initialization Failed");
-            }
-        });
-    }
-
-    private void setListeningUI(boolean isListening, String listeningPrompt) {
-        runOnUiThread(() -> {
-            if (!isRunning) {
-                return;
-            }
-            animationContainer.setVisibility(View.VISIBLE);
-            if (isListening) {
-                workflowStatusText.setText(listeningPrompt);
-                volumeMeterView.setVisibility(View.VISIBLE);
-                processingSpinner.setVisibility(View.INVISIBLE);
-            } else {
-                volumeMeterView.setVisibility(View.INVISIBLE);
-                processingSpinner.setVisibility(View.VISIBLE);
             }
         });
     }
@@ -264,16 +226,6 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     @Override
-                    public void updateCard(int index, String title) {
-                        runOnUiThread(() -> {
-                            CardUI activeCard = cards.get(index);
-                            scrollView.smoothScrollTo(0, activeCard.root.getTop());
-
-                            activeCard.valueView.setText(title);
-                        });
-                    }
-
-                    @Override
                     public void onWorkflowComplete() {
                         runOnUiThread(() -> {
                             volumeMeterView.setVisibility(View.INVISIBLE);
@@ -294,8 +246,31 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     @Override
+                    public void setListeningUI(boolean isListening, String listeningPrompt) {
+                        runOnUiThread(() -> {
+                            if (!isRunning) {
+                                return;
+                            }
+                            animationContainer.setVisibility(View.VISIBLE);
+                            if (isListening) {
+                                workflowStatusText.setText(listeningPrompt);
+                                volumeMeterView.setVisibility(View.VISIBLE);
+                                processingSpinner.setVisibility(View.INVISIBLE);
+                            } else {
+                                volumeMeterView.setVisibility(View.INVISIBLE);
+                                processingSpinner.setVisibility(View.VISIBLE);
+                            }
+                        });
+                    }
+
+                    @Override
                     public OrcaStep getOrcaStep() {
                         return workflow.orcaStep;
+                    }
+
+                    @Override
+                    public boolean isRunning() {
+                        return isRunning;
                     }
                 });
 
@@ -374,377 +349,6 @@ public class MainActivity extends AppCompatActivity {
 
             emptyOrderSuggestion.setVisibility(View.VISIBLE);
         });
-    }
-
-    class AINoiseSuppressedRecorder {
-        private final Koala koala;
-        private final LinkedBlockingQueue<short[]> rawFrames = new LinkedBlockingQueue<>();
-        private short[] leftoverBuffer = new short[4096];
-        private int leftoverCount = 0;
-
-        private final int frameLength;
-
-        private final Object lock = new Object();
-        private volatile boolean isSessionActive = false;
-
-        public AINoiseSuppressedRecorder(Context context, WorkflowListener listener) throws Exception {
-            koala = new Koala.Builder()
-                    .setAccessKey(ACCESS_KEY)
-                    .setModelPath(NS_MODEL)
-                    .build(context);
-            frameLength = koala.getFrameLength();
-
-            VoiceProcessor.getInstance().addFrameListener(frame -> {
-                if (isSessionActive) {
-                    rawFrames.offer(frame);
-                    listener.onVolumeFrame(frame);
-                }
-            });
-        }
-
-        public void start() throws Exception {
-            synchronized (lock) {
-                if (isSessionActive) {
-                    Log.w(TAG, "Recorder is already running. Ignoring start request.");
-                    return;
-                }
-                rawFrames.clear();
-                leftoverCount = 0;
-                koala.reset();
-                isSessionActive = true;
-                VoiceProcessor.getInstance().start(frameLength, koala.getSampleRate());
-            }
-        }
-
-        public void stop() throws VoiceProcessorException {
-            synchronized (lock) {
-                isSessionActive = false;
-                VoiceProcessor.getInstance().stop();
-                rawFrames.clear();
-            }
-        }
-
-        public short[] read(int numSamples) throws Exception {
-            short[] result = new short[numSamples];
-            int resultIndex = 0;
-
-            synchronized (lock) {
-                if (!isSessionActive) {
-                    return null;
-                }
-
-                int numFromBuffer = Math.min(numSamples, leftoverCount);
-                if (numFromBuffer > 0) {
-                    System.arraycopy(leftoverBuffer, 0, result, 0, numFromBuffer);
-                    resultIndex += numFromBuffer;
-                    leftoverCount -= numFromBuffer;
-
-                    if (leftoverCount > 0) {
-                        System.arraycopy(leftoverBuffer, numFromBuffer, leftoverBuffer, 0, leftoverCount);
-                    }
-                }
-            }
-
-            while (resultIndex < numSamples && isSessionActive) {
-                short[] raw = rawFrames.poll(50, TimeUnit.MILLISECONDS);
-                if (raw == null) {
-                    continue;
-                }
-
-                synchronized (lock) {
-                    if (!isSessionActive) {
-                        return null;
-                    }
-
-                    short[] enhanced = koala.process(raw);
-                    int remaining = numSamples - resultIndex;
-                    int toCopy = Math.min(enhanced.length, remaining);
-
-                    System.arraycopy(enhanced, 0, result, resultIndex, toCopy);
-                    resultIndex += toCopy;
-
-                    if (enhanced.length > remaining) {
-                        int excess = enhanced.length - remaining;
-
-                        if (leftoverCount + excess > leftoverBuffer.length) {
-                            short[] newBuffer = new short[(leftoverCount + excess) * 2];
-                            System.arraycopy(leftoverBuffer, 0, newBuffer, 0, leftoverCount);
-                            leftoverBuffer = newBuffer;
-                        }
-
-                        System.arraycopy(enhanced, remaining, leftoverBuffer, leftoverCount, excess);
-                        leftoverCount += excess;
-                    }
-                }
-            }
-
-            if (!isSessionActive) {
-                return null;
-            }
-
-            return result;
-        }
-
-        public void delete() {
-            try {
-                stop();
-            } catch (VoiceProcessorException e) {
-                Log.e(TAG, "Failed to stop VoiceProcessor during cleanup", e);
-            }
-
-            synchronized (lock) {
-                if (koala != null) {
-                    koala.delete();
-                }
-            }
-        }
-    }
-
-    static class PvSpeaker {
-        private final AudioTrack audioTrack;
-        private int writtenSamples;
-
-        public PvSpeaker(int sampleRate) {
-            AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build();
-
-            AudioFormat audioFormat = new AudioFormat.Builder()
-                    .setSampleRate(sampleRate)
-                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                    .build();
-
-            audioTrack = new AudioTrack(
-                    audioAttributes,
-                    audioFormat,
-                    AudioTrack.getMinBufferSize(
-                            sampleRate,
-                            AudioFormat.CHANNEL_OUT_MONO,
-                            AudioFormat.ENCODING_PCM_16BIT),
-                    AudioTrack.MODE_STREAM,
-                    0);
-
-            writtenSamples = 0;
-        }
-
-        public void play(short[] pcm, Predicate isRunning) {
-            audioTrack.play();
-
-            int samplesWritten = 0;
-            while ((samplesWritten < pcm.length) && isRunning.call()) {
-                samplesWritten += audioTrack.write(
-                        pcm,
-                        samplesWritten,
-                        pcm.length - samplesWritten,
-                        AudioTrack.WRITE_NON_BLOCKING);
-                this.writtenSamples = samplesWritten;
-            }
-        }
-
-        public void stop() {
-            audioTrack.stop();
-            writtenSamples = 0;
-        }
-
-        public boolean isPlaying() {
-            return audioTrack.getPlaybackHeadPosition() < this.writtenSamples;
-        }
-
-        public void delete() {
-            this.stop();
-            audioTrack.release();
-        }
-    }
-
-    abstract class Step {
-        protected AINoiseSuppressedRecorder recorder;
-        protected WorkflowListener listener;
-        public Step(AINoiseSuppressedRecorder recorder, WorkflowListener listener) {
-            this.recorder = recorder;
-            this.listener = listener;
-        }
-        public abstract void delete();
-    }
-
-    class PorcupineStep extends Step {
-        private final Porcupine porcupine;
-
-        public PorcupineStep(
-                Context context,
-                AINoiseSuppressedRecorder r,
-                WorkflowListener listener) throws Exception {
-            super(r, listener);
-            porcupine = new Porcupine.Builder()
-                    .setAccessKey(ACCESS_KEY)
-                    .setKeywordPath(KEYWORD_MODEL)
-                    .build(context);
-        }
-
-        public void run(String listeningPrompt) throws Exception {
-            recorder.start();
-            setListeningUI(true, listeningPrompt);
-            boolean isDetected = false;
-            while (!isDetected && isRunning) {
-                short[] frame = recorder.read(porcupine.getFrameLength());
-                if (frame != null && frame.length == porcupine.getFrameLength()) {
-                    isDetected = porcupine.process(frame) == 0;
-                }
-            }
-            setListeningUI(false, listeningPrompt);
-            recorder.stop();
-        }
-
-        public void delete() {
-            if (porcupine != null) {
-                porcupine.delete();
-            }
-        }
-    }
-
-    class OrcaStep extends Step {
-        private final Orca orca;
-        private final PvSpeaker speaker;
-
-        public float volume;
-        public float speed;
-        public String lastPrompt;
-
-        public OrcaStep(
-                Context context,
-                AINoiseSuppressedRecorder r,
-                WorkflowListener listener) throws Exception {
-            super(r, listener);
-            orca = new Orca.Builder()
-                    .setAccessKey(ACCESS_KEY)
-                    .setModelPath(TTS_MODEL)
-                    .build(context);
-            speaker = new PvSpeaker(orca.getSampleRate());
-
-            volume = 1.0f;
-            speed = 1.0f;
-            lastPrompt = "There is nothing to repeat.";
-        }
-
-        public void run(String prompt) throws Exception {
-            OrcaSynthesizeParams params = new OrcaSynthesizeParams.Builder()
-                    .setSpeechRate(Math.min(Math.max(speed, 0.7f), 1.3f))
-                    .build();
-
-            volume = Math.max(Math.min(volume, 100.0f), 0.0f);
-
-            OrcaAudio res = orca.synthesize(prompt, params);
-
-            short[] pcm = res.getPcm();
-            for (int i = 0; i < pcm.length; i++) {
-                int s16Max = (1 << 15) - 1;
-                int s16Min = -(1 << 15);
-                pcm[i] = (short) Math.max(Math.min((int) (pcm[i] * volume), s16Max), s16Min);
-            }
-
-            speaker.play(pcm, () -> isRunning);
-
-            while (isRunning && speaker.isPlaying()) {
-                Thread.sleep(5);
-            }
-
-            speaker.stop();
-            lastPrompt = prompt;
-        }
-
-        public void repeatLast() throws Exception {
-            listener.onStatusChanged(lastPrompt);
-            this.run(lastPrompt);
-        }
-
-        public void delete() {
-            if (speaker != null) {
-                speaker.delete();
-            }
-            if (orca != null) {
-                orca.delete();
-            }
-        }
-    }
-
-    private static float rms(short[] frame) {
-        float total = 0.0f;
-        for (short sample : frame) {
-            total += (sample / 32768.0f) * (sample / 32768.0f);
-        }
-
-        return (float) Math.sqrt(total / frame.length);
-    }
-
-    class RhinoStep extends Step {
-        private final Rhino rhino;
-
-        public RhinoStep(
-                Context context,
-                AINoiseSuppressedRecorder r,
-                WorkflowListener listener) throws Exception {
-            super(r, listener);
-            rhino = new Rhino.Builder()
-                    .setAccessKey(ACCESS_KEY)
-                    .setContextPath(CONTEXT_MODEL)
-                    .setEndpointDurationSec(0.5f)
-                    .setRequireEndpoint(true)
-                    .build(context);
-        }
-
-        /// Returns null on timeout
-        public RhinoInference run(
-                String listeningPrompt,
-                boolean checkForSilence,
-                long[] silenceStart,
-                long silenceTimeout,
-                float volumeThreshold) throws Exception {
-            recorder.start();
-            setListeningUI(true, listeningPrompt);
-
-            boolean isFinalized = false;
-
-            if (checkForSilence) {
-                long runningSilenceStart = silenceStart[0];
-
-                while (!isFinalized && isRunning) {
-                    short[] frame = recorder.read(rhino.getFrameLength());
-
-                    if (frame != null && frame.length == rhino.getFrameLength()) {
-                        float volume = rms(frame);
-                        if (volume > volumeThreshold) {
-                            runningSilenceStart = System.currentTimeMillis();
-                        } else if ((System.currentTimeMillis() - runningSilenceStart) > silenceTimeout) {
-                            setListeningUI(false, listeningPrompt);
-                            recorder.stop();
-                            return null;
-                        }
-
-                        isFinalized = rhino.process(frame);
-                    }
-                }
-
-                silenceStart[0] = runningSilenceStart;
-            } else {
-                while (!isFinalized && isRunning) {
-                    short[] frame = recorder.read(rhino.getFrameLength());
-                    if (frame != null && frame.length == rhino.getFrameLength()) {
-                        isFinalized = rhino.process(frame);
-                    }
-                }
-            }
-
-            setListeningUI(false, listeningPrompt);
-            recorder.stop();
-            return isRunning ? rhino.getInference() : null;
-        }
-
-        public void delete() {
-            if (rhino != null) {
-                rhino.delete();
-            }
-        }
     }
 
     static class Product {
@@ -1476,16 +1080,16 @@ public class MainActivity extends AppCompatActivity {
             this.listener = listener;
 
             listener.onInitProgress("Loading Koala Noise Suppression...");
-            recorder = new AINoiseSuppressedRecorder(context, listener);
+            recorder = new AINoiseSuppressedRecorder(context, listener, ACCESS_KEY, NS_MODEL);
 
             listener.onInitProgress("Loading Porcupine Wake Word...");
-            porcupineStep = new PorcupineStep(context, recorder, listener);
+            porcupineStep = new PorcupineStep(context, recorder, listener, ACCESS_KEY, KEYWORD_MODEL);
 
             listener.onInitProgress("Loading Orca Text-to-Speech...");
-            orcaStep = new OrcaStep(context, recorder, listener);
+            orcaStep = new OrcaStep(context, recorder, listener, ACCESS_KEY, TTS_MODEL);
 
             listener.onInitProgress("Loading Rhino Speech-to-Intent...");
-            rhinoStep = new RhinoStep(context, recorder, listener);
+            rhinoStep = new RhinoStep(context, recorder, listener, ACCESS_KEY, CONTEXT_MODEL);
 
             buildStates();
         }
