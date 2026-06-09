@@ -26,41 +26,41 @@ class CardUI {
     TextView valueView;
 
     public static CardUI create(LayoutInflater inflater, LinearLayout container, String title, String contents) {
-        View theroot;
-        theroot = inflater.inflate(R.layout.item_report_card, container, false);
+        View root;
+        root = inflater.inflate(R.layout.item_report_card, container, false);
 
         CardUI card = new CardUI();
-        card.root = theroot;
-        card.leftContainer = theroot;
+        card.root = root;
+        card.leftContainer = root;
 
-        card.titleView = theroot.findViewById(R.id.cardTitle);
+        card.titleView = root.findViewById(R.id.cardTitle);
         card.titleView.setText(title);
 
-        card.valueView = theroot.findViewById(R.id.cardValue);
+        card.valueView = root.findViewById(R.id.cardValue);
         card.valueView.setText(contents);
 
-        container.addView(theroot);
+        container.addView(root);
         return card;
     }
 
     public static CardUI fromOptions(LayoutInflater inflater, LinearLayout container, String title, ArrayList<String> options) {
-        View theroot;
-        theroot = inflater.inflate(R.layout.item_report_card_options, container, false);
+        View root;
+        root = inflater.inflate(R.layout.item_report_card_options, container, false);
 
         CardUI card = new CardUI();
-        card.root = theroot;
-        card.leftContainer = theroot;
-        card.titleView = theroot.findViewById(R.id.cardTitle);
+        card.root = root;
+        card.leftContainer = root;
+        card.titleView = root.findViewById(R.id.cardTitle);
         card.titleView.setText(title);
 
-        card.valueView = theroot.findViewById(R.id.cardValue);
+        card.valueView = root.findViewById(R.id.cardValue);
         String optionsStr = "";
         for (String option : options) {
             optionsStr += (optionsStr.length() == 0) ? option : (", " + option);
         }
         card.valueView.setText(optionsStr);
 
-        container.addView(theroot);
+        container.addView(root);
         return card;
     }
 }

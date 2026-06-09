@@ -137,7 +137,7 @@
                 android:textAlignment="center"
                 android:textColor="#7F8C8D"
                 android:textSize="16sp"
-                android:textStyle="italic" />
+                android:textStyle="normal" />
 
             <FrameLayout
                 android:id="@+id/animationContainer"

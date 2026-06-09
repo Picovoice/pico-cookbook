@@ -1012,16 +1012,15 @@ public class MainActivity extends AppCompatActivity {
             int nextItemIndex = (int) args.get("nextItemIndex");
             ArrayList<Product> cart = (ArrayList<Product>) args.get("cart");
 
-            setListeningUI(
-                    false,
-                    "** Scan item **\n"
-                    + "** Remove (last item) **\n"
-                    + "** (What's) my total **\n"
-                    + "** Start over **\n"
-                    + "** Checkout (now) **");
+            String prompt =
+                    "Scan item\n"
+                    + "Remove (last item)\n"
+                    + "(What's) my total\n"
+                    + "Start over\n"
+                    + "Checkout (now)";
 
             while (isRunning) {
-                RhinoInference inference = step.run("Listening...", false, new long[]{ 0 }, 0, 0.0f);
+                RhinoInference inference = step.run(prompt, false, new long[]{ 0 }, 0, 0.0f);
 
                 if (inference == null) {
                     return new Transition(null);
@@ -1080,6 +1079,9 @@ public class MainActivity extends AppCompatActivity {
                     return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
 
                 } else if (inference.getIntent().equals("startOver")) {
+                    cart = new ArrayList<Product>();
+                    resetReportCards();
+
                     Map<String, Object> nextArgs = new HashMap<>();
                     nextArgs.put("nextItemIndex", nextItemIndex);
                     nextArgs.put("cart", cart);
@@ -1339,6 +1341,7 @@ public class MainActivity extends AppCompatActivity {
 
                     Map<String, Object> nextNextArgs = new HashMap<>();
                     nextNextArgs.put("checkoutSuccessful", true);
+                    nextArgs.put("nextArgs", nextNextArgs);
 
                     return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
 
