@@ -12,4 +12,5 @@ and structured intent capture for cart management commands.
 
 ## Implementations
 
+- [Android](android)
 - [Python](python)

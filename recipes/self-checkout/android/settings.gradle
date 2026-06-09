@@ -1,0 +1,2 @@
+rootProject.name = "SelfCheckout"
+include ':self-checkout'
