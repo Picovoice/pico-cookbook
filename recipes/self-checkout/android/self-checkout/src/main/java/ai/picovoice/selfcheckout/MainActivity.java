@@ -34,6 +34,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -59,19 +60,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String TTS_MODEL = "orca_params_en_female.pv";
     private static final String NS_MODEL = "koala_params.pv";
 
-    private static final int INACTIVE_COLOUR = Color.parseColor("#7f8c8d");
-    private static final int ACTIVE_COLOUR = Color.parseColor("#377dff");
-
-    static class Pair<A, B> {
-        public A first;
-        public B second;
-
-        public Pair(A first, B second) {
-            this.first = first;
-            this.second = second;
-        }
-    }
-
     private LinearLayout startScreen, workflowScreen, reportContainer, errorView;
     private TextView startStatusText, workflowStatusText, errorText;
     private Button btnStart, btnCancel;
@@ -95,6 +83,8 @@ public class MainActivity extends AppCompatActivity {
         void updateCard(int index, String title);
         void onWorkflowComplete();
         void onVolumeFrame(short[] frame);
+
+        OrcaStep getOrcaStep();
     }
 
     @Override
@@ -291,6 +281,12 @@ public class MainActivity extends AppCompatActivity {
                     public void onVolumeFrame(short[] frame) {
                         runOnUiThread(() -> volumeMeterView.processFrame(frame));
                     }
+
+                    @Override
+                    public OrcaStep getOrcaStep() {
+                        return workflow.orcaStep;
+                    }
+
                 });
                 runOnUiThread(() -> {
                     btnStart.setVisibility(View.VISIBLE);
@@ -513,11 +509,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @FunctionalInterface
-    interface Predicate {
-        boolean call();
-    }
-
     static class PvSpeaker {
         private final AudioTrack audioTrack;
         private int writtenSamples;
@@ -630,17 +621,17 @@ public class MainActivity extends AppCompatActivity {
                     .build(context);
             speaker = new PvSpeaker(orca.getSampleRate());
 
-            volume = 1.0;
-            speed = 1.0;
+            volume = 1.0f;
+            speed = 1.0f;
             lastPrompt = "There is nothing to repeat.";
         }
 
         public void run(String prompt) throws Exception {
             OrcaSynthesizeParams params = new OrcaSynthesizeParams.Builder()
-                    .setSpeechRate(Math.min(Math.max(self.speed, 0.7f), 1.3f))
+                    .setSpeechRate(Math.min(Math.max(speed, 0.7f), 1.3f))
                     .build();
 
-            volume = Math.max(Math.min(self.volume, 100.0f), 0.0f);
+            volume = Math.max(Math.min(volume, 100.0f), 0.0f);
 
             OrcaAudio res = orca.synthesize(prompt, params);
 
@@ -648,7 +639,7 @@ public class MainActivity extends AppCompatActivity {
             for (int i = 0; i < pcm.length; i++) {
                 int s16Max = (1 << 15) - 1;
                 int s16Min = -(1 << 15);
-                pcm[i] = (short) Math.max(Math.min((int) (pcm[i] * self.volume), s16Max), s16Min);
+                pcm[i] = (short) Math.max(Math.min((int) (pcm[i] * volume), s16Max), s16Min);
             }
 
             speaker.play(pcm, () -> isRunning);
@@ -661,7 +652,7 @@ public class MainActivity extends AppCompatActivity {
             lastPrompt = prompt;
         }
 
-        public void repeatLast() {
+        public void repeatLast() throws Exception {
             this.run(lastPrompt);
         }
 
@@ -763,12 +754,12 @@ public class MainActivity extends AppCompatActivity {
 
     ArrayList<Product> SHOPPING_CART = new ArrayList(
         Arrays.asList(
-            new Product("Great Value Dark Chocolate Bar, 3.52 oz", 1.00),
-            new Product("SunChips Whole Grain Snacks, Original, 7 oz", 3.68),
-            new Product("V8 +ENERGY Pomegranate Blueberry Energy Drink, 8 oz Can (Pack of 12)", 9.38),
-            new Product("Alcatel Alcatel One Touch Idol 3, 16GB Unlocked Smartphone, Black", 99.47),
-            new Product("Impossible Plant Based Ground, Brick, 12oz", 5.96),
-            new Product("Fresh Cravings Roasted Red Pepper Hummus 10oz", 2.67),
+            new Product("Great Value Dark Chocolate Bar, 3.52 oz", 1.00f),
+            new Product("SunChips Whole Grain Snacks, Original, 7 oz", 3.68f),
+            new Product("V8 +ENERGY Pomegranate Blueberry Energy Drink, 8 oz Can (Pack of 12)", 9.38f),
+            new Product("Alcatel Alcatel One Touch Idol 3, 16GB Unlocked Smartphone, Black", 99.47f),
+            new Product("Impossible Plant Based Ground, Brick, 12oz", 5.96f),
+            new Product("Fresh Cravings Roasted Red Pepper Hummus 10oz", 2.67f)
         )
     );
 
@@ -783,7 +774,17 @@ public class MainActivity extends AppCompatActivity {
             OrcaStep orcaStep,
             int nextItemIndex,
             ArrayList<Product> cart,
-            State nextNextState,
+            RecipeStates nextNextState) {
+        Map<String, Object> nextNextArgs = new HashMap<>();
+        return parseAccessibilityIntent(intent, orcaStep, nextItemIndex, cart, nextNextState, nextNextArgs);
+    }
+
+    Transition parseAccessibilityIntent(
+            String intent,
+            OrcaStep orcaStep,
+            int nextItemIndex,
+            ArrayList<Product> cart,
+            RecipeStates nextNextState,
             Map<String, Object> nextNextArgs) {
         if (intent.equals("speedUp")) {
             if (orcaStep.speed < MAX_ORCA_SPEED) {
@@ -807,7 +808,7 @@ public class MainActivity extends AppCompatActivity {
             }
         } else if (intent.equals("slowDown")) {
             if (orcaStep.speed > MIN_ORCA_SPEED) {
-                orcaStep.speed = Math.max(orca_step.speed - 0.3f, MIN_ORCA_SPEED);
+                orcaStep.speed = Math.max(orcaStep.speed - 0.3f, MIN_ORCA_SPEED);
 
                 Map<String, Object> nextArgs = new HashMap<>();
                 nextArgs.put("nextItemIndex", nextItemIndex);
@@ -876,7 +877,7 @@ public class MainActivity extends AppCompatActivity {
                 return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
             }
         } else if (intent.equals("normalVolume")) {
-            orcaStep.volume = 1.0;
+            orcaStep.volume = 1.0f;
 
             Map<String, Object> nextArgs = new HashMap<>();
             nextArgs.put("nextItemIndex", nextItemIndex);
@@ -947,7 +948,7 @@ public class MainActivity extends AppCompatActivity {
     class Standby extends State {
         private final PorcupineStep step;
 
-        public StandbyState(WorkflowListener listener, PorcupineStep step) {
+        public Standby(WorkflowListener listener, PorcupineStep step) {
             super(listener);
             this.step = step;
         }
@@ -1011,7 +1012,7 @@ public class MainActivity extends AppCompatActivity {
                     + "** Checkout (now) **");
 
             while (isRunning) {
-                RhinoInference inference = step.run("Listening for order...", false, { 0 }, 0.0f, 0.0f);
+                RhinoInference inference = step.run("Listening for order...", false, new long[]{ 0 }, 0, 0.0f);
 
                 if (inference == null) {
                     return new Transition(null);
@@ -1045,12 +1046,12 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     ArrayList<Product> newCart = new ArrayList<Product>(cart);
-                    newCart.remove(list.size() - 1);
+                    newCart.remove(cart.size() - 1);
 
                     Map<String, Object> nextArgs = new HashMap<>();
                     nextArgs.put("nextItemIndex", nextItemIndex - 1);
                     nextArgs.put("cart", newCart);
-                    nextArgs.put("prompt", String.format("Removed %s from scanned items.", cart[cart.size() - 1].name));
+                    nextArgs.put("prompt", String.format("Removed %s from scanned items.", cart.get(cart.size() - 1).name));
                     nextArgs.put("nextState", RecipeStates.LISTEN_COMMAND);
                     return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
 
@@ -1094,7 +1095,7 @@ public class MainActivity extends AppCompatActivity {
 
                 Transition maybeTransition = parseAccessibilityIntent(
                         inference.getIntent(),
-                        this.step,
+                        listener.getOrcaStep(),
                         nextItemIndex,
                         cart,
                         RecipeStates.LISTEN_COMMAND);
@@ -1108,7 +1109,7 @@ public class MainActivity extends AppCompatActivity {
     class ScanItemPrompt extends State {
         OrcaStep step;
 
-        public WelcomePrompt(WorkflowListener listener, OrcaStep step) {
+        public ScanItemPrompt(WorkflowListener listener, OrcaStep step) {
             super(listener);
             this.step = step;
         }
@@ -1116,6 +1117,7 @@ public class MainActivity extends AppCompatActivity {
         public Transition run(Map<String, Object> args) throws Exception {
             int nextItemIndex = (int) args.get("nextItemIndex");
             ArrayList<Product> cart = (ArrayList<Product>) args.get("cart");
+            Product item = cart.get(nextItemIndex);
 
             step.run(String.format("Scanned: %s. Price: %.2f.", item.name, item.price));
 
@@ -1132,7 +1134,7 @@ public class MainActivity extends AppCompatActivity {
     class DecideOnBagging extends State {
         RhinoStep step;
 
-        public ListenCommand(WorkflowListener listener, RhinoStep step) {
+        public DecideOnBagging(WorkflowListener listener, RhinoStep step) {
             super(listener);
             this.step = step;
         }
@@ -1160,12 +1162,12 @@ public class MainActivity extends AppCompatActivity {
             }
 
             while (isRunning) {
-                RhinoInference inference = step.run("Listening...", false, { 0 }, 0.0f, 0.0f);
+                RhinoInference inference = step.run("Listening...", false, new long[]{ 0 }, 0, 0.0f);
 
                 boolean understood = inference.getIsUnderstood();
                 if (understood && inference.getIntent().equals("confirmation")) {
                     ArrayList<Product> newCart = new ArrayList<Product>(cart);
-                    newCart.add(Product("Plastic bag", 0.5));
+                    newCart.add(new Product("Plastic bag", 0.5f));
 
                     Map<String, Object> nextArgs = new HashMap<>();
                     nextArgs.put("nextItemIndex", nextItemIndex);
@@ -1191,7 +1193,7 @@ public class MainActivity extends AppCompatActivity {
 
                 Transition maybeTransition = parseAccessibilityIntent(
                         inference.getIntent(),
-                        this.step,
+                        listener.getOrcaStep(),
                         nextItemIndex,
                         cart,
                         RecipeStates.LISTEN_COMMAND);
@@ -1205,7 +1207,7 @@ public class MainActivity extends AppCompatActivity {
     class ListItemsPrompt extends State {
         OrcaStep step;
 
-        public WelcomePrompt(WorkflowListener listener, OrcaStep step) {
+        public ListItemsPrompt(WorkflowListener listener, OrcaStep step) {
             super(listener);
             this.step = step;
         }
@@ -1220,7 +1222,7 @@ public class MainActivity extends AppCompatActivity {
                 String plural = cart.size() != 1 ? "s" : "";
                 step.run(String.format("Your cart has %d item%s", cart.size(), plural));
 
-                for (int i = 0; in enumerate(cart)) {
+                for (int i = 0; i < cart.size(); i++) {
                     Product item = cart.get(i);
                     step.run(String.format("Item %d. %s at $%.2f", i+1, item.name, item.price));
                 }
@@ -1234,8 +1236,8 @@ public class MainActivity extends AppCompatActivity {
             }
 
             Map<String, Object> nextArgs = new HashMap<>();
-            nextArgs.put("nextItemIndex", nextItemIndex + 1);
-            nextArgs.put("cart", newCart);
+            nextArgs.put("nextItemIndex", nextItemIndex);
+            nextArgs.put("cart", cart);
             return new Transition(RecipeStates.SELECT_PAYMENT_METHOD, nextArgs);
         }
     }
@@ -1284,13 +1286,10 @@ public class MainActivity extends AppCompatActivity {
             listener.addOptionCard(PAYMENT_METHODS);
 
             while (isRunning) {
-                RhinoInference inference = step.run("Listening...", false, { 0 }, 0.0f, 0.0f);
+                RhinoInference inference = step.run("Listening...", false, new long[]{ 0 }, 0, 0.0f);
 
                 boolean understood = inference.getIsUnderstood();
                 if (understood && inference.getIntent().equals("choosePayment")) {
-                    ArrayList<Product> newCart = new ArrayList<Product>(cart);
-                    newCart.add(Product("Plastic bag", 0.5));
-
                     String paymentMethod = inference.getSlots().get("payment");
                     String paymentMethodCapitalized = paymentMethod.charAt(0) + paymentMethod.substring(1);
 
@@ -1316,7 +1315,7 @@ public class MainActivity extends AppCompatActivity {
 
                 Transition maybeTransition = parseAccessibilityIntent(
                         inference.getIntent(),
-                        this.step,
+                        listener.getOrcaStep(),
                         nextItemIndex,
                         cart,
                         RecipeStates.LISTEN_COMMAND);
@@ -1341,8 +1340,31 @@ public class MainActivity extends AppCompatActivity {
             RecipeStates nextState = (RecipeStates) args.get("nextState");
             Map<String, Object> nextArgs = (Map<String, Object>) args.get("nextArgs");
 
-            // TODO: implement this step
             step.repeatLast();
+
+            nextArgs.put("nextItemIndex", nextItemIndex);
+            nextArgs.put("cart", cart);
+            return new Transition(nextState, nextArgs);
+        }
+    }
+
+    class SpeakPrompt extends State {
+        OrcaStep step;
+
+        public SpeakPrompt(WorkflowListener listener, OrcaStep step) {
+            super(listener);
+            this.step = step;
+        }
+
+        @Override
+        public Transition run(Map<String, Object> args) throws Exception {
+            int nextItemIndex = (int) args.get("nextItemIndex");
+            ArrayList<Product> cart = (ArrayList<Product>) args.get("cart");
+            String prompt = (String) args.get("prompt");
+            RecipeStates nextState = (RecipeStates) args.get("nextState");
+            Map<String, Object> nextArgs = (Map<String, Object>) args.get("cart");
+
+            step.run(prompt);
 
             nextArgs.put("nextItemIndex", nextItemIndex);
             nextArgs.put("cart", cart);
@@ -1366,7 +1388,7 @@ public class MainActivity extends AppCompatActivity {
                     : ((boolean) args.get("checkoutSuccessful"));
 
             if (checkoutSuccessful) {
-                float total = 0.0;
+                float total = 0.0f;
                 for (Product item : cart) {
                     total += item.price;
                 }
@@ -1421,7 +1443,7 @@ public class MainActivity extends AppCompatActivity {
             states.put(RecipeStates.LIST_ITEMS_PROMPT, new ListItemsPrompt(listener, orcaStep));
             states.put(RecipeStates.REPEAT_LAST_PROMPT, new RepeatLastPrompt(listener, orcaStep));
             states.put(RecipeStates.SPEAK_PROMPT, new SpeakPrompt(listener, orcaStep));
-            states.put(RecipeStates.CHECKOUT_COMPLETE_PROMPT, new CheckoutCompletePrompt(listener, orcaStep));
+            states.put(RecipeStates.CHECKOUT_COMPLETE_PROMPT, new CheckoutComplete(listener, orcaStep));
         }
 
         public void run() throws Exception {
