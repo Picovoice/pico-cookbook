@@ -21,6 +21,7 @@ import android.media.AudioFormat;
 import android.media.AudioTrack;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -79,6 +80,7 @@ public class MainActivity extends AppCompatActivity {
         void onInitProgress(String status);
         void onStatusChanged(String status);
         void addCard(String title);
+        void addOptionCard(String title, ArrayList<String> options);
         void removeCard(int index);
         void updateCard(int index, String title);
         void onWorkflowComplete();
@@ -193,6 +195,17 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void scrollToBottom() {
+        CardUI activeCard = cards.get(cards.size() - 1);
+        View parent = (View) findViewById(R.id.reportContainer).getParent();
+        if (parent instanceof android.widget.ScrollView) {
+            android.widget.ScrollView sv = (android.widget.ScrollView) parent;
+            sv.post(() -> {
+                sv.smoothScrollTo(0, activeCard.root.getTop() - 32);
+            });
+        }
+    }
+
     private void preloadDemo() {
         errorView.setVisibility(View.GONE);
         btnStart.setVisibility(View.INVISIBLE);
@@ -220,16 +233,20 @@ public class MainActivity extends AppCompatActivity {
                                 toggleEmptyOrderSuggestion();
                             }
 
-                            cards.add(createCard(title));
+                            cards.add(CardUI.create(getLayoutInflater(), reportContainer, title));
+                            scrollToBottom();
+                        });
+                    }
 
-                            CardUI activeCard = cards.get(cards.size() - 1);
-                            View parent = (View) findViewById(R.id.reportContainer).getParent();
-                            if (parent instanceof android.widget.ScrollView) {
-                                android.widget.ScrollView sv = (android.widget.ScrollView) parent;
-                                sv.post(() -> {
-                                    sv.smoothScrollTo(0, activeCard.root.getTop() - 32);
-                                });
+                    @Override
+                    public void addOptionCard(String title, ArrayList<String> options) {
+                        runOnUiThread(() -> {
+                            if (cards.size() == 0) {
+                                toggleEmptyOrderSuggestion();
                             }
+
+                            cards.add(CardUI.fromOptions(getLayoutInflater(), reportContainer, title, options));
+                            scrollToBottom();
                         });
                     }
 
@@ -239,14 +256,12 @@ public class MainActivity extends AppCompatActivity {
                             CardUI activeCard = cards.get(index);
                             scrollView.smoothScrollTo(0, activeCard.root.getTop());
 
-                            runOnUiThread(() -> {
-                                cards.remove(index);
-                                reportContainer.removeViewAt(index);
+                            cards.remove(index);
+                            reportContainer.removeViewAt(index);
 
-                                if (cards.size() == 0) {
-                                    toggleEmptyOrderSuggestion();
-                                }
-                            });
+                            if (cards.size() == 0) {
+                                toggleEmptyOrderSuggestion();
+                            }
                         });
                     }
 
@@ -256,9 +271,7 @@ public class MainActivity extends AppCompatActivity {
                             CardUI activeCard = cards.get(index);
                             scrollView.smoothScrollTo(0, activeCard.root.getTop());
 
-                            runOnUiThread(() -> {
-                                activeCard.valueView.setText(title);
-                            });
+                            activeCard.valueView.setText(title);
                         });
                     }
 
@@ -286,8 +299,8 @@ public class MainActivity extends AppCompatActivity {
                     public OrcaStep getOrcaStep() {
                         return workflow.orcaStep;
                     }
-
                 });
+
                 runOnUiThread(() -> {
                     btnStart.setVisibility(View.VISIBLE);
                     startSpinner.setVisibility(View.GONE);
@@ -356,12 +369,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    class CardUI {
-        View root;
-        View leftContainer;
-        TextView valueView;
-    }
-
     private void resetReportCards() {
         runOnUiThread(() -> {
             reportContainer.removeAllViews();
@@ -369,20 +376,6 @@ public class MainActivity extends AppCompatActivity {
 
             emptyOrderSuggestion.setVisibility(View.VISIBLE);
         });
-    }
-
-    private CardUI createCard(String title) {
-        View root;
-        root = getLayoutInflater().inflate(R.layout.item_report_card, reportContainer, false);
-
-        CardUI card = new CardUI();
-        card.root = root;
-        card.leftContainer = root;
-        card.valueView = root.findViewById(R.id.cardValue);
-        card.valueView.setText(title);
-
-        reportContainer.addView(root);
-        return card;
     }
 
     class AINoiseSuppressedRecorder {
@@ -1103,6 +1096,8 @@ public class MainActivity extends AppCompatActivity {
                     return maybeTransition;
                 }
             }
+
+            return new Transition(null);
         }
     }
 
@@ -1201,6 +1196,8 @@ public class MainActivity extends AppCompatActivity {
                     return maybeTransition;
                 }
             }
+            
+            return new Transition(null);
         }
     }
 
@@ -1282,8 +1279,7 @@ public class MainActivity extends AppCompatActivity {
                 return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
             }
 
-            // TODO: display a special card with no outline & some options, to denote that this is question
-            listener.addOptionCard(PAYMENT_METHODS);
+            listener.addOptionCard("Payment Methods", PAYMENT_METHODS);
 
             while (isRunning) {
                 RhinoInference inference = step.run("Listening...", false, new long[]{ 0 }, 0, 0.0f);
@@ -1323,6 +1319,8 @@ public class MainActivity extends AppCompatActivity {
                     return maybeTransition;
                 }
             }
+
+            return new Transition(null);
         }
     }
 
