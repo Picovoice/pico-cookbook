@@ -46,6 +46,11 @@ import ai.picovoice.foodordering.Steps.PorcupineStep;
 import ai.picovoice.foodordering.Steps.RhinoStep;
 import ai.picovoice.foodordering.WorkflowListener;
 import ai.picovoice.foodordering.Pair;
+import ai.picovoice.foodordering.CardUI;
+import ai.picovoice.foodordering.Order.OrderChange;
+import ai.picovoice.foodordering.Order.OrderItem;
+import ai.picovoice.foodordering.Order.MenuItem;
+import ai.picovoice.foodordering.Order.ComboItem;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "PICOVOICE";
@@ -191,7 +196,7 @@ public class MainActivity extends AppCompatActivity {
                                 toggleEmptyOrderSuggestion();
                             }
 
-                            cards.add(createCard(title));
+                            cards.add(CardUI.create(getLayoutInflater(), reportContainer, title));
 
                             CardUI activeCard = cards.get(cards.size() - 1);
                             View parent = (View) findViewById(R.id.reportContainer).getParent();
@@ -341,12 +346,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    class CardUI {
-        View root;
-        View leftContainer;
-        TextView valueView;
-    }
-
     private void resetReportCards() {
         runOnUiThread(() -> {
             reportContainer.removeAllViews();
@@ -354,159 +353,6 @@ public class MainActivity extends AppCompatActivity {
 
             emptyOrderSuggestion.setVisibility(View.VISIBLE);
         });
-    }
-
-    private CardUI createCard(String title) {
-        View root;
-        root = getLayoutInflater().inflate(R.layout.item_report_card, reportContainer, false);
-
-        CardUI card = new CardUI();
-        card.root = root;
-        card.leftContainer = root;
-        card.valueView = root.findViewById(R.id.cardValue);
-        card.valueView.setText(title);
-
-        reportContainer.addView(root);
-        return card;
-    }
-
-    static class OrderChange {
-        String toItem;
-        String toSize;
-        String toCombo;
-
-        public OrderChange(String toItem, String toSize, String toCombo) {
-            this.toItem = toItem;
-            this.toSize = toSize;
-            this.toCombo = toCombo;
-        }
-    }
-
-    static class OrderItem {
-        String size;
-        String itemName;
-        int quantity;
-
-        public OrderItem(String size, String itemName, int quantity) {
-            this.size = size;
-            this.itemName = itemName;
-            this.quantity = quantity;
-        }
-
-        public static OrderItem parseAddItemInference(RhinoInference inference) {
-            String size = inference.getSlots().get("size");
-            String itemName = inference.getSlots().get("item");
-            String comboName = inference.getSlots().get("combo");
-            String modifier = inference.getSlots().get("modifier");
-
-            Integer quantity;
-            if (inference.getSlots().get("quantity") == null) {
-                quantity = 1;
-            } else {
-                quantity = Integer.parseInt(inference.getSlots().get("quantity"));
-            }
-
-            if (comboName != null) {
-                return new ComboItem(size, itemName, quantity, comboName);
-            } else {
-                return new MenuItem(size, itemName, quantity, modifier);
-            }
-        }
-
-        public static OrderItem parseRemoveItemInference(RhinoInference inference) {
-            String size = inference.getSlots().get("size");
-            String itemName = inference.getSlots().get("item");
-
-            return new OrderItem(size, itemName, -1);
-        }
-
-        /// @brief returns null if last item
-        public static Pair<OrderItem, OrderChange> parseChangeItemInference(RhinoInference inference) {
-            String fromItem = inference.getSlots().get("fromItem");
-            String toSize = inference.getSlots().get("toSize");
-            String toItem = inference.getSlots().get("toItem");
-            String toCombo = inference.getSlots().get("combo");
-
-            return new Pair(
-                (fromItem == null) ? null : new OrderItem(null, fromItem, -1),
-                new OrderChange(toItem, toSize, toCombo)
-            );
-        }
-
-        public Integer findFromEndIn(ArrayList<OrderItem> order) {
-            for (int i = order.size() - 1; i >= 0; i--) {
-                Boolean sameSize = (this.size == null) || (this.size.equals(order.get(i).size));
-                Boolean sameItem = this.itemName.equals(order.get(i).itemName);
-
-                if (sameSize && sameItem) {
-                    return i;
-                }
-            }
-
-            return null;
-        }
-
-        public String toString() {
-            if (this.size == null && this.quantity == -1) {
-                return this.itemName;
-            } else if (this.size == null) {
-                return String.format("%d %s", this.quantity, this.itemName);
-            } else {
-                return String.format("%d %s %s", this.quantity, this.size, this.itemName);
-            }
-        }
-    }
-
-    static class ComboItem extends OrderItem {
-        String comboName;
-
-        public ComboItem(
-                String size,
-                String itemName,
-                int quantity,
-                String comboName) {
-            super(size, itemName, quantity);
-            this.comboName = comboName;
-        }
-
-        @Override
-        public String toString() {
-            String response = String.format("%s %s", super.toString(), this.comboName);
-
-            if (this.quantity != 1 && response.charAt(response.length() - 1) != 's') {
-                response += "s";
-            }
-
-            return response;
-        }
-    }
-
-    static class MenuItem extends OrderItem {
-        String modifier;
-
-        public MenuItem(
-                String size,
-                String itemName,
-                int quantity,
-                String modifier) {
-            super(size, itemName, quantity);
-            this.modifier = modifier;
-        }
-
-        @Override
-        public String toString() {
-            String response = super.toString();
-
-            if (this.quantity != 1 && response.charAt(response.length() - 1) != 's') {
-                response += "s";
-            }
-
-            if (this.modifier != null) {
-                response += String.format(", %s", this.modifier);
-            }
-
-            return response;
-        }
     }
 
     enum RecipeStates {

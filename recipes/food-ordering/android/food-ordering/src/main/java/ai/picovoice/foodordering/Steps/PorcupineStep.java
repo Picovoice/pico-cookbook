@@ -30,7 +30,7 @@ public class PorcupineStep extends Step {
         super(r, listener);
         porcupine = new Porcupine.Builder()
                 .setAccessKey(accessKey)
-                .setKeywordPath(accessKey)
+                .setKeywordPath(modelPath)
                 .build(context);
     }
 
