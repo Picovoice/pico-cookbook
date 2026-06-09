@@ -98,7 +98,7 @@
                 android:layout_marginBottom="24dp"
                 android:foregroundGravity="center"
                 android:gravity="center"
-                android:text="Your Order"
+                android:text="Your Cart"
                 android:textAlignment="center"
                 android:textColor="#7F8C8D"
                 android:textSize="32sp"
@@ -109,7 +109,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
-                android:text="Place your order by speaking"
+                android:text="(empty)"
                 android:textAlignment="center"
                 android:textColor="#7F8C8D"
                 android:textSize="16sp" />

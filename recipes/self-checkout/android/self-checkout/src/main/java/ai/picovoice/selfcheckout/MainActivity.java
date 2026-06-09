@@ -15,13 +15,11 @@ package ai.picovoice.selfcheckout;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioTrack;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -79,7 +77,7 @@ public class MainActivity extends AppCompatActivity {
     interface WorkflowListener {
         void onInitProgress(String status);
         void onStatusChanged(String status);
-        void addCard(String title);
+        void addCard(String title, String contents);
         void addOptionCard(String title, ArrayList<String> options);
         void removeCard(int index);
         void updateCard(int index, String title);
@@ -227,13 +225,13 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     @Override
-                    public void addCard(String title) {
+                    public void addCard(String title, String contents) {
                         runOnUiThread(() -> {
                             if (cards.size() == 0) {
                                 toggleEmptyOrderSuggestion();
                             }
 
-                            cards.add(CardUI.create(getLayoutInflater(), reportContainer, title));
+                            cards.add(CardUI.create(getLayoutInflater(), reportContainer, title, contents));
                             scrollToBottom();
                         });
                     }
@@ -562,15 +560,22 @@ public class MainActivity extends AppCompatActivity {
 
     abstract class Step {
         protected AINoiseSuppressedRecorder recorder;
-        public Step(AINoiseSuppressedRecorder recorder) { this.recorder = recorder; }
+        protected WorkflowListener listener;
+        public Step(AINoiseSuppressedRecorder recorder, WorkflowListener listener) {
+            this.recorder = recorder;
+            this.listener = listener;
+        }
         public abstract void delete();
     }
 
     class PorcupineStep extends Step {
         private final Porcupine porcupine;
 
-        public PorcupineStep(Context context, AINoiseSuppressedRecorder r) throws Exception {
-            super(r);
+        public PorcupineStep(
+                Context context,
+                AINoiseSuppressedRecorder r,
+                WorkflowListener listener) throws Exception {
+            super(r, listener);
             porcupine = new Porcupine.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setKeywordPath(KEYWORD_MODEL)
@@ -606,8 +611,11 @@ public class MainActivity extends AppCompatActivity {
         public float speed;
         public String lastPrompt;
 
-        public OrcaStep(Context context, AINoiseSuppressedRecorder r) throws Exception {
-            super(r);
+        public OrcaStep(
+                Context context,
+                AINoiseSuppressedRecorder r,
+                WorkflowListener listener) throws Exception {
+            super(r, listener);
             orca = new Orca.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(TTS_MODEL)
@@ -646,6 +654,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         public void repeatLast() throws Exception {
+            listener.onStatusChanged(lastPrompt);
             this.run(lastPrompt);
         }
 
@@ -671,8 +680,11 @@ public class MainActivity extends AppCompatActivity {
     class RhinoStep extends Step {
         private final Rhino rhino;
 
-        public RhinoStep(Context context, AINoiseSuppressedRecorder r) throws Exception {
-            super(r);
+        public RhinoStep(
+                Context context,
+                AINoiseSuppressedRecorder r,
+                WorkflowListener listener) throws Exception {
+            super(r, listener);
             rhino = new Rhino.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setContextPath(CONTEXT_MODEL)
@@ -893,7 +905,8 @@ public class MainActivity extends AppCompatActivity {
             nextArgs.put("nextItemIndex", nextItemIndex);
             nextArgs.put("cart", cart);
             nextArgs.put("prompt", "A staff member has been notified and is on their way.");
-            nextArgs.put("nextState", nextNextState);
+            nextArgs.put("nextState", RecipeStates.CHECKOUT_COMPLETE_PROMPT);
+            nextNextArgs.put("checkoutSuccessful", false);
             nextArgs.put("nextArgs", nextNextArgs);
             return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
         }
@@ -970,11 +983,14 @@ public class MainActivity extends AppCompatActivity {
             int nextItemIndex = (int) args.get("nextItemIndex");
             ArrayList<Product> cart = (ArrayList<Product>) args.get("cart");
 
-            step.run("Welcome to Walmart's self-checkout!");
-            step.run("I will announce when you scan each item.");
-            step.run(
-                "If you need me to change my speed, volume, or to repeat myself, " +
-                "let me know whenever I'm listening.");
+            String prompt0 = "Welcome to Walmart's self-checkout!";
+            String prompt1 = "If you need me to change my speed, volume, or to repeat myself, " +
+                             "let me know whenever I'm listening.";
+
+            listener.onStatusChanged(prompt0);
+            step.run(prompt0);
+            listener.onStatusChanged(prompt1);
+            step.run(prompt1);
 
             Map<String, Object> nextArgs = new HashMap<>();
             nextArgs.put("nextItemIndex", nextItemIndex);
@@ -1005,14 +1021,15 @@ public class MainActivity extends AppCompatActivity {
                     + "** Checkout (now) **");
 
             while (isRunning) {
-                RhinoInference inference = step.run("Listening for order...", false, new long[]{ 0 }, 0, 0.0f);
+                RhinoInference inference = step.run("Listening...", false, new long[]{ 0 }, 0, 0.0f);
 
                 if (inference == null) {
                     return new Transition(null);
+                } else if (!inference.getIsUnderstood()) {
+                    continue;
                 }
 
-                boolean understood = inference.getIsUnderstood();
-                if (understood && inference.getIntent().equals("scanNext")) {
+                if (inference.getIntent().equals("scanNext")) {
                     if (nextItemIndex < SHOPPING_CART.size()) {
                         Map<String, Object> nextArgs = new HashMap<>();
                         nextArgs.put("nextItemIndex", nextItemIndex);
@@ -1028,7 +1045,7 @@ public class MainActivity extends AppCompatActivity {
                         return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
                     }
 
-                } else if (understood && inference.getIntent().equals("removeItem")) {
+                } else if (inference.getIntent().equals("removeItem")) {
                     if (cart.size() == 0) {
                         Map<String, Object> nextArgs = new HashMap<>();
                         nextArgs.put("nextItemIndex", nextItemIndex);
@@ -1039,6 +1056,7 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     ArrayList<Product> newCart = new ArrayList<Product>(cart);
+                    listener.removeCard(cart.size() - 1);
                     newCart.remove(cart.size() - 1);
 
                     Map<String, Object> nextArgs = new HashMap<>();
@@ -1048,7 +1066,7 @@ public class MainActivity extends AppCompatActivity {
                     nextArgs.put("nextState", RecipeStates.LISTEN_COMMAND);
                     return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
 
-                } else if (understood && inference.getIntent().equals("getTotal")) {
+                } else if (inference.getIntent().equals("getTotal")) {
                     float total = 0;
                     for (Product item : cart) {
                         total += item.price;
@@ -1057,11 +1075,11 @@ public class MainActivity extends AppCompatActivity {
                     Map<String, Object> nextArgs = new HashMap<>();
                     nextArgs.put("nextItemIndex", nextItemIndex);
                     nextArgs.put("cart", cart);
-                    nextArgs.put("prompt", String.format("Your current total is %.2f.", total));
+                    nextArgs.put("prompt", String.format("Your current total is $%.2f.", total));
                     nextArgs.put("nextState", RecipeStates.LISTEN_COMMAND);
                     return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
 
-                } else if (understood && inference.getIntent().equals("startOver")) {
+                } else if (inference.getIntent().equals("startOver")) {
                     Map<String, Object> nextArgs = new HashMap<>();
                     nextArgs.put("nextItemIndex", nextItemIndex);
                     nextArgs.put("cart", cart);
@@ -1069,7 +1087,7 @@ public class MainActivity extends AppCompatActivity {
                     nextArgs.put("nextState", RecipeStates.STANDBY);
                     return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
 
-                } else if (understood && inference.getIntent().equals("payNow")) {
+                } else if (inference.getIntent().equals("payNow")) {
                     if (cart.size() == 0) {
                         Map<String, Object> nextArgs = new HashMap<>();
                         nextArgs.put("nextItemIndex", nextItemIndex);
@@ -1112,12 +1130,16 @@ public class MainActivity extends AppCompatActivity {
         public Transition run(Map<String, Object> args) throws Exception {
             int nextItemIndex = (int) args.get("nextItemIndex");
             ArrayList<Product> cart = (ArrayList<Product>) args.get("cart");
-            Product item = cart.get(nextItemIndex);
 
-            step.run(String.format("Scanned: %s. Price: %.2f.", item.name, item.price));
+            Product item = SHOPPING_CART.get(nextItemIndex);
+
+            String prompt = String.format("Scanned: %s. Price: $%.2f.", item.name, item.price);
+            listener.addCard(String.format("$%.2f", item.price), item.name);
+            listener.onStatusChanged(prompt);
+            step.run(prompt);
 
             ArrayList<Product> newCart = new ArrayList<Product>(cart);
-            newCart.add(SHOPPING_CART.get(nextItemIndex));
+            newCart.add(item);
 
             Map<String, Object> nextArgs = new HashMap<>();
             nextArgs.put("nextItemIndex", nextItemIndex + 1);
@@ -1150,34 +1172,41 @@ public class MainActivity extends AppCompatActivity {
                 nextArgs.put("nextState", RecipeStates.DECIDE_ON_BAGGING);
 
                 Map<String, Object> nextNextArgs = new HashMap<>();
-                nextNextArgs.put("already_spoke", true);
+                nextNextArgs.put("alreadySpoke", true);
                 nextArgs.put("nextArgs", nextNextArgs);
 
                 return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
             }
 
             while (isRunning) {
-                RhinoInference inference = step.run("Listening...", false, new long[]{ 0 }, 0, 0.0f);
+                RhinoInference inference = step.run("Do you need a bag for 50¢?", false, new long[]{ 0 }, 0, 0.0f);
 
-                boolean understood = inference.getIsUnderstood();
-                if (understood && inference.getIntent().equals("confirmation")) {
+                if (inference == null) {
+                    return new Transition(null);
+                } else if (!inference.getIsUnderstood()) {
+                    continue;
+                }
+
+                if (inference.getIntent().equals("confirmation")) {
                     ArrayList<Product> newCart = new ArrayList<Product>(cart);
-                    newCart.add(new Product("Plastic bag", 0.5f));
+                    Product item = new Product("Plastic bag", 0.5f);
+                    newCart.add(item);
+                    listener.addCard(String.format("$%.2f", item.price), item.name);
 
                     Map<String, Object> nextArgs = new HashMap<>();
                     nextArgs.put("nextItemIndex", nextItemIndex);
-                    nextArgs.put("cart", cart);
+                    nextArgs.put("cart", newCart);
                     nextArgs.put("prompt", "A bag has been added to your total.");
                     nextArgs.put("nextState", RecipeStates.LIST_ITEMS_PROMPT);
                     return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
 
-                } else if (understood && inference.getIntent().equals("skipBagging")) {
+                } else if (inference.getIntent().equals("skipBagging")) {
                     Map<String, Object> nextArgs = new HashMap<>();
                     nextArgs.put("nextItemIndex", nextItemIndex);
                     nextArgs.put("cart", cart);
                     return new Transition(RecipeStates.LIST_ITEMS_PROMPT, nextArgs);
 
-                } else if (understood && inference.getIntent().equals("goBack")) {
+                } else if (inference.getIntent().equals("goBack")) {
                     Map<String, Object> nextArgs = new HashMap<>();
                     nextArgs.put("nextItemIndex", nextItemIndex);
                     nextArgs.put("cart", cart);
@@ -1196,7 +1225,7 @@ public class MainActivity extends AppCompatActivity {
                     return maybeTransition;
                 }
             }
-            
+
             return new Transition(null);
         }
     }
@@ -1214,14 +1243,20 @@ public class MainActivity extends AppCompatActivity {
             ArrayList<Product> cart = (ArrayList<Product>) args.get("cart");
 
             if (cart.size() == 0) {
-                step.run("Your cart is currently empty.");
+                String prompt = "Your cart is currently empty.";
+                listener.onStatusChanged(prompt);
+                step.run(prompt);
             } else {
                 String plural = cart.size() != 1 ? "s" : "";
-                step.run(String.format("Your cart has %d item%s", cart.size(), plural));
+                String prompt0 = String.format("Your cart has %d item%s", cart.size(), plural);
+                listener.onStatusChanged(prompt0);
+                step.run(prompt0);
 
                 for (int i = 0; i < cart.size(); i++) {
                     Product item = cart.get(i);
-                    step.run(String.format("Item %d. %s at $%.2f", i+1, item.name, item.price));
+                    String prompt = String.format("Item %d. %s at $%.2f", i+1, item.name, item.price);
+                    listener.onStatusChanged(prompt);
+                    step.run(prompt);
                 }
 
                 float total = 0;
@@ -1229,7 +1264,9 @@ public class MainActivity extends AppCompatActivity {
                     total += item.price;
                 }
 
-                step.run(String.format("Running total: $%.2f.", total));
+                String prompt1 = String.format("Running total: $%.2f.", total);
+                listener.onStatusChanged(prompt1);
+                step.run(prompt1);
             }
 
             Map<String, Object> nextArgs = new HashMap<>();
@@ -1270,10 +1307,10 @@ public class MainActivity extends AppCompatActivity {
                 nextArgs.put("nextItemIndex", nextItemIndex);
                 nextArgs.put("cart", cart);
                 nextArgs.put("prompt", "Please choose a payment method.");
-                nextArgs.put("nextState", RecipeStates.DECIDE_ON_BAGGING);
+                nextArgs.put("nextState", RecipeStates.SELECT_PAYMENT_METHOD);
 
                 Map<String, Object> nextNextArgs = new HashMap<>();
-                nextNextArgs.put("already_spoke", true);
+                nextNextArgs.put("alreadySpoke", true);
                 nextArgs.put("nextArgs", nextNextArgs);
 
                 return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
@@ -1282,12 +1319,17 @@ public class MainActivity extends AppCompatActivity {
             listener.addOptionCard("Payment Methods", PAYMENT_METHODS);
 
             while (isRunning) {
-                RhinoInference inference = step.run("Listening...", false, new long[]{ 0 }, 0, 0.0f);
+                RhinoInference inference = step.run("Listening for payment method...", false, new long[]{ 0 }, 0, 0.0f);
 
-                boolean understood = inference.getIsUnderstood();
-                if (understood && inference.getIntent().equals("choosePayment")) {
+                if (inference == null) {
+                    return new Transition(null);
+                } else if (!inference.getIsUnderstood()) {
+                    continue;
+                }
+
+                if (inference.getIntent().equals("choosePayment")) {
                     String paymentMethod = inference.getSlots().get("payment");
-                    String paymentMethodCapitalized = paymentMethod.charAt(0) + paymentMethod.substring(1);
+                    String paymentMethodCapitalized = String.valueOf(paymentMethod.charAt(0)).toUpperCase() + paymentMethod.substring(1);
 
                     Map<String, Object> nextArgs = new HashMap<>();
                     nextArgs.put("nextItemIndex", nextItemIndex);
@@ -1300,7 +1342,7 @@ public class MainActivity extends AppCompatActivity {
 
                     return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
 
-                } else if (understood && inference.getIntent().equals("goBack")) {
+                } else if (inference.getIntent().equals("goBack")) {
                     Map<String, Object> nextArgs = new HashMap<>();
                     nextArgs.put("nextItemIndex", nextItemIndex);
                     nextArgs.put("cart", cart);
@@ -1360,8 +1402,13 @@ public class MainActivity extends AppCompatActivity {
             ArrayList<Product> cart = (ArrayList<Product>) args.get("cart");
             String prompt = (String) args.get("prompt");
             RecipeStates nextState = (RecipeStates) args.get("nextState");
-            Map<String, Object> nextArgs = (Map<String, Object>) args.get("cart");
+            Map<String, Object> nextArgs = (Map<String, Object>) args.get("nextArgs");
 
+            if (nextArgs == null) {
+                nextArgs = new HashMap<>();
+            }
+
+            listener.onStatusChanged(prompt);
             step.run(prompt);
 
             nextArgs.put("nextItemIndex", nextItemIndex);
@@ -1393,11 +1440,20 @@ public class MainActivity extends AppCompatActivity {
 
                 String plural = (cart.size() == 1) ? "" : "s";
 
-                step.run(String.format("Transaction complete. You purchased %d item%s.", cart.size(), plural));
-                step.run(String.format("Your total was %.2f.", total));
-                step.run("Thank you for shopping with us. Goodbye!");
+                String prompt0 = String.format("Transaction complete. You purchased %d item%s.", cart.size(), plural);
+                String prompt1 = String.format("Your total was $%.2f.", total);
+                String prompt2 = "Thank you for shopping with us. Goodbye!";
+
+                listener.onStatusChanged(prompt0);
+                step.run(prompt0);
+                listener.onStatusChanged(prompt1);
+                step.run(prompt1);
+                listener.onStatusChanged(prompt2);
+                step.run(prompt2);
             } else {
-                step.run("Checkout ended.");
+                String prompt = "Checkout ended.";
+                listener.onStatusChanged(prompt);
+                step.run(prompt);
             }
 
             return new Transition(null);
@@ -1420,13 +1476,13 @@ public class MainActivity extends AppCompatActivity {
             recorder = new AINoiseSuppressedRecorder(context, listener);
 
             listener.onInitProgress("Loading Porcupine Wake Word...");
-            porcupineStep = new PorcupineStep(context, recorder);
+            porcupineStep = new PorcupineStep(context, recorder, listener);
 
             listener.onInitProgress("Loading Orca Text-to-Speech...");
-            orcaStep = new OrcaStep(context, recorder);
+            orcaStep = new OrcaStep(context, recorder, listener);
 
             listener.onInitProgress("Loading Rhino Speech-to-Intent...");
-            rhinoStep = new RhinoStep(context, recorder);
+            rhinoStep = new RhinoStep(context, recorder, listener);
 
             buildStates();
         }

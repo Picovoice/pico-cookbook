@@ -25,16 +25,19 @@ class CardUI {
     TextView titleView;
     TextView valueView;
 
-    public static CardUI create(LayoutInflater inflater, LinearLayout container, String title) {
+    public static CardUI create(LayoutInflater inflater, LinearLayout container, String title, String contents) {
         View theroot;
         theroot = inflater.inflate(R.layout.item_report_card, container, false);
 
         CardUI card = new CardUI();
         card.root = theroot;
         card.leftContainer = theroot;
-        card.titleView = null;
+
+        card.titleView = theroot.findViewById(R.id.cardTitle);
+        card.titleView.setText(title);
+
         card.valueView = theroot.findViewById(R.id.cardValue);
-        card.valueView.setText(title);
+        card.valueView.setText(contents);
 
         container.addView(theroot);
         return card;

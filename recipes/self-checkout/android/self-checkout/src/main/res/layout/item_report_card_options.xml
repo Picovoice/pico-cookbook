@@ -11,13 +11,14 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="14sp"
-        android:textColor="#222" />
+        android:textColor="#666"
+        android:textStyle="bold"/>
 
     <TextView
         android:id="@+id/cardValue"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textSize="18sp"
+        android:textSize="16sp"
         android:textColor="#7F8C8D"
-        android:textStyle="bold"/>
+        android:textStyle="italic"/>
 </LinearLayout>
