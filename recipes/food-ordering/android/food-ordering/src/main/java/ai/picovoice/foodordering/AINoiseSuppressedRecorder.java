@@ -19,7 +19,6 @@ import java.util.concurrent.TimeUnit;
 
 import ai.picovoice.android.voiceprocessor.VoiceProcessor;
 import ai.picovoice.android.voiceprocessor.VoiceProcessorException;
-import ai.picovoice.foodordering.WorkflowListener;
 import ai.picovoice.koala.Koala;
 
 public class AINoiseSuppressedRecorder {

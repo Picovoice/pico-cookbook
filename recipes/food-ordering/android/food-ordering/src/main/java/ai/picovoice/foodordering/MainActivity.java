@@ -15,7 +15,6 @@ package ai.picovoice.foodordering;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -35,18 +34,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 import ai.picovoice.android.voiceprocessor.VoiceProcessor;
-import ai.picovoice.koala.Koala;
-import ai.picovoice.orca.Orca;
-import ai.picovoice.porcupine.Porcupine;
-import ai.picovoice.rhino.Rhino;
 import ai.picovoice.rhino.RhinoInference;
 
 import ai.picovoice.foodordering.Steps.OrcaStep;
 import ai.picovoice.foodordering.Steps.PorcupineStep;
 import ai.picovoice.foodordering.Steps.RhinoStep;
-import ai.picovoice.foodordering.WorkflowListener;
-import ai.picovoice.foodordering.Pair;
-import ai.picovoice.foodordering.CardUI;
 import ai.picovoice.foodordering.Order.OrderChange;
 import ai.picovoice.foodordering.Order.OrderItem;
 import ai.picovoice.foodordering.Order.MenuItem;
@@ -61,9 +53,6 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TTS_MODEL = "orca_params_en_female.pv";
     private static final String NS_MODEL = "koala_params.pv";
-
-    private static final int INACTIVE_COLOUR = Color.parseColor("#7f8c8d");
-    private static final int ACTIVE_COLOUR = Color.parseColor("#377dff");
 
     private LinearLayout startScreen, workflowScreen, reportContainer, errorView;
     private TextView startStatusText, workflowStatusText, errorText;

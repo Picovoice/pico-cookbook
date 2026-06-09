@@ -14,7 +14,6 @@ package ai.picovoice.foodordering.Steps;
 
 import android.content.Context;
 import ai.picovoice.foodordering.AINoiseSuppressedRecorder;
-import ai.picovoice.foodordering.Steps.Step;
 import ai.picovoice.foodordering.WorkflowListener;
 import ai.picovoice.porcupine.Porcupine;
 
