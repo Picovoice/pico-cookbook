@@ -1,0 +1,2 @@
+rootProject.name = "RetailAssociate"
+include ':retail-associate'

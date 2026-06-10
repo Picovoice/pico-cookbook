@@ -554,7 +554,7 @@ class RecipeListenCommandState(State):
                     prompt += list_to_spoken(
                         [
                             f"{row['department']}, aisle {row['aisle']}. "
-                            f"{row['stock']} item{plural(row)} left (at {row['size']})."
+                            f"{row['stock']} item{plural(row)} left (at {row['size']})"
                             for row in bucket
                         ]
                     )
@@ -621,7 +621,7 @@ class RecipeListenCommandState(State):
                 for ident, bucket in brand_product_buckets.items():
                     prompt = f"{ident} costs "
                     prompt += list_to_spoken(
-                        [f"${row['price']} ({row['size']})" for row in bucket]
+                        [f"${row['price']} (at {row['size']})" for row in bucket]
                     )
                     prompt_list.append(prompt)
 

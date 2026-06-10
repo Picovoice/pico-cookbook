@@ -12,3 +12,4 @@ A fully on-device AI assistant for retail store managers.
 ## Implementations
 
 - [Python](python)
+- [Android](android)
