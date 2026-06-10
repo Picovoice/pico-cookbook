@@ -112,6 +112,7 @@ samplerate
 Sauvignon
 sdcard
 Segoe
+selfcheckout
 sigwinch
 Skyr
 SNOBALLS

@@ -839,7 +839,7 @@ class RecipeSelectPaymentMethodState(State):
                 next_state_kwargs={
                     "next_item_index": next_item_index,
                     "cart": cart,
-                    "prompt": "Please choose a payment method",
+                    "prompt": "Please choose a payment method.",
                     "next_state": RecipeStates.SELECT_PAYMENT_METHOD,
                     "next_args": {"already_spoke": True}
                 })
