@@ -1,0 +1,55 @@
+/*
+    Copyright 2026 Picovoice Inc.
+
+    You may not use this file except in compliance with the license. A copy of the license is
+    located in the "LICENSE" file accompanying this source.
+
+    Unless required by applicable law or agreed to in writing, software distributed under the
+    License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+    express or implied. See the License for the specific language governing permissions and
+    limitations under the License.
+*/
+
+package ai.picovoice.foodordering.Steps;
+
+import android.content.Context;
+import ai.picovoice.foodordering.AINoiseSuppressedRecorder;
+import ai.picovoice.foodordering.WorkflowListener;
+import ai.picovoice.porcupine.Porcupine;
+
+public class PorcupineStep extends Step {
+    private final Porcupine porcupine;
+
+    public PorcupineStep(
+            Context context,
+            AINoiseSuppressedRecorder r,
+            WorkflowListener listener,
+            String accessKey,
+            String modelPath) throws Exception {
+        super(r, listener);
+        porcupine = new Porcupine.Builder()
+                .setAccessKey(accessKey)
+                .setKeywordPath(modelPath)
+                .build(context);
+    }
+
+    public void run(String listeningPrompt) throws Exception {
+        recorder.start();
+        listener.setListeningUI(true, listeningPrompt);
+        boolean isDetected = false;
+        while (!isDetected && listener.isRunning()) {
+            short[] frame = recorder.read(porcupine.getFrameLength());
+            if (frame != null && frame.length == porcupine.getFrameLength()) {
+                isDetected = porcupine.process(frame) == 0;
+            }
+        }
+        listener.setListeningUI(false, listeningPrompt);
+        recorder.stop();
+    }
+
+    public void delete() {
+        if (porcupine != null) {
+            porcupine.delete();
+        }
+    }
+}
