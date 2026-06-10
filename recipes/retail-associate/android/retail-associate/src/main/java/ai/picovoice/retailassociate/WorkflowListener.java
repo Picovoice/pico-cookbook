@@ -17,9 +17,6 @@ import java.util.ArrayList;
 public interface WorkflowListener {
     void onInitProgress(String status);
     void onStatusChanged(String status);
-    void addCard(String title, String contents);
-    void addOptionCard(String title, ArrayList<String> options);
-    void removeCard(int index);
     void onWorkflowComplete();
     void onVolumeFrame(short[] frame);
     void setListeningUI(boolean isListening, String listeningPrompt);

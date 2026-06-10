@@ -30,8 +30,10 @@ import androidx.core.app.ActivityCompat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 import ai.picovoice.android.voiceprocessor.VoiceProcessor;
 import ai.picovoice.rhino.RhinoInference;
@@ -50,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TTS_MODEL = "orca_params_en_female.pv";
     private static final String NS_MODEL = "koala_params.pv";
 
-    private LinearLayout startScreen, workflowScreen, reportContainer, errorView;
+    private LinearLayout startScreen, workflowScreen, errorView;
     private TextView startStatusText, workflowStatusText, errorText;
     private Button btnStart, btnCancel;
     private VolumeMeterView volumeMeterView;
@@ -68,7 +70,6 @@ public class MainActivity extends AppCompatActivity {
 
         startScreen = findViewById(R.id.startScreen);
         workflowScreen = findViewById(R.id.workflowScreen);
-        reportContainer = findViewById(R.id.reportContainer);
         errorView = findViewById(R.id.errorView);
 
         startStatusText = findViewById(R.id.startStatusText);
@@ -153,8 +154,7 @@ public class MainActivity extends AppCompatActivity {
             TASK_LIST.add(String.format("Restock %s %s in aisle %d.", item.brand, item.productName, item.aisle));
         }
 
-        for (Map.Entry<String, CoworkerData> kv : COWORKER_DATA.size(); i++) {
-            CoworkerData data = COWORKER_DATA.get(i);
+        for (Map.Entry<String, CoworkerData> kv : COWORKER_DATA.entrySet()) {
             String name = kv.getKey();
             String location = kv.getValue().location;
             TASK_LIST.add(String.format("Check if %s needs help in %s.", name, location));
@@ -175,7 +175,7 @@ public class MainActivity extends AppCompatActivity {
             workflowStatusText.setText("");
             startStatusText.setText("Ready to Start");
             btnCancel.setVisibility(View.VISIBLE);
-            btnCancel.setText("Cancel Order");
+            btnCancel.setText("End Demo");
 
             animationContainer.setVisibility(View.INVISIBLE);
         });
@@ -302,30 +302,30 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    static final Map<String, String> PRONUNCIATION_MAP = new Map<String, String>(
-        Map.of(
-            "Buddig", "bud dig",
-            "Kerrygold", "Kerry gold",
-            "Marketside", "Market side",
-            "Kool-Aid", "cool aid",
-            "Rockstar", "Rock star",
-            "Fleischmann's", "Flesh men's",
-            "Krusteaz", "Crust tea's",
-            "Pillsbury", "Pills bury",
-            "Gardein", "Guard dean",
-            "Hillshire Farm", "Hill shire Farm",
-            "Gudu", "Goo do",
-            "Tostitos", "Toast eat toes",
-            "Bridgford", "Bridge ford",
-            "SkinnyPop", "Skinny Pop",
-            "Land O'Lakes", "Land Oh Lakes",
-            "Coffeemate", "Coffee mate",
-            "Yoplait", "Yo plate",
-            "Wish-Bone", "Wish Bone",
-            "Daiya", "Die yeah",
-            "Steak-umm", "Steak umm",
-            "DiGiorno", "Di Giorno",
-            "Litehouse", "Lighthouse"
+    static final Map<String, String> PRONUNCIATION_MAP = new HashMap<String, String>(
+        Map.ofEntries(
+            Map.entry("Buddig", "bud dig"),
+            Map.entry("Kerrygold", "Kerry gold"),
+            Map.entry("Marketside", "Market side"),
+            Map.entry("Kool-Aid", "cool aid"),
+            Map.entry("Rockstar", "Rock star"),
+            Map.entry("Fleischmann's", "Flesh men's"),
+            Map.entry("Krusteaz", "Crust tea's"),
+            Map.entry("Pillsbury", "Pills bury"),
+            Map.entry("Gardein", "Guard dean"),
+            Map.entry("Hillshire Farm", "Hill shire Farm"),
+            Map.entry("Gudu", "Goo do"),
+            Map.entry("Tostitos", "Toast eat toes"),
+            Map.entry("Bridgford", "Bridge ford"),
+            Map.entry("SkinnyPop", "Skinny Pop"),
+            Map.entry("Land O'Lakes", "Land Oh Lakes"),
+            Map.entry("Coffeemate", "Coffee mate"),
+            Map.entry("Yoplait", "Yo plate"),
+            Map.entry("Wish-Bone", "Wish Bone"),
+            Map.entry("Daiya", "Die yeah"),
+            Map.entry("Steak-umm", "Steak umm"),
+            Map.entry("DiGiorno", "Di Giorno"),
+            Map.entry("Litehouse", "Lighthouse")
         )
     );
 
@@ -384,7 +384,7 @@ public class MainActivity extends AppCompatActivity {
         )
     );
 
-    static Map<String, CoworkerData> COWORKER_DATA = new Map<String, CoworkerData>();
+    static Map<String, CoworkerData> COWORKER_DATA = new HashMap<String, CoworkerData>();
 
     class CoworkerData {
         String location;
@@ -542,13 +542,13 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 if (inference.getIntent().equals("findProduct")) {
-                    String brand = inference.getSlots().get("brand", null);
-                    String product = inference.getSlots().get("product", null);
+                    String brand = inference.getSlots().get("brand");
+                    String product = inference.getSlots().get("product");
                     ArrayList<Product> products = getProducts(Product.PRODUCT_DB, product, brand);
                     Map<String, ArrayList<Product>> brandProductBuckets = getBrandProductBuckets(products);
 
                     ArrayList<String> promptList = new ArrayList<String>();
-                    for (Map.Entry<String, ArrayList<Product>> kv : brandProductBuckets) {
+                    for (Map.Entry<String, ArrayList<Product>> kv : brandProductBuckets.entrySet()) {
                         String ident = kv.getKey();
                         ArrayList<Product> bucket = kv.getValue();
 
@@ -559,7 +559,7 @@ public class MainActivity extends AppCompatActivity {
                             String plural = (item.stock == 1) ? "" : "s";
                             items.add(
                                     String.format("%s, aisle %d. ", item.department, item.aisle) +
-                                    String.format("%d item%s left (at %s).", item.stock, plural, item.size));
+                                    String.format("%d item%s left (at %s)", item.stock, plural, item.size));
                         }
 
                         promptList.add(prompt + listToSpoken(items));
@@ -576,8 +576,8 @@ public class MainActivity extends AppCompatActivity {
                     return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
 
                 } else if (inference.getIntent().equals("checkStock")) {
-                    String brand = inference.getSlots().get("brand", null);
-                    String product = inference.getSlots().get("product", null);
+                    String brand = inference.getSlots().get("brand");
+                    String product = inference.getSlots().get("product");
                     ArrayList<Product> products = getProducts(Product.PRODUCT_DB, product, brand);
 
                     String prompt;
@@ -592,7 +592,7 @@ public class MainActivity extends AppCompatActivity {
                         }
 
                         prompt = String.format("We have %d total units of ", total)
-                               + String.format("%s", products.get(0).productName);
+                               + String.format("%s ", products.get(0).productName);
 
                         ArrayList<String> words = new ArrayList<String>();
                         for (Product item : products) {
@@ -608,13 +608,13 @@ public class MainActivity extends AppCompatActivity {
                     return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
 
                 } else if (inference.getIntent().equals("checkPrice")) {
-                    String brand = inference.getSlots().get("brand", null);
-                    String product = inference.getSlots().get("product", null);
+                    String brand = inference.getSlots().get("brand");
+                    String product = inference.getSlots().get("product");
                     ArrayList<Product> products = getProducts(Product.PRODUCT_DB, product, brand);
                     Map<String, ArrayList<Product>> brandProductBuckets = getBrandProductBuckets(products);
 
                     ArrayList<String> promptList = new ArrayList<String>();
-                    for (Map.Entry<String, ArrayList<Product>> kv : brandProductBuckets) {
+                    for (Map.Entry<String, ArrayList<Product>> kv : brandProductBuckets.entrySet()) {
                         String ident = kv.getKey();
                         ArrayList<Product> bucket = kv.getValue();
 
@@ -655,11 +655,11 @@ public class MainActivity extends AppCompatActivity {
 
                 } else if (inference.getIntent().equals("messageAssociate")) {
                     String coworker = inference.getSlots().get("coworker");
-                    String toLocation = inference.getSlots().get("location", null);
-                    String toAisleNumber = inference.getSlots().get("aisleNumber", null);
-                    String toRegisterNumber = inference.getSlots().get("registerNumber", null);
-                    String bringBrand = inference.getSlots().get("brand", null);
-                    String bringProduct = inference.getSlots().get("product", null);
+                    String toLocation = inference.getSlots().get("location");
+                    String toAisleNumber = inference.getSlots().get("aisleNumber");
+                    String toRegisterNumber = inference.getSlots().get("registerNumber");
+                    String bringBrand = inference.getSlots().get("brand");
+                    String bringProduct = inference.getSlots().get("product");
 
                     String toString = "";
                     if (toLocation != null) {
@@ -702,9 +702,9 @@ public class MainActivity extends AppCompatActivity {
                     return new Transition(RecipeStates.SPEAK_PROMPT, nextArgs);
 
                 } else if (inference.getIntent().equals("callForHelp")) {
-                    String toLocation = inference.getSlots().get("location", null);
-                    String toAisleNumber = inference.getSlots().get("aisleNumber", null);
-                    String toRegisterNumber = inference.getSlots().get("registerNumber", null);
+                    String toLocation = inference.getSlots().get("location");
+                    String toAisleNumber = inference.getSlots().get("aisleNumber");
+                    String toRegisterNumber = inference.getSlots().get("registerNumber");
 
                     String prompt;
                     if (toLocation != null) {
@@ -786,9 +786,9 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (promptList != null) {
-                for (String prompt : promptList) {
-                    listener.onStatusChanged(prompt);
-                    step.run(prompt);
+                for (String prompt0 : promptList) {
+                    listener.onStatusChanged(prompt0);
+                    step.run(prompt0);
                 }
             }
 
@@ -804,7 +804,7 @@ public class MainActivity extends AppCompatActivity {
     class ShiftOver extends State {
         OrcaStep step;
 
-        public CheckoutComplete(WorkflowListener listener, OrcaStep step) {
+        public ShiftOver(WorkflowListener listener, OrcaStep step) {
             super(listener);
             this.step = step;
         }
@@ -850,13 +850,8 @@ public class MainActivity extends AppCompatActivity {
             states.put(RecipeStates.STANDBY, new Standby(listener, porcupineStep));
             states.put(RecipeStates.WELCOME_PROMPT, new WelcomePrompt(listener, orcaStep));
             states.put(RecipeStates.LISTEN_COMMAND, new ListenCommand(listener, rhinoStep));
-            states.put(RecipeStates.SCAN_ITEM_PROMPT, new ScanItemPrompt(listener, orcaStep));
-            states.put(RecipeStates.DECIDE_ON_BAGGING, new DecideOnBagging(listener, rhinoStep));
-            states.put(RecipeStates.SELECT_PAYMENT_METHOD, new SelectPaymentMethod(listener, rhinoStep));
-            states.put(RecipeStates.LIST_ITEMS_PROMPT, new ListItemsPrompt(listener, orcaStep));
-            states.put(RecipeStates.REPEAT_LAST_PROMPT, new RepeatLastPrompt(listener, orcaStep));
             states.put(RecipeStates.SPEAK_PROMPT, new SpeakPrompt(listener, orcaStep));
-            states.put(RecipeStates.CHECKOUT_COMPLETE_PROMPT, new CheckoutComplete(listener, orcaStep));
+            states.put(RecipeStates.SHIFT_OVER, new ShiftOver(listener, orcaStep));
         }
 
         public void run() throws Exception {

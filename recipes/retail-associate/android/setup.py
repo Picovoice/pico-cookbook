@@ -74,7 +74,7 @@ def clone_repo(animal: str, major: str, minor: str) -> str:
                 "git",
                 "-C",
                 folder,
-                "retail-associate",
+                "sparse-checkout",
                 "set",
                 "lib/common",
             ],

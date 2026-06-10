@@ -554,7 +554,7 @@ class RecipeListenCommandState(State):
                     prompt += list_to_spoken(
                         [
                             f"{row['department']}, aisle {row['aisle']}. "
-                            f"{row['stock']} item{plural(row)} left (at {row['size']})."
+                            f"{row['stock']} item{plural(row)} left (at {row['size']})"
                             for row in bucket
                         ]
                     )
