@@ -22,9 +22,9 @@ This demo package is intended to be used via the Arduino Library Manager.
 
 ## Demo
 
-The package contains only the Intent-Based Voice Assistant demo. To access the demo:
+The package contains only the Microcontroller Voice Assistant demo. To access the demo:
 
-1. Open `File`->`Examples`->`Picovoice_{LANGUAGE_CODE}`->`IntentBasedVoiceAssistantExample`.
+1. Open `File`->`Examples`->`Picovoice_{LANGUAGE_CODE}`->`MicrocontrollerVoiceAssistantExample`.
 2. Replace `ACCESS_KEY` in the source with the `AccessKey` obtained from Picovoice Console.
 3. Press `Upload` and check the `Serial Monitor` for outputs.
 

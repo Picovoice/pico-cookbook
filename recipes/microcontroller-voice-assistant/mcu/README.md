@@ -1,4 +1,4 @@
-# Intent-Based Voice Assistant MCU
+# Microcontroller Based Voice Assistant MCU
 
 This package provides demo projects for the following development boards:
 

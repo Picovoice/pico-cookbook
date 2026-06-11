@@ -1,4 +1,4 @@
-# Intent-Based Voice Assistant MCU Arduino
+# Microcontroller Voice Assistant MCU Arduino
 
 The folder contains the templated demo for Arduino.
 Please refer to the packaged arduino examples:
