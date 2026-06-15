@@ -15,8 +15,21 @@ Please refer to the packaged arduino examples:
 
 ## Building the packages
 
-After updating templates in the `.templates` folder, execute the following command to build Arduino packages:
+### 1. Clone porcupine and Rhino
+
+```
+git clone https://github.com/Picovoice/porcupine.git
+git clone https://github.com/Picovoice/rhino.git
+```
+
+### 2. Expand templates
+
+After updating templates in the `.templates` folder, execute the following command to expand the template and build Arduino packages:
 
 ```bash
 python3 setup.py --github-folder ${GITHUB_FOLDER} --porcupine_repo ${PORCUPINE_REPO_FOLDER} --rhino_repo ${RHINO_REPO_FOLDER}
 ```
+
+- `{GITHUB_FOLDER}` point this to the `recipes/microcontroller-voice-assistant/mcu/arduino` dir.
+- `{PORCUPINE_REPO_FOLDER}` point this to the root of the porcupine repo you cloned.
+- `{RHINO_REPO_FOLDER}` point this to the root of the rhino repo you cloned.
