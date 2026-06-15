@@ -1,4 +1,4 @@
-# Intent-Based Voice Assistant
+# Microcontroller Voice Assistant
 
 Hands-free voice control combining wake word and task oriented voice intent. Wake word detection and intent inference are both on-device.
 

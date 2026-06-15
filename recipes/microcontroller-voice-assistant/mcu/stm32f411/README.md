@@ -27,16 +27,18 @@ For this demo, you need to:
 <!-- markdown-link-check-enable -->
 3. Clone the [Porcupine](https://github.com/Picovoice/porcupine) and [Rhino](https://github.com/Picovoice/rhino) repositories.
 4. Run the [`copy_resources.py`](../copy_resources.py) Python script passing in the paths to the cloned Porcupine / Rhino repositories:
-```
+
+```py
 python copy_resources.py --porcupine_repo {PATH_TO_PORCUPINE_REPO} --rhino_repo {PATH_TO_RHINO_REPO}
 ```
 
 ## AccessKey
 
-Porcupine / Rhino require a valid Picovoice `AccessKey` at initialization. `AccessKey` acts as your credentials when using
-Porcupine / Rhino SDKs.
-You can get your `AccessKey` for free. Make sure to keep your `AccessKey` secret.
-Signup or Login to [Picovoice Console](https://console.picovoice.ai/) to get your `AccessKey`.
+The Porcupine and Rhino SDKs require a valid `AccessKey` at initialization. `AccessKey`s act as your credentials when
+using Porcupine and Rhino SDKs. Anyone who is using Picovoice needs to have a valid AccessKey. You must keep your
+AccessKey secret. You would need internet connectivity to validate your AccessKey with Picovoice license servers, even
+though the inference is running 100% offline. Everyone who signs up for [Picovoice Console](https://console.picovoice.ai/)
+receives a unique AccessKey.
 
 ## Usage
 
@@ -58,12 +60,21 @@ Then, to compile and run the demo project on a STM32f411 discovery board, perfor
 5. Replace `ACCESS_KEY` in `main.c` with your AccessKey obtained
    from [Picovoice Console](https://console.picovoice.ai/)
 6. Click `Project` > `Build Project`
-7. Connect the board to the computer and press `Run` > `Run`
+7. Connect the board to the computer, select the binary you built, then press `Run` > `Run`
 <!-- markdown-link-check-disable -->
 > :warning: `printf()` uses the SWO connector and the trace port 0. For more information, refer
 >
 to [STM32 microcontroller debug toolbox](https://www.st.com/resource/en/application_note/dm00354244-stm32-microcontroller-debug-toolbox-stmicroelectronics.pdf)
 > , Chapter 7.
+8. To enable SVW debugging over trace port 0:
+  - Enable SWV under Run -> Debug Configurations -> Debugger
+  - Set your Core Clock to 100Mhz
+  - Window -> Show View -> SWV -> SWV ITM Data Console
+  - Click the wrench icon (Configure) -> Enable Port 0
+  - Re-run your binary
+  - Click the red circle to start the trace
+  - Press F8 to resume it.
+  - You should see the device's UUID.
 <!-- markdown-link-check-enable -->
 You can identify the default keyword for each language by referring to the [pv_params.h](./stm32f411e-disco/Inc/pv_params.h) file. Within this file, locate the language section enclosed by:
 

@@ -8,9 +8,11 @@ This package contains a demo project with examples for Arduino using Porcupine W
 
 ## AccessKey
 
-The Porcupine and Rhino SDKs require a valid `AccessKey` at initialization. `AccessKey`s act as your credentials when using Porcupine and Rhino SDKs.
-You can get your `AccessKey` for free. Make sure to keep your `AccessKey` secret.
-Signup or Login to [Picovoice Console](https://console.picovoice.ai/) to get your `AccessKey`.
+The Porcupine and Rhino SDKs require a valid `AccessKey` at initialization. `AccessKey`s act as your credentials when
+using Porcupine and Rhino SDKs. Anyone who is using Picovoice needs to have a valid AccessKey. You must keep your
+AccessKey secret. You would need internet connectivity to validate your AccessKey with Picovoice license servers, even
+though the inference is running 100% offline. Everyone who signs up for [Picovoice Console](https://console.picovoice.ai/)
+receives a unique AccessKey.
 
 ## Installation
 
@@ -22,9 +24,9 @@ This demo package is intended to be used via the Arduino Library Manager.
 
 ## Demo
 
-The package contains only the Intent-Based Voice Assistant demo. To access the demo:
+The package contains only the Microcontroller Voice Assistant demo. To access the demo:
 
-1. Open `File`->`Examples`->`Picovoice_{LANGUAGE_CODE}`->`IntentBasedVoiceAssistantExample`.
+1. Open `File`->`Examples`->`Picovoice_{LANGUAGE_CODE}`->`MicrocontrollerVoiceAssistantExample`.
 2. Replace `ACCESS_KEY` in the source with the `AccessKey` obtained from Picovoice Console.
 3. Press `Upload` and check the `Serial Monitor` for outputs.
 
