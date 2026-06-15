@@ -74,20 +74,20 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@picovoice/cheetah-node@^4.0.0":
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-node/-/cheetah-node-4.0.0.tgz#574318be87decac6c181b62948de27c940f3a4bf"
-  integrity sha512-HOVKwPkGCTUfdAhIEtq+Bya9yD4zNUC5Qr1lLt6ueCkuePJZbh99V8SMS3B1WItswyKDeKWUwriJGNw63TGBiA==
+"@picovoice/cheetah-node@^4.0.1":
+  version "4.0.4"
+  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-node/-/cheetah-node-4.0.4.tgz#08d246ca7c1d20c0f8f96c28889ce4ed27bd384e"
+  integrity sha512-uIJpUKxyQFl3Y3rncY6bHZXDgy49xT29Jzf+Q09NgriA60O0ygwTcuyMtxhZ7OTQmbBpxLHLX4FT8SwF1NOsiw==
 
 "@picovoice/orca-node@^3.0.0":
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/@picovoice/orca-node/-/orca-node-3.0.0.tgz#80aec077c2aebd7bc89de7268e2e72496708151c"
   integrity sha512-0KTU+Oo9Jr8wxkOrU8OPVkd/BOfIq8CN6Sn9wlk9IZQH/xyH4h0143bJ3L6maX4lEb9Mzrs8miH4fojRDvmhCQ==
 
-"@picovoice/picollm-node@2.0.1":
-  version "2.0.1"
-  resolved "https://registry.yarnpkg.com/@picovoice/picollm-node/-/picollm-node-2.0.1.tgz#096dfd5c4624494cba2a2237580e3f43beba9272"
-  integrity sha512-At6oSw51aA1CDH0VjK/Dm+X5Et7lkh2EPz05kb4Uv++Bs0keiS9rEXY7HWYQHooMzI17zGO/5SqOxoSQHlBlDg==
+"@picovoice/picollm-node@2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@picovoice/picollm-node/-/picollm-node-2.1.0.tgz#2f09e7c129ec60bb746f8fc66af58c912ef2aeec"
+  integrity sha512-DKkf4BUgK9LdaQGc5HWQcSH8P3pBwi/Wg/vX29pSml+judv8frCFjUChYzXTb1blctRXEyASl/ra8jK7Uh8l4g==
 
 "@picovoice/porcupine-node@^4.0.2":
   version "4.0.2"
@@ -638,9 +638,9 @@ isexe@^2.0.0:
   integrity sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==
 
 js-yaml@^4.1.0:
-  version "4.1.1"
-  resolved "https://registry.yarnpkg.com/js-yaml/-/js-yaml-4.1.1.tgz#854c292467705b699476e1a2decc0c8a3458806b"
-  integrity sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==
+  version "4.2.0"
+  resolved "https://registry.yarnpkg.com/js-yaml/-/js-yaml-4.2.0.tgz#2bd9e85682dd91bd469afb809d816043b3d49524"
+  integrity sha512-ePWsvanv0DWuDRsW8dnt+R4jQ31SCRCQ7hhNcPXZPsoBZiemuZNYGf7adZdqX2D86j6rvKp3RpCxVTSb8WQlOw==
   dependencies:
     argparse "^2.0.1"
 
