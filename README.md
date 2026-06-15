@@ -16,7 +16,7 @@ Blueprints for building private real-time voice, language, and vision AI feature
 - [Document Q&A](recipes/document-qa)
 - [Image Question Answering](recipes/image-qa)
 - [Image to Speech](recipes/image-to-speech)
-- [Intent-Based Voice Assistant](recipes/intent-based-voice-assistant)
+- [Microcontroller Voice Assistant](recipes/microcontroller-voice-assistant)
 - [Live Captioning and Translation](recipes/live-captioning-and-translation)
 - [Live Conversation Translation](recipes/live-conversation-translation)
 - [LLM-Powered Voice Assistant](recipes/llm-voice-assistant)
