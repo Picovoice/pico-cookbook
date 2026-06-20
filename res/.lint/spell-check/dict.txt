@@ -68,11 +68,13 @@ MARCA
 Marketside
 mcnuggets
 Microcontroller
+microcontrollers
 millisec
 mixtral
 Mohamad
 Mondavi
 Morenita
+Multimodal
 Natha
 newwin
 numpy
@@ -115,6 +117,7 @@ sdcard
 Segoe
 selfcheckout
 sigwinch
+Siri
 Skyr
 SNOBALLS
 socialtext
