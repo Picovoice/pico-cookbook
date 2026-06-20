@@ -30,6 +30,6 @@ Yes. [Porcupine](https://picovoice.ai/docs/porcupine/) and [Eagle](https://picov
 Yes. You enroll once to create a voice profile with [Eagle](https://picovoice.ai/docs/eagle/), and the wake word then responds only to that profile.
 
 **Can it tell apart multiple users on a shared device?**
-This recipe is for a single enrolled user on a personal device, like a "Personalized Hey Siri" per phone. To identify which of several enrolled people spoke the wake word on a shared device, see the [Speaker-Aware Wake Word](https://picovoice.ai/cookbook/speaker-aware-wake-word/) recipe.
+This recipe is for a single enrolled user on a personal device, like a "Personalized Hey Siri" per phone. To identify which of several enrolled people spoke the wake word on a shared device, see the [Speaker-Aware Wake Word](../speaker-aware-wake-word) recipe.
 
 More FAQs can be found on [Picovoice website](https://picovoice.ai/cookbook/personalized-wake-word/).
