@@ -30,5 +30,3 @@ Yes. You ask out loud, [Cheetah](https://picovoice.ai/docs/cheetah/) transcribes
 
 **What kind of questions can it answer?**
 Natural questions about the image, such as what objects are present, what is happening in the scene, where something is located, or how the image should be described.
-
-More FAQs can be found on [Picovoice website](https://picovoice.ai/cookbook/image-question-answering/).
