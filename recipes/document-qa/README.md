@@ -40,4 +40,4 @@ No. The document is chunked and embedded once, then the embeddings are cached on
 **Can I ask questions by voice?**
 Yes. You ask out loud, [Cheetah](https://picovoice.ai/docs/cheetah/) transcribes the question, and [Orca](https://picovoice.ai/docs/orca/) speaks the grounded answer back as it streams.
 
-More FAQs can be found on [Picovoice website](https://picovoice.ai/cookbook/on-device-ai-call-screening/).
+More FAQs can be found on [Picovoice website](https://picovoice.ai/cookbook/on-device-rag-voice-document-qa/).
