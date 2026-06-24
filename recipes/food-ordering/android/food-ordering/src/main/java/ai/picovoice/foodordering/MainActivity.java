@@ -353,7 +353,6 @@ public class MainActivity extends AppCompatActivity {
         START_OVER,
         HELP,
         REPEAT_ORDER,
-        SPEAK_PROMPT,
         SILENT_USER,
         END_ORDER
     }
@@ -507,8 +506,9 @@ public class MainActivity extends AppCompatActivity {
             newOrder.add(item);
 
             String prompt = String.format("Added %s to your order", item.toString());
+            String verbalPrompt = String.format("Added %s to your order", item.toPronunciationString());
             listener.onStatusChanged(prompt);
-            step.run(prompt);
+            step.run(verbalPrompt);
 
             Map<String, Object> nextArgs = new HashMap<>();
             nextArgs.put("order", newOrder);
@@ -533,16 +533,18 @@ public class MainActivity extends AppCompatActivity {
 
             if (matchIndex == null) {
                 String prompt = String.format("\"%s\" is not in your order.", toRemove.toString());
+                String verbalPrompt = String.format("\"%s\" is not in your order.", toRemove.toPronunciationString());
                 listener.onStatusChanged(prompt);
-                step.run(prompt);
+                step.run(verbalPrompt);
             } else {
                 String prompt = String.format("Removed \"%s\" from your order.", newOrder.get(matchIndex).toString());
+                String verbalPrompt = String.format("Removed \"%s\" from your order.", newOrder.get(matchIndex).toPronunciationString());
 
                 listener.removeCard(matchIndex);
                 newOrder.remove((int)matchIndex);
 
                 listener.onStatusChanged(prompt);
-                step.run(prompt);
+                step.run(verbalPrompt);
             }
 
             Map<String, Object> nextArgs = new HashMap<>();
@@ -574,15 +576,20 @@ public class MainActivity extends AppCompatActivity {
 
             if (matchIndex == null) {
                 String prompt;
+                String verbalPrompt;
                 if (itemFrom == null) {
                     prompt = "I couldn't change anything because your order is empty.";
+                    verbalPrompt = prompt;
                 } else {
                     prompt = String.format(
                             "I couldn't change anything because \"%s\" is not in your order.",
                             itemFrom.toString());
+                    verbalPrompt = String.format(
+                            "I couldn't change anything because \"%s\" is not in your order.",
+                            itemFrom.toPronunciationString());
                 }
                 listener.onStatusChanged(prompt);
-                step.run(prompt);
+                step.run(verbalPrompt);
             } else {
                 String oldOrderStr = newOrder.get(matchIndex).toString();
 
@@ -623,8 +630,12 @@ public class MainActivity extends AppCompatActivity {
                         "Changing \"%s\" in your order to \"%s\"",
                         oldOrderStr,
                         newOrder.get(matchIndex).toString());
+                String verbalPrompt = String.format(
+                        "Changing \"%s\" in your order to \"%s\"",
+                        oldOrderStr,
+                        newOrder.get(matchIndex).toPronunciationString());
                 listener.onStatusChanged(prompt);
-                step.run(prompt);
+                step.run(verbalPrompt);
             }
 
             Map<String, Object> nextArgs = new HashMap<>();
@@ -690,7 +701,7 @@ public class MainActivity extends AppCompatActivity {
             ArrayList<OrderItem> order = new ArrayList<OrderItem>((ArrayList<OrderItem>) args.get("order"));
             Boolean orderFinalized = (Boolean) args.get("orderFinalized");
 
-            ArrayList<String> promptList = new ArrayList<String>();
+            ArrayList<String> promptList = new ArrayList<>();
 
             if (orderFinalized != null && orderFinalized) {
                 promptList.add("Alright!");
@@ -699,9 +710,13 @@ public class MainActivity extends AppCompatActivity {
                 promptList.add("Here's your order.");
             }
 
+            ArrayList<String> verbalPromptList = new ArrayList<>(promptList);
+
             for (int i = 0; i < order.size(); i++) {
                 String prompt = String.format("Item %d. %s", (i + 1), order.get(i).toString());
+                String verbalPrompt = String.format("Item %d. %s", (i + 1), order.get(i).toPronunciationString());
                 promptList.add(prompt);
+                verbalPromptList.add(verbalPrompt);
             }
 
             if (order.isEmpty()) {
@@ -716,8 +731,9 @@ public class MainActivity extends AppCompatActivity {
 
             for (int i = 0; i < promptList.size(); i++) {
                 String prompt = promptList.get(i);
+                String verbalPrompt = verbalPromptList.get(i);
                 listener.onStatusChanged(prompt);
-                step.run(prompt);
+                step.run(verbalPrompt);
             }
 
             if (orderFinalized != null && orderFinalized) {
@@ -731,28 +747,6 @@ public class MainActivity extends AppCompatActivity {
                 nextArgs.put("order", order);
                 return new Transition(RecipeStates.LISTEN_FOR_ORDER, nextArgs);
             }
-        }
-    }
-
-    class SpeakPromptState extends State {
-        OrcaStep step;
-
-        public SpeakPromptState(WorkflowListener listener, OrcaStep step) {
-            super(listener);
-            this.step = step;
-        }
-
-        @Override
-        public Transition run(Map<String, Object> args) throws Exception {
-            ArrayList<OrderItem> order = (ArrayList<OrderItem>) args.get("order");
-            String prompt = (String) args.get("prompt");
-
-            listener.onStatusChanged(prompt);
-            step.run(prompt);
-
-            Map<String, Object> nextArgs = new HashMap<>();
-            nextArgs.put("order", order);
-            return new Transition(RecipeStates.LISTEN_FOR_ORDER, nextArgs);
         }
     }
 
@@ -835,7 +829,6 @@ public class MainActivity extends AppCompatActivity {
             states.put(RecipeStates.START_OVER, new StartOverState(listener, orcaStep));
             states.put(RecipeStates.HELP, new HelpState(listener, orcaStep));
             states.put(RecipeStates.REPEAT_ORDER, new RepeatOrderState(listener, orcaStep));
-            states.put(RecipeStates.SPEAK_PROMPT, new SpeakPromptState(listener, orcaStep));
             states.put(RecipeStates.SILENT_USER, new SilentUserState(listener, orcaStep));
             states.put(RecipeStates.END_ORDER, new EndOrderState(listener, orcaStep));
         }

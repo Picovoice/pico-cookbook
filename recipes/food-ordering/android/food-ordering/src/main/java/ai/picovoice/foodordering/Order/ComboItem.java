@@ -34,4 +34,11 @@ public class ComboItem extends OrderItem {
 
         return response;
     }
+
+    @Override
+    public String toPronunciationString() {
+        String response = String.format("%s %s", super.toPronunciationString(), this.comboName);
+
+        return response;
+    }
 }

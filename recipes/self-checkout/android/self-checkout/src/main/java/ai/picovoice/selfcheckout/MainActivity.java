@@ -365,7 +365,7 @@ public class MainActivity extends AppCompatActivity {
         Arrays.asList(
             new Product("Great Value Dark Chocolate Bar, 3.52 oz", 1.00f),
             new Product("SunChips Whole Grain Snacks, Original, 7 oz", 3.68f),
-            new Product("V8 +ENERGY Pomegranate Blueberry Energy Drink, 8 oz Can (Pack of 12)", 9.38f),
+            new Product("V8 +ENERGY Pomegranate Blueberry Energy Drink, 8 oz (Pack of 12)", 9.38f),
             new Product("Alcatel Alcatel One Touch Idol 3, 16GB Unlocked Smartphone, Black", 99.47f),
             new Product("Impossible Plant Based Ground, Brick, 12oz", 5.96f),
             new Product("Fresh Cravings Roasted Red Pepper Hummus 10oz", 2.67f)
