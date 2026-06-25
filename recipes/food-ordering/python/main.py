@@ -1,3 +1,4 @@
+import re
 import shutil
 import string
 import sys
@@ -31,7 +32,51 @@ from pvorca import Orca
 from pvspeaker import PvSpeaker
 
 from noise_suppressed_recorder import AINoiseSuppressedRecorder
-from steps import Steps, Step, CheetahStep, OrcaStep, PorcupineStep, RhinoStep
+from steps import Steps, Step, OrcaStep, PorcupineStep, RhinoStep
+
+PRONUNCIATION_MAP = {
+    "big mac": "{big|B IH G} {mac|M AE K}",
+    "quarter pounder": "{quarter|K W AO R T ER} {pounder|P AW N D ER}",
+    "double quarter pounder": "{double|D AH B AH L} {quarter|K W AO R T ER} {pounder|P AW N D ER}",
+    "mc double": "{mc|M IH K} {double|D AH B AH L}",
+    "cheeseburger": "{cheeseburger|CH IY Z B ER G ER}",
+    "hamburger": "{hamburger|HH AE M B ER G ER}",
+    "mc chicken": "{mc|M IH K} {chicken|CH IH K AH N}",
+    "mc crispy": "{mc|M IH K} {crispy|K R IH S P IY}",
+    "filet o fish": "{filet|F IH L EY} {o|OW} {fish|F IH SH}",
+    "chicken mcnuggets": "{chicken|CH IH K AH N} {mc|M IH K}{nuggets|N AH G IH T S}",
+    "mcnuggets": "{mc|M IH K}{nuggets|N AH G IH T S}",
+    "nuggets": "{nuggets|N AH G IH T S}",
+    "fries": "{fries|F R AY Z}",
+    "french fries": "{french|F R EH N CH} {fries|F R AY Z}",
+    "apple slices": "{apple|AE P AH L} {slices|S L AY S IH Z}",
+    "coke": "{coke|K OW K}",
+    "coca cola": "{coca|K OW K AH} {cola|K OW L AH}",
+    "diet coke": "{diet|D AY AH T} {coke|K OW K}",
+    "sprite": "{sprite|S P R AY T}",
+    "fanta orange": "{fanta|F AE N T AH} {orange|AO R IH N JH}",
+    "fanta": "{fanta|F AE N T AH}",
+    "sweet tea": "{sweet|S W IY T} {tea|T IY}",
+    "unsweet tea": "{unsweet|AH N S W IY T} {tea|T IY}",
+    "iced tea": "{iced|AY S T} {tea|T IY}",
+    "coffee": "{coffee|K AO F IY}",
+    "iced coffee": "{iced|AY S T} {coffee|K AO F IY}",
+    "water": "{water|W AO T ER}",
+    "orange juice": "{orange|AO R IH N JH} {juice|JH UW S}",
+    "milk": "{milk|M IH L K}",
+    "oreo mc flurry": "{oreo|AO R IY OW} {mc|M IH K} {flurry|F L ER IY}",
+    "m and m mc flurry": "{m|EH M} {and|AH N} {m|EH M} {mc|M IH K} {flurry|F L ER IY}",
+    "mc flurry": "{mc|M IH K} {flurry|F L ER IY}",
+    "apple pie": "{apple|AE P AH L} {pie|P AY}",
+    "chocolate chip cookie": "{chocolate|CH AO K L AH T} {chip|CH IH P} {cookie|K UH K IY}",
+    "cookie": "{cookie|K UH K IY}",
+    "vanilla cone": "{vanilla|V AH N IH L AH} {cone|K OW N}",
+    "ice cream cone": "{ice|AY S} {cream|K R IY M} {cone|K OW N}",
+    "chocolate shake": "{chocolate|CH AO K L AH T} {shake|SH EY K}",
+    "vanilla shake": "{vanilla|V AH N IH L AH} {shake|SH EY K}",
+    "strawberry shake": "{strawberry|S T R AO B EH R IY} {shake|SH EY K}",
+    "shake": "{shake|SH EY K}",
+}
 
 
 def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str = '\n') -> Tuple[Event, Thread]:
@@ -218,14 +263,22 @@ class OrderChange:
     to_size: str | None
     to_combo: str | None
 
+    def __init__(self, to_item: str | None, to_size: str | None, to_combo: str | None):
+        self.to_item = to_item
+        self.to_item_verbalized = PRONUNCIATION_MAP[to_item] if to_item in PRONUNCIATION_MAP else to_item
+        self.to_size = to_size
+        self.to_combo = to_combo
+
 
 class OrderItem:
     size: str | None
     item_name: str
+    verbal_name: str
 
     def __init__(self, size: str | None, item_name: str):
         self.size = size
         self.item_name = item_name
+        self.verbal_name = PRONUNCIATION_MAP[item_name] if item_name in PRONUNCIATION_MAP else item_name
 
     @staticmethod
     def parse_add_item_inference(inference) -> "OrderItem":
@@ -264,7 +317,7 @@ class OrderItem:
 
         return (
             "LAST_ITEM" if from_item is None else OrderItem(size=None, item_name=from_item),
-            OrderChange(to_item=to_item, to_size=to_size, to_combo=to_combo)
+            OrderChange(to_item, to_size, to_combo)
         )
 
     def find_from_end_in(self, order: Sequence["OrderItem"]) -> int | None:
@@ -277,9 +330,9 @@ class OrderItem:
 
     def __str__(self):
         if self.size is None:
-            return f"{self.item_name}"
+            return f"{self.verbal_name}"
         else:
-            return f"{self.size} {self.item_name}"
+            return f"{self.size} {self.verbal_name}"
 
 
 class ComboItem(OrderItem):
@@ -298,10 +351,6 @@ class ComboItem(OrderItem):
 
     def __str__(self):
         response = f"{self.quantity} {super().__str__()} {self.combo_name}"
-
-        if self.quantity != 1 and response[-1] != "s":
-            response += "s"
-
         return response
 
 
@@ -321,9 +370,6 @@ class MenuItem(OrderItem):
 
     def __str__(self):
         response = f"{self.quantity} {super().__str__()}"
-
-        if self.quantity != 1 and response[-1] != "s":
-            response += "s"
 
         if self.modifier is not None:
             response += f", {self.modifier}"
@@ -650,6 +696,7 @@ class RecipeChangeItemState(RecipePromptState):
 
                 if change.to_item is not None:
                     order[match_index].item_name = change.to_item
+                    order[match_index].verbal_name = change.to_item_verbalized
 
             elif isinstance(order[match_index], MenuItem):
                 if change.to_combo is not None:
@@ -665,6 +712,7 @@ class RecipeChangeItemState(RecipePromptState):
 
                 if change.to_item is not None:
                     order[match_index].item_name = change.to_item
+                    order[match_index].verbal_name = change.to_item_verbalized
 
             else:
                 raise Exception(f"unknown order item {order[match_index]}")

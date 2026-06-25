@@ -38,4 +38,15 @@ public class MenuItem extends OrderItem {
 
         return response;
     }
+
+    @Override
+    public String toPronunciationString() {
+        String response = super.toPronunciationString();
+
+        if (this.modifier != null) {
+            response += String.format(", %s", this.modifier);
+        }
+
+        return response;
+    }
 }

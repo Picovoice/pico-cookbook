@@ -210,7 +210,7 @@ class Product:
 SHOPPING_CART: List[Product] = [
     Product("Great Value Dark Chocolate Bar, 3.52 oz", 1.00),
     Product("SunChips Whole Grain Snacks, Original, 7 oz", 3.68),
-    Product("V8 +ENERGY Pomegranate Blueberry Energy Drink, 8 oz Can (Pack of 12)", 9.38),
+    Product("V8 +ENERGY Pomegranate Blueberry Energy Drink, 8 oz (Pack of 12)", 9.38),
     Product("Alcatel Alcatel One Touch Idol 3, 16GB Unlocked Smartphone, Black", 99.47),
     Product("Impossible Plant Based Ground, Brick, 12oz", 5.96),
     Product("Fresh Cravings Roasted Red Pepper Hummus 10oz", 2.67),
