@@ -1,8 +1,19 @@
 import csv
 import os
+import shutil
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
+from threading import (
+    Event,
+    Lock,
+    Thread
+)
+from time import sleep
+from typing import (
+    Callable,
+    Tuple
+)
 
 import pvorca
 import pvporcupine
@@ -64,6 +75,76 @@ def build_context(
     )
 
     Path(yml_path).write_text(context, encoding="utf-8")
+
+
+def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str = '\n') -> Tuple[Event, Thread]:
+    stop_event = Event()
+
+    def wrap_text(text: str, width: int) -> list[str]:
+        text = text.replace('\n', ' ')
+        if width <= 0:
+            return ['']
+        return [text[i:i + width] for i in range(0, len(text), width)] or ['']
+
+    def clear_block(num_lines: int) -> None:
+        if num_lines <= 0:
+            return
+
+        sys.stdout.write('\r')
+        if num_lines > 1:
+            sys.stdout.write(f'\033[{num_lines - 1}F')
+
+        for i in range(num_lines):
+            sys.stdout.write('\033[2K')
+            if i < num_lines - 1:
+                sys.stdout.write('\n')
+
+        if num_lines > 1:
+            sys.stdout.write(f'\033[{num_lines - 1}F')
+        sys.stdout.write('\r')
+
+    def run() -> None:
+        dots_list = [" .  ", " .. ", " ...", "  ..", "   .", "    "]
+        i = 0
+        prev_num_lines = 0
+
+        sys.stdout.write("\033[?25l")
+        sys.stdout.flush()
+
+        try:
+            while not stop_event.is_set():
+                text = get_text()
+                dots = dots_list[i]
+
+                width = max(1, shutil.get_terminal_size(fallback=(80, 24)).columns - 1)
+                lines = wrap_text(f"{text}{dots}", width)
+                output = '\n'.join(lines)
+
+                clear_block(prev_num_lines)
+                sys.stdout.write(output)
+                sys.stdout.flush()
+
+                prev_num_lines = len(lines)
+                i = (i + 1) % len(dots_list)
+                sleep(refresh_sec)
+
+            text = get_text()
+            width = max(1, shutil.get_terminal_size(fallback=(80, 24)).columns - 1)
+            lines = wrap_text(f"{text}    ", width)
+            output = '\n'.join(lines)
+
+            clear_block(prev_num_lines)
+            sys.stdout.write(output)
+            sys.stdout.write(end)
+            sys.stdout.flush()
+
+        finally:
+            sys.stdout.write("\033[?25h")
+            sys.stdout.flush()
+
+    thread = Thread(target=run, daemon=True)
+    thread.start()
+    return stop_event, thread
 
 
 def main() -> None:
@@ -139,7 +220,33 @@ def main() -> None:
         print()
 
         while True:
-            pass
+            recorder.start()
+
+            text = "Listening for wake word"
+            lock = Lock()
+
+            def get_text() -> str:
+                with lock:
+                    return text
+
+            print_event, print_thread = print_async(get_text)
+
+            is_detected = False
+            while not is_detected:
+                is_detected = porcupine.process(recorder.read()) == 0
+
+            with lock:
+                text = "Listening for voice command"
+
+            while not rhino.process(recorder.read()):
+                pass
+            inference = rhino.get_inference()
+            print(inference)
+
+            recorder.stop()
+            print_event.set()
+            print_thread.join()
+
     except KeyboardInterrupt:
         pass
     finally:
