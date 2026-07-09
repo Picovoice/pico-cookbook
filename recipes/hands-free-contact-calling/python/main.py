@@ -1,6 +1,7 @@
 import csv
 import os
 import shutil
+import string
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
@@ -9,15 +10,20 @@ from threading import (
     Lock,
     Thread
 )
-from time import sleep
+from time import (
+    monotonic,
+    sleep
+)
 from typing import (
     Callable,
+    Sequence,
     Tuple
 )
 
 import pvorca
 import pvporcupine
 import pvrhino
+from pvorca import Orca
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
 
@@ -147,6 +153,23 @@ def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str 
     return stop_event, thread
 
 
+def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str], None]) -> Thread:
+    def run() -> None:
+        start_sec = monotonic()
+
+        for i, x in enumerate(alignments):
+            delay = float(x.start_sec) - (monotonic() - start_sec)
+            if delay > 0:
+                sleep(delay)
+
+            suffix = ' ' if i < (len(alignments) - 1) and (alignments[i + 1].word not in string.punctuation) else ''
+            on_tick(x.word + suffix)
+
+    thread = Thread(target=run, daemon=True)
+    thread.start()
+    return thread
+
+
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
@@ -246,6 +269,30 @@ def main() -> None:
             recorder.stop()
             print_event.set()
             print_thread.join()
+
+            pcm, word_alignments = orca.synthesize("calling")
+
+            utterance = ""
+            utterance_lock = Lock()
+
+            def get_utterance() -> str:
+                with utterance_lock:
+                    return f"[AI] {utterance}"
+
+            def update_utterance(chunk: str) -> None:
+                nonlocal utterance
+                with utterance_lock:
+                    utterance += chunk
+
+            utterance_event, utterance_thread = print_async(get_utterance)
+
+            timer_thread = time_async(alignments=word_alignments, on_tick=update_utterance)
+
+            speaker.flush(pcm)
+            timer_thread.join()
+            utterance_event.set()
+            utterance_thread.join()
+
 
     except KeyboardInterrupt:
         pass
