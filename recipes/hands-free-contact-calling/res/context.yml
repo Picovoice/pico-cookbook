@@ -1,0 +1,118 @@
+context:
+  expressions:
+    callContact:
+      - "@callVerb $contact:contact"
+      - "@callVerb $contact:contact on $phone_type:phone_type"
+      - "@callVerb $contact:contact using $phone_type:phone_type"
+      - "@callVerb $contact:contact at $company:company"
+      - "@callVerb $contact:contact from $company:company"
+      - "@callVerb $contact:contact at $company:company on $phone_type:phone_type"
+      - "@callVerb $contact:contact from $company:company on $phone_type:phone_type"
+      - "@callVerb $contact:contact work"
+      - "@callVerb $contact:contact home"
+      - "@callVerb $contact:contact mobile"
+      - "i want to @callVerb $contact:contact"
+      - "please @callVerb $contact:contact"
+      - "can you @callVerb $contact:contact"
+
+    selectContact:
+      - "$contact:contact"
+      - "choose $contact:contact"
+      - "select $contact:contact"
+      - "i meant $contact:contact"
+      - "the one named $contact:contact"
+      - "$selection_index:selection_index"
+      - "the $selection_index:selection_index one"
+      - "choose $selection_index:selection_index"
+      - "select $selection_index:selection_index"
+
+    selectPhoneType:
+      - "$phone_type:phone_type"
+      - "use $phone_type:phone_type"
+      - "use the $phone_type:phone_type number"
+      - "call $phone_type:phone_type"
+      - "call the $phone_type:phone_type number"
+      - "try $phone_type:phone_type"
+
+    confirmCall:
+      - "@confirm"
+
+    cancelCall:
+      - "@cancel"
+
+    repeatOptions:
+      - "@repeatOptions"
+
+  slots:
+    contact:
+{{CONTACT_SLOT_VALUES}}
+
+    company:
+{{COMPANY_SLOT_VALUES}}
+
+    phone_type:
+      - "mobile"
+      - "cell"
+      - "cell phone"
+      - "work"
+      - "office"
+      - "home"
+      - "house"
+
+    selection_index:
+      - "first"
+      - "one"
+      - "number one"
+      - "option one"
+      - "second"
+      - "two"
+      - "number two"
+      - "option two"
+      - "third"
+      - "three"
+      - "number three"
+      - "option three"
+      - "fourth"
+      - "four"
+      - "number four"
+      - "option four"
+      - "fifth"
+      - "five"
+      - "number five"
+      - "option five"
+
+  macros:
+    callVerb:
+      - "call"
+      - "phone"
+      - "dial"
+      - "ring"
+      - "give a call to"
+      - "make a call to"
+
+    confirm:
+      - "yes"
+      - "yeah"
+      - "yep"
+      - "correct"
+      - "confirm"
+      - "go ahead"
+      - "do it"
+      - "call them"
+      - "place the call"
+
+    cancel:
+      - "cancel"
+      - "stop"
+      - "no"
+      - "nope"
+      - "never mind"
+      - "forget it"
+      - "do not call"
+
+    repeatOptions:
+      - "repeat"
+      - "say that again"
+      - "what are my options"
+      - "read that again"
+      - "tell me again"
