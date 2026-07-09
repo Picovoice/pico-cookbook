@@ -1,5 +1,5 @@
-pvporcupine
-pvrhino
-pvorca
+pvorca~=3.0.1
+pvporcupine~=4.0.3
 pvrecorder~=1.2.7
+pvrhino~=4.0.3
 pvspeaker~=1.0.5
