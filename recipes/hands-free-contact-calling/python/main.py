@@ -229,35 +229,45 @@ def handle_inference(
         contacts: list[dict[str, str]],
         pending_contacts: list[dict[str, str]],
         pending_phone_type: str | None,
-) -> tuple[str, list[dict[str, str]], str | None]:
+) -> tuple[str, list[dict[str, str]], str | None, bool]:
+    """
+    Returns:
+        response_text
+        pending_contacts
+        pending_phone_type
+        is_complete
+
+    is_complete=True means go back to wake word.
+    is_complete=False means listen for a follow-up immediately.
+    """
     if not inference.is_understood:
-        return "Sorry, I did not understand that.", [], None
+        return "Sorry, I did not understand that.", pending_contacts, pending_phone_type, False
 
     intent = inference.intent
     slots = inference.slots
 
     if intent == "cancelCall":
-        return "Cancelled.", [], None
+        return "Cancelled.", [], None, True
 
     if intent == "repeatOptions":
         if not pending_contacts:
-            return "There are no options to repeat.", [], None
+            return "There are no options to repeat.", [], None, True
 
-        return build_options_response(pending_contacts), pending_contacts, pending_phone_type
+        return build_options_response(pending_contacts), pending_contacts, pending_phone_type, False
 
     if intent == "selectPhoneType":
         phone_type = slots.get("phone_type")
 
         if not phone_type:
-            return "Which number should I use?", pending_contacts, pending_phone_type
+            return "Which number should I use?", pending_contacts, pending_phone_type, False
 
         if not pending_contacts:
-            return f"Okay, use {phone_type}.", [], phone_type
+            return f"Okay, use {phone_type}.", [], phone_type, False
 
         if len(pending_contacts) == 1:
-            return build_call_response(pending_contacts[0], phone_type), [], None
+            return build_call_response(pending_contacts[0], phone_type), [], None, True
 
-        return f"Okay, {phone_type}. Which contact?", pending_contacts, phone_type
+        return f"Okay, {phone_type}. Which contact?", pending_contacts, phone_type, False
 
     if intent == "selectContact":
         if pending_contacts:
@@ -265,36 +275,36 @@ def handle_inference(
                 index = selection_index_to_int(slots["selection_index"])
 
                 if index is None or index >= len(pending_contacts):
-                    return "That option is not available.", pending_contacts, pending_phone_type
+                    return "That option is not available.", pending_contacts, pending_phone_type, False
 
-                return build_call_response(pending_contacts[index], pending_phone_type), [], None
+                return build_call_response(pending_contacts[index], pending_phone_type), [], None, True
 
             if "contact" in slots:
                 matches = find_contacts(pending_contacts, slots["contact"])
 
                 if len(matches) == 1:
-                    return build_call_response(matches[0], pending_phone_type), [], None
+                    return build_call_response(matches[0], pending_phone_type), [], None, True
 
                 if len(matches) > 1:
                     matches = matches[:5]
-                    return build_options_response(matches), matches, pending_phone_type
+                    return build_options_response(matches), matches, pending_phone_type, False
 
-            return "Which contact did you mean?", pending_contacts, pending_phone_type
+            return "Which contact did you mean?", pending_contacts, pending_phone_type, False
 
         contact_name = slots.get("contact")
         if not contact_name:
-            return "I do not have a contact selection pending.", [], None
+            return "I do not have a contact selection pending.", [], None, True
 
         matches = find_contacts(contacts, contact_name)
 
         if not matches:
-            return f"I could not find {contact_name}.", [], None
+            return f"I could not find {contact_name}.", [], None, True
 
         if len(matches) == 1:
-            return build_call_response(matches[0], pending_phone_type), [], None
+            return build_call_response(matches[0], pending_phone_type), [], None, True
 
         matches = matches[:5]
-        return build_options_response(matches), matches, pending_phone_type
+        return build_options_response(matches), matches, pending_phone_type, False
 
     if intent == "callContact":
         contact_name = slots.get("contact")
@@ -302,7 +312,7 @@ def handle_inference(
         phone_type = slots.get("phone_type")
 
         if contact_name is None:
-            return "Who would you like to call?", [], None
+            return "Who would you like to call?", [], None, False
 
         matches = find_contacts(
             contacts=contacts,
@@ -311,25 +321,25 @@ def handle_inference(
 
         if not matches:
             if company:
-                return f"I could not find {contact_name} at {company}.", [], None
-            return f"I could not find {contact_name}.", [], None
+                return f"I could not find {contact_name} at {company}.", [], None, True
+            return f"I could not find {contact_name}.", [], None, True
 
         if len(matches) == 1:
-            return build_call_response(matches[0], phone_type), [], None
+            return build_call_response(matches[0], phone_type), [], None, True
 
         matches = matches[:5]
-        return build_options_response(matches), matches, phone_type
+        return build_options_response(matches), matches, phone_type, False
 
     if intent == "confirmCall":
         if len(pending_contacts) == 1:
-            return build_call_response(pending_contacts[0], pending_phone_type), [], None
+            return build_call_response(pending_contacts[0], pending_phone_type), [], None, True
 
         if pending_contacts:
-            return "Which contact should I call?", pending_contacts, pending_phone_type
+            return "Which contact should I call?", pending_contacts, pending_phone_type, False
 
-        return "Confirmed.", [], None
+        return "Confirmed.", [], None, True
 
-    return "Sorry, I do not know how to handle that command.", [], None
+    return "Sorry, I do not know how to handle that command.", [], None, True
 
 
 def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str = '\n') -> Tuple[Event, Thread]:
@@ -536,13 +546,14 @@ def main() -> None:
 
         pending_contacts = []
         pending_phone_type = None
+        wait_for_wake_word = True
 
         print()
 
         while True:
             recorder.start()
 
-            text = "Listening for wake word"
+            text = "Listening for wake word" if wait_for_wake_word else "Listening for follow-up"
             lock = Lock()
 
             def get_text() -> str:
@@ -551,12 +562,14 @@ def main() -> None:
 
             print_event, print_thread = print_async(get_text)
 
-            is_detected = False
-            while not is_detected:
-                is_detected = porcupine.process(recorder.read()) == 0
+            if wait_for_wake_word:
+                is_detected = False
 
-            with lock:
-                text = "Listening for voice command"
+                while not is_detected:
+                    is_detected = porcupine.process(recorder.read()) == 0
+
+                with lock:
+                    text = "Listening for voice command"
 
             while not rhino.process(recorder.read()):
                 pass
@@ -572,13 +585,15 @@ def main() -> None:
                 f"intent={inference.intent}, "
                 f"slots={inference.slots}")
 
-            response, pending_contacts, pending_phone_type = handle_inference(
+            response, pending_contacts, pending_phone_type, is_complete = handle_inference(
                 inference=inference,
                 contacts=contacts,
                 pending_contacts=pending_contacts,
                 pending_phone_type=pending_phone_type)
 
             speak(orca=orca, speaker=speaker, text=response)
+
+            wait_for_wake_word = is_complete
 
     except KeyboardInterrupt:
         pass
