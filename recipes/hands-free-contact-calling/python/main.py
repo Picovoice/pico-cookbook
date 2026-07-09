@@ -1,4 +1,5 @@
 import csv
+import os
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
@@ -76,9 +77,6 @@ def main() -> None:
         '--keyword_path',
         help='Path to Porcupine Wake Word model trained on Picovoice Console (https://console.picovoice.ai/).')
     parser.add_argument(
-        '--context_path',
-        help="Path to Rhino Speech-to-Intent context trained on Picovoice Console (https://console.picovoice.ai/).")
-    parser.add_argument(
         '--audio_device_index',
         type=int,
         default=-1,
@@ -96,11 +94,10 @@ def main() -> None:
 
     access_key = args.access_key
     keyword_path = args.keyword_path
-    context_path = args.context_path
     audio_device_index = args.audio_device_index
 
-    if access_key is None or keyword_path is None or context_path is None:
-        print('--access_key, --keyword_path and --context_path are required arguments')
+    if access_key is None or keyword_path is None:
+        print('--access_key and --keyword_path are required arguments')
         return
 
     porcupine = None
@@ -115,9 +112,14 @@ def main() -> None:
             keyword_paths=[keyword_path])
         print(f"[OK] Porcupine Wake Word[V{porcupine.version}]")
 
+        pvrhino.train_context_from_yaml(
+            access_key=access_key,
+            output_path=str(os.path.join(str(os.path.dirname(__file__)), "context.rhn")),
+            language='en',
+            yaml_path=str(os.path.join(str(os.path.dirname(__file__)), "../res/contact.yml")))
         rhino = pvrhino.create(
             access_key=access_key,
-            context_path=context_path,
+            context_path=str(os.path.join(str(os.path.dirname(__file__)), "context.rhn")),
             require_endpoint=False)
         print(f"[OK] Rhino Speech-to-Intent[V{rhino.version}]")
 
