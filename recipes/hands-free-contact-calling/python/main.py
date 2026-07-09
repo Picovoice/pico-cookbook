@@ -36,13 +36,13 @@ def build_contact_phrases(row):
 
 def build_context(
         template_path: str,
-        contacts_csv_path: str,
-        output_path: str,
-):
+        csv_path: str,
+        yml_path: str,
+) -> None:
     contact_values = set()
     company_values = set()
 
-    with open(contacts_csv_path, newline="", encoding="utf-8") as f:
+    with open(csv_path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
 
         for row in reader:
@@ -63,9 +63,7 @@ def build_context(
         .replace("{{COMPANY_SLOT_VALUES}}", yaml_list(company_values))
     )
 
-    Path(output_path).write_text(context, encoding="utf-8")
-
-    return output_path
+    Path(yml_path).write_text(context, encoding="utf-8")
 
 
 def main() -> None:
@@ -100,6 +98,11 @@ def main() -> None:
         print('--access_key and --keyword_path are required arguments')
         return
 
+    build_context(
+        template_path=str(os.path.join(str(os.path.dirname(__file__)), "../res/template.yml")),
+        csv_path=str(os.path.join(str(os.path.dirname(__file__)), "../res/contacts.csv")),
+        yml_path=str(os.path.join(str(os.path.dirname(__file__)), "context.yml")))
+
     porcupine = None
     rhino = None
     orca = None
@@ -116,7 +119,7 @@ def main() -> None:
             access_key=access_key,
             output_path=str(os.path.join(str(os.path.dirname(__file__)), "context.rhn")),
             language='en',
-            yaml_path=str(os.path.join(str(os.path.dirname(__file__)), "../res/contact.yml")))
+            yaml_path=str(os.path.join(str(os.path.dirname(__file__)), "context.yml")))
         rhino = pvrhino.create(
             access_key=access_key,
             context_path=str(os.path.join(str(os.path.dirname(__file__)), "context.rhn")),
