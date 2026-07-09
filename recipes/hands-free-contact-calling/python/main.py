@@ -1,5 +1,4 @@
 import csv
-import os
 import shutil
 import string
 import sys
@@ -30,6 +29,10 @@ from pvspeaker import PvSpeaker
 
 def yaml_list(values, indent="      "):
     return "\n".join(f'{indent}- "{value}"' for value in values)
+
+
+def normalize(text: str) -> str:
+    return " ".join(text.lower().strip().split())
 
 
 def build_contact_phrases(row):
@@ -81,6 +84,252 @@ def build_context(
     )
 
     Path(yml_path).write_text(context, encoding="utf-8")
+
+
+def load_contacts(csv_path: str) -> list[dict[str, str]]:
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def contact_display_name(contact: dict[str, str]) -> str:
+    return f'{contact["first_name"]} {contact["last_name"]}'.strip()
+
+
+def runtime_contact_phrases(contact: dict[str, str]) -> set[str]:
+    phrases = set()
+
+    first = contact["first_name"].strip()
+    last = contact["last_name"].strip()
+    nickname = contact["nickname"].strip()
+
+    if first:
+        phrases.add(normalize(first))
+
+    if first and last:
+        phrases.add(normalize(f"{first} {last}"))
+
+    if nickname:
+        phrases.add(normalize(nickname))
+
+    return phrases
+
+
+def find_contacts(
+        contacts: list[dict[str, str]],
+        contact_name: str,
+        company: str | None = None,
+) -> list[dict[str, str]]:
+    contact_name = normalize(contact_name)
+    company = normalize(company or "")
+
+    matches = []
+
+    for contact in contacts:
+        if contact_name not in runtime_contact_phrases(contact):
+            continue
+
+        if company:
+            contact_company = normalize(contact.get("company", ""))
+            if contact_company != company:
+                continue
+
+        matches.append(contact)
+
+    return matches
+
+
+def selection_index_to_int(selection: str) -> int | None:
+    selection = normalize(selection)
+
+    mapping = {
+        "first": 0,
+        "one": 0,
+        "number one": 0,
+        "option one": 0,
+
+        "second": 1,
+        "two": 1,
+        "number two": 1,
+        "option two": 1,
+
+        "third": 2,
+        "three": 2,
+        "number three": 2,
+        "option three": 2,
+
+        "fourth": 3,
+        "four": 3,
+        "number four": 3,
+        "option four": 3,
+
+        "fifth": 4,
+        "five": 4,
+        "number five": 4,
+        "option five": 4,
+    }
+
+    return mapping.get(selection)
+
+
+def phone_field_from_type(phone_type: str | None) -> tuple[str, str]:
+    phone_type = normalize(phone_type or "")
+
+    if phone_type in {"work", "office"}:
+        return "phone_work", "work"
+
+    if phone_type in {"home", "house"}:
+        return "phone_home", "home"
+
+    return "phone_mobile", "mobile"
+
+
+def choose_phone(contact: dict[str, str], phone_type: str | None) -> tuple[str | None, str]:
+    if phone_type:
+        field, label = phone_field_from_type(phone_type)
+        number = contact.get(field, "").strip()
+        return number or None, label
+
+    default_phone = contact.get("default_phone", "mobile").strip()
+    field, label = phone_field_from_type(default_phone)
+    number = contact.get(field, "").strip()
+
+    if number:
+        return number, label
+
+    for fallback_phone_type in ("mobile", "work", "home"):
+        field, label = phone_field_from_type(fallback_phone_type)
+        number = contact.get(field, "").strip()
+        if number:
+            return number, label
+
+    return None, label
+
+
+def build_call_response(
+        contact: dict[str, str],
+        phone_type: str | None,
+) -> str:
+    name = contact_display_name(contact)
+    number, label = choose_phone(contact, phone_type)
+
+    if number is None:
+        return f"I found {name}, but there is no {label} phone number available."
+
+    print(f"[CALL] {name} | {label} | {number}")
+    return f"Calling {name} on {label}."
+
+
+def build_options_response(matches: list[dict[str, str]]) -> str:
+    options = ", ".join(contact_display_name(x) for x in matches)
+    return f"I found {options}. Which one?"
+
+
+def handle_inference(
+        inference,
+        contacts: list[dict[str, str]],
+        pending_contacts: list[dict[str, str]],
+        pending_phone_type: str | None,
+) -> tuple[str, list[dict[str, str]], str | None]:
+    if not inference.is_understood:
+        return "Sorry, I did not understand that.", [], None
+
+    intent = inference.intent
+    slots = inference.slots
+
+    if intent == "cancelCall":
+        return "Cancelled.", [], None
+
+    if intent == "repeatOptions":
+        if not pending_contacts:
+            return "There are no options to repeat.", [], None
+
+        return build_options_response(pending_contacts), pending_contacts, pending_phone_type
+
+    if intent == "selectPhoneType":
+        phone_type = slots.get("phone_type")
+
+        if not phone_type:
+            return "Which number should I use?", pending_contacts, pending_phone_type
+
+        if not pending_contacts:
+            return f"Okay, use {phone_type}.", [], phone_type
+
+        if len(pending_contacts) == 1:
+            return build_call_response(pending_contacts[0], phone_type), [], None
+
+        return f"Okay, {phone_type}. Which contact?", pending_contacts, phone_type
+
+    if intent == "selectContact":
+        if pending_contacts:
+            if "selection_index" in slots:
+                index = selection_index_to_int(slots["selection_index"])
+
+                if index is None or index >= len(pending_contacts):
+                    return "That option is not available.", pending_contacts, pending_phone_type
+
+                return build_call_response(pending_contacts[index], pending_phone_type), [], None
+
+            if "contact" in slots:
+                matches = find_contacts(pending_contacts, slots["contact"])
+
+                if len(matches) == 1:
+                    return build_call_response(matches[0], pending_phone_type), [], None
+
+                if len(matches) > 1:
+                    matches = matches[:5]
+                    return build_options_response(matches), matches, pending_phone_type
+
+            return "Which contact did you mean?", pending_contacts, pending_phone_type
+
+        contact_name = slots.get("contact")
+        if not contact_name:
+            return "I do not have a contact selection pending.", [], None
+
+        matches = find_contacts(contacts, contact_name)
+
+        if not matches:
+            return f"I could not find {contact_name}.", [], None
+
+        if len(matches) == 1:
+            return build_call_response(matches[0], pending_phone_type), [], None
+
+        matches = matches[:5]
+        return build_options_response(matches), matches, pending_phone_type
+
+    if intent == "callContact":
+        contact_name = slots.get("contact")
+        company = slots.get("company")
+        phone_type = slots.get("phone_type")
+
+        if contact_name is None:
+            return "Who would you like to call?", [], None
+
+        matches = find_contacts(
+            contacts=contacts,
+            contact_name=contact_name,
+            company=company)
+
+        if not matches:
+            if company:
+                return f"I could not find {contact_name} at {company}.", [], None
+            return f"I could not find {contact_name}.", [], None
+
+        if len(matches) == 1:
+            return build_call_response(matches[0], phone_type), [], None
+
+        matches = matches[:5]
+        return build_options_response(matches), matches, phone_type
+
+    if intent == "confirmCall":
+        if len(pending_contacts) == 1:
+            return build_call_response(pending_contacts[0], pending_phone_type), [], None
+
+        if pending_contacts:
+            return "Which contact should I call?", pending_contacts, pending_phone_type
+
+        return "Confirmed.", [], None
+
+    return "Sorry, I do not know how to handle that command.", [], None
 
 
 def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str = '\n') -> Tuple[Event, Thread]:
@@ -170,6 +419,31 @@ def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str]
     return thread
 
 
+def speak(orca, speaker, text: str) -> None:
+    pcm, word_alignments = orca.synthesize(text)
+
+    utterance = ""
+    utterance_lock = Lock()
+
+    def get_utterance() -> str:
+        with utterance_lock:
+            return f"[AI] {utterance}"
+
+    def update_utterance(chunk: str) -> None:
+        nonlocal utterance
+        with utterance_lock:
+            utterance += chunk
+
+    utterance_event, utterance_thread = print_async(get_utterance)
+    timer_thread = time_async(alignments=word_alignments, on_tick=update_utterance)
+
+    speaker.flush(pcm)
+
+    timer_thread.join()
+    utterance_event.set()
+    utterance_thread.join()
+
+
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
@@ -194,18 +468,37 @@ def main() -> None:
             print('Device #%d: %s' % (index, name))
         return
 
+    missing = [
+        name for name, value in {
+            "--access_key": args.access_key,
+            "--keyword_path": args.keyword_path,
+        }.items()
+        if value is None
+    ]
+
+    if missing:
+        parser.error(
+            "the following arguments are required unless --show_audio_devices is used: "
+            + ", ".join(missing))
+
     access_key = args.access_key
     keyword_path = args.keyword_path
     audio_device_index = args.audio_device_index
 
-    if access_key is None or keyword_path is None:
-        print('--access_key and --keyword_path are required arguments')
-        return
+    root_dir = Path(__file__).resolve().parent
+    res_dir = root_dir / "../res"
+
+    template_path = str(res_dir / "template.yml")
+    contacts_path = str(res_dir / "contacts.csv")
+    context_yml_path = str(root_dir / "context.yml")
+    context_rhn_path = str(root_dir / "context.rhn")
+
+    contacts = load_contacts(contacts_path)
 
     build_context(
-        template_path=str(os.path.join(str(os.path.dirname(__file__)), "../res/template.yml")),
-        csv_path=str(os.path.join(str(os.path.dirname(__file__)), "../res/contacts.csv")),
-        yml_path=str(os.path.join(str(os.path.dirname(__file__)), "context.yml")))
+        template_path=template_path,
+        csv_path=contacts_path,
+        yml_path=context_yml_path)
 
     porcupine = None
     rhino = None
@@ -221,12 +514,13 @@ def main() -> None:
 
         pvrhino.train_context_from_yaml(
             access_key=access_key,
-            output_path=str(os.path.join(str(os.path.dirname(__file__)), "context.rhn")),
+            output_path=context_rhn_path,
             language='en',
-            yaml_path=str(os.path.join(str(os.path.dirname(__file__)), "context.yml")))
+            yaml_path=context_yml_path)
+
         rhino = pvrhino.create(
             access_key=access_key,
-            context_path=str(os.path.join(str(os.path.dirname(__file__)), "context.rhn")),
+            context_path=context_rhn_path,
             require_endpoint=False)
         print(f"[OK] Rhino Speech-to-Intent[V{rhino.version}]")
 
@@ -239,6 +533,9 @@ def main() -> None:
 
         speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16)
         speaker.start()
+
+        pending_contacts = []
+        pending_phone_type = None
 
         print()
 
@@ -263,36 +560,25 @@ def main() -> None:
 
             while not rhino.process(recorder.read()):
                 pass
+
             inference = rhino.get_inference()
-            print(inference)
 
             recorder.stop()
             print_event.set()
             print_thread.join()
 
-            pcm, word_alignments = orca.synthesize("calling")
+            print(
+                f"[Rhino] understood={inference.is_understood}, "
+                f"intent={inference.intent}, "
+                f"slots={inference.slots}")
 
-            utterance = ""
-            utterance_lock = Lock()
+            response, pending_contacts, pending_phone_type = handle_inference(
+                inference=inference,
+                contacts=contacts,
+                pending_contacts=pending_contacts,
+                pending_phone_type=pending_phone_type)
 
-            def get_utterance() -> str:
-                with utterance_lock:
-                    return f"[AI] {utterance}"
-
-            def update_utterance(chunk: str) -> None:
-                nonlocal utterance
-                with utterance_lock:
-                    utterance += chunk
-
-            utterance_event, utterance_thread = print_async(get_utterance)
-
-            timer_thread = time_async(alignments=word_alignments, on_tick=update_utterance)
-
-            speaker.flush(pcm)
-            timer_thread.join()
-            utterance_event.set()
-            utterance_thread.join()
-
+            speak(orca=orca, speaker=speaker, text=response)
 
     except KeyboardInterrupt:
         pass
