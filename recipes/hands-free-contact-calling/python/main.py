@@ -70,7 +70,7 @@ def normalize(text: str) -> str:
     return " ".join(text.lower().strip().split())
 
 
-def contact_display_name(contact: dict[str, str]) -> str:
+def contact_display_name(contact: Dict[str, str]) -> str:
     return f'{contact["first_name"]} {contact["last_name"]}'.strip()
 
 
@@ -95,24 +95,24 @@ def runtime_contact_phrases(contact: dict[str, str]) -> set[str]:
 
 def find_contacts(
         contacts: Sequence[Dict[str, str]],
-        contact_name: str,
-        company: str | None = None,
-) -> list[dict[str, str]]:
-    contact_name = normalize(contact_name)
+        contact: str,
+        company: Optional[str] = None,
+) -> Sequence[Dict[str, str]]:
+    contact = normalize(contact)
     company = normalize(company or "")
 
     matches = []
 
-    for contact in contacts:
-        if contact_name not in runtime_contact_phrases(contact):
+    for x in contacts:
+        if contact not in runtime_contact_phrases(x):
             continue
 
         if company:
-            contact_company = normalize(contact.get("company", ""))
+            contact_company = normalize(x.get("company", ""))
             if contact_company != company:
                 continue
 
-        matches.append(contact)
+        matches.append(x)
 
     return matches
 
@@ -216,24 +216,23 @@ def handle_inference(
     slots = inference.slots
 
     if intent == "callContact":
-        contact_name = slots.get("contact")
+        contact = slots.get("contact")
         company = slots.get("company")
         phone = slots.get("phone")
 
         matches = find_contacts(
             contacts=contacts,
-            contact_name=contact_name,
+            contact=contact,
             company=company)
 
-        if not matches:
+        if len(matches) == 0:
             if company:
-                return f"I could not find {contact_name} at {company}.", [], None, True
-            return f"I could not find {contact_name}.", [], None, True
+                return f"I could not find {contact} at {company}.", [], None, True
+            return f"I could not find {contact}.", [], None, True
 
         if len(matches) == 1:
             return build_call_response(matches[0], phone), [], None, True
 
-        matches = matches[:5]
         return build_options_response(matches), matches, phone, False
 
     if intent == "selectContact":
@@ -258,14 +257,14 @@ def handle_inference(
 
             return "Which contact did you mean?", pending_contacts, pending_phone, False
 
-        contact_name = slots.get("contact")
-        if not contact_name:
+        contact = slots.get("contact")
+        if not contact:
             return "I do not have a contact selection pending.", [], None, True
 
-        matches = find_contacts(contacts, contact_name)
+        matches = find_contacts(contacts, contact)
 
         if not matches:
-            return f"I could not find {contact_name}.", [], None, True
+            return f"I could not find {contact}.", [], None, True
 
         if len(matches) == 1:
             return build_call_response(matches[0], pending_phone), [], None, True
