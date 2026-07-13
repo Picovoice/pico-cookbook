@@ -2,26 +2,15 @@ context:
   expressions:
     callContact:
       - "(@politePrefix) @callVerb $contact:contact"
-      - "(@politePrefix) @callVerb $contact:contact (on, using) $phone_type:phone_type"
+      - "(@politePrefix) @callVerb $contact:contact (on, using) $phone:phone"
       - "(@politePrefix) @callVerb $contact:contact [at, from] $company:company"
-      - "(@politePrefix) @callVerb $contact:contact [at, from] $company:company [on, using] $phone_type:phone_type"
+      - "(@politePrefix) @callVerb $contact:contact [at, from] $company:company [on, using] $phone:phone"
 
     selectContact:
-      - "$contact:contact"
-      - "[choose, select] $contact:contact"
-      - "i meant $contact:contact"
-      - "the one named $contact:contact"
-      - "$selection_index:selection_index"
-      - "the $selection_index:selection_index one"
-      - "[choose, select] $selection_index:selection_index"
+      - "(choose, i meant, select, the one named) $contact:contact"
 
     selectPhoneType:
-      - "$phone_type:phone_type"
-      - "[use, call, try] $phone_type:phone_type"
-      - "[use, call] the $phone_type:phone_type number"
-
-    repeatOptions:
-      - "@repeatOptions"
+      - "(call, try, use) (the) $phone:phone (number)"
 
   slots:
     contact:
@@ -30,54 +19,25 @@ context:
     company:
 {{COMPANIES}}
 
-    phone_type:
-      - "mobile"
-      - "cell"
+    phone:
       - "cell phone"
-      - "work"
-      - "office"
+      - "cell"
       - "home"
       - "house"
-
-    selection_index:
-      - "first"
-      - "one"
-      - "number one"
-      - "option one"
-      - "second"
-      - "two"
-      - "number two"
-      - "option two"
-      - "third"
-      - "three"
-      - "number three"
-      - "option three"
-      - "fourth"
-      - "four"
-      - "number four"
-      - "option four"
-      - "fifth"
-      - "five"
-      - "number five"
-      - "option five"
+      - "mobile"
+      - "office"
+      - "work"
 
   macros:
     politePrefix:
+      - "can you"
       - "i want to"
       - "please"
-      - "can you"
 
     callVerb:
       - "call"
-      - "phone"
       - "dial"
-      - "ring"
       - "give a call to"
       - "make a call to"
-
-    repeatOptions:
-      - "repeat"
-      - "say that again"
-      - "what are my options"
-      - "read that again"
-      - "tell me again"
+      - "phone"
+      - "ring"
