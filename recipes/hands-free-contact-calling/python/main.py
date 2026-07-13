@@ -236,26 +236,6 @@ def handle_inference(
         matches = matches[:5]
         return build_options_response(matches), matches, phone, False
 
-    if intent == "repeatOptions":
-        if not pending_contacts:
-            return "There are no options to repeat.", [], None, True
-
-        return build_options_response(pending_contacts), pending_contacts, pending_phone, False
-
-    if intent == "selectPhoneType":
-        phone = slots.get("phone")
-
-        if not phone:
-            return "Which number should I use?", pending_contacts, pending_phone, False
-
-        if not pending_contacts:
-            return f"Okay, use {phone}.", [], phone, False
-
-        if len(pending_contacts) == 1:
-            return build_call_response(pending_contacts[0], phone), [], None, True
-
-        return f"Okay, {phone}. Which contact?", pending_contacts, phone, False
-
     if intent == "selectContact":
         if pending_contacts:
             if "selection_index" in slots:
@@ -293,14 +273,19 @@ def handle_inference(
         matches = matches[:5]
         return build_options_response(matches), matches, pending_phone, False
 
-    if intent == "confirmCall":
+    if intent == "selectPhone":
+        phone = slots.get("phone")
+
+        if not phone:
+            return "Which number should I use?", pending_contacts, pending_phone, False
+
+        if not pending_contacts:
+            return f"Okay, use {phone}.", [], phone, False
+
         if len(pending_contacts) == 1:
-            return build_call_response(pending_contacts[0], pending_phone), [], None, True
+            return build_call_response(pending_contacts[0], phone), [], None, True
 
-        if pending_contacts:
-            return "Which contact should I call?", pending_contacts, pending_phone, False
-
-        return "Confirmed.", [], None, True
+        return f"Okay, {phone}. Which contact?", pending_contacts, phone, False
 
     return "Sorry, I do not know how to handle that command.", [], None, True
 
