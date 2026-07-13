@@ -9,7 +9,7 @@ context:
     selectContact:
       - "(choose, i meant, select, the one named) $contact:contact"
 
-    selectPhoneType:
+    selectPhone:
       - "(call, try, use) (the) $phone:phone (number)"
 
   slots:

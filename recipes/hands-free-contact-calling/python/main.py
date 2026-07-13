@@ -150,21 +150,21 @@ def selection_index_to_int(selection: str) -> int | None:
     return mapping.get(selection)
 
 
-def phone_field_from_type(phone_type: str | None) -> tuple[str, str]:
-    phone_type = normalize(phone_type or "")
+def phone_field_from_type(phone: str | None) -> tuple[str, str]:
+    phone = normalize(phone or "")
 
-    if phone_type in {"work", "office"}:
+    if phone in {"work", "office"}:
         return "phone_work", "work"
 
-    if phone_type in {"home", "house"}:
+    if phone in {"home", "house"}:
         return "phone_home", "home"
 
     return "phone_mobile", "mobile"
 
 
-def choose_phone(contact: dict[str, str], phone_type: str | None) -> tuple[str | None, str]:
-    if phone_type:
-        field, label = phone_field_from_type(phone_type)
+def choose_phone(contact: dict[str, str], phone: str | None) -> tuple[str | None, str]:
+    if phone:
+        field, label = phone_field_from_type(phone)
         number = contact.get(field, "").strip()
         return number or None, label
 
@@ -175,8 +175,8 @@ def choose_phone(contact: dict[str, str], phone_type: str | None) -> tuple[str |
     if number:
         return number, label
 
-    for fallback_phone_type in ("mobile", "work", "home"):
-        field, label = phone_field_from_type(fallback_phone_type)
+    for fallback_phone in ("mobile", "work", "home"):
+        field, label = phone_field_from_type(fallback_phone)
         number = contact.get(field, "").strip()
         if number:
             return number, label
@@ -186,10 +186,10 @@ def choose_phone(contact: dict[str, str], phone_type: str | None) -> tuple[str |
 
 def build_call_response(
         contact: dict[str, str],
-        phone_type: str | None,
+        phone: str | None,
 ) -> str:
     name = contact_display_name(contact)
-    number, label = choose_phone(contact, phone_type)
+    number, label = choose_phone(contact, phone)
 
     if number is None:
         return f"I found {name}, but there is no {label} phone number available."
@@ -207,10 +207,10 @@ def handle_inference(
         inference: Inference,
         contacts: Sequence[Dict[str, str]],
         pending_contacts: Sequence[Dict[str, str]],
-        pending_phone_type: Optional[str],
+        pending_phone: Optional[str],
 ) -> Tuple[str, Sequence[Dict[str, str]], Optional[str], bool]:
     if not inference.is_understood:
-        return "Sorry, I did not understand that.", pending_contacts, pending_phone_type, False
+        return "Sorry, I did not understand that.", pending_contacts, pending_phone, False
 
     intent = inference.intent
     slots = inference.slots
@@ -218,7 +218,7 @@ def handle_inference(
     if intent == "callContact":
         contact_name = slots.get("contact")
         company = slots.get("company")
-        phone_type = slots.get("phone_type")
+        phone = slots.get("phone")
 
         matches = find_contacts(
             contacts=contacts,
@@ -231,30 +231,30 @@ def handle_inference(
             return f"I could not find {contact_name}.", [], None, True
 
         if len(matches) == 1:
-            return build_call_response(matches[0], phone_type), [], None, True
+            return build_call_response(matches[0], phone), [], None, True
 
         matches = matches[:5]
-        return build_options_response(matches), matches, phone_type, False
+        return build_options_response(matches), matches, phone, False
 
     if intent == "repeatOptions":
         if not pending_contacts:
             return "There are no options to repeat.", [], None, True
 
-        return build_options_response(pending_contacts), pending_contacts, pending_phone_type, False
+        return build_options_response(pending_contacts), pending_contacts, pending_phone, False
 
     if intent == "selectPhoneType":
-        phone_type = slots.get("phone_type")
+        phone = slots.get("phone")
 
-        if not phone_type:
-            return "Which number should I use?", pending_contacts, pending_phone_type, False
+        if not phone:
+            return "Which number should I use?", pending_contacts, pending_phone, False
 
         if not pending_contacts:
-            return f"Okay, use {phone_type}.", [], phone_type, False
+            return f"Okay, use {phone}.", [], phone, False
 
         if len(pending_contacts) == 1:
-            return build_call_response(pending_contacts[0], phone_type), [], None, True
+            return build_call_response(pending_contacts[0], phone), [], None, True
 
-        return f"Okay, {phone_type}. Which contact?", pending_contacts, phone_type, False
+        return f"Okay, {phone}. Which contact?", pending_contacts, phone, False
 
     if intent == "selectContact":
         if pending_contacts:
@@ -262,21 +262,21 @@ def handle_inference(
                 index = selection_index_to_int(slots["selection_index"])
 
                 if index is None or index >= len(pending_contacts):
-                    return "That option is not available.", pending_contacts, pending_phone_type, False
+                    return "That option is not available.", pending_contacts, pending_phone, False
 
-                return build_call_response(pending_contacts[index], pending_phone_type), [], None, True
+                return build_call_response(pending_contacts[index], pending_phone), [], None, True
 
             if "contact" in slots:
                 matches = find_contacts(pending_contacts, slots["contact"])
 
                 if len(matches) == 1:
-                    return build_call_response(matches[0], pending_phone_type), [], None, True
+                    return build_call_response(matches[0], pending_phone), [], None, True
 
                 if len(matches) > 1:
                     matches = matches[:5]
-                    return build_options_response(matches), matches, pending_phone_type, False
+                    return build_options_response(matches), matches, pending_phone, False
 
-            return "Which contact did you mean?", pending_contacts, pending_phone_type, False
+            return "Which contact did you mean?", pending_contacts, pending_phone, False
 
         contact_name = slots.get("contact")
         if not contact_name:
@@ -288,17 +288,17 @@ def handle_inference(
             return f"I could not find {contact_name}.", [], None, True
 
         if len(matches) == 1:
-            return build_call_response(matches[0], pending_phone_type), [], None, True
+            return build_call_response(matches[0], pending_phone), [], None, True
 
         matches = matches[:5]
-        return build_options_response(matches), matches, pending_phone_type, False
+        return build_options_response(matches), matches, pending_phone, False
 
     if intent == "confirmCall":
         if len(pending_contacts) == 1:
-            return build_call_response(pending_contacts[0], pending_phone_type), [], None, True
+            return build_call_response(pending_contacts[0], pending_phone), [], None, True
 
         if pending_contacts:
-            return "Which contact should I call?", pending_contacts, pending_phone_type, False
+            return "Which contact should I call?", pending_contacts, pending_phone, False
 
         return "Confirmed.", [], None, True
 
@@ -467,7 +467,7 @@ def main() -> None:
 
         wait_for_wake_word = True
         pending_contacts = []
-        pending_phone_type = None
+        pending_phone = None
 
         print()
 
@@ -500,11 +500,11 @@ def main() -> None:
             print_event.set()
             print_thread.join()
 
-            response, pending_contacts, pending_phone_type, is_complete = handle_inference(
+            response, pending_contacts, pending_phone, is_complete = handle_inference(
                 inference=inference,
                 contacts=contacts,
                 pending_contacts=pending_contacts,
-                pending_phone_type=pending_phone_type)
+                pending_phone=pending_phone)
 
             pcm, word_alignments = orca.synthesize(response)
 
