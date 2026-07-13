@@ -366,7 +366,8 @@ def main() -> None:
     missing = [k for k, v in {"--access_key": access_key, "--keyword_path": keyword_path}.items() if v is None]
 
     if missing:
-        parser.error(f"the following arguments are required unless --show_audio_devices is used: {", ".join(missing)}")
+        parser.error(
+            f"the following arguments are required unless --show_audio_devices is used: " + ", ".join(missing))
 
     with open(os.path.join(str(os.path.dirname(__file__)), '../res/contacts.csv')) as f:
         contacts = list(DictReader(f))
