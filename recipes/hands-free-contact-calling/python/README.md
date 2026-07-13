@@ -1,4 +1,12 @@
-# Hands-free Contact Calling in Python
+# Hands-Free Contact Calling
+
+Call contacts by name, resolve ambiguity, and handle follow-up clarification.
+
+This demo shows how to combine wake word detection, speech-to-intent, and text-to-speech to create a hands-free contact
+calling assistant. It can recognize commands like "call Sarah", resolve contacts from a contact list, ask clarification
+questions when multiple contacts match, and return to always listening mode only after the call flow is complete. This
+enables use cases like in-car calling, smart glasses, mobile assistants, accessibility tools, headset controls, and
+embedded hands-free communication.
 
 ## Compatibility
 
@@ -50,34 +58,102 @@ pip install -r requirements.txt
 4. Click Train.
 5. Select your target platform and download the generated wake word model file (`.ppn`).
 
-Save the downloaded file somewhere accessible on your machine. You will pass its path to the demo with `--keyword_path`.
+### 5. Update the Contact List (Optional)
 
-### 5. Train the Speech-to-Intent Model
+The demo reads contacts from [`../res/contacts.csv`](../res/contacts.csv).
 
-1. Open [Picovoice Console](https://console.picovoice.ai/)
-2. Go to Rhino Speech-to-Intent.
-3. Create an empty Rhino context.
-4. Click Import YAML in the top-right corner.
-5. Paste the [Rhino context YAML](../res/template.yml) for this demo.
-6. Download the generated Rhino context file (`.rhn`) for your target platform.
+The contact list uses the following columns:
 
-### 6. Run the Demo
+```csv
+contact_id,first_name,last_name,nickname,company,phone_mobile,phone_work,phone_home,default_phone
+```
+
+For example:
+
+```csv
+C001,Sarah,Chen,,Dyson,6045551001,,6045551002,mobile
+C002,John,Smith,Johnny,Evergreen Bank,6045551010,,6045551011,mobile
+C003,Maya,Ng,May,Harbor Dental,6045551032,,,mobile
+```
+
+The demo uses the contact list to generate dynamic Rhino slot values for contact names, nicknames, and company names.
+
+### 6. Update the Speech-to-Intent Template (Optional)
+
+The demo uses the Rhino YAML template at [`../res/context.template`](../res/context.template).
+
+The template contains placeholders for dynamic slot values:
+
+```text
+contact:
+{{CONTACTS}}
+
+company:
+{{COMPANIES}}
+```
+
+At runtime, the demo reads `contacts.csv`, injects the generated contact and company values into `template.yml`, writes a
+generated `context.yml`, and trains a Rhino context file (`context.rhn`) from the generated YAML.
+
+You do not need to manually download a Rhino context file for this demo.
+
+### 7. Run the Demo
+
+```console
+python main.py \
+  --access_key ${ACCESS_KEY} \
+  --keyword_path ${KEYWORD_PATH}
+```
+
+Where:
+
+- `${ACCESS_KEY}` is your Picovoice AccessKey from Picovoice Console.
+- `${KEYWORD_PATH}` is the path to the Porcupine wake word model file (`.ppn`).
+
+To use a specific microphone, pass `--audio_device_index`:
 
 ```console
 python main.py \
   --access_key ${ACCESS_KEY} \
   --keyword_path ${KEYWORD_PATH} \
-  --context_path ${CONTEXT_PATH}
+  --audio_device_index ${AUDIO_DEVICE_INDEX}
 ```
 
-Where:
+### 8. Try Voice Commands
 
-* `${ACCESS_KEY}` is your Picovoice AccessKey from Picovoice Console.
-* `${KEYWORD_PATH}` is the path to the Porcupine wake word model file (`.ppn`).
-* `${CONTEXT_PATH}` is the path to the Rhino Speech-to-Intent context file (`.rhn`).
+Say your wake word first, then try commands such as:
 
-### 7. View All Options
+```console
+call Sarah
+call Sarah Chen
+call Sarah on mobile
+call John at work
+call Maya from Harbor Dental
+call Sarah from Dyson on mobile
+```
+
+If multiple contacts match, the assistant asks a follow-up question:
+
+```console
+AI: I found Sarah Chen, Sarah Khan, Sarah Farrell. Which one?
+```
+
+For follow-ups, you do not need to say the wake word again. You can respond with:
+
+```console
+Sarah Chen
+```
+
+After the call flow completes, the assistant returns to listening for the wake word.
+
+### 9. View All Options
 
 ```console
 python main.py --help
+```
+
+To list available audio input devices:
+
+```console
+python main.py --show_audio_devices
 ```
