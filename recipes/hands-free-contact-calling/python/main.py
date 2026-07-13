@@ -117,40 +117,7 @@ def find_contacts(
     return matches
 
 
-def selection_index_to_int(selection: str) -> int | None:
-    selection = normalize(selection)
-
-    mapping = {
-        "first": 0,
-        "one": 0,
-        "number one": 0,
-        "option one": 0,
-
-        "second": 1,
-        "two": 1,
-        "number two": 1,
-        "option two": 1,
-
-        "third": 2,
-        "three": 2,
-        "number three": 2,
-        "option three": 2,
-
-        "fourth": 3,
-        "four": 3,
-        "number four": 3,
-        "option four": 3,
-
-        "fifth": 4,
-        "five": 4,
-        "number five": 4,
-        "option five": 4,
-    }
-
-    return mapping.get(selection)
-
-
-def phone_field_from_type(phone: str | None) -> tuple[str, str]:
+def phone_field_from_type(phone: str | None) -> Tuple[str, str]:
     phone = normalize(phone or "")
 
     if phone in {"work", "office"}:
@@ -237,14 +204,6 @@ def handle_inference(
 
     if intent == "selectContact":
         if pending_contacts:
-            if "selection_index" in slots:
-                index = selection_index_to_int(slots["selection_index"])
-
-                if index is None or index >= len(pending_contacts):
-                    return "That option is not available.", pending_contacts, pending_phone, False
-
-                return build_call_response(pending_contacts[index], pending_phone), [], None, True
-
             if "contact" in slots:
                 matches = find_contacts(pending_contacts, slots["contact"])
 
