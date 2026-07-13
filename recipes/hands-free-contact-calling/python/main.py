@@ -1,4 +1,5 @@
 import csv
+import os
 import shutil
 import string
 import sys
@@ -14,6 +15,7 @@ from time import (
     sleep
 )
 from typing import (
+    Dict,
     Callable,
     Sequence,
     Tuple
@@ -86,11 +88,6 @@ def build_context(
     Path(yml_path).write_text(context, encoding="utf-8")
 
 
-def load_contacts(csv_path: str) -> list[dict[str, str]]:
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        return list(csv.DictReader(f))
-
-
 def contact_display_name(contact: dict[str, str]) -> str:
     return f'{contact["first_name"]} {contact["last_name"]}'.strip()
 
@@ -115,7 +112,7 @@ def runtime_contact_phrases(contact: dict[str, str]) -> set[str]:
 
 
 def find_contacts(
-        contacts: list[dict[str, str]],
+        contacts: Sequence[Dict[str, str]],
         contact_name: str,
         company: str | None = None,
 ) -> list[dict[str, str]]:
@@ -226,7 +223,7 @@ def build_options_response(matches: list[dict[str, str]]) -> str:
 
 def handle_inference(
         inference,
-        contacts: list[dict[str, str]],
+        contacts: Sequence[Dict[str, str]],
         pending_contacts: list[dict[str, str]],
         pending_phone_type: str | None,
 ) -> tuple[str, list[dict[str, str]], str | None, bool]:
@@ -496,7 +493,8 @@ def main() -> None:
     context_yml_path = str(root_dir / "context.yml")
     context_rhn_path = str(root_dir / "context.rhn")
 
-    contacts = load_contacts(contacts_path)
+    with open(os.path.join(str(os.path.dirname(__file__)), '../res/contacts.csv')) as f:
+        contacts = list(csv.DictReader(f))
 
     build_context(
         template_path=template_path,
