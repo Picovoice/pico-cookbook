@@ -367,7 +367,7 @@ def main() -> None:
 
     if missing:
         parser.error(
-            f"the following arguments are required unless --show_audio_devices is used: " + ", ".join(missing))
+            "the following arguments are required unless --show_audio_devices is used: " + ", ".join(missing))
 
     with open(os.path.join(str(os.path.dirname(__file__)), '../res/contacts.csv')) as f:
         contacts = list(DictReader(f))
@@ -391,7 +391,7 @@ def main() -> None:
             output_path=os.path.join(str(os.path.dirname(__file__)), "context.rhn"),
             language='en',
             yaml_path=os.path.join(str(os.path.dirname(__file__)), "context.yml"))
-        print(f"[OK] Rhino Speech-to-Intent Model API")
+        print("[OK] Rhino Speech-to-Intent Model API")
 
         rhino = pvrhino.create(
             access_key=access_key,
