@@ -407,31 +407,6 @@ def time_async(alignments: Sequence[Orca.WordAlignment], on_tick: Callable[[str]
     return thread
 
 
-def speak(orca, speaker, text: str) -> None:
-    pcm, word_alignments = orca.synthesize(text)
-
-    utterance = ""
-    utterance_lock = Lock()
-
-    def get_utterance() -> str:
-        with utterance_lock:
-            return f"[AI] {utterance}"
-
-    def update_utterance(chunk: str) -> None:
-        nonlocal utterance
-        with utterance_lock:
-            utterance += chunk
-
-    utterance_event, utterance_thread = print_async(get_utterance)
-    timer_thread = time_async(alignments=word_alignments, on_tick=update_utterance)
-
-    speaker.flush(pcm)
-
-    timer_thread.join()
-    utterance_event.set()
-    utterance_thread.join()
-
-
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
@@ -492,8 +467,7 @@ def main() -> None:
 
         rhino = pvrhino.create(
             access_key=access_key,
-            context_path=os.path.join(str(os.path.dirname(__file__)), "context.rhn"),
-            require_endpoint=False)
+            context_path=os.path.join(str(os.path.dirname(__file__)), "context.rhn"))
         print(f"[OK] Rhino Speech-to-Intent[V{rhino.version}]")
 
         orca = pvorca.create(access_key=access_key)
@@ -506,9 +480,9 @@ def main() -> None:
         speaker = PvSpeaker(sample_rate=orca.sample_rate, bits_per_sample=16)
         speaker.start()
 
+        wait_for_wake_word = True
         pending_contacts = []
         pending_phone_type = None
-        wait_for_wake_word = True
 
         print()
 
@@ -526,7 +500,6 @@ def main() -> None:
 
             if wait_for_wake_word:
                 is_detected = False
-
                 while not is_detected:
                     is_detected = porcupine.process(recorder.read()) == 0
 
@@ -542,21 +515,36 @@ def main() -> None:
             print_event.set()
             print_thread.join()
 
-            print(
-                f"[Rhino] understood={inference.is_understood}, "
-                f"intent={inference.intent}, "
-                f"slots={inference.slots}")
-
             response, pending_contacts, pending_phone_type, is_complete = handle_inference(
                 inference=inference,
                 contacts=contacts,
                 pending_contacts=pending_contacts,
                 pending_phone_type=pending_phone_type)
 
-            speak(orca=orca, speaker=speaker, text=response)
+            pcm, word_alignments = orca.synthesize(response)
+
+            utterance = ""
+            utterance_lock = Lock()
+
+            def get_utterance() -> str:
+                with utterance_lock:
+                    return f"[AI] {utterance}"
+
+            def update_utterance(chunk: str) -> None:
+                nonlocal utterance
+                with utterance_lock:
+                    utterance += chunk
+
+            utterance_event, utterance_thread = print_async(get_utterance)
+            timer_thread = time_async(alignments=word_alignments, on_tick=update_utterance)
+
+            speaker.flush(pcm)
+
+            timer_thread.join()
+            utterance_event.set()
+            utterance_thread.join()
 
             wait_for_wake_word = is_complete
-
     except KeyboardInterrupt:
         pass
     finally:
