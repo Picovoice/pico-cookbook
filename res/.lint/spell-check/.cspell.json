@@ -68,7 +68,7 @@
     "**/mcu/**/pv_params.h",
 
     // css
-    "**/*.css"
+    "**/*.css",
 
     // res
     "../../../recipes/hands-free-contact-calling/res/contacts.csv"
