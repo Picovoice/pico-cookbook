@@ -458,10 +458,10 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
         "--access_key",
-        help="AccessKey obtained from Picovoice Console (https://console.picovoice.ai/).")
+        help="AccessKey obtained from Picovoice Console (https://console.picovoice.ai/)")
     parser.add_argument(
         '--keyword_path',
-        help='Path to Porcupine Wake Word model trained on Picovoice Console (https://console.picovoice.ai/).')
+        help='Path to Porcupine Wake Word model trained on Picovoice Console (https://console.picovoice.ai/)')
     parser.add_argument(
         '--audio_device_index',
         type=int,
@@ -473,27 +473,20 @@ def main() -> None:
         help='Only list available input audio devices and exit')
     args = parser.parse_args()
 
-    if args.show_audio_devices:
-        for index, name in enumerate(PvRecorder.get_available_devices()):
-            print('Device #%d: %s' % (index, name))
-        return
-
-    missing = [
-        name for name, value in {
-            "--access_key": args.access_key,
-            "--keyword_path": args.keyword_path,
-        }.items()
-        if value is None
-    ]
-
-    if missing:
-        parser.error(
-            "the following arguments are required unless --show_audio_devices is used: "
-            + ", ".join(missing))
-
     access_key = args.access_key
     keyword_path = args.keyword_path
     audio_device_index = args.audio_device_index
+    show_audio_devices = args.show_audio_devices
+
+    if show_audio_devices:
+        for index, name in enumerate(PvRecorder.get_available_devices()):
+            print(f'{index}: {name}')
+        return
+
+    missing = [k for k, v in {"--access_key": access_key, "--keyword_path": keyword_path}.items() if v is None]
+
+    if missing:
+        parser.error(f"the following arguments are required unless --show_audio_devices is used: {", ".join(missing)}")
 
     root_dir = Path(__file__).resolve().parent
     res_dir = root_dir / "../res"
