@@ -4,7 +4,6 @@ import string
 import sys
 from argparse import ArgumentParser
 from csv import DictReader
-from pathlib import Path
 from threading import (
     Event,
     Lock,
@@ -29,7 +28,7 @@ from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
 
 
-def build_context() -> None:
+def build_context_yml() -> None:
     contacts = set()
     companies = set()
 
@@ -467,15 +466,10 @@ def main() -> None:
     if missing:
         parser.error(f"the following arguments are required unless --show_audio_devices is used: {", ".join(missing)}")
 
-    root_dir = Path(__file__).resolve().parent
-
-    context_yml_path = str(root_dir / "context.yml")
-    context_rhn_path = str(root_dir / "context.rhn")
-
     with open(os.path.join(str(os.path.dirname(__file__)), '../res/contacts.csv')) as f:
         contacts = list(DictReader(f))
 
-    build_context()
+    build_context_yml()
 
     porcupine = None
     rhino = None
@@ -491,13 +485,14 @@ def main() -> None:
 
         pvrhino.train_context_from_yaml(
             access_key=access_key,
-            output_path=context_rhn_path,
+            output_path=os.path.join(str(os.path.dirname(__file__)), "context.rhn"),
             language='en',
-            yaml_path=context_yml_path)
+            yaml_path=os.path.join(str(os.path.dirname(__file__)), "context.yml"))
+        print(f"[OK] Rhino Speech-to-Intent Model API")
 
         rhino = pvrhino.create(
             access_key=access_key,
-            context_path=context_rhn_path,
+            context_path=os.path.join(str(os.path.dirname(__file__)), "context.rhn"),
             require_endpoint=False)
         print(f"[OK] Rhino Speech-to-Intent[V{rhino.version}]")
 
