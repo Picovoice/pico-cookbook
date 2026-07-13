@@ -1,9 +1,9 @@
-import csv
 import os
 import shutil
 import string
 import sys
 from argparse import ArgumentParser
+from csv import DictReader
 from pathlib import Path
 from threading import (
     Event,
@@ -29,63 +29,45 @@ from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
 
 
-def yaml_list(values, indent="      "):
-    return "\n".join(f'{indent}- "{value}"' for value in values)
+def build_context() -> None:
+    contacts = set()
+    companies = set()
+
+    with open(os.path.join(str(os.path.dirname(__file__)), '../res/contacts.csv')) as f:
+        for row in DictReader(f):
+            first = row["first_name"].strip()
+            last = row["last_name"].strip()
+            nickname = row["nickname"].strip()
+            company = row["company"].strip()
+
+            if len(first) > 0:
+                contacts.add(first)
+            if len(last) > 0:
+                contacts.add(last)
+            if len(first) > 0 and len(last) > 0:
+                contacts.add(f"{first} {last}")
+            if len(nickname) > 0:
+                contacts.add(nickname)
+
+            if len(company) > 0:
+                companies.add(company)
+
+    contacts = sorted(contacts, key=str.lower)
+    companies = sorted(companies, key=str.lower)
+
+    with open(os.path.join(str(os.path.dirname(__file__)), '../res/context.template')) as f:
+        template = f.read()
+
+    context = template \
+        .replace("{{CONTACTS}}", "\n".join(f'    - "{x}"' for x in contacts)) \
+        .replace("{{COMPANIES}}", "\n".join(f'    - "{x}"' for x in companies))
+
+    with open(os.path.join(str(os.path.dirname(__file__)), 'context.yml'), 'w') as f:
+        f.write(context)
 
 
 def normalize(text: str) -> str:
     return " ".join(text.lower().strip().split())
-
-
-def build_contact_phrases(row):
-    phrases = set()
-
-    first = row["first_name"].strip()
-    last = row["last_name"].strip()
-    nickname = row["nickname"].strip()
-
-    if first:
-        phrases.add(first)
-
-    if first and last:
-        phrases.add(f"{first} {last}")
-
-    if nickname:
-        phrases.add(nickname)
-
-    return phrases
-
-
-def build_context(
-        template_path: str,
-        csv_path: str,
-        yml_path: str,
-) -> None:
-    contact_values = set()
-    company_values = set()
-
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-
-        for row in reader:
-            contact_values.update(build_contact_phrases(row))
-
-            company = row["company"].strip()
-            if company:
-                company_values.add(company)
-
-    contact_values = sorted(contact_values, key=str.lower)
-    company_values = sorted(company_values, key=str.lower)
-
-    template = Path(template_path).read_text(encoding="utf-8")
-
-    context = (
-        template
-        .replace("{{CONTACT_SLOT_VALUES}}", yaml_list(contact_values))
-        .replace("{{COMPANY_SLOT_VALUES}}", yaml_list(company_values))
-    )
-
-    Path(yml_path).write_text(context, encoding="utf-8")
 
 
 def contact_display_name(contact: dict[str, str]) -> str:
@@ -486,20 +468,14 @@ def main() -> None:
         parser.error(f"the following arguments are required unless --show_audio_devices is used: {", ".join(missing)}")
 
     root_dir = Path(__file__).resolve().parent
-    res_dir = root_dir / "../res"
 
-    template_path = str(res_dir / "template.yml")
-    contacts_path = str(res_dir / "contacts.csv")
     context_yml_path = str(root_dir / "context.yml")
     context_rhn_path = str(root_dir / "context.rhn")
 
     with open(os.path.join(str(os.path.dirname(__file__)), '../res/contacts.csv')) as f:
-        contacts = list(csv.DictReader(f))
+        contacts = list(DictReader(f))
 
-    build_context(
-        template_path=template_path,
-        csv_path=contacts_path,
-        yml_path=context_yml_path)
+    build_context()
 
     porcupine = None
     rhino = None

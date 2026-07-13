@@ -45,10 +45,10 @@ context:
 
   slots:
     contact:
-{{CONTACT_SLOT_VALUES}}
+{{CONTACTS}}
 
     company:
-{{COMPANY_SLOT_VALUES}}
+{{COMPANIES}}
 
     phone_type:
       - "mobile"
