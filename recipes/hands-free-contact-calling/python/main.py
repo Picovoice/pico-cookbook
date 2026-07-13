@@ -152,8 +152,8 @@ def choose_phone(contact: dict[str, str], phone: str | None) -> tuple[str | None
 
 
 def build_call_response(
-        contact: dict[str, str],
-        phone: str | None,
+        contact: Dict[str, str],
+        phone: Optional[str],
 ) -> str:
     name = contact_display_name(contact)
     number, label = choose_phone(contact, phone)
@@ -161,7 +161,6 @@ def build_call_response(
     if number is None:
         return f"I found {name}, but there is no {label} phone number available."
 
-    print(f"[CALL] {name} | {label} | {number}")
     return f"Calling {name} on {label}."
 
 
