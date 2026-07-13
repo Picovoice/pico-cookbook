@@ -69,5 +69,8 @@
 
     // css
     "**/*.css"
+
+    // res
+    "../../../recipes/hands-free-contact-calling/res/contacts.csv"
   ]
 }
