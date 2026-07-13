@@ -1,38 +1,24 @@
 context:
   expressions:
     callContact:
-      - "@callVerb $contact:contact"
-      - "@callVerb $contact:contact on $phone_type:phone_type"
-      - "@callVerb $contact:contact using $phone_type:phone_type"
-      - "@callVerb $contact:contact at $company:company"
-      - "@callVerb $contact:contact from $company:company"
-      - "@callVerb $contact:contact at $company:company on $phone_type:phone_type"
-      - "@callVerb $contact:contact from $company:company on $phone_type:phone_type"
-      - "@callVerb $contact:contact work"
-      - "@callVerb $contact:contact home"
-      - "@callVerb $contact:contact mobile"
-      - "i want to @callVerb $contact:contact"
-      - "please @callVerb $contact:contact"
-      - "can you @callVerb $contact:contact"
+      - "(@politePrefix) @callVerb $contact:contact"
+      - "(@politePrefix) @callVerb $contact:contact (on, using) $phone_type:phone_type"
+      - "(@politePrefix) @callVerb $contact:contact [at, from] $company:company"
+      - "(@politePrefix) @callVerb $contact:contact [at, from] $company:company [on, using] $phone_type:phone_type"
 
     selectContact:
       - "$contact:contact"
-      - "choose $contact:contact"
-      - "select $contact:contact"
+      - "[choose, select] $contact:contact"
       - "i meant $contact:contact"
       - "the one named $contact:contact"
       - "$selection_index:selection_index"
       - "the $selection_index:selection_index one"
-      - "choose $selection_index:selection_index"
-      - "select $selection_index:selection_index"
+      - "[choose, select] $selection_index:selection_index"
 
     selectPhoneType:
       - "$phone_type:phone_type"
-      - "use $phone_type:phone_type"
-      - "use the $phone_type:phone_type number"
-      - "call $phone_type:phone_type"
-      - "call the $phone_type:phone_type number"
-      - "try $phone_type:phone_type"
+      - "[use, call, try] $phone_type:phone_type"
+      - "[use, call] the $phone_type:phone_type number"
 
     repeatOptions:
       - "@repeatOptions"
@@ -76,6 +62,11 @@ context:
       - "option five"
 
   macros:
+    politePrefix:
+      - "i want to"
+      - "please"
+      - "can you"
+
     callVerb:
       - "call"
       - "phone"

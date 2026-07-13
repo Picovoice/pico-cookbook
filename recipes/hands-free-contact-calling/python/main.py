@@ -215,6 +215,27 @@ def handle_inference(
     intent = inference.intent
     slots = inference.slots
 
+    if intent == "callContact":
+        contact_name = slots.get("contact")
+        company = slots.get("company")
+        phone_type = slots.get("phone_type")
+
+        matches = find_contacts(
+            contacts=contacts,
+            contact_name=contact_name,
+            company=company)
+
+        if not matches:
+            if company:
+                return f"I could not find {contact_name} at {company}.", [], None, True
+            return f"I could not find {contact_name}.", [], None, True
+
+        if len(matches) == 1:
+            return build_call_response(matches[0], phone_type), [], None, True
+
+        matches = matches[:5]
+        return build_options_response(matches), matches, phone_type, False
+
     if intent == "repeatOptions":
         if not pending_contacts:
             return "There are no options to repeat.", [], None, True
@@ -271,30 +292,6 @@ def handle_inference(
 
         matches = matches[:5]
         return build_options_response(matches), matches, pending_phone_type, False
-
-    if intent == "callContact":
-        contact_name = slots.get("contact")
-        company = slots.get("company")
-        phone_type = slots.get("phone_type")
-
-        if contact_name is None:
-            return "Who would you like to call?", [], None, False
-
-        matches = find_contacts(
-            contacts=contacts,
-            contact_name=contact_name,
-            company=company)
-
-        if not matches:
-            if company:
-                return f"I could not find {contact_name} at {company}.", [], None, True
-            return f"I could not find {contact_name}.", [], None, True
-
-        if len(matches) == 1:
-            return build_call_response(matches[0], phone_type), [], None, True
-
-        matches = matches[:5]
-        return build_options_response(matches), matches, phone_type, False
 
     if intent == "confirmCall":
         if len(pending_contacts) == 1:
