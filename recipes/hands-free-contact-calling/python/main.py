@@ -17,7 +17,7 @@ from typing import (
     Dict,
     Callable,
     Sequence,
-    Tuple
+    Tuple, Optional
 )
 
 import pvorca
@@ -25,6 +25,7 @@ import pvporcupine
 import pvrhino
 from pvorca import Orca
 from pvrecorder import PvRecorder
+from pvrhino import Inference
 from pvspeaker import PvSpeaker
 
 
@@ -197,35 +198,22 @@ def build_call_response(
     return f"Calling {name} on {label}."
 
 
-def build_options_response(matches: list[dict[str, str]]) -> str:
+def build_options_response(matches: Sequence[Dict[str, str]]) -> str:
     options = ", ".join(contact_display_name(x) for x in matches)
     return f"I found {options}. Which one?"
 
 
 def handle_inference(
-        inference,
+        inference: Inference,
         contacts: Sequence[Dict[str, str]],
-        pending_contacts: list[dict[str, str]],
-        pending_phone_type: str | None,
-) -> tuple[str, list[dict[str, str]], str | None, bool]:
-    """
-    Returns:
-        response_text
-        pending_contacts
-        pending_phone_type
-        is_complete
-
-    is_complete=True means go back to wake word.
-    is_complete=False means listen for a follow-up immediately.
-    """
+        pending_contacts: Sequence[Dict[str, str]],
+        pending_phone_type: Optional[str],
+) -> Tuple[str, Sequence[Dict[str, str]], Optional[str], bool]:
     if not inference.is_understood:
         return "Sorry, I did not understand that.", pending_contacts, pending_phone_type, False
 
     intent = inference.intent
     slots = inference.slots
-
-    if intent == "cancelCall":
-        return "Cancelled.", [], None, True
 
     if intent == "repeatOptions":
         if not pending_contacts:

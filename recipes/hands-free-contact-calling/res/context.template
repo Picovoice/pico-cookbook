@@ -34,12 +34,6 @@ context:
       - "call the $phone_type:phone_type number"
       - "try $phone_type:phone_type"
 
-    confirmCall:
-      - "@confirm"
-
-    cancelCall:
-      - "@cancel"
-
     repeatOptions:
       - "@repeatOptions"
 
@@ -89,26 +83,6 @@ context:
       - "ring"
       - "give a call to"
       - "make a call to"
-
-    confirm:
-      - "yes"
-      - "yeah"
-      - "yep"
-      - "correct"
-      - "confirm"
-      - "go ahead"
-      - "do it"
-      - "call them"
-      - "place the call"
-
-    cancel:
-      - "cancel"
-      - "stop"
-      - "no"
-      - "nope"
-      - "never mind"
-      - "forget it"
-      - "do not call"
 
     repeatOptions:
       - "repeat"
