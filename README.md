@@ -28,6 +28,7 @@ Enterprise-ready, open-source, and ready to fork and adapt, these on-device AI e
 ## Call Screening & Assistance
 - [Call Screen](recipes/call-screen): On-device call screening that transcribes and summarizes incoming calls, so users can decide whether to answer, ignore, or block.
 - [Call Assist](recipes/call-assist): On-device call assistant that screens and summarizes calls, then acts on them. It can flag likely spam and reject calls.
+- [Hands-Free Contact Calling](recipes/hands-free-contact-calling): Call contacts by name, resolve ambiguity, and handle follow-up clarification.
 
 ## Document & Image AI (Multimodal)
 - [Document Q&A](recipes/document-qa): On-device document question answering with private, local RAG. Embeds and retrieves over your own documents and answers grounded in them, asked by voice and answered aloud, with no data leaving the device.

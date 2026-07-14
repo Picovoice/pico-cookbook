@@ -1,0 +1,101 @@
+contact_id,first_name,last_name,nickname,company,phone_mobile,phone_work,phone_home,default_phone
+C001,Sarah,Chen,,Dyson,6045551001,,6045551002,mobile
+C002,Clara,Benson,,Cloudway,6045551004,6045551005,6045551006,mobile
+C003,Sarah,Khan,,,6045551008,,,mobile
+C004,John,Smith,Johnny,Evergreen Bank,6045551010,,6045551011,mobile
+C005,Evan,Turner,,Pacific Insurance,6045551013,6045551014,6045551015,mobile
+C006,Sean,White,,Raven Security,6045551017,6045551018,,mobile
+C007,Dylan,Wong,,Urban Realty,6045551020,6045551021,6045551022,mobile
+C008,Robert,Mackay,Bobby,Trail Appliances,6045551024,,,mobile
+C009,Marco,Nakamura,,Quartz Media,6045551026,6045551027,,mobile
+C010,Roger,MacDonald,,Maple Legal,6045551029,,6045551030,mobile
+C011,Maya,Ng,May,Harbor Dental,6045551032,,,mobile
+C012,Elena,Nguyen,,Summit Medical,6045551034,6045551035,6045551036,mobile
+C013,Jenny,Lee,Jen,,6045551038,,,mobile
+C014,Victor,Li,,Northstar AI,6045551040,6045551041,6045551042,mobile
+C015,Alicia,Ali,Ally,Brightline Health,6045551044,,,mobile
+C016,Vanessa,Patel,,Cedar Systems,6045551046,,,mobile
+C017,Amir,Ahmadi,,Westbridge Capital,6045551048,6045551049,,mobile
+C018,Omar,Moradi,,Pacific Insurance,6045551051,6045551052,,mobile
+C019,Chris,King,,Orion Devices,6045551054,,,mobile
+C020,Kevin,Kim,,Copper Finch,6045551056,,,mobile
+C021,Theo,Chen,,Urban Realty,6045551058,6045551059,6045551060,work
+C022,Brian,Novak,,Blue River Labs,6045551062,6045551063,6045551064,work
+C023,Sean,Cho,,Blue River Labs,6045551066,,,mobile
+C024,Leo,Novak,,Raven Security,6045551068,6045551069,,work
+C025,Alicia,Miller,,,6045551071,6045551072,,mobile
+C026,Tina,Miller,,Fable Foods,6045551074,,,mobile
+C027,Chloe,Lee,,Acme Robotics,6045551076,6045551077,,work
+C028,Paige,Robinson,,Pacific Insurance,6045551079,6045551080,6045551081,mobile
+C029,Mina,Stone,,Orion Devices,6045551083,6045551084,6045551085,mobile
+C030,Sean,Robinson,,Fable Foods,6045551087,6045551088,,mobile
+C031,Nika,Ahmadi,,Raven Security,6045551090,,,mobile
+C032,Nadia,Lewis,,Dyson,6045551092,6045551093,,mobile
+C033,Thomas,Lee,Tom,Urban Realty,6045551095,6045551096,,mobile
+C034,Jamal,Taylor,,Acme Robotics,6045551098,6045551099,6045551100,mobile
+C035,Mona,Abbott,,Pioneer School,6045551102,6045551103,6045551104,mobile
+C036,Kyle,Martin,,Cedar Systems,6045551106,6045551107,,mobile
+C037,Ben,Smyth,,Urban Realty,6045551109,,6045551110,mobile
+C038,Sam,Singh,,Blue River Labs,6045551112,6045551113,,mobile
+C039,Eric,Walker,,Summit Medical,6045551115,6045551116,,mobile
+C040,Ryan,Nguyen,,Northstar AI,6045551118,6045551119,,work
+C041,Alana,Young,,Orion Devices,6045551121,6045551122,,work
+C042,Rachel,Carter,,Cedar Systems,6045551124,6045551125,6045551126,work
+C043,Mina,Kim,,Brightline Health,6045551128,,,mobile
+C044,Omar,Wong,,Vertex Auto,6045551130,,,mobile
+C045,Bianca,Farrell,,Evergreen Bank,6045551132,6045551133,,mobile
+C046,Sarah,Farrell,,Vertex Auto,6045551135,,,mobile
+C047,Eli,Turner,,Helio Energy,6045551137,6045551138,6045551139,mobile
+C048,Avery,Ross,,Vertex Auto,6045551141,,,mobile
+C049,Anika,Walker,,Westbridge Capital,6045551143,6045551144,6045551145,mobile
+C050,George,Henderson,,Maple Legal,6045551147,6045551148,,work
+C051,Joanna,Abbott,,Cloudway,6045551150,,,mobile
+C052,Jack,Robinson,,Trail Appliances,6045551152,,,mobile
+C053,Tara,Smyth,,Brightline Health,6045551154,,,mobile
+C054,Nate,Carter,,,6045551156,6045551157,,mobile
+C055,Mona,Harris,,,6045551159,,6045551160,mobile
+C056,Derek,Chen,,Raven Security,6045551162,,,mobile
+C057,Nora,King,,Pacific Insurance,6045551164,,,mobile
+C058,Julia,Wu,,Dyson,6045551166,,6045551167,mobile
+C059,George,Lee,,Raven Security,6045551169,,,mobile
+C060,Yara,Cho,,,6045551171,,,mobile
+C061,Brenda,Cho,,Northstar AI,6045551173,6045551174,,mobile
+C062,Grace,Nguyen,,Westbridge Capital,6045551176,,,mobile
+C063,Kara,Tran,,,6045551178,,,mobile
+C064,Sam,Foster,,Acme Robotics,6045551180,6045551181,,mobile
+C065,Caleb,Lewis,,Summit Medical,6045551183,6045551184,,mobile
+C066,Maya,Smyth,,Copper Finch,6045551186,,,mobile
+C067,Amir,Abbott,,Quartz Media,6045551188,,6045551189,mobile
+C068,Kian,White,,Orion Devices,6045551191,6045551192,6045551193,mobile
+C069,Cliff,Walker,,Pacific Insurance,6045551195,,,mobile
+C070,Amir,Martin,,Evergreen Bank,6045551197,6045551198,,work
+C071,Zoe,Williams,,Harbor Dental,6045551200,,,mobile
+C072,George,Harris,,Vertex Auto,6045551202,6045551203,,work
+C073,Jason,Rahimi,,Trail Appliances,6045551205,,,mobile
+C074,Logan,Foster,,Fable Foods,6045551207,,,mobile
+C075,Farah,Jackson,,Westbridge Capital,6045551209,,,mobile
+C076,Lina,Khan,,Cedar Systems,6045551211,6045551212,6045551213,work
+C077,Asha,Li,,Evergreen Bank,6045551215,,,mobile
+C078,Nadia,Moradi,,,6045551217,,,mobile
+C079,Paige,Lee,,,6045551219,6045551220,,mobile
+C080,Tony,Miller,,Northstar AI,6045551222,6045551223,,work
+C081,Amir,Rodriguez,,Evergreen Bank,6045551225,6045551226,,mobile
+C082,Riley,Miller,,Raven Security,6045551228,,,mobile
+C083,Jane,Rahimi,,Dyson,6045551230,6045551231,,work
+C084,Julia,Novak,,Blue River Labs,6045551233,,,mobile
+C085,Nika,Abbott,,Copper Finch,6045551235,6045551236,,mobile
+C086,Ryan,Mitchell,,Helio Energy,6045551238,,,mobile
+C087,Celine,Henderson,,Raven Security,6045551240,6045551241,,mobile
+C088,Jason,Evans,,Urban Realty,6045551243,6045551244,,mobile
+C089,Chloe,Anderson,,,6045551246,6045551247,,mobile
+C090,Zara,Cho,,Quartz Media,6045551249,,,mobile
+C091,John,Stone,,Acme Robotics,6045551251,,6045551252,mobile
+C092,Yara,Foster,,Urban Realty,6045551254,6045551255,6045551256,mobile
+C093,Mira,Shah,,,6045551258,,,mobile
+C094,Camila,Saleh,,Raven Security,6045551260,,,mobile
+C095,Jared,Ross,,Pioneer School,6045551262,,,mobile
+C096,Kara,White,,Helio Energy,6045551264,,,mobile
+C097,Liam,Roy,,Westbridge Capital,6045551266,,,mobile
+C098,Mira,Smyth,,Quartz Media,6045551268,6045551269,,mobile
+C099,George,Lewis,,Acme Robotics,6045551271,6045551272,,work
+C100,Eric,Chen,,Dyson,6045551274,,,mobile
