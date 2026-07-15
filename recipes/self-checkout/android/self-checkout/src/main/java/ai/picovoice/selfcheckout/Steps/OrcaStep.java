@@ -13,7 +13,7 @@
 package ai.picovoice.selfcheckout.Steps;
 
 import android.content.Context;
-import ai.picovoice.selfcheckout.AINoiseSuppressedRecorder;
+import ai.picovoice.selfcheckout.BufferedRecorder;
 import ai.picovoice.selfcheckout.PvSpeaker;
 import ai.picovoice.orca.Orca;
 import ai.picovoice.orca.OrcaAudio;
@@ -30,7 +30,7 @@ public class OrcaStep extends Step {
 
     public OrcaStep(
             Context context,
-            AINoiseSuppressedRecorder r,
+            BufferedRecorder r,
             WorkflowListener listener,
             String accessKey,
             String modelPath) throws Exception {

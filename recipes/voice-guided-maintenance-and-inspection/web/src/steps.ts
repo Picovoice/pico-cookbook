@@ -3,7 +3,7 @@ import { OrcaWorker, OrcaAlignment, Orca } from '@picovoice/orca-web';
 import { PorcupineDetection, PorcupineWorker } from '@picovoice/porcupine-web';
 import { RhinoInference, RhinoWorker } from '@picovoice/rhino-web';
 
-import { Interrupter, AINoiseSuppressedRecorder } from './ai_noise_suppressed_recorder';
+import { Interrupter, BufferedRecorder } from './recorder';
 import { AudioStream } from './audio_stream';
 
 import { callbacks, isRunning } from './config';
@@ -37,7 +37,7 @@ export type StepOptions =
 
 export async function createStep(
     accessKey: string,
-    recorder: AINoiseSuppressedRecorder,
+    recorder: BufferedRecorder,
     audio: AudioStream,
     options: StepOptions
 ): Promise<Step> {
@@ -130,14 +130,14 @@ export class OrcaStep extends Step {
 }
 
 export class PorcupineStep extends Step {
-    private recorder: AINoiseSuppressedRecorder;
+    private recorder: BufferedRecorder;
     private porcupine: PorcupineWorker;
 
     private interrupter: Interrupter;
     private isDetected: boolean;
 
     private constructor (
-        recorder: AINoiseSuppressedRecorder,
+        recorder: BufferedRecorder,
         porcupine: PorcupineWorker,
     ) {
         super();
@@ -149,7 +149,7 @@ export class PorcupineStep extends Step {
 
     static async create(
         accessKey: string,
-        recorder: AINoiseSuppressedRecorder,
+        recorder: BufferedRecorder,
         keywordPath: string,
         modelPath?: string,
         sensitivity: number = 0.5,
@@ -225,13 +225,13 @@ export class PorcupineStep extends Step {
 }
 
 export class RhinoStep extends Step {
-    private recorder: AINoiseSuppressedRecorder;
+    private recorder: BufferedRecorder;
     private rhino: RhinoWorker;
 
     private interrupter: Interrupter;
     private inference?: RhinoInference;
 
-    private constructor(recorder: AINoiseSuppressedRecorder, rhino: RhinoWorker) {
+    private constructor(recorder: BufferedRecorder, rhino: RhinoWorker) {
         super();
         this.recorder = recorder;
         this.rhino = rhino;
@@ -240,7 +240,7 @@ export class RhinoStep extends Step {
 
     static async create(
         accessKey: string,
-        recorder: AINoiseSuppressedRecorder,
+        recorder: BufferedRecorder,
         contextPath: string,
         modelPath?: string,
         sensitivity: number = 0.5,
@@ -322,7 +322,7 @@ export class RhinoStep extends Step {
 }
 
 export class CheetahStep extends Step {
-    private recorder: AINoiseSuppressedRecorder;
+    private recorder: BufferedRecorder;
     private cheetah: CheetahWorker;
 
     private interrupter: Interrupter;
@@ -331,7 +331,7 @@ export class CheetahStep extends Step {
 
     private onPartial: (partial: string) => void;
 
-    private constructor(recorder: AINoiseSuppressedRecorder, cheetah: CheetahWorker) {
+    private constructor(recorder: BufferedRecorder, cheetah: CheetahWorker) {
         super();
         this.recorder = recorder;
         this.cheetah = cheetah;
@@ -343,7 +343,7 @@ export class CheetahStep extends Step {
 
     static async create(
         accessKey: string,
-        recorder: AINoiseSuppressedRecorder,
+        recorder: BufferedRecorder,
         modelPath?: string,
         endpointDurationSec: number = 1.0,
         enableAutomaticPunctuation: boolean = true,

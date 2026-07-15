@@ -14,7 +14,6 @@ from typing import Tuple
 ANIMALS = [
     ("cheetah", "4.0.2"),
     ("orca", "3.0.0"),
-    ("koala", "3.0.0"),
 ]
 
 COPIES = {
@@ -23,9 +22,6 @@ COPIES = {
     ],
     "cheetah": [
         "cheetah_params.pv"
-    ],
-    "koala": [
-        "koala_params.pv"
     ]
 }
 

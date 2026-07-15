@@ -1,6 +1,6 @@
 import { RhinoInference } from '@picovoice/rhino-web';
 
-import { AINoiseSuppressedRecorder } from './ai_noise_suppressed_recorder';
+import { BufferedRecorder } from './recorder';
 import { AudioStream } from './audio_stream';
 import { createStep, Step, StepOptions, OrcaStep, PorcupineStep, RhinoStep } from './steps';
 
@@ -102,7 +102,7 @@ type WorkflowOptions = {
 };
 
 export class Workflow {
-    private recorder: AINoiseSuppressedRecorder;
+    private recorder: BufferedRecorder;
     private audio: AudioStream;
 
     private steps: Record<string, Step>;
@@ -114,7 +114,7 @@ export class Workflow {
     private outcomes: Outcome[];
 
     private constructor(
-        recorder: AINoiseSuppressedRecorder,
+        recorder: BufferedRecorder,
         audio: AudioStream,
         steps: Record<string, Step>,
         options: WorkflowOptions,
@@ -138,7 +138,7 @@ export class Workflow {
     }
 
     static async create(accessKey: string, options: WorkflowOptions) {
-        const recorder = await AINoiseSuppressedRecorder.create(accessKey);
+        const recorder = BufferedRecorder.create();
         const audio = new AudioStream(22050);
 
         const steps: Record<string, Step> = {};

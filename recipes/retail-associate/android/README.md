@@ -41,7 +41,6 @@ Save the downloaded file somewhere accessible on your machine. You will pass its
 ### 3. Run the Setup Script
 
 Run the setup script to download the models for
-- [Koala Noise Suppression](https://picovoice.ai/docs/koala/)
 - [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/)
 
 It will also copy the models provided for [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/) and [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) to the assets folder.

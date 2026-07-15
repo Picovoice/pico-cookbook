@@ -1,6 +1,6 @@
 # Self-Checkout in Python
 
-Run a fully on-device, voice-driven grocery self-checkout station with spoken item announcements, AI noise suppression,
+Run a fully on-device, voice-driven grocery self-checkout station with spoken item announcements,
 and structured intent capture for cart management commands.
 
 ## Compatibility

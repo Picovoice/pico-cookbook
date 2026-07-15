@@ -8,7 +8,6 @@
 //
 
 import Cheetah
-import Koala
 import Orca
 import Porcupine
 import Rhino
@@ -74,8 +73,6 @@ class ViewModel: ObservableObject {
 
     private let TTS_MODEL = "orca_params_en_female.pv"
 
-    private let NS_MODEL = "koala_params.pv"
-
     let cardTitles: [CardType: String] = [
         .UNIT_ID: "UNIT ID",
         .OIL_CONDITION: "OIL CONDITION",
@@ -93,7 +90,6 @@ class ViewModel: ObservableObject {
     @Published var activeCard: CardType?
     @Published var cardValues: [CardType: String] = [:]
 
-    private var koala: Koala?
     private var porcupine: Porcupine?
     private var orca: Orca?
     private var rhino: Rhino?
@@ -101,7 +97,6 @@ class ViewModel: ObservableObject {
 
     private var audioPlayerStream: AudioPlayerStream?
     private var basicRecorder: BasicRecorder?
-    private var noiseSuppressionRecorder: AINoiseSuppressionRecorder?
 
     private var cheetahStep: CheetahStep?
     private var orcaStep: OrcaStep?
@@ -156,9 +151,6 @@ class ViewModel: ObservableObject {
     }
 
     private func preloadDemo() async throws {
-        await setStatusText(text: "Loading Koala Noise Suppression...")
-        koala = try Koala(accessKey: ACCESS_KEY)
-
         await setStatusText(text: "Loading Porcupine Wake Word...")
         porcupine = try Porcupine(accessKey: ACCESS_KEY, keywordPath: KEYWORD_MODEL)
 
@@ -174,24 +166,21 @@ class ViewModel: ObservableObject {
         audioPlayerStream = try AudioPlayerStream(
             sampleRate: Double(orca!.sampleRate!))
         basicRecorder = BasicRecorder(
-            frameLength: Koala.frameLength,
-            sampleRate: Koala.sampleRate,
+            frameLength: Porcupine.frameLength,
+            sampleRate: Porcupine.sampleRate,
             frameCallback: computeSoundLevel)
-        noiseSuppressionRecorder = AINoiseSuppressionRecorder(
-            recorder: basicRecorder!,
-            koala: koala!)
 
         cheetahStep = CheetahStep(
-            recorder: noiseSuppressionRecorder!,
+            recorder: basicRecorder!,
             cheetah: cheetah!)
         orcaStep = OrcaStep(
             speaker: audioPlayerStream!,
             orca: orca!)
         porcupineStep = PorcupineStep(
-            recorder: noiseSuppressionRecorder!,
+            recorder: basicRecorder!,
             porcupine: porcupine!)
         rhinoStep = RhinoStep(
-            recorder: noiseSuppressionRecorder!,
+            recorder: basicRecorder!,
             rhino: rhino!)
         workflow = Workflow(
             viewModel: self,
@@ -448,36 +437,6 @@ class BasicRecorder: Recorder {
                 cont!.yield(sample)
             }
         }
-    }
-}
-
-class AINoiseSuppressionRecorder: Recorder {
-    let recorder: Recorder
-    let koala: Koala
-
-    init(recorder: Recorder, koala: Koala) {
-        self.recorder = recorder
-        self.koala = koala
-    }
-
-    func start() throws {
-        try recorder.start()
-    }
-
-    func stop() throws {
-        try recorder.stop()
-    }
-
-    func read(frameLength: UInt32) async throws -> [Int16] {
-        var buffer: [Int16] = []
-
-        while buffer.count < frameLength {
-            let rawFrame = try await recorder.read(frameLength: Koala.frameLength)
-            let nsFrame = try koala.process(rawFrame)
-            buffer.append(contentsOf: nsFrame)
-        }
-
-        return buffer
     }
 }
 

@@ -13,7 +13,7 @@
 package ai.picovoice.foodordering.Steps;
 
 import android.content.Context;
-import ai.picovoice.foodordering.AINoiseSuppressedRecorder;
+import ai.picovoice.foodordering.BufferedRecorder;
 import ai.picovoice.foodordering.WorkflowListener;
 import ai.picovoice.rhino.Rhino;
 import ai.picovoice.rhino.RhinoInference;
@@ -23,7 +23,7 @@ public class RhinoStep extends Step {
 
     public RhinoStep(
             Context context,
-            AINoiseSuppressedRecorder r,
+            BufferedRecorder r,
             WorkflowListener listener,
             String accessKey,
             String modelPath) throws Exception {

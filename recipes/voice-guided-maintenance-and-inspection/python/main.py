@@ -25,54 +25,12 @@ from typing import (
 )
 
 import pvcheetah
-import pvkoala
 import pvorca
 import pvporcupine
 import pvrhino
 from pvorca import Orca
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
-
-
-class AINoiseSuppressedRecorder(object):
-    def __init__(self, access_key: str, audio_device_index: int) -> None:
-        self._koala = pvkoala.create(access_key=access_key)
-        self._recorder = PvRecorder(
-            device_index=audio_device_index,
-            frame_length=self._koala.frame_length)
-        self._buffer = list()
-
-    def start(self) -> None:
-        self._recorder.start()
-
-    def stop(self) -> None:
-        self._buffer.clear()
-        self._recorder.stop()
-        self._koala.reset()
-
-    def read(self, num_samples: int) -> Sequence[int]:
-        pcm = list()
-
-        if len(self._buffer) > 0:
-            num_from_buffer = min(num_samples, len(self._buffer))
-            pcm.extend(self._buffer[:num_from_buffer])
-            self._buffer = self._buffer[num_from_buffer:]
-
-        while len(pcm) < num_samples:
-            frame = self._koala.process(self._recorder.read())
-
-            remaining = num_samples - len(pcm)
-            if len(frame) <= remaining:
-                pcm.extend(frame)
-            else:
-                pcm.extend(frame[:remaining])
-                self._buffer.extend(frame[remaining:])
-
-        return pcm
-
-    def delete(self) -> None:
-        self._recorder.delete()
-        self._koala.delete()
 
 
 class Steps(Enum):
@@ -86,7 +44,7 @@ class Step(object):
     def __init__(
             self,
             access_key: str,
-            recorder: AINoiseSuppressedRecorder,
+            recorder: PvRecorder,
             speaker: PvSpeaker,
     ) -> None:
         self._access_key = access_key
@@ -121,7 +79,7 @@ class CheetahStep(Step):
     def __init__(
             self,
             access_key: str,
-            recorder: AINoiseSuppressedRecorder,
+            recorder: PvRecorder,
             speaker: PvSpeaker,
             model_path: Optional[str] = None,
             endpoint_duration_sec: Optional[float] = 1.,
@@ -152,7 +110,7 @@ class CheetahStep(Step):
 
             is_endpoint = False
             while not is_endpoint:
-                partial, is_endpoint = self._cheetah.process(self._recorder.read(self._cheetah.frame_length))
+                partial, is_endpoint = self._cheetah.process(self._recorder.read())
                 partials.append(partial)
                 if on_partial is not None:
                     on_partial(partial)
@@ -188,7 +146,7 @@ class OrcaStep(Step):
     def __init__(
             self,
             access_key: str,
-            recorder: AINoiseSuppressedRecorder,
+            recorder: PvRecorder,
             speaker: PvSpeaker,
             model_path: Optional[str] = None,
     ) -> None:
@@ -230,11 +188,9 @@ class PorcupineStep(Step):
     def __init__(
             self,
             access_key: str,
-            recorder: AINoiseSuppressedRecorder,
+            recorder: PvRecorder,
             speaker: PvSpeaker,
-            keyword_path: str,
-            model_path: Optional[str] = None,
-            sensitivity: float = 0.5
+            porcupine: pvporcupine.Porcupine,
     ) -> None:
         super().__init__(
             access_key=access_key,
@@ -242,12 +198,7 @@ class PorcupineStep(Step):
             speaker=speaker)
 
         self._recorder = recorder
-
-        self._porcupine = pvporcupine.create(
-            access_key=access_key,
-            model_path=model_path,
-            keyword_paths=[keyword_path],
-            sensitivities=[sensitivity])
+        self._porcupine = porcupine
 
     def run(self) -> Optional[Dict[str, Any]]:
         try:
@@ -255,7 +206,7 @@ class PorcupineStep(Step):
 
             is_detected = False
             while not is_detected:
-                is_detected = self._porcupine.process(self._recorder.read(self._porcupine.frame_length)) == 0
+                is_detected = self._porcupine.process(self._recorder.read()) == 0
         finally:
             self._recorder.stop()
 
@@ -273,7 +224,7 @@ class RhinoStep(Step):
     def __init__(
             self,
             access_key: str,
-            recorder: AINoiseSuppressedRecorder,
+            recorder: PvRecorder,
             speaker: PvSpeaker,
             context_path: str,
             model_path: Optional[str] = None,
@@ -298,7 +249,7 @@ class RhinoStep(Step):
         try:
             self._recorder.start()
 
-            while not self._rhino.process(self._recorder.read(self._rhino.frame_length)):
+            while not self._rhino.process(self._recorder.read()):
                 pass
             inference = self._rhino.get_inference()
             return {
@@ -361,17 +312,28 @@ class Workflow(object):
             start_state: Enum,
             start_state_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
-        self._recorder = AINoiseSuppressedRecorder(access_key=access_key, audio_device_index=audio_device_index)
+        porcupine_kwargs = next(kw for _, (st, kw) in steps.items() if st == Steps.PORCUPINE)
+        porcupine = pvporcupine.create(
+            access_key=access_key,
+            keyword_paths=[porcupine_kwargs["keyword_path"]],
+            model_path=porcupine_kwargs.get("model_path"),
+            sensitivities=[porcupine_kwargs.get("sensitivity", 0.5)])
+        self._recorder = PvRecorder(
+            device_index=audio_device_index,
+            frame_length=porcupine.frame_length)
         self._speaker = PvSpeaker(sample_rate=22050, bits_per_sample=16)
 
         self._steps = dict()
         for uid, (step, kwargs) in steps.items():
+            kwargs = dict(kwargs) if kwargs is not None else dict()
+            if step == Steps.PORCUPINE:
+                kwargs = {"porcupine": porcupine}
             self._steps[uid] = Step.create(
                 step=step,
                 access_key=access_key,
                 recorder=self._recorder,
                 speaker=self._speaker,
-                **kwargs if kwargs is not None else dict())
+                **kwargs)
             print(f"[OK] {self._steps[uid]}")
 
         self._states = dict()

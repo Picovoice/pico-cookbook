@@ -12,8 +12,7 @@
 
 package ai.picovoice.retailassociate.Steps;
 
-import android.content.Context;
-import ai.picovoice.retailassociate.AINoiseSuppressedRecorder;
+import ai.picovoice.retailassociate.BufferedRecorder;
 import ai.picovoice.retailassociate.WorkflowListener;
 import ai.picovoice.porcupine.Porcupine;
 
@@ -21,16 +20,11 @@ public class PorcupineStep extends Step {
     private final Porcupine porcupine;
 
     public PorcupineStep(
-            Context context,
-            AINoiseSuppressedRecorder r,
+            BufferedRecorder r,
             WorkflowListener listener,
-            String accessKey,
-            String modelPath) throws Exception {
+            Porcupine porcupine) {
         super(r, listener);
-        porcupine = new Porcupine.Builder()
-                .setAccessKey(accessKey)
-                .setKeywordPath(modelPath)
-                .build(context);
+        this.porcupine = porcupine;
     }
 
     public void run(String listeningPrompt) throws Exception {

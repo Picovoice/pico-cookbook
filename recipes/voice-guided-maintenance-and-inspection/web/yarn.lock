@@ -955,13 +955,6 @@
   dependencies:
     "@picovoice/web-utils" "=1.4.3"
 
-"@picovoice/koala-web@^3.0.0":
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/@picovoice/koala-web/-/koala-web-3.0.0.tgz#95824e583563c5385c51e84bbbc02b8818ae8eb9"
-  integrity sha512-2n7v4UvmppFKys73YnWpY2zKmBkGbHg2SMVaVjDBPVGCOmvL8kLeWMnimMhaUccwv0eJpCtEU0svc/9RRJUiCg==
-  dependencies:
-    "@picovoice/web-utils" "=1.4.3"
-
 "@picovoice/orca-web@^3.0.0":
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/@picovoice/orca-web/-/orca-web-3.0.0.tgz#774f76a827f1ad09c0557c163e1b6f0af0f250bf"

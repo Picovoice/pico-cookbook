@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import ai.picovoice.android.voiceprocessor.VoiceProcessor;
+import ai.picovoice.porcupine.Porcupine;
 import ai.picovoice.rhino.RhinoInference;
 
 import ai.picovoice.foodordering.Steps.OrcaStep;
@@ -52,7 +53,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String CONTEXT_MODEL = "food_ordering_android.rhn";
 
     private static final String TTS_MODEL = "orca_params_en_female.pv";
-    private static final String NS_MODEL = "koala_params.pv";
 
     private LinearLayout startScreen, workflowScreen, reportContainer, errorView;
     private TextView startStatusText, workflowStatusText, errorText;
@@ -794,7 +794,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     class Workflow {
-        AINoiseSuppressedRecorder recorder;
+        BufferedRecorder recorder;
         PorcupineStep porcupineStep;
         OrcaStep orcaStep;
         RhinoStep rhinoStep;
@@ -805,11 +805,14 @@ public class MainActivity extends AppCompatActivity {
         public Workflow(Context context, WorkflowListener listener) throws Exception {
             this.listener = listener;
 
-            listener.onInitProgress("Loading Koala Noise Suppression...");
-            recorder = new AINoiseSuppressedRecorder(context, listener, ACCESS_KEY, NS_MODEL);
-
             listener.onInitProgress("Loading Porcupine Wake Word...");
-            porcupineStep = new PorcupineStep(context, recorder, listener, ACCESS_KEY, KEYWORD_MODEL);
+            Porcupine porcupine = new Porcupine.Builder()
+                    .setAccessKey(ACCESS_KEY)
+                    .setKeywordPath(KEYWORD_MODEL)
+                    .build(context);
+
+            recorder = new BufferedRecorder(listener, porcupine.getFrameLength(), porcupine.getSampleRate());
+            porcupineStep = new PorcupineStep(recorder, listener, porcupine);
 
             listener.onInitProgress("Loading Orca Text-to-Speech...");
             orcaStep = new OrcaStep(context, recorder, listener, ACCESS_KEY, TTS_MODEL);

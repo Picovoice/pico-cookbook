@@ -12,13 +12,13 @@
 
 package ai.picovoice.retailassociate.Steps;
 
-import ai.picovoice.retailassociate.AINoiseSuppressedRecorder;
+import ai.picovoice.retailassociate.BufferedRecorder;
 import ai.picovoice.retailassociate.WorkflowListener;
 
 public abstract class Step {
-    protected AINoiseSuppressedRecorder recorder;
+    protected BufferedRecorder recorder;
     protected WorkflowListener listener;
-    public Step(AINoiseSuppressedRecorder recorder, WorkflowListener listener) {
+    public Step(BufferedRecorder recorder, WorkflowListener listener) {
         this.recorder = recorder;
         this.listener = listener;
     }

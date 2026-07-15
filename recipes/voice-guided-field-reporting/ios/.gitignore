@@ -24,5 +24,4 @@ Pods
 # Exclude picovoice cloned repositories and resources
 cheetah
 orca
-koala
 VoiceGuidedFieldReporting/resources

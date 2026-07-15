@@ -66,5 +66,4 @@ dependencies {
     implementation 'ai.picovoice:porcupine-android:4.0.0'
     implementation 'ai.picovoice:rhino-android:4.0.1'
     implementation 'ai.picovoice:orca-android:3.0.0'
-    implementation 'ai.picovoice:koala-android:3.0.0'
 }

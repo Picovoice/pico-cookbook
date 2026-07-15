@@ -1,6 +1,6 @@
 # Self-Checkout for Android
 
-Run a fully on-device, voice-driven grocery self-checkout station with spoken item announcements, AI noise suppression,
+Run a fully on-device, voice-driven grocery self-checkout station with spoken item announcements,
 and structured intent capture for cart management commands.
 
 ## Compatibility
@@ -42,7 +42,6 @@ Save the downloaded file somewhere accessible on your machine. You will pass its
 ### 3. Run the Setup Script
 
 Run the setup script to download the models for
-- [Koala Noise Suppression](https://picovoice.ai/docs/koala/)
 - [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/)
 
 It will also copy the models provided for [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/) and [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/) to the assets folder.

@@ -23,5 +23,4 @@ Pods
 
 # Exclude picovoice cloned repositories and resources
 orca
-koala
 VoicePicking/resources
