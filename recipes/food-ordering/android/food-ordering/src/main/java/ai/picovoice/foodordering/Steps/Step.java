@@ -12,13 +12,13 @@
 
 package ai.picovoice.foodordering.Steps;
 
-import ai.picovoice.foodordering.AINoiseSuppressedRecorder;
+import ai.picovoice.foodordering.BufferedRecorder;
 import ai.picovoice.foodordering.WorkflowListener;
 
 public abstract class Step {
-    protected AINoiseSuppressedRecorder recorder;
+    protected BufferedRecorder recorder;
     protected WorkflowListener listener;
-    public Step(AINoiseSuppressedRecorder recorder, WorkflowListener listener) {
+    public Step(BufferedRecorder recorder, WorkflowListener listener) {
         this.recorder = recorder;
         this.listener = listener;
     }

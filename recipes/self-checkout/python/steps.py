@@ -19,9 +19,8 @@ import pvorca
 import pvporcupine
 import pvrhino
 from pvorca import Orca
+from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
-
-from noise_suppressed_recorder import AINoiseSuppressedRecorder
 
 
 class Steps(Enum):
@@ -35,7 +34,7 @@ class Step(object):
     def __init__(
             self,
             access_key: str,
-            recorder: AINoiseSuppressedRecorder,
+            recorder: PvRecorder,
             speaker: PvSpeaker,
     ) -> None:
         self._access_key = access_key
@@ -70,7 +69,7 @@ class CheetahStep(Step):
     def __init__(
             self,
             access_key: str,
-            recorder: AINoiseSuppressedRecorder,
+            recorder: PvRecorder,
             speaker: PvSpeaker,
             model_path: Optional[str] = None,
             endpoint_duration_sec: Optional[float] = 1.,
@@ -101,7 +100,7 @@ class CheetahStep(Step):
 
             is_endpoint = False
             while not is_endpoint:
-                partial, is_endpoint = self._cheetah.process(self._recorder.read(self._cheetah.frame_length))
+                partial, is_endpoint = self._cheetah.process(self._recorder.read())
                 partials.append(partial)
                 if on_partial is not None:
                     on_partial(partial)
@@ -137,7 +136,7 @@ class OrcaStep(Step):
     def __init__(
             self,
             access_key: str,
-            recorder: AINoiseSuppressedRecorder,
+            recorder: PvRecorder,
             speaker: PvSpeaker,
             model_path: Optional[str] = None,
     ) -> None:
@@ -231,11 +230,9 @@ class PorcupineStep(Step):
     def __init__(
             self,
             access_key: str,
-            recorder: AINoiseSuppressedRecorder,
+            recorder: PvRecorder,
             speaker: PvSpeaker,
-            keyword_path: str,
-            model_path: Optional[str] = None,
-            sensitivity: float = 0.6
+            porcupine: pvporcupine.Porcupine,
     ) -> None:
         super().__init__(
             access_key=access_key,
@@ -243,12 +240,7 @@ class PorcupineStep(Step):
             speaker=speaker)
 
         self._recorder = recorder
-
-        self._porcupine = pvporcupine.create(
-            access_key=access_key,
-            model_path=model_path,
-            keyword_paths=[keyword_path],
-            sensitivities=[sensitivity])
+        self._porcupine = porcupine
 
     def run(self) -> Optional[Dict[str, Any]]:
         try:
@@ -256,7 +248,7 @@ class PorcupineStep(Step):
 
             is_detected = False
             while not is_detected:
-                is_detected = self._porcupine.process(self._recorder.read(self._porcupine.frame_length)) == 0
+                is_detected = self._porcupine.process(self._recorder.read()) == 0
         finally:
             self._recorder.stop()
 
@@ -274,7 +266,7 @@ class RhinoStep(Step):
     def __init__(
             self,
             access_key: str,
-            recorder: AINoiseSuppressedRecorder,
+            recorder: PvRecorder,
             speaker: PvSpeaker,
             context_path: str,
             model_path: Optional[str] = None,
@@ -316,7 +308,7 @@ class RhinoStep(Step):
                 running_silence_start = silence_start[0]
 
                 while True:
-                    frame = self._recorder.read(self._rhino.frame_length)
+                    frame = self._recorder.read()
 
                     volume = RhinoStep.rms(frame)
                     if volume > volume_threshold:
@@ -329,7 +321,7 @@ class RhinoStep(Step):
 
                 silence_start[0] = running_silence_start
             else:
-                while not self._rhino.process(self._recorder.read(self._rhino.frame_length)):
+                while not self._rhino.process(self._recorder.read()):
                     pass
 
             inference = self._rhino.get_inference()

@@ -13,7 +13,7 @@
 package ai.picovoice.foodordering.Steps;
 
 import android.content.Context;
-import ai.picovoice.foodordering.AINoiseSuppressedRecorder;
+import ai.picovoice.foodordering.BufferedRecorder;
 import ai.picovoice.foodordering.PvSpeaker;
 import ai.picovoice.orca.Orca;
 import ai.picovoice.orca.OrcaAudio;
@@ -28,7 +28,7 @@ public class OrcaStep extends Step {
 
     public OrcaStep(
             Context context,
-            AINoiseSuppressedRecorder r,
+            BufferedRecorder r,
             WorkflowListener listener,
             String accessKey,
             String modelPath) throws Exception {

@@ -10,10 +10,11 @@ from typing import (
     Any, Callable, Dict, List, Optional, Sequence, Tuple, Type
 )
 
+import pvporcupine
 from pvorca import Orca
+from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
 
-from noise_suppressed_recorder import AINoiseSuppressedRecorder
 from steps import Steps, Step, CheetahStep, OrcaStep, PorcupineStep, RhinoStep
 
 
@@ -146,17 +147,26 @@ class Workflow(object):
             start_state: Enum,
             start_state_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
-        self._recorder = AINoiseSuppressedRecorder(access_key=access_key)
+        porcupine_kwargs = next(kw for _, (st, kw) in steps.items() if st == Steps.PORCUPINE)
+        porcupine = pvporcupine.create(
+            access_key=access_key,
+            keyword_paths=[porcupine_kwargs["keyword_path"]],
+            model_path=porcupine_kwargs.get("model_path"),
+            sensitivities=[porcupine_kwargs.get("sensitivity", 0.6)])
+        self._recorder = PvRecorder(frame_length=porcupine.frame_length)
         self._speaker = PvSpeaker(sample_rate=22050, bits_per_sample=16)
 
         self._steps = dict()
         for uid, (step, kwargs) in steps.items():
+            kwargs = dict(kwargs) if kwargs is not None else dict()
+            if step == Steps.PORCUPINE:
+                kwargs = {"porcupine": porcupine}
             self._steps[uid] = Step.create(
                 step=step,
                 access_key=access_key,
                 recorder=self._recorder,
                 speaker=self._speaker,
-                **kwargs if kwargs is not None else dict())
+                **kwargs)
             print(f"[OK] {self._steps[uid]}")
 
         self._states = dict()

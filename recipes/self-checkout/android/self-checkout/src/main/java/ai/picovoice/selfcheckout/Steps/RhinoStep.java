@@ -13,7 +13,7 @@
 package ai.picovoice.selfcheckout.Steps;
 
 import android.content.Context;
-import ai.picovoice.selfcheckout.AINoiseSuppressedRecorder;
+import ai.picovoice.selfcheckout.BufferedRecorder;
 import ai.picovoice.selfcheckout.WorkflowListener;
 import ai.picovoice.rhino.Rhino;
 import ai.picovoice.rhino.RhinoInference;
@@ -23,7 +23,7 @@ public class RhinoStep extends Step {
 
     public RhinoStep(
             Context context,
-            AINoiseSuppressedRecorder r,
+            BufferedRecorder r,
             WorkflowListener listener,
             String accessKey,
             String modelPath) throws Exception {

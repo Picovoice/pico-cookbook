@@ -41,7 +41,6 @@ import ai.picovoice.android.voiceprocessor.VoiceProcessor;
 import ai.picovoice.android.voiceprocessor.VoiceProcessorException;
 import ai.picovoice.cheetah.Cheetah;
 import ai.picovoice.cheetah.CheetahTranscript;
-import ai.picovoice.koala.Koala;
 import ai.picovoice.orca.Orca;
 import ai.picovoice.orca.OrcaAudio;
 import ai.picovoice.orca.OrcaSynthesizeParams;
@@ -58,7 +57,6 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String STT_MODEL = "cheetah_params.pv";
     private static final String TTS_MODEL = "orca_params_en_female.pv";
-    private static final String NS_MODEL = "koala_params.pv";
 
     private final Map<String, String> HOUR_MAP = new HashMap<String, String>() {{
         put("one", "1");
@@ -425,23 +423,18 @@ public class MainActivity extends AppCompatActivity {
         scrollToCard(activeCard, false);
     }
 
-    class AINoiseSuppressedRecorder {
-        private final Koala koala;
+    class BufferedRecorder {
         private final LinkedBlockingQueue<short[]> rawFrames = new LinkedBlockingQueue<>();
-        private short[] leftoverBuffer = new short[4096];
-        private int leftoverCount = 0;
 
         private final int frameLength;
+        private final int sampleRate;
 
         private final Object lock = new Object();
         private volatile boolean isSessionActive = false;
 
-        public AINoiseSuppressedRecorder(Context context, WorkflowListener listener) throws Exception {
-            koala = new Koala.Builder()
-                    .setAccessKey(ACCESS_KEY)
-                    .setModelPath(NS_MODEL)
-                    .build(context);
-            frameLength = koala.getFrameLength();
+        public BufferedRecorder(WorkflowListener listener, int frameLength, int sampleRate) {
+            this.frameLength = frameLength;
+            this.sampleRate = sampleRate;
 
             VoiceProcessor.getInstance().addFrameListener(frame -> {
                 if (isSessionActive) {
@@ -458,10 +451,8 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
                 rawFrames.clear();
-                leftoverCount = 0;
-                koala.reset();
                 isSessionActive = true;
-                VoiceProcessor.getInstance().start(frameLength, koala.getSampleRate());
+                VoiceProcessor.getInstance().start(frameLength, sampleRate);
             }
         }
 
@@ -477,26 +468,9 @@ public class MainActivity extends AppCompatActivity {
             short[] result = new short[numSamples];
             int resultIndex = 0;
 
-            synchronized (lock) {
-                if (!isSessionActive) {
-                    return null;
-                }
-
-                int numFromBuffer = Math.min(numSamples, leftoverCount);
-                if (numFromBuffer > 0) {
-                    System.arraycopy(leftoverBuffer, 0, result, 0, numFromBuffer);
-                    resultIndex += numFromBuffer;
-                    leftoverCount -= numFromBuffer;
-
-                    if (leftoverCount > 0) {
-                        System.arraycopy(leftoverBuffer, numFromBuffer, leftoverBuffer, 0, leftoverCount);
-                    }
-                }
-            }
-
             while (resultIndex < numSamples && isSessionActive) {
-                short[] raw = rawFrames.poll(50, TimeUnit.MILLISECONDS);
-                if (raw == null) {
+                short[] frame = rawFrames.poll(50, TimeUnit.MILLISECONDS);
+                if (frame == null) {
                     continue;
                 }
 
@@ -505,25 +479,9 @@ public class MainActivity extends AppCompatActivity {
                         return null;
                     }
 
-                    short[] enhanced = koala.process(raw);
-                    int remaining = numSamples - resultIndex;
-                    int toCopy = Math.min(enhanced.length, remaining);
-
-                    System.arraycopy(enhanced, 0, result, resultIndex, toCopy);
+                    int toCopy = Math.min(frame.length, numSamples - resultIndex);
+                    System.arraycopy(frame, 0, result, resultIndex, toCopy);
                     resultIndex += toCopy;
-
-                    if (enhanced.length > remaining) {
-                        int excess = enhanced.length - remaining;
-
-                        if (leftoverCount + excess > leftoverBuffer.length) {
-                            short[] newBuffer = new short[(leftoverCount + excess) * 2];
-                            System.arraycopy(leftoverBuffer, 0, newBuffer, 0, leftoverCount);
-                            leftoverBuffer = newBuffer;
-                        }
-
-                        System.arraycopy(enhanced, remaining, leftoverBuffer, leftoverCount, excess);
-                        leftoverCount += excess;
-                    }
                 }
             }
 
@@ -539,12 +497,6 @@ public class MainActivity extends AppCompatActivity {
                 stop();
             } catch (VoiceProcessorException e) {
                 Log.e(TAG, "Failed to stop VoiceProcessor during cleanup", e);
-            }
-
-            synchronized (lock) {
-                if (koala != null) {
-                    koala.delete();
-                }
             }
         }
     }
@@ -587,20 +539,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     abstract class Step {
-        protected AINoiseSuppressedRecorder recorder;
-        public Step(AINoiseSuppressedRecorder recorder) { this.recorder = recorder; }
+        protected BufferedRecorder recorder;
+        public Step(BufferedRecorder recorder) { this.recorder = recorder; }
         public abstract void delete();
     }
 
     class PorcupineStep extends Step {
         private final Porcupine porcupine;
 
-        public PorcupineStep(Context context, AINoiseSuppressedRecorder r) throws Exception {
+        public PorcupineStep(BufferedRecorder r, Porcupine porcupine) {
             super(r);
-            porcupine = new Porcupine.Builder()
-                    .setAccessKey(ACCESS_KEY)
-                    .setKeywordPath(KEYWORD_MODEL)
-                    .build(context);
+            this.porcupine = porcupine;
         }
 
         public void run(String listeningPrompt) throws Exception {
@@ -629,7 +578,7 @@ public class MainActivity extends AppCompatActivity {
         private final PvSpeaker speaker;
         private final OrcaSynthesizeParams synthesizeParams;
 
-        public OrcaStep(Context context, AINoiseSuppressedRecorder r) throws Exception {
+        public OrcaStep(Context context, BufferedRecorder r) throws Exception {
             super(r);
             orca = new Orca.Builder()
                     .setAccessKey(ACCESS_KEY)
@@ -657,7 +606,7 @@ public class MainActivity extends AppCompatActivity {
     class RhinoStep extends Step {
         private final Rhino rhino;
 
-        public RhinoStep(Context context, AINoiseSuppressedRecorder r) throws Exception {
+        public RhinoStep(Context context, BufferedRecorder r) throws Exception {
             super(r);
             rhino = new Rhino.Builder()
                     .setAccessKey(ACCESS_KEY)
@@ -696,7 +645,7 @@ public class MainActivity extends AppCompatActivity {
     class CheetahStep extends Step {
         private final Cheetah cheetah;
 
-        public CheetahStep(Context context, AINoiseSuppressedRecorder r) throws Exception {
+        public CheetahStep(Context context, BufferedRecorder r) throws Exception {
             super(r);
             cheetah = new Cheetah.Builder()
                     .setAccessKey(ACCESS_KEY)
@@ -1091,7 +1040,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     class Workflow {
-        AINoiseSuppressedRecorder recorder;
+        BufferedRecorder recorder;
         PorcupineStep porcupineStep;
         OrcaStep orcaStep;
         RhinoStep rhinoStep;
@@ -1103,11 +1052,14 @@ public class MainActivity extends AppCompatActivity {
         public Workflow(Context context, WorkflowListener listener) throws Exception {
             this.listener = listener;
 
-            listener.onInitProgress("Loading Koala Noise Suppression...");
-            recorder = new AINoiseSuppressedRecorder(context, listener);
-
             listener.onInitProgress("Loading Porcupine Wake Word...");
-            porcupineStep = new PorcupineStep(context, recorder);
+            Porcupine porcupine = new Porcupine.Builder()
+                    .setAccessKey(ACCESS_KEY)
+                    .setKeywordPath(KEYWORD_MODEL)
+                    .build(context);
+
+            recorder = new BufferedRecorder(listener, porcupine.getFrameLength(), porcupine.getSampleRate());
+            porcupineStep = new PorcupineStep(recorder, porcupine);
 
             listener.onInitProgress("Loading Orca Text-to-Speech...");
             orcaStep = new OrcaStep(context, recorder);

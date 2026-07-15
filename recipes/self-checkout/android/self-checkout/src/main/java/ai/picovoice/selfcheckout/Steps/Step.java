@@ -12,13 +12,13 @@
 
 package ai.picovoice.selfcheckout.Steps;
 
-import ai.picovoice.selfcheckout.AINoiseSuppressedRecorder;
+import ai.picovoice.selfcheckout.BufferedRecorder;
 import ai.picovoice.selfcheckout.WorkflowListener;
 
 public abstract class Step {
-    protected AINoiseSuppressedRecorder recorder;
+    protected BufferedRecorder recorder;
     protected WorkflowListener listener;
-    public Step(AINoiseSuppressedRecorder recorder, WorkflowListener listener) {
+    public Step(BufferedRecorder recorder, WorkflowListener listener) {
         this.recorder = recorder;
         this.listener = listener;
     }
