@@ -2,6 +2,8 @@
 
 On-device voice ordering for QSR drive-thru and self-order kiosks. Customers add, change, and confirm a full order hands-free by voice, with wake word detection and speech-to-intent running fully on-device and no cloud.
 
+[![Food Ordering with Voice AI](https://img.youtube.com/vi/vlDtlhHn6s4/hqdefault.jpg)](https://www.youtube.com/watch?v=vlDtlhHn6s4)
+
 ## Components
 
 - [Koala Noise Suppression](https://picovoice.ai/docs/koala/)

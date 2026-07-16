@@ -3,6 +3,8 @@
 Run a fully on-device, voice-driven grocery self-checkout station with spoken item announcements, AI noise suppression,
 and structured intent capture for cart management commands.
 
+[![Self-Checkout](https://img.youtube.com/vi/Q4QLsHSHFdY/hqdefault.jpg)](https://youtu.be/Q4QLsHSHFdY)
+
 ## Components
 
 - [Koala Noise Suppression](https://picovoice.ai/docs/koala/)
