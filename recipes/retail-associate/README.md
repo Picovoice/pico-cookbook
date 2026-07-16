@@ -2,6 +2,8 @@
 
 A fully on-device AI assistant for retail store managers.
 
+[![Retail Associate](https://img.youtube.com/vi/QqafMq9CYAk/hqdefault.jpg)](https://youtu.be/QqafMq9CYAk)
+
 ## Components
 
 - [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/)

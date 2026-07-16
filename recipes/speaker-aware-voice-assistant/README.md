@@ -8,6 +8,8 @@ responses for recognized speakers, and restrict sensitive actions to authorized 
 personal dashboards, user-specific settings, family profiles, workplace permissions, protected device controls,
 and admin-only operations.
 
+[![Speaker-Aware Voice Assistant](https://img.youtube.com/vi/zXsXUOcwNRE/hqdefault.jpg)](https://youtu.be/zXsXUOcwNRE)
+
 ## Components
 
 - [Eagle Speaker Recognition](https://picovoice.ai/docs/eagle/)

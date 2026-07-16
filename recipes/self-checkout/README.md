@@ -3,6 +3,8 @@
 Run a fully on-device, voice-driven grocery self-checkout station with spoken item announcements,
 and structured intent capture for cart management commands.
 
+[![Self-Checkout](https://img.youtube.com/vi/Q4QLsHSHFdY/hqdefault.jpg)](https://youtu.be/Q4QLsHSHFdY)
+
 ## Components
 
 - [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/)
