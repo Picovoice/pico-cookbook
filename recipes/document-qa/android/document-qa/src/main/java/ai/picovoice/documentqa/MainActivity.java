@@ -88,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}";
 
-    private static final String LLM_IT_MODEL_FILE = "llama-3.2-1b-instruct-385.pllm";
+    private static final String LLM_IT_MODEL_FILE = "qwen2.5-500m-it-590.pllm";
 
     private static final String LLM_EMBED_MODEL_FILE = "embeddinggemma-300m-375.pllm";
 
@@ -109,6 +109,7 @@ public class MainActivity extends AppCompatActivity {
             "<end_of_turn>",    // Gemma
             "<|endoftext|>",    // Phi-2
             "<|eot_id|>",       // Llama-3
+            "<|im_end|>",       // Qwen
             "<|end|>", "<|user|>", "<|assistant|>", // Phi-3
     };
 
@@ -594,11 +595,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         String systemPrompt =
-                "You are a document question-answering assistant. " +
-                "Answer only using the provided excerpts; if the answer is not in them, " +
-                "say you do not know from the provided document. " +
-                "Do not give legal advice. " +
-                "Be concise and use plain text only - no Markdown, no bullet points.";
+                "Answer the question using only the excerpts, in one or two short plain-text sentences. " +
+                "If the excerpts do not contain the answer, say you do not know from the provided document.";
         PicoLLMDialog dialog = picollmChat.getDialogBuilder().setSystem(systemPrompt).build();
 
         String prompt = String.format("Document excerpts:\n\n%s\n\nQuestion:\n%s", context.toString(), question);

@@ -270,11 +270,8 @@ def build_prompt(
 
     dialog = chat_llm.get_dialog(
         system=(
-            "You are a document question-answering assistant. "
-            "Answer only using the provided excerpts; if the answer is not in them, "
-            "say you do not know from the provided document. "
-            "Do not give legal advice. "
-            "Be concise and use plain text only - no Markdown, no bullet points."
+            "Answer the question using only the excerpts, in one or two short plain-text sentences. "
+            "If the excerpts do not contain the answer, say you do not know from the provided document."
         )
     )
 
@@ -402,7 +399,7 @@ def stream_answer(
         nonlocal answer
         nonlocal pending_speech_text
 
-        text = text.replace('<|eot_id|>', '')
+        text = text.replace('<|eot_id|>', '').replace('<|im_end|>', '')
         if len(text) == 0:
             return
 
@@ -426,10 +423,10 @@ def stream_answer(
         completion = chat_llm.generate(
             prompt=prompt,
             completion_token_limit=completion_token_limit,
-            stop_phrases={'<|eot_id|>'},
+            stop_phrases={'<|eot_id|>', '<|im_end|>'},
             stream_callback=on_llm_stream)
 
-        final_answer = completion.completion.strip().replace('<|eot_id|>', '')
+        final_answer = completion.completion.strip().replace('<|eot_id|>', '').replace('<|im_end|>', '')
 
         with answer_lock:
             if len(final_answer) > 0:

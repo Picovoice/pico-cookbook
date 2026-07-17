@@ -26,7 +26,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ### 1. Download the LLMs
 
-Download `llama-3.2-1b-instruct-385.pllm` and `embeddinggemma-300m-375.pllm` from
+Download `qwen2.5-500m-it-590.pllm` and `embeddinggemma-300m-375.pllm` from
 [Picovoice Console](https://console.picovoice.ai/).
 
 ### 2. Download the Required Models

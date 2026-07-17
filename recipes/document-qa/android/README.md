@@ -39,7 +39,7 @@ These instructions assume your current working directory is `recipes/document-qa
 
 ### 1. Download the LLMs
 
-Download `llama-3.2-1b-instruct-385.pllm` and `embeddinggemma-300m-375.pllm` from
+Download `qwen2.5-500m-it-590.pllm` and `embeddinggemma-300m-375.pllm` from
 [Picovoice Console](https://console.picovoice.ai/).
 
 ### 2. Add LLMs to the Project

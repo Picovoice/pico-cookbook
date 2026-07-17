@@ -16,13 +16,13 @@ const CHUNK_OVERLAP = 120
 
 const ASK_FOR_DETAILS_RETRY_LIMIT = 2;
 
-const STOP_PHRASE = "<|eot_id|>";
+const STOP_PHRASES = ["<|eot_id|>", "<|im_end|>"];
 
-const SYSTEM = "You are a document question-answering assistant. "
-+ "Answer only using the provided excerpts; if the answer is not in them, "
-+ "say you do not know from the provided document. "
-+ "Do not give legal advice. "
-+ "Be concise and use plain text only - no Markdown, no bullet points.";
+const SYSTEM = "Answer the question using only the excerpts, in one or two short plain-text sentences. "
++ "If the excerpts do not contain the answer, say you do not know from the provided document.";
+
+const stripStopPhrases = (text: string): string =>
+  STOP_PHRASES.reduce((result, phrase) => result.replace(phrase, ''), text);
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -265,7 +265,7 @@ const init = async (
 
     let pcmBuffered = 0;
     const streamCallback = async (token: string) => {
-      const text = token.replace(STOP_PHRASE, '');
+      const text = stripStopPhrases(token);
 
       const streamRelease = await streamMutex.acquire();
       const pcm = await stream.synthesize(text);
@@ -286,12 +286,12 @@ const init = async (
       prompt,
       {
         completionTokenLimit: COMPLETION_TOKEN_LIMIT,
-        stopPhrases: [STOP_PHRASE],
+        stopPhrases: STOP_PHRASES,
         streamCallback: streamCallback,
       }
     );
     sendMessage("START_SPEAKING", null);
-    const inference = completion.completion.trim().replace(STOP_PHRASE, '');
+    const inference = stripStopPhrases(completion.completion.trim());
 
     const streamRelease = await streamMutex.acquire();
     const pcm = await stream.flush();
@@ -327,7 +327,7 @@ const init = async (
     sendMessage("SET_STATUS", "Loading PicoLLM (model)");
     const llmModel = await PicoLLMWorker.create(
       accessKey,
-      { modelFile: 'models/llama-3.2-1b-instruct-385.pllm', cacheFileOverwrite: FORCE_WRITE },
+      { modelFile: 'models/qwen2.5-500m-it-590.pllm', cacheFileOverwrite: FORCE_WRITE },
       {}
     );
 

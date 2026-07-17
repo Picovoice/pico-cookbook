@@ -25,14 +25,14 @@ These instructions assume your current working directory is `recipes/document-qa
 
 ### 1. Download the LLMs
 
-Download `llama-3.2-1b-instruct-385.pllm` and `embeddinggemma-300m-375.pllm` from
+Download `qwen2.5-500m-it-590.pllm` and `embeddinggemma-300m-375.pllm` from
 [Picovoice Console](https://console.picovoice.ai/).
 
 ### 2. Download the other Required Models
 
 Run the setup script to download and copy the models for [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/) and [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/).
 
-It will also copy the `llama-3.2-1b-instruct-385.pllm` and `embeddinggemma-300m-375.pllm` models to the `public/models` folder.
+It will also copy the `qwen2.5-500m-it-590.pllm` and `embeddinggemma-300m-375.pllm` models to the `public/models` folder.
 
 ```bash
 python setup.py \
