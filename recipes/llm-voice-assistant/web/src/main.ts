@@ -87,7 +87,10 @@ const init = async (
 
   const pllm = await PicoLLMWorker.create(
     accessKey,
-    picollmModel);
+    picollmModel,
+    {
+        enableContextCaching: true,
+    });
 
   const orca = await OrcaWorker.create(
     accessKey,

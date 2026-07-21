@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="PicoLLM" Version="2.1.0" />
+    <PackageReference Include="PicoLLM" Version="2.1.4" />
     <PackageReference Include="Picovoice.Cheetah" Version="4.0.1" />
     <PackageReference Include="Picovoice.Orca" Version="3.0.0" />
     <PackageReference Include="Porcupine" Version="4.0.2" />

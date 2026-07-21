@@ -74,20 +74,20 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@picovoice/cheetah-node@^4.0.1":
-  version "4.0.4"
-  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-node/-/cheetah-node-4.0.4.tgz#08d246ca7c1d20c0f8f96c28889ce4ed27bd384e"
-  integrity sha512-uIJpUKxyQFl3Y3rncY6bHZXDgy49xT29Jzf+Q09NgriA60O0ygwTcuyMtxhZ7OTQmbBpxLHLX4FT8SwF1NOsiw==
+"@picovoice/cheetah-node@^4.1.0":
+  version "4.1.1"
+  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-node/-/cheetah-node-4.1.1.tgz#173bc6a142e26aa1cb93f01069510ee70b150e81"
+  integrity sha512-9cXcGP0yedVFR65Ryg7hlnrWlxIn3iMund/pQ2NHvnyEJuySINmPcx2VhGODFCwamjsu7FwZhxMyRY1+Yb5+kg==
 
 "@picovoice/orca-node@^3.0.0":
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/@picovoice/orca-node/-/orca-node-3.0.0.tgz#80aec077c2aebd7bc89de7268e2e72496708151c"
   integrity sha512-0KTU+Oo9Jr8wxkOrU8OPVkd/BOfIq8CN6Sn9wlk9IZQH/xyH4h0143bJ3L6maX4lEb9Mzrs8miH4fojRDvmhCQ==
 
-"@picovoice/picollm-node@2.1.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@picovoice/picollm-node/-/picollm-node-2.1.0.tgz#2f09e7c129ec60bb746f8fc66af58c912ef2aeec"
-  integrity sha512-DKkf4BUgK9LdaQGc5HWQcSH8P3pBwi/Wg/vX29pSml+judv8frCFjUChYzXTb1blctRXEyASl/ra8jK7Uh8l4g==
+"@picovoice/picollm-node@2.1.4":
+  version "2.1.4"
+  resolved "https://registry.yarnpkg.com/@picovoice/picollm-node/-/picollm-node-2.1.4.tgz#b0d998aa7ea1b09503ca7960114eb3c9b36c5253"
+  integrity sha512-4/FzHloobcf6qnyF8J/gDzuI2Pgk89iwQibFNNuSSOg33QvuyPxIMNfpz0PjlxZXPb5+VqRmV58iak/kZ+lRMg==
 
 "@picovoice/porcupine-node@^4.0.2":
   version "4.0.2"

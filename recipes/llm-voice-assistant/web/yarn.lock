@@ -943,12 +943,13 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@picovoice/cheetah-web@^4.0.1":
-  version "4.0.4"
-  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-web/-/cheetah-web-4.0.4.tgz#a15b6532a3c318dd6626ad4c61fedb037179fef3"
-  integrity sha512-uB3aGsl3KPslSQUt9S46fHtDhWoPucg15RcogIuEMhFe0xtRjVUKv+zbWf3xfpi7tRzso3hPiCjc9/fTy6Ea+A==
+"@picovoice/cheetah-web@^4.1.0":
+  version "4.1.4"
+  resolved "https://registry.yarnpkg.com/@picovoice/cheetah-web/-/cheetah-web-4.1.4.tgz#5c3dc52f62dd58fe550cd2253e6230a2552abdbb"
+  integrity sha512-/8PZH6XdPi6CAjYBCPCUJheX9fE6QnBKYzYr2dvSA9YL5Xpi5rKAXhrXtrJjekqSS6T9D1ooAlurR/YIM/hDpQ==
   dependencies:
-    "@picovoice/web-utils" "=1.4.3"
+    "@picovoice/web-utils" "=1.4.8"
+    yaml "^2.9.0"
 
 "@picovoice/orca-web@^3.0.0":
   version "3.0.0"
@@ -957,12 +958,12 @@
   dependencies:
     "@picovoice/web-utils" "=1.4.3"
 
-"@picovoice/picollm-web@~2.1.0":
-  version "2.1.1"
-  resolved "https://registry.yarnpkg.com/@picovoice/picollm-web/-/picollm-web-2.1.1.tgz#4e289db99e6ed6f268aa7c32e13c44f560f642a4"
-  integrity sha512-ktDD/Rp1J/byahmvC/weHYUxNJXBxdFip7oPfiE6S/FJpZbdZBkH9JDKV5WkHHLDDAdWITJeeBV1ThWaoZnPXg==
+"@picovoice/picollm-web@~2.1.4":
+  version "2.1.4"
+  resolved "https://registry.yarnpkg.com/@picovoice/picollm-web/-/picollm-web-2.1.4.tgz#04cc9a11b8fc1901887b760b2850bc5fb882cb16"
+  integrity sha512-vARhU3FWWHgxb3IP3J3BjT2CEwjHE9kmaaBiOQ5KgRSzq+IYF3u/nE/2w78qmLTVNXWrAZuk44TthdZW4wLPTw==
   dependencies:
-    "@picovoice/web-utils" "~1.4.3"
+    "@picovoice/web-utils" "=1.4.8"
 
 "@picovoice/porcupine-web@^4.0.0":
   version "4.0.0"
@@ -978,10 +979,17 @@
   dependencies:
     commander "^9.2.0"
 
-"@picovoice/web-utils@=1.4.3", "@picovoice/web-utils@~1.4.3":
+"@picovoice/web-utils@=1.4.3":
   version "1.4.3"
   resolved "https://registry.yarnpkg.com/@picovoice/web-utils/-/web-utils-1.4.3.tgz#1de0b20d6080c18d295c6df37c09d88bf7c4f555"
   integrity sha512-7JN3YYsSD9Gtce6YKG3XqpX49dkeu7jTdbox7rHQA/X/Q3zxopXA9zlCKSq6EIjFbiX2iuzDKUx1XrFa3d8c0w==
+  dependencies:
+    commander "^10.0.1"
+
+"@picovoice/web-utils@=1.4.8":
+  version "1.4.8"
+  resolved "https://registry.yarnpkg.com/@picovoice/web-utils/-/web-utils-1.4.8.tgz#a6bc79d44675cc69fc57d888e541431f9f677ece"
+  integrity sha512-251nUTlx4yeJAx6vtJj5h/JJ49S2RD97mHDjMTnu+6z7sNhiJQHa4aJu/7YZY1R/G8MSy4oz+zaVOrsRwepXLw==
   dependencies:
     commander "^10.0.1"
 
@@ -3660,6 +3668,11 @@ yallist@^3.0.2:
   version "3.1.1"
   resolved "https://registry.yarnpkg.com/yallist/-/yallist-3.1.1.tgz#dbb7daf9bfd8bac9ab45ebf602b8cbad0d5d08fd"
   integrity sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==
+
+yaml@^2.9.0:
+  version "2.9.0"
+  resolved "https://registry.yarnpkg.com/yaml/-/yaml-2.9.0.tgz#78274afd93598a1dfdd6130df6a566defcbf9aa4"
+  integrity sha512-2AvhNX3mb8zd6Zy7INTtSpl1F15HW6Wnqj0srWlkKLcpYl/gMIMJiyuGq2KeI2YFxUPjdlB+3Lc10seMLtL4cA==
 
 yocto-queue@^0.1.0:
   version "0.1.0"

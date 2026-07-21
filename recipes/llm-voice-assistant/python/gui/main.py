@@ -298,7 +298,8 @@ class Generator:
         pllm = picollm.create(
             access_key=config['access_key'],
             model_path=config['picollm_model_path'],
-            device=config['picollm_device'])
+            device=config['picollm_device'],
+            enable_context_caching=True)
         if config['picollm_system_prompt'] is not None:
             dialog = pllm.get_dialog(system=config['picollm_system_prompt'])
         else:

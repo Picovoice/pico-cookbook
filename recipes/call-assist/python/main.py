@@ -246,6 +246,14 @@ def record_and_transcribe(cheetah: Cheetah, recorder: PvRecorder) -> str:
     return text
 
 
+def precompute_caller(llm: picollm.PicoLLM):
+    dialog = llm.get_dialog(system=SYSTEM)
+    dialog.add_human_request(f"Caller said: \"text\"\n")
+    llm.generate(
+        prompt=dialog.prompt(),
+        completion_token_limit=1)
+
+
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
@@ -340,7 +348,9 @@ def main() -> None:
         llm = picollm.create(
             access_key=access_key,
             model_path=picollm_model_path,
-            device=picollm_device)
+            device=picollm_device,
+            enable_context_caching=True)
+        precompute_caller(llm)
         print(f"[OK] picoLLM Inference [V{llm.version}]")
 
         orca = pvorca.create(access_key=access_key)

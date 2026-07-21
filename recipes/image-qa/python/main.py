@@ -319,6 +319,53 @@ def stream_answer(
         raise
 
 
+def precompute_image(
+        vlm: picollm.PicoLLM,
+        image: Image.Image,
+        stop_requested: Event):
+    progress = ""
+    progress_lock = Lock()
+
+    def get_answer() -> str:
+        with progress_lock:
+            if len(progress) > 0:
+                return progress
+        return ""
+
+    def update_progress(x: float) -> None:
+        nonlocal progress
+
+        if stop_requested.is_set():
+            return
+
+        with progress_lock:
+            progress = f"Analyzing {x:.2f}%"
+
+    answer_event, answer_thread = print_async(
+        get_text=get_answer,
+        stop_requested=stop_requested)
+
+    try:
+        vlm.generate_with_image(
+            prompt="What",
+            image_width=image.width,
+            image_height=image.height,
+            image=image.tobytes(),
+            completion_token_limit=1,
+            prompt_progress_callback=update_progress)
+
+        answer_event.set()
+        answer_thread.join()
+
+    except BaseException:
+        stop_requested.set()
+
+        answer_event.set()
+        answer_thread.join()
+
+        raise
+
+
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument(
@@ -395,7 +442,8 @@ def main() -> None:
         vlm = picollm.create(
             access_key=access_key,
             model_path=picollm_model_path,
-            device=picollm_device)
+            device=picollm_device,
+            enable_context_caching=True)
         print(f"[OK] picoLLM Inference [V{vlm.version}]")
 
         orca = pvorca.create(access_key=access_key)
@@ -412,6 +460,8 @@ def main() -> None:
         print()
 
         image = Image.open(image_path).convert("RGB")
+
+        precompute_image(vlm, image, stop_requested)
 
         while not stop_requested.is_set():
             question = ""
