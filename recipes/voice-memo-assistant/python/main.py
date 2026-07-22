@@ -26,35 +26,12 @@ from pvorca import Orca
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
 
-SUMMARY_TEMPLATE = """Summarize the memo below. Return only the summary.
-Rules:
-- Do not say "Here is the rewritten memo".
-- Do not add any prefix, label, intro, explanation, or quotes.
-- Do not explain your changes.
-- Keep the important details.
-- Fix obvious transcription errors only when the meaning is clear.
-- Do not add new information.
-- Use one short sentence.
+SUMMARY_TEMPLATE = """In one brief sentence, write what needs doing from this memo, including any day or date: "{memo}\""""
 
-Memo:
-{memo}
+REWRITE_TEMPLATE = """You are a transcription cleaner. You tidy speech into readable text without changing what was said or how much was said. Remove um, uh, you know, false starts, repeated words, and any leading Okay, So, or Well.
 
-Summarized memo:"""
-
-REWRITE_TEMPLATE = """Rewrite the memo below. Return only the rewritten memo.
-Rules:
-- Do not say "Here is the summarized memo".
-- Do not add any prefix, label, intro, explanation, or quotes.
-- Do not explain your changes.
-- Fix grammar, punctuation, casing, repeated words, filler words, and false starts.
-- Preserve the original meaning.
-- Do not summarize.
-- Do not add new information.
-
-Memo:
-{memo}
-
-Rewritten memo:"""
+Memo: "{memo}"
+Cleaned:"""
 
 
 def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str = '\n') -> Tuple[Event, Thread]:
@@ -354,10 +331,10 @@ def main() -> None:
                         print_event, print_thread = print_async(get_text=lambda: "Summarizing memo")
                         completion = llm.generate(
                             prompt=dialog.prompt(),
-                            stop_phrases={'<|eot_id|>'})
+                            stop_phrases={'<|im_end|>'})
                         print_event.set()
                         print_thread.join()
-                        memo = completion.completion.strip('<|eot_id|>')
+                        memo = completion.completion.strip('<|im_end|>')
                         print(f"Summarized memo: {memo}")
                     else:
                         synthesize_and_playback(orca=orca, speaker=speaker, text="Please record a memo first.")
@@ -368,10 +345,10 @@ def main() -> None:
                         print_event, print_thread = print_async(get_text=lambda: "Rewriting memo")
                         completion = llm.generate(
                             prompt=dialog.prompt(),
-                            stop_phrases={'<|eot_id|>'})
+                            stop_phrases={'<|im_end|>'})
                         print_event.set()
                         print_thread.join()
-                        memo = completion.completion.strip('<|eot_id|>')
+                        memo = completion.completion.strip('<|im_end|>')
                         print(f"Rewritten memo: {memo}")
                     else:
                         synthesize_and_playback(orca=orca, speaker=speaker, text="Please record a memo first.")

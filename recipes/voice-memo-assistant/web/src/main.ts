@@ -188,15 +188,15 @@ const runLLMTask = async (task: string) => {
   const dialog = object!.pllm.getDialog();
   let prompt =
     task === 'summarizeMemo'
-      ? `Summarize the memo below in one short sentence. Return only the summary.\n\nMemo:\n${memoText}\n\nSummarized memo:\n`
-      : `Rewrite the memo below to fix grammar and punctuation. Preserve the original meaning. Return only the rewritten memo.\n\nMemo:\n${memoText}\n\nRewritten memo:\n`;
+      ? `In one brief sentence, write what needs doing from this memo, including any day or date: "${memoText}"`
+      : `You are a transcription cleaner. You tidy speech into readable text without changing what was said or how much was said. Remove um, uh, you know, false starts, repeated words, and any leading Okay, So, or Well.\n\nMemo: "${memoText}"\nCleaned:`;
 
   dialog.addHumanRequest(prompt);
 
   await object!.pllm.generate(dialog.prompt(), {
-    stopPhrases: ['<|eot_id|>'],
+    stopPhrases: ['<|im_end|>'],
     streamCallback: token => {
-      enhancedText += token.replace('<|eot_id|>', '');
+      enhancedText += token.replace('<|im_end|>', '');
       callbacks!.onModifiedText(enhancedText);
     },
   });

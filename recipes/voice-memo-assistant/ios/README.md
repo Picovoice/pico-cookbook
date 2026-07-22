@@ -34,7 +34,7 @@ for [Picovoice Console](https://console.picovoice.ai/) receives a unique AccessK
 
 ### 3. Download the LLM
 
-Download `llama-3.2-1b-instruct-385.pllm` from [Picovoice Console](https://console.picovoice.ai/).
+Download `qwen2.5-500m-it-590.pllm` from [Picovoice Console](https://console.picovoice.ai/).
 
 ### 4. Download the Required Models
 

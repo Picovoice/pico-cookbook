@@ -957,12 +957,12 @@
   dependencies:
     "@picovoice/web-utils" "=1.4.3"
 
-"@picovoice/picollm-web@~2.1.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@picovoice/picollm-web/-/picollm-web-2.1.0.tgz#bdbca2e9388cb406bbd340bb0082406dff48ff01"
-  integrity sha512-lEdluy6/v6cTiM7g/EH9KMWjDAMr32vht1p/stGMjy9g9LPBvMo3aVww1xZbR7LnczG7RZqg9lJYecRvqCHz7Q==
+"@picovoice/picollm-web@~2.1.3":
+  version "2.1.4"
+  resolved "https://registry.yarnpkg.com/@picovoice/picollm-web/-/picollm-web-2.1.4.tgz#04cc9a11b8fc1901887b760b2850bc5fb882cb16"
+  integrity sha512-vARhU3FWWHgxb3IP3J3BjT2CEwjHE9kmaaBiOQ5KgRSzq+IYF3u/nE/2w78qmLTVNXWrAZuk44TthdZW4wLPTw==
   dependencies:
-    "@picovoice/web-utils" "~1.4.3"
+    "@picovoice/web-utils" "=1.4.8"
 
 "@picovoice/porcupine-web@^4.0.0":
   version "4.0.0"
@@ -985,10 +985,17 @@
   dependencies:
     commander "^9.2.0"
 
-"@picovoice/web-utils@=1.4.3", "@picovoice/web-utils@~1.4.3":
+"@picovoice/web-utils@=1.4.3":
   version "1.4.3"
   resolved "https://registry.yarnpkg.com/@picovoice/web-utils/-/web-utils-1.4.3.tgz#1de0b20d6080c18d295c6df37c09d88bf7c4f555"
   integrity sha512-7JN3YYsSD9Gtce6YKG3XqpX49dkeu7jTdbox7rHQA/X/Q3zxopXA9zlCKSq6EIjFbiX2iuzDKUx1XrFa3d8c0w==
+  dependencies:
+    commander "^10.0.1"
+
+"@picovoice/web-utils@=1.4.8":
+  version "1.4.8"
+  resolved "https://registry.yarnpkg.com/@picovoice/web-utils/-/web-utils-1.4.8.tgz#a6bc79d44675cc69fc57d888e541431f9f677ece"
+  integrity sha512-251nUTlx4yeJAx6vtJj5h/JJ49S2RD97mHDjMTnu+6z7sNhiJQHa4aJu/7YZY1R/G8MSy4oz+zaVOrsRwepXLw==
   dependencies:
     commander "^10.0.1"
 
