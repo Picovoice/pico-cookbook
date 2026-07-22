@@ -248,7 +248,7 @@ class ViewModel: ObservableObject {
                 let dialog = try picollm!.getDialog(system: SYSTEM)
                 try dialog.addHumanRequest(content: "Caller Said: \"text\"")
                 let prompt = try dialog.prompt()
-                let _ = try picollm!.generate(
+                _ = try picollm!.generate(
                     prompt: prompt,
                     completionTokenLimit: 1)
 

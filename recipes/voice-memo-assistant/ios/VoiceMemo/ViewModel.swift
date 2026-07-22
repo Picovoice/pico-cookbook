@@ -170,18 +170,22 @@ class ViewModel: ObservableObject {
                     forResource: "picollm_model",
                     ofType: "pllm")
                     else { throw NSError(domain: "pllm not found", code: 0) }
-                picollm = try PicoLLM(accessKey: ACCESS_KEY, modelPath: pllmPath, device: "cpu:2", enableContextCache: true)
+                picollm = try PicoLLM(
+                    accessKey: ACCESS_KEY,
+                    modelPath: pllmPath,
+                    device: "cpu:2",
+                    enableContextCache: true)
 
                 let dialog0 = try picollm!.getDialog()
                 try dialog0.addHumanRequest(content: formatSummarize(memo: memoText))
-                let _ = try picollm!.generate(
+                _ = try picollm!.generate(
                         prompt: dialog0.prompt(),
                         completionTokenLimit: 1)
                 try picollm!.contextSave(contextPath: summaryContextPath)
 
                 let dialog1 = try picollm!.getDialog()
                 try dialog1.addHumanRequest(content: formatRewrite(memo: memoText))
-                let _ = try picollm!.generate(
+                _ = try picollm!.generate(
                         prompt: dialog1.prompt(),
                         completionTokenLimit: 1)
                 try picollm!.contextSave(contextPath: rewriteContextPath)
