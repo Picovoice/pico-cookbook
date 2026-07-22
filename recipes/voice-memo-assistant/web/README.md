@@ -23,7 +23,7 @@ These instructions assume your current working directory is `recipes/voice-memo-
 
 ### 1. Download the LLM
 
-Download `llama-3.2-1b-instruct-385.pllm` from [Picovoice Console](https://console.picovoice.ai/).
+Download `qwen2.5-500m-it-590.pllm` from [Picovoice Console](https://console.picovoice.ai/).
 
 ### 2. Train the Wake Word Model
 

@@ -46,7 +46,7 @@ pip install -r requirements.txt
 
 ### 4. Download the LLM
 
-Download `llama-3.2-1b-instruct-385.pllm` from [Picovoice Console](https://console.picovoice.ai/).
+Download `qwen2.5-500m-it-590.pllm` from [Picovoice Console](https://console.picovoice.ai/).
 
 ### 5. Train the Wake Word Model
 

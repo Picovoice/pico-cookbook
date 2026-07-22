@@ -38,7 +38,7 @@ class ViewModel: ObservableObject {
     @Published var modifiedTitle: String = ""
 
     private let ACCESS_KEY = "${YOUR_ACCESS_KEY_HERE}"
-    private let STOP_PHRASE = "<|eot_id|>"
+    private let STOP_PHRASE = "<|im_end|>"
     private let NO_MEMO_ERROR_PHRASE = "You need to record a memo first."
 
     private var porcupine: Porcupine?
@@ -251,22 +251,13 @@ class ViewModel: ObservableObject {
                 var promptBody = ""
 
                 if task == "summarizeMemo" {
-                    promptBody = "Summarize the memo below. Return only the summary.\n" +
-                        "Rules:\n- Do not say \"Here is the summarized memo\".\n" +
-                        "- Do not add any prefix, label, intro, explanation, or quotes.\n" +
-                        "- Keep the important details.\n" +
-                        "- Use one short sentence.\n\n" +
-                        "Memo:\n\(memoText)\n\n" +
-                        "Summarized memo:\n"
+                    promptBody = "In one brief sentence, write what needs doing from this memo, " +
+                        "including any day or date: \"\(memoText)\""
                 } else {
-                    promptBody = "Rewrite the memo below. Return only the rewritten memo.\n" +
-                        "Rules:\n" +
-                        "- Do not say \"Here is the rewritten memo\".\n" +
-                        "- Do not add any prefix, label, intro, explanation, or quotes.\n" +
-                        "- Fix grammar, punctuation, and repeated words.\n" +
-                        "- Preserve original meaning.\n\n" +
-                        "Memo:\n\(memoText)\n\n" +
-                        "Rewritten memo:\n"
+                    promptBody = "You are a transcription cleaner. You tidy speech into readable text " +
+                        "without changing what was said or how much was said. Remove um, uh, you know, " +
+                        "false starts, repeated words, and any leading Okay, So, or Well.\n\n" +
+                        "Memo: \"\(memoText)\"\nCleaned:"
                 }
 
                 try dialog.addHumanRequest(content: promptBody)

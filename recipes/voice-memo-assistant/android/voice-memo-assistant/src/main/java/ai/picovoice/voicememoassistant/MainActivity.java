@@ -87,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TTS_MODEL_FILE = "orca_params_en_female.pv";
 
 
-    private static final String STOP_PHRASE = "<|eot_id|>";
+    private static final String STOP_PHRASE = "<|im_end|>";
 
     private static final String NO_MEMO_ERROR_PHRASE = "You need to record a memo first.";
 
@@ -364,22 +364,9 @@ public class MainActivity extends AppCompatActivity {
         engineExecutor.submit(() -> {
             try {
                 PicoLLMDialog dialog = picollm.getDialogBuilder().build();
-                dialog.addHumanRequest(new StringBuilder()
-                        .append("Summarize the memo below. Return only the summary.\n")
-                        .append("Rules:\n")
-                        .append("- Do not say \"Here is the summarized memo\".\n")
-                        .append("- Do not add any prefix, label, intro, explanation, or quotes.\n")
-                        .append("- Do not explain your changes.\n")
-                        .append("- Keep the important details.\n")
-                        .append("- Fix obvious transcription errors only when the meaning is clear.\n")
-                        .append("- Do not add new information.\n")
-                        .append("- Use one short sentence.\n")
-                        .append("\n")
-                        .append("Memo:\n")
-                        .append(memoText.toString())
-                        .append("\n\n")
-                        .append("Summarized memo:\n")
-                        .toString());
+                dialog.addHumanRequest(
+                        "In one brief sentence, write what needs doing from this memo, "
+                                + "including any day or date: \"" + memoText.toString() + "\"");
 
                 PicoLLMCompletion completion = picollm.generate(
                         dialog.getPrompt(),
@@ -412,22 +399,11 @@ public class MainActivity extends AppCompatActivity {
         engineExecutor.submit(() -> {
             try {
                 PicoLLMDialog dialog = picollm.getDialogBuilder().build();
-                dialog.addHumanRequest(new StringBuilder()
-                        .append("Rewrite the memo below. Return only the rewritten memo.\n")
-                        .append("Rules:\n")
-                        .append("- Do not say \"Here is the rewritten memo\".\n")
-                        .append("- Do not add any prefix, label, intro, explanation, or quotes.\n")
-                        .append("- Do not explain your changes.\n")
-                        .append("- Fix grammar, punctuation, casing, repeated words, filler words, and false starts.\n")
-                        .append("- Preserve the original meaning.\n")
-                        .append("- Do not summarize.\n")
-                        .append("- Do not add new information.\n")
-                        .append("\n")
-                        .append("Memo:\n")
-                        .append(memoText.toString())
-                        .append("\n\n")
-                        .append("Rewritten memo:\n")
-                        .toString());
+                dialog.addHumanRequest(
+                        "You are a transcription cleaner. You tidy speech into readable text without "
+                                + "changing what was said or how much was said. Remove um, uh, you know, "
+                                + "false starts, repeated words, and any leading Okay, So, or Well.\n\n"
+                                + "Memo: \"" + memoText.toString() + "\"\nCleaned:");
 
                 PicoLLMCompletion completion = picollm.generate(
                         dialog.getPrompt(),

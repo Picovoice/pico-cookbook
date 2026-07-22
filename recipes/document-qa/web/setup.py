@@ -105,7 +105,7 @@ def main() -> None:
 
     public_folder = os.path.join(os.path.dirname(__file__), "public", "models")
 
-    picollm_target_path = os.path.join(public_folder, "llama-3.2-1b-instruct-385.pllm")
+    picollm_target_path = os.path.join(public_folder, "qwen2.5-500m-it-590.pllm")
     shutil.copy(args.picollm_model_path, picollm_target_path)
     print(f"Copied {args.picollm_model_path} to {picollm_target_path}")
 

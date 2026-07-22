@@ -384,7 +384,7 @@
 			repositoryURL = "https://github.com/picovoice/picollm";
 			requirement = {
 				kind = exactVersion;
-				version = 2.1.0;
+				version = 2.1.3;
 			};
 		};
 		348EF4F92FAAAB22009C8F51 /* XCRemoteSwiftPackageReference "ios-voice-processor" */ = {

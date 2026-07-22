@@ -76,6 +76,7 @@ class ViewModel: ObservableObject {
         "<end_of_turn>",    // Gemma
         "<|endoftext|>",    // Phi-2
         "<|eot_id|>",       // Llama-3
+        "<|im_end|>",       // Qwen
         "<|end|>", "<|user|>", "<|assistant|>" // Phi-3
     ]
 
@@ -610,11 +611,8 @@ class ViewModel: ObservableObject {
         }
 
         let dialog = try picollm!.getDialog(
-            system: "You are a document question-answering assistant. " +
-                    "Answer only using the provided excerpts; if the answer is not in them, " +
-                    "say you do not know from the provided document. " +
-                    "Do not give legal advice. " +
-                    "Be concise and use plain text only - no Markdown, no bullet points."
+            system: "Answer the question using only the excerpts, in one or two short plain-text sentences. " +
+                    "If the excerpts do not contain the answer, say you do not know from the provided document."
         )
 
         try dialog.addHumanRequest(
