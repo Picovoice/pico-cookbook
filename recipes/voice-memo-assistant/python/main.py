@@ -252,15 +252,15 @@ def main() -> None:
         dialog = llm.get_dialog()
         dialog.add_human_request(SUMMARY_TEMPLATE.format(memo="memo"))
         completion = llm.generate(
-                prompt=dialog.prompt(),
-                completion_token_limit=1)
+            prompt=dialog.prompt(),
+            completion_token_limit=1)
         llm.context_save(SUMMARY_CONTEXT_PATH)
 
         dialog = llm.get_dialog()
         dialog.add_human_request(REWRITE_TEMPLATE.format(memo="memo"))
         completion = llm.generate(
-                prompt=dialog.prompt(),
-                completion_token_limit=1)
+            prompt=dialog.prompt(),
+            completion_token_limit=1)
         llm.context_save(REWRITE_CONTEXT_PATH)
 
         print(f"[OK] picoLLM Inference [V{llm.version}]")

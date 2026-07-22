@@ -248,7 +248,7 @@ def record_and_transcribe(cheetah: Cheetah, recorder: PvRecorder) -> str:
 
 def precompute_caller(llm: picollm.PicoLLM):
     dialog = llm.get_dialog(system=SYSTEM)
-    dialog.add_human_request(f"Caller said: \"text\"\n")
+    dialog.add_human_request("Caller said: \"text\"\n")
     llm.generate(
         prompt=dialog.prompt(),
         completion_token_limit=1)
