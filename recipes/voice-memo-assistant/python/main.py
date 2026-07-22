@@ -26,12 +26,18 @@ from pvorca import Orca
 from pvrecorder import PvRecorder
 from pvspeaker import PvSpeaker
 
-SUMMARY_TEMPLATE = """In one brief sentence, write what needs doing from this memo, including any day or date: "{memo}\""""
+SUMMARY_TEMPLATE = (
+    'In one brief sentence, write what needs doing from this memo, '
+    'including any day or date: "{memo}"'
+)
 
-REWRITE_TEMPLATE = """You are a transcription cleaner. You tidy speech into readable text without changing what was said or how much was said. Remove um, uh, you know, false starts, repeated words, and any leading Okay, So, or Well.
-
-Memo: "{memo}"
-Cleaned:"""
+REWRITE_TEMPLATE = (
+    'You are a transcription cleaner. You tidy speech into readable text without changing what was said or '
+    'how much was said. Remove um, uh, you know, false starts, repeated words, and any leading Okay, So, or Well.\n'
+    '\n'
+    'Memo: "{memo}"\n'
+    'Cleaned:'
+)
 
 
 def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str = '\n') -> Tuple[Event, Thread]:
