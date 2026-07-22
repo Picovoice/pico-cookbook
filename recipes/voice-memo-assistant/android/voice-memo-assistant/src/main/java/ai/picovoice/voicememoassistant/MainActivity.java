@@ -134,6 +134,9 @@ public class MainActivity extends AppCompatActivity {
 
     private VolumeMeterView volumeMeterView;
 
+    private String summaryContextPath;
+    private String rewriteContextPath;
+
     @SuppressLint({"DefaultLocale", "SetTextI18n"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -161,7 +164,44 @@ public class MainActivity extends AppCompatActivity {
 
         tooltipTextView = findViewById(R.id.tooltipTextView);
 
+        summaryContextPath = String.format("%s/%s", getApplicationContext().getCacheDir(), "summary-context.bin");
+        rewriteContextPath = String.format("%s/%s", getApplicationContext().getCacheDir(), "rewrite-context.bin");
+
         engineExecutor.submit(this::initEngines);
+    }
+
+    private String formatSummarize(String memo) throws PicoLLMException {
+        PicoLLMDialog dialog = picollm.getDialogBuilder().build();
+        dialog.addHumanRequest("In one brief sentence, write what needs doing from this memo, "
+                + "including any day or date: \"" + memo + "\"");
+        return dialog.getPrompt();
+    }
+
+    private String formatRewrite(String memo) throws PicoLLMException {
+        PicoLLMDialog dialog = picollm.getDialogBuilder().build();
+        dialog.addHumanRequest("You are a transcription cleaner. You tidy speech into readable text without "
+                + "changing what was said or how much was said. Remove um, uh, you know, "
+                + "false starts, repeated words, and any leading Okay, So, or Well.\n\n"
+                + "Memo: \"" + memo + "\"\nCleaned:");
+        return dialog.getPrompt();
+    }
+
+    private void precomputeSummary() throws PicoLLMException {
+        picollm.generate(
+            formatSummarize("memo"),
+            new PicoLLMGenerateParams.Builder()
+                    .setCompletionTokenLimit(1)
+                    .build());
+        picollm.contextSave(summaryContextPath);
+    }
+
+    private void precomputeRewrite() throws PicoLLMException {
+        picollm.generate(
+            formatRewrite("memo"),
+            new PicoLLMGenerateParams.Builder()
+                    .setCompletionTokenLimit(1)
+                    .build());
+        picollm.contextSave(rewriteContextPath);
     }
 
     private void initEngines() {
@@ -207,7 +247,11 @@ public class MainActivity extends AppCompatActivity {
             picollm = new PicoLLM.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(llmModelFile.getAbsolutePath())
+                    .setEnableContextCaching(true)
                     .build();
+
+            precomputeSummary();
+            precomputeRewrite();
         } catch (PicoLLMException e) {
             onEngineInitError(e.getMessage());
             return;
@@ -363,13 +407,9 @@ public class MainActivity extends AppCompatActivity {
 
         engineExecutor.submit(() -> {
             try {
-                PicoLLMDialog dialog = picollm.getDialogBuilder().build();
-                dialog.addHumanRequest(
-                        "In one brief sentence, write what needs doing from this memo, "
-                                + "including any day or date: \"" + memoText.toString() + "\"");
-
+                picollm.contextLoad(summaryContextPath);
                 PicoLLMCompletion completion = picollm.generate(
-                        dialog.getPrompt(),
+                        formatSummarize(memoText.toString()),
                         new PicoLLMGenerateParams.Builder()
                                 .setStopPhrases(new String[]{STOP_PHRASE})
                                 .setStreamCallback(token -> {
@@ -398,15 +438,9 @@ public class MainActivity extends AppCompatActivity {
 
         engineExecutor.submit(() -> {
             try {
-                PicoLLMDialog dialog = picollm.getDialogBuilder().build();
-                dialog.addHumanRequest(
-                        "You are a transcription cleaner. You tidy speech into readable text without "
-                                + "changing what was said or how much was said. Remove um, uh, you know, "
-                                + "false starts, repeated words, and any leading Okay, So, or Well.\n\n"
-                                + "Memo: \"" + memoText.toString() + "\"\nCleaned:");
-
+                picollm.contextLoad(rewriteContextPath);
                 PicoLLMCompletion completion = picollm.generate(
-                        dialog.getPrompt(),
+                        formatRewrite(memoText.toString()),
                         new PicoLLMGenerateParams.Builder()
                                 .setStopPhrases(new String[]{STOP_PHRASE})
                                 .setStreamCallback(token -> {
