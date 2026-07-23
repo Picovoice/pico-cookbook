@@ -49,7 +49,16 @@ class ViewModel: ObservableObject {
 
     private var audioStream: AudioPlayerStream?
 
+    private var summaryContextPath: String = ""
+    private var rewriteContextPath: String = ""
+
     init() {
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+        let summaryContextURL = tempDirectoryURL.appendingPathComponent("summary-context.bin")
+        let rewriteContextURL = tempDirectoryURL.appendingPathComponent("rewrite-context.bin")
+        summaryContextPath = summaryContextURL.path()
+        rewriteContextPath = rewriteContextURL.path()
+
         loadEngines()
     }
 
@@ -62,6 +71,18 @@ class ViewModel: ObservableObject {
             self.statusText = error
             self.tooltipText = details
         }
+    }
+
+    func formatSummarize(memo: String) -> String {
+        return "In one brief sentence, write what needs doing from this memo, " +
+            "including any day or date: \"\(memo)\""
+    }
+
+    func formatRewrite(memo: String) -> String {
+        return "You are a transcription cleaner. You tidy speech into readable text " +
+                "without changing what was said or how much was said. Remove um, uh, you know, " +
+                "false starts, repeated words, and any leading Okay, So, or Well.\n\n" +
+                "Memo: \"\(memo)\"\nCleaned:"
     }
 
     func updateUIState(_ state: UIState) {
@@ -149,7 +170,25 @@ class ViewModel: ObservableObject {
                     forResource: "picollm_model",
                     ofType: "pllm")
                     else { throw NSError(domain: "pllm not found", code: 0) }
-                picollm = try PicoLLM(accessKey: ACCESS_KEY, modelPath: pllmPath, device: "cpu:2")
+                picollm = try PicoLLM(
+                    accessKey: ACCESS_KEY,
+                    modelPath: pllmPath,
+                    device: "cpu:2",
+                    enableContextCache: true)
+
+                let dialog0 = try picollm!.getDialog()
+                try dialog0.addHumanRequest(content: formatSummarize(memo: memoText))
+                _ = try picollm!.generate(
+                        prompt: dialog0.prompt(),
+                        completionTokenLimit: 1)
+                try picollm!.contextSave(contextPath: summaryContextPath)
+
+                let dialog1 = try picollm!.getDialog()
+                try dialog1.addHumanRequest(content: formatRewrite(memo: memoText))
+                _ = try picollm!.generate(
+                        prompt: dialog1.prompt(),
+                        completionTokenLimit: 1)
+                try picollm!.contextSave(contextPath: rewriteContextPath)
 
                 setStatusText(text: "Loading Orca...")
                 guard let orcaModelPath = Bundle.main.path(
@@ -251,13 +290,11 @@ class ViewModel: ObservableObject {
                 var promptBody = ""
 
                 if task == "summarizeMemo" {
-                    promptBody = "In one brief sentence, write what needs doing from this memo, " +
-                        "including any day or date: \"\(memoText)\""
+                    try picollm!.contextLoad(contextPath: summaryContextPath)
+                    promptBody = formatSummarize(memo: memoText)
                 } else {
-                    promptBody = "You are a transcription cleaner. You tidy speech into readable text " +
-                        "without changing what was said or how much was said. Remove um, uh, you know, " +
-                        "false starts, repeated words, and any leading Okay, So, or Well.\n\n" +
-                        "Memo: \"\(memoText)\"\nCleaned:"
+                    try picollm!.contextLoad(contextPath: rewriteContextPath)
+                    promptBody = formatRewrite(memo: memoText)
                 }
 
                 try dialog.addHumanRequest(content: promptBody)

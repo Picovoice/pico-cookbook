@@ -1,3 +1,4 @@
+import os
 import shutil
 import string
 import sys
@@ -38,6 +39,10 @@ REWRITE_TEMPLATE = (
     'Memo: "{memo}"\n'
     'Cleaned:'
 )
+
+
+SUMMARY_CONTEXT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "summarize-context.bin"))
+REWRITE_CONTEXT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "rewrite-context.bin"))
 
 
 def print_async(get_text: Callable[[], str], refresh_sec: float = 0.1, end: str = '\n') -> Tuple[Event, Thread]:
@@ -241,7 +246,23 @@ def main() -> None:
         llm = picollm.create(
             access_key=access_key,
             model_path=picollm_model_path,
-            device=picollm_device)
+            device=picollm_device,
+            enable_context_caching=True)
+
+        dialog = llm.get_dialog()
+        dialog.add_human_request(SUMMARY_TEMPLATE.format(memo="memo"))
+        completion = llm.generate(
+            prompt=dialog.prompt(),
+            completion_token_limit=1)
+        llm.context_save(SUMMARY_CONTEXT_PATH)
+
+        dialog = llm.get_dialog()
+        dialog.add_human_request(REWRITE_TEMPLATE.format(memo="memo"))
+        completion = llm.generate(
+            prompt=dialog.prompt(),
+            completion_token_limit=1)
+        llm.context_save(REWRITE_CONTEXT_PATH)
+
         print(f"[OK] picoLLM Inference [V{llm.version}]")
 
         orca = pvorca.create(access_key=access_key)
@@ -335,6 +356,7 @@ def main() -> None:
                         dialog = llm.get_dialog()
                         dialog.add_human_request(SUMMARY_TEMPLATE.format(memo=memo))
                         print_event, print_thread = print_async(get_text=lambda: "Summarizing memo")
+                        llm.context_load(SUMMARY_CONTEXT_PATH)
                         completion = llm.generate(
                             prompt=dialog.prompt(),
                             stop_phrases={'<|im_end|>'})
@@ -349,6 +371,7 @@ def main() -> None:
                         dialog = llm.get_dialog()
                         dialog.add_human_request(REWRITE_TEMPLATE.format(memo=memo))
                         print_event, print_thread = print_async(get_text=lambda: "Rewriting memo")
+                        llm.context_load(REWRITE_CONTEXT_PATH)
                         completion = llm.generate(
                             prompt=dialog.prompt(),
                             stop_phrases={'<|im_end|>'})

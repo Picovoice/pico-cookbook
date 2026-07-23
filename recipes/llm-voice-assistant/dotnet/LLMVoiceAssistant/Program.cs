@@ -233,7 +233,8 @@ namespace LLMVoiceAssistant
             {
                 _pllm = PicoLLM.Create(accessKey: config.AccessKey,
                                         modelPath: config.PicollmModelPath,
-                                        device: config.PicollmDevice);
+                                        device: config.PicollmDevice,
+                                        enableContextCaching: true);
                 if (config.Profile)
                 {
                     _pllmProfiler = new TPSProfiler("PicoLLM");

@@ -375,11 +375,14 @@ public class MainActivity extends AppCompatActivity {
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(llmModelFile.getAbsolutePath())
                     .setDevice("cpu:4")
+                    .setEnableContextCaching(true)
                     .build();
         } catch (PicoLLMException e) {
             setError(e.getMessage());
             return;
         }
+
+        precomputeCaller();
 
         setStatus("Loading Orca...");
         try {
@@ -505,6 +508,24 @@ public class MainActivity extends AppCompatActivity {
         setVolumeMeterState(true);
         callerTranscript = "";
         currentState = State.TRANSCRIBE;
+    }
+
+    private void precomputeCaller() {
+        try {
+            PicoLLMDialog dialog = picollm.getDialogBuilder()
+                    .setSystem(systemPrompt)
+                    .build();
+            dialog.addHumanRequest(String.format("Caller Said: \"%s\"\n", "text"));
+            String prompt = dialog.getPrompt();
+            picollm.generate(
+                    prompt,
+                    new PicoLLMGenerateParams.Builder()
+                            .setStopPhrases(stopPhrases)
+                            .setNumTopChoices(1)
+                            .build());
+        } catch (PicoLLMException e) {
+            setError(e.getMessage());
+        }
     }
 
     private void processCaller() {

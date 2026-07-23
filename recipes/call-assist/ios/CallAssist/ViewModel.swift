@@ -239,7 +239,18 @@ class ViewModel: ObservableObject {
                     .path(forResource: "picollm_model", ofType: "pllm") else {
                         throw NSError(domain: "picollm_model not found", code: 0)
                     }
-                picollm = try PicoLLM(accessKey: ACCESS_KEY, modelPath: picollmModelPath, device: "cpu:2")
+                picollm = try PicoLLM(
+                    accessKey: ACCESS_KEY,
+                    modelPath: picollmModelPath,
+                    device: "cpu:2",
+                    enableContextCache: true)
+
+                let dialog = try picollm!.getDialog(system: SYSTEM)
+                try dialog.addHumanRequest(content: "Caller Said: \"text\"")
+                let prompt = try dialog.prompt()
+                _ = try picollm!.generate(
+                    prompt: prompt,
+                    completionTokenLimit: 1)
 
                 setStatusText(text: "Loading Rhino...")
                 guard let rhinoModelPath = Bundle(for: type(of: self))

@@ -344,8 +344,17 @@ const init = async (
     const llm = await PicoLLMWorker.create(
       accessKey,
       { modelFile: 'models/llama-3.2-1b-instruct-385.pllm', cacheFileOverwrite: FORCE_WRITE },
-      {}
+      {
+        enableContextCaching: true,
+      }
     );
+
+    let dialog = await llm.getDialog(undefined, undefined, SYSTEM_PROMPT);
+    dialog.addHumanRequest(`Caller said: \"text\"\n`);
+
+    await llm.generate(
+        dialog.prompt(),
+        { completionTokenLimit: 1 });
 
     sendMessage("SET_STATUS", "Loading Orca");
     const orca = await OrcaWorker.create(

@@ -260,6 +260,7 @@ public class MainActivity extends AppCompatActivity {
             picollm = new PicoLLM.Builder()
                     .setAccessKey(ACCESS_KEY)
                     .setModelPath(modelFile.getAbsolutePath())
+                    .setEnableContextCaching(true)
                     .build();
             dialog = picollm.getDialogBuilder().setSystem(SYSTEM_PROMPT).build();
         } catch (PicoLLMException e) {

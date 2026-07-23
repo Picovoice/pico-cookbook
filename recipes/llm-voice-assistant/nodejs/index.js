@@ -483,7 +483,7 @@ async function llmVoiceAssistant() {
   const cheetah = new Cheetah(accessKey, { endpointDurationSec, enableAutomaticPunctuation: true });
   process.stdout.write(`→ Cheetah v${cheetah.version}\n`);
 
-  const picollm = new PicoLLM(accessKey, picollmModelPath, { device: picollmDevice });
+  const picollm = new PicoLLM(accessKey, picollmModelPath, { device: picollmDevice, enableContextCaching: true });
   process.stdout.write(`→ picoLLM v${picollm.version} <${picollm.model}>\n`);
 
   const orca = new Orca(accessKey);
