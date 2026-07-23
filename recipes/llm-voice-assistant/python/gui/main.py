@@ -117,7 +117,7 @@ class Speaker:
             self.speaker.stop()
             self.queue.put({'command': Commands.TEXT_STATE, 'state': 1})
 
-        if not self.speaking and len(self.pcmBuffer) > self.orca_warmup:
+        if not self.speaking and (len(self.pcmBuffer) > self.orca_warmup or self.flushing):
             self.speaking = True
             self.speaker.start()
         if self.speaking and len(self.pcmBuffer) > 0:
