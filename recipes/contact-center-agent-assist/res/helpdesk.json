@@ -1,0 +1,110 @@
+{
+  "company": "Luminara Home",
+  "products": [
+    {
+      "name": "Aerlume",
+      "category": "smart air purifier",
+      "pronunciations": ["ɛ ɹ l u m"]
+    },
+    {
+      "name": "Nyxa",
+      "category": "smart lock",
+      "pronunciations": ["n ɪ k s ə"]
+    },
+    {
+      "name": "Solivent",
+      "category": "smart vent",
+      "pronunciations": []
+    },
+    {
+      "name": "Cindra",
+      "category": "security camera",
+      "pronunciations": []
+    },
+    {
+      "name": "Heliowatt",
+      "category": "energy monitor",
+      "pronunciations": []
+    }
+  ],
+  "boost_words": [
+    "firmware",
+    "pairing",
+    "thermostat",
+    "diagnostics",
+    "warranty",
+    "subscription"
+  ],
+  "kb_articles": [
+    {
+      "id": "KB-101",
+      "title": "Aerlume filter replacement and reset",
+      "tags": ["aerlume", "filter", "replacement", "reset", "red", "light"],
+      "summary": "How to replace the filter on an Aerlume purifier and reset the filter indicator when the red light stays on.",
+      "macro": "Walk the caller through the filter reset. Offer to place a replacement filter order."
+    },
+    {
+      "id": "KB-102",
+      "title": "Nyxa smart lock pairing issues",
+      "tags": ["nyxa", "pairing", "bluetooth", "lock", "unlock", "app"],
+      "summary": "Steps to re-pair a Nyxa lock with the app when it stops responding or fails to connect over Bluetooth.",
+      "macro": "Confirm the lock's battery level, then walk the caller through removing and re-pairing the device."
+    },
+    {
+      "id": "KB-103",
+      "title": "Firmware update stuck or failing",
+      "tags": ["firmware", "update", "stuck", "failed", "restart"],
+      "summary": "What to do when a device's firmware update does not finish or the device restarts during the update.",
+      "macro": "Ask the caller to keep the device powered, then trigger the update again from the app."
+    },
+    {
+      "id": "KB-104",
+      "title": "Warranty coverage and claims",
+      "tags": ["warranty", "claim", "coverage", "repair", "replace"],
+      "summary": "What the standard warranty covers, how long it lasts, and how to open a claim for a repair or replacement.",
+      "macro": "Verify the purchase date, then open a warranty claim on the caller's behalf."
+    },
+    {
+      "id": "KB-105",
+      "title": "Solivent Wi-Fi connectivity troubleshooting",
+      "tags": ["solivent", "wifi", "offline", "connect", "network", "router"],
+      "summary": "Troubleshooting steps for a Solivent vent that shows offline or will not join the Wi-Fi network.",
+      "macro": "Confirm the router band settings, then walk the caller through rejoining the network."
+    },
+    {
+      "id": "KB-106",
+      "title": "Subscription plans and billing",
+      "tags": ["subscription", "billing", "plan", "charge", "cancel", "upgrade"],
+      "summary": "Overview of subscription tiers, how billing works, and how to upgrade, downgrade, or cancel a plan.",
+      "macro": "Review the caller's current plan, then apply the requested plan change."
+    },
+    {
+      "id": "KB-107",
+      "title": "Cindra camera motion alerts and recording",
+      "tags": ["cindra", "camera", "motion", "alerts", "recording", "notifications"],
+      "summary": "How to adjust motion alert sensitivity on a Cindra camera and fix missing recordings or notifications.",
+      "macro": "Check the caller's notification settings, then adjust the motion sensitivity together."
+    },
+    {
+      "id": "KB-108",
+      "title": "Heliowatt energy readings look wrong",
+      "tags": ["heliowatt", "energy", "readings", "usage", "calibration"],
+      "summary": "Why Heliowatt usage readings can look too high or too low and how to recalibrate the monitor.",
+      "macro": "Confirm the sensor placement, then walk the caller through recalibration."
+    },
+    {
+      "id": "KB-109",
+      "title": "Factory reset and device removal",
+      "tags": ["factory", "reset", "remove", "device", "setup"],
+      "summary": "How to factory reset any device and remove it from an account before setting it up again or returning it.",
+      "macro": "Confirm the caller owns the device, then walk through the factory reset."
+    },
+    {
+      "id": "KB-110",
+      "title": "App account recovery and password reset",
+      "tags": ["account", "password", "reset", "login", "email", "recovery"],
+      "summary": "Steps to recover an account when the caller cannot log in or no longer has access to their email.",
+      "macro": "Verify the caller's identity, then send a password reset to the address on file."
+    }
+  ]
+}
