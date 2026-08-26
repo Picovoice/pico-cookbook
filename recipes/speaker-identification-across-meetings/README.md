@@ -4,6 +4,8 @@ On-device speaker identification across meeting recordings: label who spoke when
 
 Falcon Speaker Diarization segments the recording by speaker, and Eagle Speaker Recognition matches each speaker to an enrolled voice profile, so recurring speakers are identified by name across meetings.
 
+[![Speaker Identification Across Meetings](https://img.youtube.com/vi/RjGsaxJynKI/hqdefault.jpg)](https://youtu.be/RjGsaxJynKI)
+
 ## Components
 - [Falcon Speaker Diarization](https://picovoice.ai/docs/falcon/)
 - [Eagle Speaker Recognition](https://picovoice.ai/docs/eagle/)

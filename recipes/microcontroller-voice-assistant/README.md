@@ -3,6 +3,8 @@ On-device voice assistant for microcontrollers (MCU): hands-free voice control t
 
 Porcupine Wake Word listens for the trigger phrase, and Rhino Speech-to-Intent turns a spoken command directly into a structured intent on constrained embedded hardware.
 
+[![Microcontroller Voice Assistant](https://img.youtube.com/vi/0HOvjdphxNA/hqdefault.jpg)](https://youtu.be/0HOvjdphxNA)
+
 ## Components
 - [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/)
 - [Rhino Speech-to-Intent](https://picovoice.ai/docs/rhino/)

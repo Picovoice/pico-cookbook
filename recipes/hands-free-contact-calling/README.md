@@ -8,6 +8,8 @@ questions when multiple contacts match, and return to always listening mode only
 enables use cases like in-car calling, smart glasses, mobile assistants, accessibility tools, headset controls, and
 embedded hands-free communication.
 
+[![Hands-Free Contact Calling](https://img.youtube.com/vi/L7MMHVpGL50/hqdefault.jpg)](https://youtu.be/L7MMHVpGL50)
+
 ## Components
 
 * [Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/)
