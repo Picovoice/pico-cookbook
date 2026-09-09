@@ -22,7 +22,7 @@
     "@picovoice/picollm-web": "^2.1.4",
     "@picovoice/orca-web": "^3.0.0",
     "@picovoice/web-voice-processor": "^4.0.9",
-    "@picovoice/rhino-web": "^4.0.0"
+    "@picovoice/rhino-web": "^4.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.29.6",
