@@ -16,7 +16,7 @@ ANIMALS = [
     ("cheetah", "4.0.0"),
     ("orca", "3.0.0"),
     ("porcupine", "4.0.0"),
-    ("rhino", "4.0.0"),
+    ("rhino", "4.1.0"),
 ]
 
 COPIES = {
