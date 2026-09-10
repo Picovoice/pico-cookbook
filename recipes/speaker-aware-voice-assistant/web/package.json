@@ -21,7 +21,7 @@
     "@picovoice/eagle-web": "^3.0.1",
     "@picovoice/orca-web": "^3.0.0",
     "@picovoice/porcupine-web": "^4.0.0",
-    "@picovoice/rhino-web": "^4.0.0",
+    "@picovoice/rhino-web": "^4.1.0",
     "@picovoice/web-voice-processor": "^4.0.9"
   },
   "devDependencies": {

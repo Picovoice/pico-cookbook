@@ -363,10 +363,10 @@
 		};
 		071545E52FC1277A004D77DE /* XCRemoteSwiftPackageReference "rhino" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Picovoice/rhino";
+			repositoryURL = "https://github.com/picovoice/rhino";
 			requirement = {
 				kind = exactVersion;
-				version = 4.0.0;
+				version = 4.1.0;
 			};
 		};
 		348EF47B2FAA8C94009C8F51 /* XCRemoteSwiftPackageReference "eagle" */ = {

@@ -366,7 +366,7 @@
 			repositoryURL = "https://github.com/picovoice/rhino";
 			requirement = {
 				kind = exactVersion;
-				version = 4.0.0;
+				version = 4.1.0;
 			};
 		};
 		34BE104F2FBD025400B437B6 /* XCRemoteSwiftPackageReference "orca" */ = {

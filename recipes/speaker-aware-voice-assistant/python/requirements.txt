@@ -2,5 +2,5 @@ pveagle==3.0.2
 pvorca==3.0.0
 pvporcupine==4.0.2
 pvrecorder==1.2.7
-pvrhino==4.0.2
+pvrhino~=4.1.0
 pvspeaker==1.0.5
