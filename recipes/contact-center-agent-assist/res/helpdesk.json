@@ -1,0 +1,922 @@
+{
+  "company": "IKEA",
+  "caller": {
+    "name": "Jane Doe",
+    "account": "IKEA Family member"
+  },
+  "ticket_fields": [
+    {
+      "id": 360012345678,
+      "key": "product",
+      "type": "tagger",
+      "title": "Product",
+      "custom_field_options": [
+        {
+          "name": "Billy",
+          "value": "billy"
+        },
+        {
+          "name": "Kallax",
+          "value": "kallax",
+          "pronunciations": []
+        },
+        {
+          "name": "Strandmon",
+          "value": "strandmon",
+          "pronunciations": []
+        },
+        {
+          "name": "Poang",
+          "value": "poang",
+          "pronunciations": []
+        },
+        {
+          "name": "Hemnes",
+          "value": "hemnes",
+          "pronunciations": []
+        },
+        {
+          "name": "Malm",
+          "value": "malm",
+          "pronunciations": []
+        },
+        {
+          "name": "Tarva",
+          "value": "tarva",
+          "pronunciations": []
+        },
+        {
+          "name": "Ektorp",
+          "value": "ektorp",
+          "pronunciations": []
+        },
+        {
+          "name": "Kivik",
+          "value": "kivik",
+          "pronunciations": []
+        },
+        {
+          "name": "Klippan",
+          "value": "klippan",
+          "pronunciations": []
+        },
+        {
+          "name": "Vimle",
+          "value": "vimle",
+          "pronunciations": []
+        },
+        {
+          "name": "Friheten",
+          "value": "friheten",
+          "pronunciations": []
+        },
+        {
+          "name": "Ribba",
+          "value": "ribba",
+          "pronunciations": []
+        },
+        {
+          "name": "Frosta",
+          "value": "frosta",
+          "pronunciations": []
+        },
+        {
+          "name": "Trofast",
+          "value": "trofast",
+          "pronunciations": []
+        },
+        {
+          "name": "Nordli",
+          "value": "nordli",
+          "pronunciations": []
+        },
+        {
+          "name": "Micke",
+          "value": "micke",
+          "pronunciations": []
+        },
+        {
+          "name": "Besta",
+          "value": "besta",
+          "pronunciations": []
+        },
+        {
+          "name": "Eket",
+          "value": "eket",
+          "pronunciations": []
+        },
+        {
+          "name": "Ingolf",
+          "value": "ingolf",
+          "pronunciations": []
+        },
+        {
+          "name": "Kura",
+          "value": "kura",
+          "pronunciations": []
+        },
+        {
+          "name": "Sniglar",
+          "value": "sniglar",
+          "pronunciations": []
+        },
+        {
+          "name": "Skubb",
+          "value": "skubb",
+          "pronunciations": []
+        },
+        {
+          "name": "Linnmon",
+          "value": "linnmon",
+          "pronunciations": []
+        },
+        {
+          "name": "Brimnes",
+          "value": "brimnes",
+          "pronunciations": []
+        },
+        {
+          "name": "Hauga",
+          "value": "hauga",
+          "pronunciations": []
+        },
+        {
+          "name": "Ivar",
+          "value": "ivar",
+          "pronunciations": []
+        },
+        {
+          "name": "Norden",
+          "value": "norden",
+          "pronunciations": []
+        },
+        {
+          "name": "Lack",
+          "value": "lack"
+        },
+        {
+          "name": "Alex",
+          "value": "alex"
+        },
+        {
+          "name": "Markus",
+          "value": "markus"
+        },
+        {
+          "name": "Stefan",
+          "value": "stefan"
+        }
+      ]
+    },
+    {
+      "id": 360012345679,
+      "key": "issue_type",
+      "type": "tagger",
+      "title": "Issue Type",
+      "custom_field_options": [
+        {
+          "name": "Assembly help",
+          "value": "assembly_help"
+        },
+        {
+          "name": "Missing parts",
+          "value": "missing_parts"
+        },
+        {
+          "name": "Damaged item",
+          "value": "damaged_item"
+        },
+        {
+          "name": "Delivery",
+          "value": "delivery"
+        },
+        {
+          "name": "Returns",
+          "value": "returns"
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "assembly",
+    "dowel",
+    "allen",
+    "delivery",
+    "cushion",
+    "spare",
+    "return",
+    "insert",
+    "shelves",
+    "cover",
+    "rocking",
+    "wash"
+  ],
+  "help_center_articles": [
+    {
+      "id": "KB-101",
+      "title": "Missing hardware and spare parts",
+      "label_names": [
+        "spare-parts",
+        "hardware",
+        "fittings"
+      ],
+      "snippet": "What to do when fittings like dowels, cam locks, screws, or shelf pins are missing from a flat-pack box, and how to order free spare parts.",
+      "facts": [
+        "Common fittings: wooden dowel 101350, cam lock 110630, cam screw 109049, shelf pin 371813.",
+        "Spare parts are free and arrive in 3 to 5 business days."
+      ],
+      "next_step": "Find the part number in the assembly manual diagram and order free spares under Support > Spare Parts."
+    },
+    {
+      "id": "KB-102",
+      "title": "Kallax assembly and stability",
+      "label_names": [
+        "kallax",
+        "assembly",
+        "stability"
+      ],
+      "snippet": "Help for Kallax shelving that is unstable, wobbles, rocks from side to side, or will not sit square after assembly, including fitting the cam locks.",
+      "facts": [
+        "A Kallax 2x2 unit is 77 by 77 centimeters and uses 16 cam locks.",
+        "Assembly takes about 30 minutes for one person."
+      ],
+      "next_step": "Confirm cam locks are inserted with the arrow toward the panel edge, then quarter-turn to lock. For a wobbly unit: loosen all cams, square the frame on a flat floor, and retighten in a cross pattern."
+    },
+    {
+      "id": "KB-103",
+      "title": "Kallax inserts and doors",
+      "label_names": [
+        "kallax",
+        "inserts",
+        "accessories"
+      ],
+      "snippet": "Which drawer inserts, door inserts, and accessories fit Kallax cubes, and how to install them.",
+      "facts": [
+        "All standard inserts (drawer, door, shelf) fit every 33 by 33 centimeter Kallax cube opening.",
+        "Each insert ships with its own screws and needs only a Phillips screwdriver."
+      ],
+      "next_step": "Verify the unit generation on the label under the top panel, then confirm the insert type before ordering."
+    },
+    {
+      "id": "KB-104",
+      "title": "Strandmon legs and footstool",
+      "label_names": [
+        "strandmon",
+        "legs",
+        "footstool"
+      ],
+      "snippet": "Help for Strandmon wingback chairs with loose, cracked, uneven, or creaking legs, and for ordering the matching footstool.",
+      "facts": [
+        "The Strandmon wingback chair is 82 wide, 96 deep, and 101 centimeters high.",
+        "The legs screw on by hand with no tools.",
+        "The matching footstool is a separate item in the same fabrics."
+      ],
+      "next_step": "Have the caller flip the chair and hand-tighten each leg fully. For an uneven or creaking chair, check that the leg plates sit flush."
+    },
+    {
+      "id": "KB-105",
+      "title": "Choosing an armchair",
+      "label_names": [
+        "armchairs",
+        "buying-guide"
+      ],
+      "snippet": "Helping a caller choose between the wingback Strandmon and the lighter Poang, including fabrics, sizes, and matching footstools.",
+      "facts": [
+        "Strandmon is a high-back wingback armchair; Poang is a lighter bentwood armchair that also comes in a rocking version.",
+        "Both lines offer fabric and leather options and have matching footstools.",
+        "Strandmon is 82 wide, 96 deep, and 101 centimeters high; Poang is 68 by 82 by 100."
+      ],
+      "next_step": "Ask about the room, the preferred sitting position, and fabric, then check stock at the caller's nearest store."
+    },
+    {
+      "id": "KB-106",
+      "title": "Poang cushions and covers",
+      "label_names": [
+        "poang",
+        "cushions",
+        "covers"
+      ],
+      "snippet": "Ordering and replacing Poang armchair cushions and covers, and checking which covers fit which frame.",
+      "facts": [
+        "Poang cushions come in Knisa, Skiftebo, and Gunnared fabrics plus Glose leather.",
+        "The cushion model is on the label under the seat.",
+        "Covers ship in 3 to 5 business days."
+      ],
+      "next_step": "Confirm the frame type (standard or rocking) and the cushion model from the label under the seat."
+    },
+    {
+      "id": "KB-107",
+      "title": "Choosing shelving and storage",
+      "label_names": [
+        "shelving",
+        "buying-guide"
+      ],
+      "snippet": "Helping a caller pick a shelving or storage line, from Kallax cube units to Billy bookcases and Besta or Eket wall storage.",
+      "facts": [
+        "Kallax cube units work as open shelving or room dividers and take drawer and door inserts.",
+        "Billy bookcases suit books and display shelving.",
+        "Besta and Eket are wall-mountable storage lines for living rooms."
+      ],
+      "next_step": "Ask what the caller wants to store and where it will go, then suggest one line and check stock nearby."
+    },
+    {
+      "id": "KB-108",
+      "title": "Choosing a couch",
+      "label_names": [
+        "couches",
+        "buying-guide"
+      ],
+      "snippet": "Helping a caller choose between the Ektorp, Kivik, Klippan, and Vimle couch lines and the Friheten sleeper.",
+      "facts": [
+        "Ektorp is a classic couch with washable covers; Kivik is a deeper lounge couch.",
+        "Klippan is a compact two-seater; Vimle is a modular line that can grow over time.",
+        "Friheten converts to a bed and has storage under the seat."
+      ],
+      "next_step": "Ask about the room size, how many seats are needed, and whether it should convert to a bed, then check stock nearby."
+    },
+    {
+      "id": "KB-109",
+      "title": "Choosing a desk or table",
+      "label_names": [
+        "desks",
+        "buying-guide"
+      ],
+      "snippet": "Helping a caller choose a desk, dining table, or side table across the Linnmon, Micke, Norden, and Lack lines.",
+      "facts": [
+        "Linnmon tabletops pair with Alex drawer units for a customizable desk.",
+        "Micke is a compact desk with built-in cable management.",
+        "Norden covers dining tables and Lack covers side and coffee tables."
+      ],
+      "next_step": "Ask whether it is for working, dining, or display and how much space there is, then suggest one line and check stock nearby."
+    },
+    {
+      "id": "KB-110",
+      "title": "Damaged item replacement",
+      "label_names": [
+        "damage",
+        "replacements"
+      ],
+      "snippet": "What to do when an item arrives cracked, scratched, dented, or broken, and how to get a replacement part without returning the whole unit.",
+      "facts": [
+        "Single panels and parts are replaceable for all frame products.",
+        "Processing needs the order number, the part's position number from the manual, and a photo.",
+        "A full-unit return is not needed."
+      ],
+      "next_step": "Ask for the order number and the part's position number from the assembly manual, then arrange a replacement."
+    },
+    {
+      "id": "KB-111",
+      "title": "Dimensions and fit",
+      "label_names": [
+        "dimensions",
+        "measurements"
+      ],
+      "snippet": "Product and package dimensions and weights, and whether flat-pack boxes fit in a car or through a doorway.",
+      "facts": [
+        "Billy 80 centimeter: assembled 80 by 28 by 202, package 209 by 39 by 12 at 33 kilograms.",
+        "Kallax 2x2: assembled 77 by 77 by 39, package 91 by 41 by 16 at 24 kilograms.",
+        "Strandmon: assembled 82 by 96 by 101, package 63 by 72 by 30 at 17 kilograms.",
+        "Poang: assembled 68 by 82 by 100, package 122 by 62 by 12 at 10 kilograms.",
+        "Standard sedans fit boxes up to about 200 centimeters diagonally."
+      ],
+      "next_step": "Quote assembled and flat-pack package dimensions separately; multi-box items list each box."
+    },
+    {
+      "id": "KB-112",
+      "title": "Delivery and order status",
+      "label_names": [
+        "delivery",
+        "orders"
+      ],
+      "snippet": "Checking where a delivery is, rescheduling the delivery window, and tracing a missing box from a multi-box order.",
+      "facts": [
+        "Deliveries book in 4 hour windows and rescheduling is free up to 24 hours before.",
+        "Multi-box orders are tracked per box, and a missing box triggers a trace and reshipment."
+      ],
+      "next_step": "Look up the order by number or the email on the account, then verify the per-box scan status."
+    },
+    {
+      "id": "KB-113",
+      "title": "Returns and refunds",
+      "label_names": [
+        "returns",
+        "refunds"
+      ],
+      "snippet": "Return windows, what condition items need to be in, and how refunds are issued for store and delivery purchases.",
+      "facts": [
+        "Unopened items can be returned within 365 days and opened items within 180 days with proof of purchase.",
+        "Refunds go back to the original payment method.",
+        "Large items can be returned at a store or collected for a fee."
+      ],
+      "next_step": "Confirm proof of purchase and whether the item is assembled, then book a store return or a pickup."
+    },
+    {
+      "id": "KB-114",
+      "title": "Assembly instructions and manuals",
+      "label_names": [
+        "assembly",
+        "manuals"
+      ],
+      "snippet": "Finding the printed or PDF assembly manual for any product and getting step-by-step help putting it together.",
+      "facts": [
+        "Every manual is printed in the box and available as a PDF under Support > Assembly Guides or via the QR code on the box.",
+        "Typical assembly takes 20 to 60 minutes."
+      ],
+      "next_step": "Locate the manual via Support > Assembly Guides or the QR code on the box; for a lost manual, send the PDF link by email."
+    },
+    {
+      "id": "KB-115",
+      "title": "Store hours, locations, and contact",
+      "label_names": [
+        "stores",
+        "hours",
+        "contact"
+      ],
+      "snippet": "Store opening hours, holiday exceptions, finding the nearest store, and how to reach customer support.",
+      "facts": [
+        "Stores are open 10:00 AM to 9:00 PM Monday through Saturday and 10:00 AM to 6:00 PM on Sundays; hours vary on public holidays.",
+        "Customer support is available 8:00 AM to 8:00 PM daily by phone and chat."
+      ],
+      "next_step": "Share the local store's hours and confirm the caller's nearest location."
+    },
+    {
+      "id": "KB-116",
+      "title": "Choosing a bed",
+      "label_names": [
+        "beds",
+        "buying-guide"
+      ],
+      "snippet": "Helping a caller choose a bed frame for adults or children across the Tarva, Kura, and Sniglar lines.",
+      "facts": [
+        "Tarva is a solid pine bed frame that can be painted or stained.",
+        "Kura is a reversible children's bed that works low or as a loft.",
+        "Sniglar is a toddler bed with a low height for easy climbing."
+      ],
+      "next_step": "Ask who the bed is for and the mattress size, then suggest one line and check stock nearby."
+    }
+  ],
+  "search_fixtures": [
+    {
+      "match": {
+        "product": "kallax",
+        "terms": [
+          "rocking",
+          "rocks",
+          "wobbly",
+          "shaky",
+          "unstable",
+          "not stable",
+          "moves from side to side",
+          "loose",
+          "tighten",
+          "tightened",
+          "square"
+        ]
+      },
+      "result_ids": [
+        "KB-102"
+      ]
+    },
+    {
+      "match": {
+        "product": "kallax",
+        "terms": [
+          "insert",
+          "inserts",
+          "door",
+          "doors",
+          "cube",
+          "cubes"
+        ]
+      },
+      "result_ids": [
+        "KB-103"
+      ]
+    },
+    {
+      "match": {
+        "product": "kallax",
+        "terms": [
+          "assemble"
+        ]
+      },
+      "result_ids": [
+        "KB-102",
+        "KB-114"
+      ]
+    },
+    {
+      "match": {
+        "product": "strandmon",
+        "terms": [
+          "leg",
+          "legs",
+          "creaks",
+          "creaking",
+          "uneven",
+          "footstool",
+          "ottoman"
+        ]
+      },
+      "result_ids": [
+        "KB-104"
+      ]
+    },
+    {
+      "match": {
+        "product": "strandmon",
+        "terms": [
+          "assemble"
+        ]
+      },
+      "result_ids": [
+        "KB-104",
+        "KB-114"
+      ]
+    },
+    {
+      "match": {
+        "product": "poang",
+        "terms": [
+          "cushion",
+          "cushions",
+          "cover",
+          "covers",
+          "replacement cover",
+          "seat cushion"
+        ]
+      },
+      "result_ids": [
+        "KB-106"
+      ]
+    },
+    {
+      "match": {
+        "terms": [
+          "missing",
+          "dowel",
+          "dowels",
+          "screw",
+          "screws",
+          "shelf pin",
+          "shelf pins",
+          "spare part",
+          "spare parts",
+          "replacement parts",
+          "fittings",
+          "missing pieces",
+          "missing parts",
+          "hardware"
+        ]
+      },
+      "result_ids": [
+        "KB-101"
+      ]
+    },
+    {
+      "match": {
+        "terms": [
+          "damaged",
+          "damage",
+          "broken",
+          "cracked",
+          "scratched",
+          "chipped",
+          "dented",
+          "arrived broken",
+          "arrived damaged"
+        ]
+      },
+      "result_ids": [
+        "KB-110"
+      ]
+    },
+    {
+      "match": {
+        "terms": [
+          "dimensions",
+          "measurements",
+          "how wide",
+          "how tall",
+          "how deep",
+          "size",
+          "weight",
+          "fit in my car",
+          "fit in the car",
+          "fit through",
+          "doorway",
+          "fit inside",
+          "fit into"
+        ]
+      },
+      "result_ids": [
+        "KB-111"
+      ]
+    },
+    {
+      "match": {
+        "terms": [
+          "delivery",
+          "delivered",
+          "order status",
+          "tracking",
+          "missing box",
+          "reschedule",
+          "late"
+        ]
+      },
+      "result_ids": [
+        "KB-112"
+      ]
+    },
+    {
+      "match": {
+        "terms": [
+          "assemble",
+          "how to assemble",
+          "instructions",
+          "manual",
+          "manuals",
+          "put together",
+          "assembly guide",
+          "lost the manual"
+        ]
+      },
+      "result_ids": [
+        "KB-114"
+      ]
+    },
+    {
+      "match": {
+        "terms": [
+          "hours",
+          "opening hours",
+          "operation hours",
+          "operating hours",
+          "are you open",
+          "open on",
+          "open today",
+          "open tomorrow",
+          "store location",
+          "locations",
+          "nearest store",
+          "holiday hours",
+          "contact",
+          "phone number"
+        ]
+      },
+      "result_ids": [
+        "KB-115"
+      ]
+    },
+    {
+      "match": {
+        "terms": [
+          "return",
+          "returns",
+          "refund",
+          "refunded",
+          "money back",
+          "send it back",
+          "take it back"
+        ]
+      },
+      "result_ids": [
+        "KB-113"
+      ]
+    },
+    {
+      "match": {
+        "terms": [
+          "a shelf",
+          "shelves",
+          "shelving",
+          "a bookcase",
+          "bookcase",
+          "bookshelf"
+        ]
+      },
+      "result_ids": [
+        "KB-107"
+      ]
+    },
+    {
+      "match": {
+        "terms": [
+          "a chair",
+          "new chair",
+          "an armchair",
+          "armchair",
+          "wingback",
+          "chairs"
+        ]
+      },
+      "result_ids": [
+        "KB-105"
+      ]
+    },
+    {
+      "match": {
+        "terms": [
+          "a couch",
+          "new couch",
+          "couches",
+          "sleeper couch",
+          "a sofa",
+          "new sofa",
+          "sofas",
+          "sofa bed",
+          "sectional"
+        ]
+      },
+      "result_ids": [
+        "KB-108"
+      ]
+    },
+    {
+      "match": {
+        "terms": [
+          "a desk",
+          "new desk",
+          "desks",
+          "a table",
+          "new table",
+          "dining table",
+          "coffee table",
+          "side table"
+        ]
+      },
+      "result_ids": [
+        "KB-109"
+      ]
+    },
+    {
+      "match": {
+        "terms": [
+          "a bed",
+          "new bed",
+          "beds",
+          "bunk bed",
+          "toddler bed",
+          "kids bed"
+        ]
+      },
+      "result_ids": [
+        "KB-116"
+      ]
+    },
+    {
+      "match": {
+        "product": "kallax"
+      },
+      "result_ids": [
+        "KB-102",
+        "KB-103"
+      ]
+    },
+    {
+      "match": {
+        "product": "strandmon"
+      },
+      "result_ids": [
+        "KB-104"
+      ]
+    },
+    {
+      "match": {
+        "product": "poang"
+      },
+      "result_ids": [
+        "KB-106"
+      ]
+    },
+    {
+      "match": {
+        "product": "ektorp"
+      },
+      "result_ids": [
+        "KB-108"
+      ]
+    },
+    {
+      "match": {
+        "product": "kivik"
+      },
+      "result_ids": [
+        "KB-108"
+      ]
+    },
+    {
+      "match": {
+        "product": "klippan"
+      },
+      "result_ids": [
+        "KB-108"
+      ]
+    },
+    {
+      "match": {
+        "product": "vimle"
+      },
+      "result_ids": [
+        "KB-108"
+      ]
+    },
+    {
+      "match": {
+        "product": "friheten"
+      },
+      "result_ids": [
+        "KB-108"
+      ]
+    },
+    {
+      "match": {
+        "product": "linnmon"
+      },
+      "result_ids": [
+        "KB-109"
+      ]
+    },
+    {
+      "match": {
+        "product": "micke"
+      },
+      "result_ids": [
+        "KB-109"
+      ]
+    },
+    {
+      "match": {
+        "product": "norden"
+      },
+      "result_ids": [
+        "KB-109"
+      ]
+    },
+    {
+      "match": {
+        "product": "lack"
+      },
+      "result_ids": [
+        "KB-109"
+      ]
+    },
+    {
+      "match": {
+        "product": "alex"
+      },
+      "result_ids": [
+        "KB-109"
+      ]
+    },
+    {
+      "match": {
+        "product": "tarva"
+      },
+      "result_ids": [
+        "KB-116"
+      ]
+    },
+    {
+      "match": {
+        "product": "kura"
+      },
+      "result_ids": [
+        "KB-116"
+      ]
+    },
+    {
+      "match": {
+        "product": "sniglar"
+      },
+      "result_ids": [
+        "KB-116"
+      ]
+    },
+    {
+      "match": {
+        "product": "billy"
+      },
+      "result_ids": [
+        "KB-107"
+      ]
+    },
+    {
+      "match": {
+        "product": "besta"
+      },
+      "result_ids": [
+        "KB-107"
+      ]
+    },
+    {
+      "match": {
+        "product": "eket"
+      },
+      "result_ids": [
+        "KB-107"
+      ]
+    }
+  ]
+}
