@@ -23,6 +23,8 @@ class AudioPlayerStream {
         let audioSession = AVAudioSession.sharedInstance()
         try audioSession.setCategory(.playAndRecord, options: [.mixWithOthers, .allowBluetooth])
         try audioSession.setActive(true)
+        RecipeDiagnostics.log("player session configured")
+        RecipeDiagnostics.logRoute()
 
         let format = AVAudioFormat(
             commonFormat: .pcmFormatFloat32,
@@ -41,6 +43,7 @@ class AudioPlayerStream {
 
     func playStreamPCM(_ pcmData: [Int16]) throws {
         if isStopped {
+            RecipeDiagnostics.log("player ignored audio: stopped")
             return
         }
         let audioBuffer = AVAudioPCMBuffer(
@@ -60,6 +63,8 @@ class AudioPlayerStream {
         }
 
         pcmBuffers.append(audioBuffer)
+        RecipeDiagnostics.log("player enqueued samples=\(pcmData.count) buffers=\(pcmBuffers.count) " +
+                              "engineRunning=\(engine.isRunning) isPlaying=\(isPlaying)")
 
         if !engine.isRunning {
             try engine.start()
@@ -71,28 +76,36 @@ class AudioPlayerStream {
 
     private func playNextPCMBuffer() {
         if isStopped {
+            RecipeDiagnostics.log("player ignored audio: stopped")
             return
         }
         guard let pcmData = pcmBuffers.first else {
             isPlaying = false
+            RecipeDiagnostics.log("player buffer queue empty (not an output-completion signal)")
             return
         }
         pcmBuffers.removeFirst()
 
+        let bufferID = String(UUID().uuidString.prefix(8))
+        RecipeDiagnostics.log("player scheduling buffer=\(bufferID) samples=\(pcmData.frameLength)")
         playerNode.scheduleBuffer(pcmData) { [weak self] in
+            RecipeDiagnostics.log("player buffer consumed id=\(bufferID)")
             self?.playNextPCMBuffer()
         }
 
         playerNode.play()
         isPlaying = true
+        RecipeDiagnostics.log("player play requested buffer=\(bufferID)")
     }
 
     func resetAudioPlayer() {
+        RecipeDiagnostics.log("player reset")
         isStopped = false
         isPlaying = false
     }
 
     func stopStreamPCM() {
+        RecipeDiagnostics.log("player stop")
         isStopped = true
         pcmBuffers.removeAll()
         playerNode.stop()
