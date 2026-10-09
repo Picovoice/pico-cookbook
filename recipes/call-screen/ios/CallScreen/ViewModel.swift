@@ -12,8 +12,8 @@ import Orca
 import Rhino
 import ios_voice_processor
 
-import AVFoundation
 import Foundation
+import AVFoundation
 
 enum ViewState {
   case loading, main

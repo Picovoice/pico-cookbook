@@ -13,9 +13,9 @@ import Orca
 import Rhino
 import ios_voice_processor
 
-import AVFoundation
 import Foundation
 import Combine
+import AVFoundation
 
 enum AppState {
     case idle

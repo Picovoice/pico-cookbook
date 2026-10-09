@@ -13,9 +13,9 @@ import Porcupine
 import Rhino
 import ios_voice_processor
 
-import AVFoundation
 import Combine
 import Foundation
+import AVFoundation
 
 enum Steps {
     case CHEETAH,

@@ -12,9 +12,9 @@ import Orca
 import Zebra
 import ios_voice_processor
 
-import AVFoundation
 import Combine
 import Foundation
+import AVFoundation
 
 enum ChatState {
     case SELECTING
