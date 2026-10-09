@@ -13,6 +13,7 @@ import Porcupine
 import Rhino
 import ios_voice_processor
 
+import AVFoundation
 import Combine
 import Foundation
 
@@ -479,6 +480,7 @@ class BasicRecorder: Recorder {
         try VoiceProcessor.instance.start(
             frameLength: frameLength,
             sampleRate: sampleRate)
+        try AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
 
         let (stream, continuation) = AsyncStream.makeStream(of: Int16.self)
         self.stream = stream

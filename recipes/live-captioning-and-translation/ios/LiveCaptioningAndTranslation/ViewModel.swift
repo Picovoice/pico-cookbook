@@ -331,6 +331,7 @@ class ViewModel: ObservableObject {
                 try VoiceProcessor.instance.start(
                     frameLength: Cheetah.frameLength,
                     sampleRate: Cheetah.sampleRate)
+                try AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
             } catch {
                 errorMessage = "\(error.localizedDescription)"
             }

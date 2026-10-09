@@ -13,6 +13,7 @@ import PicoLLM
 import Orca
 import ios_voice_processor
 
+import AVFoundation
 import Combine
 import Foundation
 
@@ -171,6 +172,7 @@ You can download directly to your device or airdrop from a Mac.
                 try VoiceProcessor.instance.start(
                     frameLength: Porcupine.frameLength,
                     sampleRate: Porcupine.sampleRate)
+                try AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
             } catch {
                 errorMessage = "\(error.localizedDescription)"
             }

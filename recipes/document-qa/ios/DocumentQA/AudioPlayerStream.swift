@@ -22,7 +22,7 @@ class AudioPlayerStream {
 
     init(sampleRate: Double) throws {
         let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.playAndRecord, options: [.mixWithOthers, .allowBluetooth])
+        try audioSession.setCategory(.playAndRecord, options: [.mixWithOthers, .allowBluetooth, .defaultToSpeaker])
         try audioSession.setActive(true)
 
         let format = AVAudioFormat(

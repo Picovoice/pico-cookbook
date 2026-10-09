@@ -13,6 +13,7 @@ import PicoLLM
 import Rhino
 import ios_voice_processor
 
+import AVFoundation
 import Foundation
 
 enum ViewState {
@@ -320,6 +321,7 @@ class ViewModel: ObservableObject {
                 try VoiceProcessor.instance.start(
                     frameLength: Cheetah.frameLength,
                     sampleRate: Cheetah.sampleRate)
+                try AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
             } catch {
                 setStatusText(text: error.localizedDescription)
             }

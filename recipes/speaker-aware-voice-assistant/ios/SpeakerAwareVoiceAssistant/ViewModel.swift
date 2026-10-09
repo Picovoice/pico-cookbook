@@ -13,6 +13,7 @@ import Orca
 import Rhino
 import ios_voice_processor
 
+import AVFoundation
 import Foundation
 import Combine
 
@@ -150,6 +151,7 @@ class ViewModel: ObservableObject {
                 frameLength: Porcupine.frameLength,
                 sampleRate: Porcupine.sampleRate
             )
+            try AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
         } catch {
             DispatchQueue.main.async {
                 self.statusText = "Engine init error: \(error.localizedDescription)"
@@ -183,6 +185,7 @@ class ViewModel: ObservableObject {
                 frameLength: Porcupine.frameLength,
                 sampleRate: Porcupine.sampleRate
             )
+            try AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
         } catch {
             DispatchQueue.main.async {
                 self.statusText = "Engine init error: \(error.localizedDescription)"

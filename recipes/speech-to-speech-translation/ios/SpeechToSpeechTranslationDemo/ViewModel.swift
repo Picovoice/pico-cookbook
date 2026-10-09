@@ -13,6 +13,7 @@ import Orca
 import Zebra
 import ios_voice_processor
 
+import AVFoundation
 import Combine
 import Foundation
 
@@ -95,6 +96,7 @@ class ViewModel: ObservableObject {
     private var audioStream: AudioPlayerStream?
 
     private var pcmBuffer: [Int16] = []
+    private var currentUtterance = ""
 
     @Published var dotIndex = 0
     private var timer: Timer?
@@ -276,6 +278,9 @@ class ViewModel: ObservableObject {
         zebra = nil
         orca = nil
 
+        pcmBuffer.removeAll()
+        currentUtterance = ""
+
         errorMessage = ""
         promptText = ""
         chatText.removeAll()
@@ -299,6 +304,7 @@ class ViewModel: ObservableObject {
                 try VoiceProcessor.instance.start(
                     frameLength: Cheetah.frameLength,
                     sampleRate: Cheetah.sampleRate)
+                try AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
             } catch {
                 errorMessage = "\(error.localizedDescription)"
             }
@@ -327,7 +333,7 @@ class ViewModel: ObservableObject {
         }
     }
 
-    private func translateAndSpeak() {
+    private func translateAndSpeak(transcript: String) {
         DispatchQueue.main.async { [self] in
             chatState = .TRANSLATING
         }
@@ -335,7 +341,7 @@ class ViewModel: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             Task {
                 do {
-                    let translation = try self.zebra!.translate(text: chatText[chatText.count - 1].transcript)
+                    let translation = try self.zebra!.translate(text: transcript)
 
                     let audio = try orca!.synthesize(text: translation)
 
@@ -375,24 +381,28 @@ class ViewModel: ObservableObject {
             if chatState == .LISTENING {
                 pcmBuffer.append(contentsOf: frame)
 
-                var isFlushed = false
+                var flushedUtterance: String?
                 while pcmBuffer.count >= Cheetah.frameLength {
                     let partialTranscript = try self.cheetah!.process(Array(pcmBuffer[0..<Int(Cheetah.frameLength)]))
                     pcmBuffer.removeFirst(Int(Cheetah.frameLength))
                     appendChatText(text: partialTranscript.0, translated: false)
+                    currentUtterance += partialTranscript.0
 
                     if partialTranscript.1 {
                         let finalTranscript = try self.cheetah!.flush()
                         appendChatText(text: finalTranscript, translated: false)
                         appendChatText(text: " ", translated: false)
+                        currentUtterance += finalTranscript
 
-                        if chatText.count > 0 && !chatText[chatText.count - 1].transcript.isEmpty {
-                            isFlushed = true
+                        let trimmed = currentUtterance.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !trimmed.isEmpty {
+                            flushedUtterance = trimmed
                         }
+                        currentUtterance = ""
                     }
                 }
-                if isFlushed {
-                    translateAndSpeak()
+                if let utterance = flushedUtterance {
+                    translateAndSpeak(transcript: utterance)
                 }
             } else if chatState == .DETECTING {
                 pcmBuffer.append(contentsOf: frame)
