@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import AVFoundation
 import Porcupine
 import Rhino
 import Cheetah
@@ -201,6 +202,7 @@ class ViewModel: ObservableObject {
 
                 VoiceProcessor.instance.addFrameListener(VoiceProcessorFrameListener(audioCallback))
                 try VoiceProcessor.instance.start(frameLength: Cheetah.frameLength, sampleRate: Cheetah.sampleRate)
+                try AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
 
                 DispatchQueue.main.async {
                     self.enginesLoaded = true

@@ -15,6 +15,7 @@ import ios_voice_processor
 
 import Foundation
 import Combine
+import AVFoundation
 
 enum AppState {
     case idle
@@ -150,6 +151,7 @@ class ViewModel: ObservableObject {
                 frameLength: Porcupine.frameLength,
                 sampleRate: Porcupine.sampleRate
             )
+            try AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
         } catch {
             DispatchQueue.main.async {
                 self.statusText = "Engine init error: \(error.localizedDescription)"
@@ -183,6 +185,7 @@ class ViewModel: ObservableObject {
                 frameLength: Porcupine.frameLength,
                 sampleRate: Porcupine.sampleRate
             )
+            try AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
         } catch {
             DispatchQueue.main.async {
                 self.statusText = "Engine init error: \(error.localizedDescription)"

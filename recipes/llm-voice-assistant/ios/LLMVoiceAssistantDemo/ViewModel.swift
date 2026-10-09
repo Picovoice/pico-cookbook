@@ -15,6 +15,7 @@ import ios_voice_processor
 
 import Combine
 import Foundation
+import AVFoundation
 
 enum ChatState {
     case WAKEWORD
@@ -171,6 +172,7 @@ You can download directly to your device or airdrop from a Mac.
                 try VoiceProcessor.instance.start(
                     frameLength: Porcupine.frameLength,
                     sampleRate: Porcupine.sampleRate)
+                try AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
             } catch {
                 errorMessage = "\(error.localizedDescription)"
             }

@@ -15,6 +15,7 @@ import ios_voice_processor
 
 import Combine
 import Foundation
+import AVFoundation
 
 enum Steps {
     case CHEETAH,
@@ -402,6 +403,7 @@ class BasicRecorder: Recorder {
         try VoiceProcessor.instance.start(
             frameLength: frameLength,
             sampleRate: sampleRate)
+        try AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
 
         let (stream, continuation) = AsyncStream.makeStream(of: Int16.self)
         self.stream = stream
