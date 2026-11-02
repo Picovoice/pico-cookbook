@@ -45,7 +45,6 @@ LINK_WORDS = 'the link shown on screen'
 LINK_START_PATTERN = re.compile(r'^(?:https?:|www\.)', re.IGNORECASE)
 LINK_TAIL_PATTERN = re.compile(r'[.,!?:;]*$')
 SENTENCE_END_PATTERN = re.compile(r'[.!?]\s+')
-WORD_PATTERN = re.compile(r"[^\W_]+(?:'[^\W_]+)*")
 
 MODELS_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'res', 'models')
 
