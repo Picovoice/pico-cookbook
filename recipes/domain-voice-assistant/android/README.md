@@ -23,9 +23,6 @@ These instructions assume your current working directory is `recipes/domain-voic
 Download `llama-3.2-1b-picovoice-assistant-355.pllm` from
 [Hugging Face](https://huggingface.co/Picovoice/Llama-3.2-Picovoice-Assistant-1B).
 
-The customized [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/) and
-[Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/) models are included in [res/models](../res/models).
-
 ### 2. Train the Wake Word Model
 
 1. Open [Picovoice Console](https://console.picovoice.ai/)
@@ -39,8 +36,10 @@ Save the downloaded file somewhere accessible on your machine. You will pass its
 
 ### 3. Run the Setup Script
 
-The setup script copies your wake word file (`.ppn`), the Cheetah and Orca models (`.pv`), and the picoLLM model
-(`.pllm`) to the assets folder.
+The setup script copies your wake word file (`.ppn`), the picoLLM model (`.pllm`), and the customized
+[Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/) and
+[Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/) models from [res/models](../res/models) to the
+`assets` folder.
 
 It also places your `AccessKey` from Picovoice Console into the `ACCESS_KEY` variable in
 [MainActivity.java](domain-voice-assistant/src/main/java/ai/picovoice/domainvoiceassistant/MainActivity.java).

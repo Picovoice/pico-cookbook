@@ -50,9 +50,6 @@ pip install -r requirements.txt
 Download `llama-3.2-1b-picovoice-assistant-800.pllm` from
 [Hugging Face](https://huggingface.co/Picovoice/Llama-3.2-Picovoice-Assistant-1B).
 
-The customized [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/) and
-[Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/) models are included in [res/models](../res/models).
-
 ### 5. Train the Wake Word Model
 
 1. Open [Picovoice Console](https://console.picovoice.ai/)
@@ -77,6 +74,9 @@ Where:
 * `${ACCESS_KEY}` is your Picovoice AccessKey from Picovoice Console.
 * `${KEYWORD_PATH}` is the path to the Porcupine wake word model file (`.ppn`).
 * `${PICOLLM_MODEL_PATH}` is the path to the picoLLM model file (`.pllm`).
+
+The customized [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/) and
+[Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/) models are loaded from [res/models](../res/models).
 
 #### Instructions
 

@@ -26,9 +26,6 @@ These instructions assume your current working directory is `recipes/domain-voic
 Download `llama-3.2-1b-picovoice-assistant-800.pllm` from
 [Hugging Face](https://huggingface.co/Picovoice/Llama-3.2-Picovoice-Assistant-1B).
 
-The customized [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/) and
-[Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/) models are included in [res/models](../res/models).
-
 ### 2. Train the Wake Word Model
 
 1. Open [Picovoice Console](https://console.picovoice.ai/)
@@ -44,8 +41,9 @@ Save the downloaded file somewhere accessible on your machine. You will pass its
 
 Run the setup script to download the model for [Porcupine Wake Word](https://picovoice.ai/docs/porcupine/).
 
-It will also copy the Cheetah, Orca, and picoLLM models to the `public/models` folder, and your wake word file
-(`.ppn`) to the `public/keywords` folder.
+It will also copy the customized [Cheetah Streaming Speech-to-Text](https://picovoice.ai/docs/cheetah/) and
+[Orca Streaming Text-to-Speech](https://picovoice.ai/docs/orca/) models from [res/models](../res/models) and the
+picoLLM model to the `public/models` folder, and your wake word file (`.ppn`) to the `public/keywords` folder.
 
 ```bash
 python setup.py \
