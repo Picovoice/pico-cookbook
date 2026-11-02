@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/loadModelLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/modelGuidelineHorizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            app:layout_constraintGuide_percent="0.80" />
+        <TextView
+            android:id="@+id/loadModelText"
+            android:text="@string/loading_text"
+            android:textSize="17sp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAlignment="center"
+            android:paddingHorizontal="20dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/modelGuidelineHorizontal"
+            app:layout_constraintTop_toTopOf="parent" />
+        <ProgressBar
+            android:id="@+id/loadModelProgress"
+            android:visibility="invisible"
+            android:indeterminateTint="@color/colorPrimary"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/loadModelText"
+            android:layout_marginTop="15dp"/>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/chatLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="visible">
+
+        <ScrollView
+            android:id="@+id/chatScrollView"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="24dp"
+            android:layout_marginEnd="24dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="35dp"
+            android:background="@drawable/chat_text_background"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/statusContainer">
+            <TextView
+                android:id="@+id/chatText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:padding="10dp"
+                android:text=""
+                android:autoLink="web"/>
+        </ScrollView>
+
+        <ImageButton
+            android:id="@+id/clearButton"
+            android:background="#EEEEEE"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginBottom="5dp"
+            android:src="@drawable/clear_button"
+            android:contentDescription="Clear"
+            app:layout_constraintEnd_toEndOf="@+id/chatScrollView"
+            app:layout_constraintBottom_toBottomOf="@+id/chatScrollView"/>
+
+        <LinearLayout
+            android:id="@+id/statusContainer"
+            android:layout_width="0dp"
+            android:layout_height="72dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            app:layout_constraintStart_toStartOf="@+id/chatScrollView"
+            app:layout_constraintEnd_toEndOf="@+id/chatScrollView"
+            app:layout_constraintBottom_toTopOf="@+id/promptContainer">
+            <ProgressBar
+                android:id="@+id/statusProgress"
+                android:indeterminateTint="@color/colorPrimary"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginEnd="10dp"/>
+
+            <TextView
+                android:id="@+id/statusText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Say the wake word or type a question"
+                android:textSize="18sp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/promptContainer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            app:layout_constraintStart_toStartOf="@+id/chatScrollView"
+            app:layout_constraintEnd_toEndOf="@+id/chatScrollView"
+            app:layout_constraintBottom_toBottomOf="parent">
+            <EditText
+                android:id="@+id/promptEditText"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:background="@drawable/prompt_text_enabled"
+                android:hint="Or type a question"
+                android:inputType="text"
+                android:imeOptions="actionSend"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:textSize="16sp"/>
+
+            <ImageButton
+                android:id="@+id/promptButton"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:layout_marginStart="10dp"
+                android:background="@drawable/prompt_button_enabled"
+                android:src="@drawable/prompt_button_arrow"
+                android:contentDescription="Send"/>
+        </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</RelativeLayout>

@@ -1,0 +1,6 @@
+picollm~=2.1.4
+pvcheetah~=4.2.0
+pvorca~=3.1.2
+pvporcupine~=4.0.3
+pvrecorder~=1.2.7
+pvspeaker~=1.0.5

@@ -14,6 +14,7 @@ Enterprise-ready, open-source, and ready to fork and adapt, these on-device AI e
 ## Voice Assistants
 - [LLM-Powered Voice Assistant](recipes/llm-voice-assistant): Private, zero-network latency, on-device LLM voice assistant. Runs a local large language model for hands-free, real-time voice-to-voice conversation with no cloud processing.
 - [Microcontroller Voice Assistant](recipes/microcontroller-voice-assistant): On-device voice assistant for microcontrollers (MCU). Runs custom wake words and voice commands on constrained embedded and IoT hardware.
+- [Domain Voice Assistant](recipes/domain-voice-assistant): On-device voice assistant that knows one product, with speech-to-text, LLM, and text-to-speech each customized for its domain. Answers spoken or typed questions and can be interrupted mid-answer.
 
 ## Personalization
 - [Personalized Wake Word](recipes/personalized-wake-word): On-device personalized wake word for single-user devices. A custom voice trigger that responds only to one enrolled user, like "Personalized Hey Siri".

@@ -30,6 +30,7 @@ dbfs
 declatory
 deepseek
 documentqa
+domainvoiceassistant
 dotdotdot
 dotnet
 dtype
@@ -98,8 +99,10 @@ Morenita
 Multimodal
 Natha
 newwin
+noopener
 Norden
 Nordli
+noreferrer
 numpy
 pcms
 Pepitas
@@ -120,6 +123,7 @@ Prosecco
 psutil
 pvbat
 pvcheetah
+pvcobra
 pveagle
 pvfalcon
 pvkoala

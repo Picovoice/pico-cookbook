@@ -1,0 +1,2 @@
+rootProject.name = "DomainVoiceAssistant"
+include ':domain-voice-assistant'

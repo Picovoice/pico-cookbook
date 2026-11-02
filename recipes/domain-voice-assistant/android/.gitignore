@@ -1,0 +1,13 @@
+*.iml
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+release
+test_resources
+/domain-voice-assistant/src/main/assets/*.ppn
+/domain-voice-assistant/src/main/assets/*.pv
+/domain-voice-assistant/src/main/assets/*.pllm
