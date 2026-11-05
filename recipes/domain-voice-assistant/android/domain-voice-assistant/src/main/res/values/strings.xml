@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Domain Voice Assistant</string>
+    <string name="loading_text">Loading…</string>
+</resources>

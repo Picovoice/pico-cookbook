@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Domain Voice Assistant</title>
+    <script src="index.js"></script>
+    <script src="controller.js"></script>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="load-container-parent">
+      <div id="load-container">
+        <h1>Domain Voice Assistant</h1>
+        <p class="subtitle">
+          Ask about Picovoice by voice or text. Speech-to-text, the LLM, and text-to-speech all run on this device.
+        </p>
+        <div id="error" class="error-box hidden"></div>
+        <div id="init-container">
+          <input type="text" id="access-key" name="access-key" placeholder="Enter AccessKey" autocomplete="off" />
+          <button id="start-button" disabled>Start Demo</button>
+          <div class="note">
+            Get your AccessKey from <a href="https://console.picovoice.ai/" target="_blank">Picovoice Console</a>.
+          </div>
+        </div>
+
+        <div id="status-container" class="hidden">
+          <div id="status-spinner" class="loader"></div>
+          <span id="status"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="main-container-parent" class="hidden">
+      <div id="main-container">
+        <div id="header">
+          <h1>Domain Voice Assistant</h1>
+          <div id="state-pill" data-state="waiting">
+            <span class="state-dot"></span>
+            <span id="state-text"></span>
+          </div>
+        </div>
+
+        <div id="main-error" class="error-box hidden"></div>
+
+        <div id="chat-block-container">
+          <div id="chat-block">
+            <div id="empty-state">
+              <div class="empty-title">Say the wake word or type a question</div>
+              <div class="empty-subtitle">Try one of these:</div>
+              <div id="examples">
+                <button class="example">What is picoLLM?</button>
+                <button class="example">How do I get an AccessKey?</button>
+                <button class="example">What can Porcupine do?</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="activity">
+          <div id="hint"></div>
+          <div id="volume-meter">
+            <div class="volume-bar" id="bar1"></div>
+            <div class="volume-bar" id="bar2"></div>
+            <div class="volume-bar" id="bar3"></div>
+          </div>
+        </div>
+
+        <form id="question-form" autocomplete="off">
+          <input type="text" id="question" name="question" placeholder="Type a question about Picovoice" />
+          <button type="submit" id="send-button">Send</button>
+          <button type="button" id="stop-button" class="stop" disabled>Stop</button>
+        </form>
+
+        <div id="footer">
+          <button type="button" id="reset-button" class="text-btn">New conversation</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
